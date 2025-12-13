@@ -1,0 +1,16 @@
+
+@echo off
+echo [1/5] Stopping Containers...
+docker-compose down
+echo [2/5] Cleaning Network...
+docker network prune -f
+echo [3/5] Starting Containers (Clean)...
+docker-compose up -d --force-recreate
+echo [4/5] Fixing Permissions...
+timeout /t 5
+docker exec resortwala_api chown -R www-data:www-data storage bootstrap/cache
+docker exec resortwala_api chmod -R 775 storage bootstrap/cache
+echo [5/5] Clearing Caches...
+docker exec resortwala_api php artisan config:clear
+docker exec resortwala_api php artisan route:clear
+echo DONE.
