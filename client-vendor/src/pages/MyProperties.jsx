@@ -17,7 +17,7 @@ export default function MyProperties() {
 
     const fetchProperties = async () => {
         try {
-            const response = await axios.get('http://192.168.1.105:8000/api/vendor/properties', {
+            const response = await axios.get('/api/vendor/properties', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProperties(response.data);
@@ -40,7 +40,7 @@ export default function MyProperties() {
         if (!confirmed) return;
 
         try {
-            await axios.delete(`http://192.168.1.105:8000/api/vendor/properties/${id}`, {
+            await axios.delete(`/api/vendor/properties/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             await showSuccess('Deleted', 'Property deleted successfully');

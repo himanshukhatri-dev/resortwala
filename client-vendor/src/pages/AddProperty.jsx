@@ -29,7 +29,7 @@ export default function AddProperty() {
         setLoading(true);
 
         try {
-            const response = await axios.post('http://192.168.1.105:8000/api/vendor/properties', formData, {
+            const response = await axios.post('/api/vendor/properties', formData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             await showSuccess('Success', response.data.message || 'Property added successfully');

@@ -28,7 +28,7 @@ export default function ResetPassword() {
         setLoading(true);
 
         try {
-            const response = await axios.post('http://192.168.1.105:8000/api/reset-password', {
+            const response = await axios.post('/api/reset-password', {
                 email,
                 password,
                 password_confirmation: passwordConfirmation,

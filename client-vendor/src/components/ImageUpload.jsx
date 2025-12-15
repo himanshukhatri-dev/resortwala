@@ -21,7 +21,7 @@ export default function ImageUpload({ propertyId, onUploadSuccess }) {
                 const formData = new FormData();
                 formData.append('image', file); // Backend expects 'image'
 
-                return axios.post(`http://192.168.1.105:8000/api/vendor/properties/${propertyId}/images`, formData, {
+                return axios.post(`/api/vendor/properties/${propertyId}/images`, formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data',
                         'Authorization': `Bearer ${token}`

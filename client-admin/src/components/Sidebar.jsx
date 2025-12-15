@@ -29,7 +29,7 @@ export default function Sidebar({ userType = 'admin' }) {
         if (!confirmed) return;
 
         try {
-            await axios.post('http://localhost:8000/api/admin/logout', {}, {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/admin/logout`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         } catch (error) {

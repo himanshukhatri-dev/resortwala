@@ -94,70 +94,78 @@ export default function Home() {
     };
 
     const [scrolled, setScrolled] = useState(false);
-    const sentinelRef = useRef(null);
-
     useEffect(() => {
-        const observer = new IntersectionObserver(([entry]) => {
-            setScrolled(!entry.isIntersecting && entry.boundingClientRect.top < 0);
-        }, {
-            rootMargin: "-80px 0px 0px 0px", // Trigger when it hits the top (minus header height?)
-            threshold: 0
-        });
+        const handleScroll = () => {
+            // Trigger when scrolled past 400px
+            const threshold = 400;
+            setScrolled(window.scrollY > threshold);
+        };
 
-        if (sentinelRef.current) observer.observe(sentinelRef.current);
-        return () => observer.disconnect();
+        window.addEventListener('scroll', handleScroll);
+        handleScroll(); // Initial check
+
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     return (
         <div className="pb-20">
-            {/* SENTINEL FOR STICKY SEARCH */}
-            <div ref={sentinelRef} className="absolute top-[60vh] w-full h-1 pointer-events-none opacity-0" />
-
             {/* 1. IMMERSIVE HERO */}
-            <div className="relative h-[85vh] w-full bg-black flex flex-col items-center justify-center text-center px-4 z-40">
+            <div className="relative h-[65vh] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4">
                 {/* Background */}
                 <div className="absolute inset-0 overflow-hidden">
                     <img
-                        src="https://images.unsplash.com/photo-1512918760532-3ed64bc80e89?q=80&w=2070&auto=format&fit=crop"
-                        alt="Background"
-                        className="w-full h-full object-cover opacity-60"
+                        src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2070&auto=format&fit=crop"
+                        alt="Sunrise Background"
+                        className="w-full h-full object-cover opacity-100"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+                    {/* Lighter Dark Overlay for text readability (sunrise needs less overlay) */}
+                    <div className="absolute inset-0 bg-black/20" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-black/10" />
                 </div>
 
                 {/* Content */}
                 <div className="relative z-10 max-w-5xl w-full flex flex-col items-center animate-fade-up">
-                    <img src="/resortwala-logo.png" alt="ResortWala" className="h-24 md:h-32 w-auto mb-8 drop-shadow-xl" />
 
-                    <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-lg">
-                        Find your peace in <span className="text-primary">paradise</span>
+                    <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-xl font-serif italic tracking-wide">
+                        Find your peace in <span className="text-secondary not-italic">paradise</span>
                     </h1>
 
+                    {/* CATEGORIES (Moved Inside Hero) */}
+                    <div className="flex gap-2 mb-2 overflow-x-auto no-scrollbar max-w-full px-4">
+                        {CATEGORIES.map(cat => (
+                            <button
+                                key={cat.id}
+                                onClick={() => setActiveCategory(cat.id)}
+                                className={`flex items-center gap-2 px-5 py-2 rounded-full transition-all whitespace-nowrap backdrop-blur-md border border-white/20 ${activeCategory === cat.id
+                                    ? 'bg-[#0F172A] text-white shadow-lg scale-105 border-white/40'
+                                    : 'bg-black/30 text-white/90 hover:bg-black/50'
+                                    }`}
+                            >
+                                {cat.icon}
+                                <span className="font-medium text-sm">{cat.label}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                </div>
+
+                {/* SEARCH BAR (Outside animated container to fix sticky positioning) */}
+                <div className="relative z-40 w-full flex justify-center">
                     {/* Placeholder for SearchBar when it is sticky (prevents layout jump) */}
-                    <div className="w-full mt-8 h-[80px]">
-                        <SearchBar onSearch={handleSearch} isSticky={scrolled} properties={properties} />
+                    <div className="w-full max-w-5xl h-[80px]">
+                        <SearchBar
+                            onSearch={handleSearch}
+                            isSticky={scrolled}
+                            properties={properties}
+                            categories={CATEGORIES}
+                            activeCategory={activeCategory}
+                            onCategoryChange={setActiveCategory}
+                        />
                     </div>
                 </div>
             </div>
 
-            {/* 2. CATEGORIES (Sticky) */}
-            <div className="sticky top-[80px] z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 py-4 shadow-sm">
-                <div className="container mx-auto px-4 flex justify-center gap-4 overflow-x-auto no-scrollbar">
-                    {CATEGORIES.map(cat => (
-                        <button
-                            key={cat.id}
-                            onClick={() => setActiveCategory(cat.id)}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all whitespace-nowrap ${activeCategory === cat.id
-                                ? 'bg-black text-white shadow-lg scale-105'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                        >
-                            {cat.icon}
-                            <span className="font-medium text-sm">{cat.label}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
+
 
             {/* 3. PROPERTY GRID */}
             <div className="container mx-auto px-4 py-12">

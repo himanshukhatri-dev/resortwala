@@ -26,7 +26,7 @@ export default function Holiday() {
 
     const fetchProperties = async () => {
         try {
-            const response = await axios.get('http://192.168.1.105:8000/api/vendor/properties', {
+            const response = await axios.get('/api/vendor/properties', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProperties(response.data);
@@ -41,7 +41,7 @@ export default function Holiday() {
             // Fetch all holidays
             // Ideally backend should support filtering by vendor's properties
             // For now assuming getAll returns standard list or properties linked
-            const response = await axios.get('http://192.168.1.105:8000/api/holidays');
+            const response = await axios.get('/api/holidays');
             setHolidays(response.data);
         } catch (error) {
             console.error('Error fetching holidays:', error);
@@ -53,7 +53,7 @@ export default function Holiday() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://192.168.1.105:8000/api/holidays', formData, {
+            await axios.post('/api/holidays', formData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             await showSuccess('Success', 'Holiday created successfully!');
@@ -83,7 +83,7 @@ export default function Holiday() {
         if (!confirmed) return;
 
         try {
-            await axios.delete(`http://192.168.1.105:8000/api/holidays/${id}`, {
+            await axios.delete(`/api/holidays/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchHolidays();

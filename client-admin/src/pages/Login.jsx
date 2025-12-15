@@ -81,8 +81,19 @@ export default function Login() {
                     </button>
                 </form>
 
+                <button
+                    type="button"
+                    onClick={() => {
+                        setFormData({ email: 'admin@resortwala.com', password: 'password' });
+                        setTimeout(() => document.querySelector('form').requestSubmit(), 100);
+                    }}
+                    style={{ width: '100%', padding: '10px', fontSize: '14px', fontWeight: '500', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '6px', marginTop: '10px', cursor: 'pointer' }}
+                >
+                    ⚡ Quick Admin Login
+                </button>
+
                 <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '12px', color: '#999' }}>
-                    Default: admin@resortwala.com / admin123
+                    Default: admin@resortwala.com / password
                 </p>
             </div>
         </div>

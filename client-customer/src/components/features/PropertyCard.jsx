@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaStar, FaHeart } from 'react-icons/fa';
+import { FaStar, FaHeart, FaMapMarkerAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
 export default function PropertyCard({ property, searchParams }) {
@@ -14,9 +14,9 @@ export default function PropertyCard({ property, searchParams }) {
         rating = property?.Rating || 4.9,
         // Image: API returns empty array currently, so we rely on fallback mostly. 
         // Adding check just in case.
-        image = (property?.images && property?.images.length > 0 ? property.images[0].image_url : null) ||
-        (property?.primary_image ? property.primary_image.image_url : null) ||
-        property?.ImageUrl ||
+        image = (property?.images && property?.images.length > 0 ? (property.images[0].image_url || property.images[0].image_path) : null) ||
+        (property?.primary_image ? (property.primary_image.image_url || property.primary_image.image_path) : null) ||
+        property?.ImageUrl || property?.image_url || property?.image_path ||
         "https://images.unsplash.com/photo-1613490493576-7fde63acd811?q=80&w=1000&auto=format&fit=crop"
     } = property || {};
 
@@ -39,34 +39,49 @@ export default function PropertyCard({ property, searchParams }) {
     const queryString = buildQuery();
 
     return (
-        <Link to={`/property/${id}?${queryString}`} className="block group cursor-pointer w-full">
-            <div className="relative aspect-[20/19] overflow-hidden rounded-xl bg-gray-200 mb-3">
+        <div className="group rounded-xl overflow-hidden shadow-lg border border-white/10 bg-[#1E293B] hover:shadow-2xl transition-all duration-300">
+            {/* IMAGE */}
+            <div className="relative aspect-[4/3] overflow-hidden">
                 <img
                     src={image}
                     alt={name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
-                <button className="absolute top-3 right-3 p-2 rounded-full hover:bg-white/20 transition">
-                    <FaHeart className="text-black/50 hover:text-primary transition-colors drop-shadow-md stroke-white stroke-2" size={24} />
-                </button>
-                <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold text-gray-800 shadow-sm">
-                    Guest Favorite
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-80" />
+                <div className="absolute bottom-3 left-3 text-white font-bold text-lg drop-shadow-md font-serif tracking-wide">
+                    {name}
                 </div>
             </div>
 
-            <div className="flex justify-between items-start">
-                <h3 className="font-bold text-gray-900 truncate pr-2 text-base">{name}</h3>
-                <div className="flex items-center gap-1 text-sm shrink-0">
-                    <FaStar size={12} />
-                    <span>{rating}</span>
+            {/* CONTENT */}
+            <div className="p-4">
+                <div className="flex items-center gap-2 text-gray-400 text-xs mb-3 uppercase tracking-wider font-medium">
+                    <FaMapMarkerAlt className="text-primary" /> {/* Teal map marker */}
+                    <span>{location}</span>
+                </div>
+
+                {/* DETAILS COMPACT */}
+                <div className="flex items-center justify-between text-gray-300 text-sm mb-4 border-b border-gray-700 pb-3">
+                    <div className="flex items-center gap-2">
+                        <span>3 Beds</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span>Pool</span>
+                    </div>
+                </div>
+
+                {/* PRICE & ACTION */}
+                <div className="flex items-center justify-between mt-2">
+                    <div>
+                        <span className="text-xl font-bold text-white font-serif">₹{price.toLocaleString() || 'On Request'}</span>
+                        <span className="text-xs text-gray-500 block">per night</span>
+                    </div>
+
+                    <Link to={`/property/${id}`} className="bg-secondary hover:bg-secondary-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-lg transition-colors">
+                        View Details
+                    </Link>
                 </div>
             </div>
-
-            <p className="text-gray-500 text-sm truncate">{location}</p>
-            <div className="flex items-baseline gap-1 mt-1">
-                <span className="font-bold text-gray-900 text-base">₹{price.toLocaleString()}</span>
-                <span className="text-gray-900 font-normal">night</span>
-            </div>
-        </Link>
+        </div>
     );
 }

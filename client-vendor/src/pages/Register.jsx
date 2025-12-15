@@ -26,7 +26,7 @@ export default function Register() {
         setLoading(true);
 
         try {
-            const response = await axios.post('http://192.168.1.105:8002/api/vendor/register', formData);
+            const response = await axios.post('/api/vendor/register', formData);
             console.log('Registration response:', response.data);
             login(response.data.token, response.data.user);
             await showSuccess('Welcome!', response.data.message || 'Registration successful');

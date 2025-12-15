@@ -36,7 +36,7 @@ export default function EditProperty() {
 
     const fetchProperty = async () => {
         try {
-            const response = await axios.get(`http://192.168.1.105:8000/api/vendor/properties/${id}`, {
+            const response = await axios.get(`/api/vendor/properties/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setFormData(response.data);
@@ -51,7 +51,7 @@ export default function EditProperty() {
         try {
             // Assuming endpoint exists, or we might need to rely on property.images if included
             // Let's try fetching directly if supported, otherwise rely on reload
-            const response = await axios.get(`http://192.168.1.105:8000/api/vendor/properties/${id}`, {
+            const response = await axios.get(`/api/vendor/properties/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (response.data.images) {
@@ -68,7 +68,7 @@ export default function EditProperty() {
         setSaving(true);
 
         try {
-            await axios.put(`http://192.168.1.105:8000/api/vendor/properties/${id}`, formData, {
+            await axios.put(`/api/vendor/properties/${id}`, formData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             await showSuccess('Success', 'Property updated successfully');
@@ -96,7 +96,7 @@ export default function EditProperty() {
         if (!confirmed) return;
 
         try {
-            await axios.delete(`http://192.168.1.105:8000/api/vendor/properties/${id}/images/${imageId}`, {
+            await axios.delete(`/api/vendor/properties/${id}/images/${imageId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setImages(images.filter(img => img.id !== imageId));
@@ -108,7 +108,7 @@ export default function EditProperty() {
 
     const handleSetPrimary = async (imageId) => {
         try {
-            await axios.put(`http://192.168.1.105:8000/api/vendor/properties/${id}/images/${imageId}/primary`, {}, {
+            await axios.put(`/api/vendor/properties/${id}/images/${imageId}/primary`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchImages(); // Refresh to show new primary status
@@ -145,7 +145,7 @@ export default function EditProperty() {
                         <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '20px' }}>
                             {images.map(img => (
                                 <div key={img.id} style={{ position: 'relative', width: '120px', height: '120px', borderRadius: '8px', overflow: 'hidden', border: img.is_primary ? '3px solid var(--primary-color)' : '1px solid #ddd' }}>
-                                    <img src={`http://192.168.1.105:8000/storage/${img.image_path}`} alt="Property" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <img src={`/storage/${img.image_path}`} alt="Property" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', padding: '4px', display: 'flex', justifyContent: 'space-around' }}>
                                         {!img.is_primary && (
                                             <button onClick={() => handleSetPrimary(img.id)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '12px', cursor: 'pointer' }} title="Set as Primary">★</button>

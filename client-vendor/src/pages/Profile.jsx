@@ -53,7 +53,7 @@ export default function Profile() {
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await axios.put('http://192.168.1.105:8000/api/vendor/profile', profile, {
+            const response = await axios.put('/api/vendor/profile', profile, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 

@@ -50,10 +50,10 @@ export default function Header() {
 
     return (
         <header
-            className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled || !isHomePage ? 'bg-white shadow-sm h-[80px]' : 'bg-transparent h-[100px]'
+            className={`fixed top-0 w-full z-30 transition-all duration-300 pointer-events-none ${scrolled || !isHomePage ? 'bg-white shadow-sm h-[120px]' : 'bg-transparent h-[100px]'
                 }`}
         >
-            <div className="container mx-auto px-4 h-full flex items-center justify-between relative">
+            <div className="container mx-auto px-4 h-full flex items-center justify-between relative pointer-events-auto">
 
                 {/* 1. LOGO */}
                 <Link to="/" className="flex-shrink-0 z-20">
@@ -71,7 +71,7 @@ export default function Header() {
                 {/* 3. RIGHT - MENU */}
                 <div className="flex items-center gap-4 z-20 relative" ref={menuRef}>
                     <a
-                        href="http://localhost:3003"
+                        href={import.meta.env.VITE_VENDOR_URL || "http://stagingvendor.resortwala.com"}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={`hidden md:block font-medium text-sm hover:bg-white/10 px-4 py-2 rounded-full transition cursor-pointer ${scrolled || !isHomePage ? 'text-gray-900 hover:bg-gray-100' : 'text-white'}`}
@@ -85,7 +85,7 @@ export default function Header() {
                         <FaBars className="text-gray-600" size={16} />
                         <div className="bg-gray-500 text-white rounded-full p-1 overflow-hidden">
                             {user ? (
-                                <div className="w-6 h-6 flex items-center justify-center bg-black text-[10px] font-bold">
+                                <div className="w-6 h-6 flex items-center justify-center bg-black text-[10px] font-bold rounded-full">
                                     {(user.name || user.Name || 'U').charAt(0).toUpperCase()}
                                 </div>
                             ) : (
@@ -118,7 +118,7 @@ export default function Header() {
                                         <Link to="/login" className="block px-4 py-3 hover:bg-gray-50 text-sm font-bold text-gray-800">Log in</Link>
                                         <Link to="/signup" className="block px-4 py-3 hover:bg-gray-50 text-sm font-medium text-gray-700">Sign up</Link>
                                         <div className="border-t border-gray-100 my-1"></div>
-                                        <div className="px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer">Host your home</div>
+                                        <Link to="/contact" className="block px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer">Contact Us</Link>
                                         <div className="px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 cursor-pointer">Help Center</div>
                                     </>
                                 )}

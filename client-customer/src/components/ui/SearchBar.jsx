@@ -5,7 +5,7 @@ import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { format } from 'date-fns';
 
-export default function SearchBar({ compact = false, isSticky = false, onSearch, properties = [] }) {
+export default function SearchBar({ compact = false, isSticky = false, onSearch, properties = [], categories = [], activeCategory, onCategoryChange }) {
     const [activeTab, setActiveTab] = useState(null); // 'location', 'dates', 'guests'
     const [location, setLocation] = useState("");
     const [suggestions, setSuggestions] = useState([]);
@@ -25,7 +25,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
             return;
         }
 
-        if (val.length >= 2) { // Lower threshold to 2 chars for better feedback
+        if (val.length >= 3) { // Threshold raised to 3 chars per user request
             const lowerVal = val.toLowerCase();
             const matches = properties.filter(p => {
                 if (!p) return false;
@@ -118,27 +118,52 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
 
     // STICKY STYLES: Use `visible` and `opacity` explicitly to prevent disappearance issues
     const containerClasses = isSticky
-        ? "fixed top-[12px] left-1/2 transform -translate-x-1/2 w-[90%] md:w-[60%] lg:w-[50%] z-[100] transition-all duration-300 ease-in-out scale-95 origin-top opacity-100 visible"
+        ? "fixed top-0 left-1/2 transform -translate-x-1/2 w-[95%] md:w-[50%] z-[10000] transition-all duration-300 ease-in-out origin-top opacity-100 visible"
         : "relative w-full max-w-4xl mx-auto transition-all duration-300 ease-in-out opacity-100 visible";
 
     return (
         <div className={containerClasses} ref={searchRef}>
+            {/* STICKY CATEGORIES ROW (Only when Sticky) */}
+            {isSticky && categories.length > 0 && (
+                <div className="flex justify-center flex-wrap gap-2 mb-0 animate-fade-down overflow-hidden">
+                    {categories.map(cat => (
+                        <button
+                            key={cat.id}
+                            onClick={() => onCategoryChange && onCategoryChange(cat.id)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all backdrop-blur-md border ${activeCategory === cat.id
+                                ? 'bg-brand-dark text-white border-white/20 shadow-md'
+                                : 'bg-white/80 text-gray-700 hover:bg-white border-transparent'
+                                }`}
+                        >
+                            {cat.icon}
+                            <span>{cat.label}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* SEARCH BAR CONTAINER */}
-            <div className={`bg-white rounded-full shadow-2xl flex items-center ${isSticky ? 'p-1' : 'p-2'} relative z-50 border border-gray-100`}>
+            <div className={`bg-white rounded-full shadow-2xl flex items-center ${isSticky ? 'p-1.5' : 'p-2'} relative z-40 border border-gray-100`}>
 
                 {/* 1. LOCATION */}
                 <div
                     onClick={() => setActiveTab('location')}
-                    className={`flex-1 relative ${isSticky ? 'px-4 py-1.5' : 'px-8 py-3.5'} rounded-full cursor-pointer hover:bg-gray-100 transition ${activeTab === 'location' ? 'bg-white shadow-lg' : ''}`}
+                    className={`flex-1 relative ${isSticky ? 'px-4 py-2' : 'px-8 py-3.5'} rounded-full cursor-pointer hover:bg-gray-100 transition ${activeTab === 'location' ? 'bg-white shadow-lg' : ''}`}
                 >
                     <label className="block text-xs font-bold text-gray-800 tracking-wider">WHERE</label>
                     <input
                         ref={inputRef}
                         type="text"
-                        placeholder="Search destinations"
+                        placeholder="Type location (e.g. Goa)"
                         value={location}
-                        onChange={handleLocationChange}
-                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                            handleLocationChange(e);
+                            if (activeTab !== 'location') setActiveTab('location');
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveTab('location');
+                        }}
                         className="w-full bg-transparent border-none outline-none text-sm text-gray-600 placeholder-gray-400 p-0 relative z-10"
                     />
                 </div>
@@ -178,7 +203,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                     {/* SEARCH BUTTON */}
                     <button
                         onClick={(e) => { e.stopPropagation(); handleSearch(); }}
-                        className={`bg-primary hover:bg-primary-hover text-white rounded-full ${isSticky ? 'p-3' : 'p-4'} shadow-md transition-all duration-300 flex items-center justify-center gap-2 group`}
+                        className={`bg-[#FF385C] hover:bg-[#E00B41] text-white rounded-full ${isSticky ? 'p-3' : 'p-4'} shadow-md transition-all duration-300 flex items-center justify-center gap-2 group`}
                     >
                         <FaSearch size={isSticky ? 12 : 16} />
                         <span className={`max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-300 ${isSticky ? 'text-xs' : 'text-sm'} font-bold`}>
@@ -203,6 +228,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
                             transition={{ duration: 0.2 }}
+                            onClick={(e) => e.stopPropagation()}
                             className="absolute top-24 left-0 w-full bg-white rounded-3xl shadow-2xl p-6 z-[100]"
                         >
                             {activeTab === 'location' && (
@@ -258,7 +284,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
 
                             {activeTab === 'guests' && (
                                 <div className="grid grid-cols-2 gap-8">
-                                    {['adults', 'children', 'infants', 'pets', 'rooms'].map((type) => (
+                                    {['adults', 'children', 'rooms'].map((type) => (
                                         <div key={type} className="flex justify-between items-center py-2 border-b border-gray-100">
                                             <div className="capitalize font-medium text-gray-700">{type}</div>
                                             <div className="flex items-center gap-4">

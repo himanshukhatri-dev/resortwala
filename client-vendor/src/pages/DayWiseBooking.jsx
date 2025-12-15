@@ -37,7 +37,7 @@ export default function DayWiseBooking() {
 
     const fetchProperties = async () => {
         try {
-            const response = await axios.get('http://192.168.1.105:8000/api/vendor/properties', {
+            const response = await axios.get('/api/vendor/properties', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProperties(response.data);
@@ -66,7 +66,7 @@ export default function DayWiseBooking() {
 
     const fetchHolidays = async () => {
         try {
-            const response = await axios.get('http://192.168.1.105:8000/api/holidays');
+            const response = await axios.get('/api/holidays');
             setHolidays(response.data);
         } catch (error) {
             console.error('Error fetching holidays:', error);
@@ -78,7 +78,7 @@ export default function DayWiseBooking() {
         try {
             // Fetch all bookings and filter by property client-side for now
             // Ideal: API should support filtering
-            const response = await axios.get('http://192.168.1.105:8000/api/vendor/bookings', {
+            const response = await axios.get('/api/vendor/bookings', {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -107,7 +107,7 @@ export default function DayWiseBooking() {
         if (!confirmed) return;
 
         try {
-            await axios.post(`http://192.168.1.105:8000/api/vendor/bookings/${bookingId}/status`,
+            await axios.post(`/api/vendor/bookings/${bookingId}/status`,
                 { status: newStatus },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -140,7 +140,7 @@ export default function DayWiseBooking() {
         const nextDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
 
         try {
-            await axios.post('http://192.168.1.105:8000/api/vendor/bookings/freeze', {
+            await axios.post('/api/vendor/bookings/freeze', {
                 property_id: selectedProperty,
                 start_date: dateStr,
                 end_date: nextDateStr,

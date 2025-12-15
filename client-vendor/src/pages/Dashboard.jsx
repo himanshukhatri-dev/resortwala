@@ -16,7 +16,7 @@ export default function Dashboard() {
 
     const fetchStats = async () => {
         try {
-            const response = await axios.get('http://192.168.1.105:8000/api/vendor/stats', {
+            const response = await axios.get('/api/vendor/stats', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setStats(response.data);
@@ -41,7 +41,7 @@ export default function Dashboard() {
         if (!confirmed) return;
 
         try {
-            await axios.post(`http://192.168.1.105:8000/api/vendor/bookings/${bookingId}/status`,
+            await axios.post(`/api/vendor/bookings/${bookingId}/status`,
                 { status: newStatus },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -280,7 +280,7 @@ export default function Dashboard() {
                         <button
                             onClick={async () => {
                                 try {
-                                    const response = await axios.get('http://192.168.1.105:8000/api/vendor/bookings', {
+                                    const response = await axios.get('/api/vendor/bookings', {
                                         headers: { Authorization: `Bearer ${token}` }
                                     });
                                     const bookings = response.data;
@@ -324,7 +324,7 @@ export default function Dashboard() {
                         <button
                             onClick={async () => {
                                 try {
-                                    const response = await axios.get('http://192.168.1.105:8000/api/vendor/bookings', {
+                                    const response = await axios.get('/api/vendor/bookings', {
                                         headers: { Authorization: `Bearer ${token}` }
                                     });
                                     const bookings = response.data;

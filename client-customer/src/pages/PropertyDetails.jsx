@@ -265,63 +265,66 @@ export default function PropertyDetails() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 z-[100] bg-black text-white flex flex-col"
-                    >
-                        {/* Toolbar */}
-                        <div className="flex justify-between items-center p-4">
-                            <button onClick={() => setIsGalleryOpen(false)} className="flex items-center gap-2 hover:bg-gray-800 p-2 rounded-full transition">
-                                <FaArrowLeft /> <span className="text-sm font-bold">Close</span>
-                            </button>
-                            <div className="text-sm text-gray-400">
-                                {photoIndex + 1} / {galleryImages.length}
-                            </div>
-                            <div className="w-20"></div> {/* Spacer */}
-                        </div>
-
-                        {/* Main Image Area */}
-                        <div className="flex-1 flex items-center justify-center relative overflow-hidden">
-                            {/* Prev Button */}
-                            <button
-                                onClick={prevPhoto}
-                                className="absolute left-4 p-4 rounded-full bg-black/50 hover:bg-black/70 text-white transition z-10"
+                        {/* Minimalist Lightbox Content */}
+                        <div className="relative flex-1 flex flex-col items-center justify-center w-full h-full overflow-hidden" onClick={() => setIsGalleryOpen(false)}>
+                            
+                            {/* Close Button (Top Right) */}
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setIsGalleryOpen(false); }}
+                                className="absolute top-6 right-6 z-50 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition backdrop-blur-sm"
                             >
-                                <FaArrowLeft />
+                                <FaTimes size={20} />
                             </button>
 
-                            {/* Current Image */}
-                            <motion.img
-                                key={photoIndex}
-                                initial={{ opacity: 0, x: 100 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -100 }}
-                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                                src={galleryImages[photoIndex]}
-                                alt="Fullscreen"
-                                className="max-h-full max-w-full object-contain"
-                            />
-
-                            {/* Next Button */}
-                            <button
-                                onClick={nextPhoto}
-                                className="absolute right-4 p-4 rounded-full bg-black/50 hover:bg-black/70 text-white transition z-10"
-                            >
-                                <div className="rotate-180"><FaArrowLeft /></div>
-                            </button>
-                        </div>
-
-                        {/* Thumbnails Strip */}
-                        <div className="h-20 bg-black/90 flex items-center justify-center gap-2 p-2 overflow-x-auto">
-                            {galleryImages.map((img, idx) => (
+                            {/* Main Image Container */}
+                            <div className="relative w-full h-full flex items-center justify-center p-4 md:p-10" onClick={(e) => e.stopPropagation()}>
+                                
+                                {/* Prev Button */}
                                 <button
-                                    key={idx}
-                                    onClick={() => setPhotoIndex(idx)}
-                                    className={`h-16 w-16 rounded-md overflow-hidden border-2 transition ${photoIndex === idx ? 'border-white opacity-100' : 'border-transparent opacity-50'}`}
+                                    onClick={prevPhoto}
+                                    className="absolute left-4 md:left-8 p-3 md:p-4 rounded-full bg-black/50 hover:bg-black/70 text-white transition z-20 backdrop-blur-sm"
                                 >
-                                    <img src={img} alt="Thumb" className="w-full h-full object-cover" />
+                                    <FaArrowLeft size={20} />
                                 </button>
-                            ))}
+
+                                {/* Image */}
+                                <motion.img
+                                    key={photoIndex}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                    src={galleryImages[photoIndex]}
+                                    alt="Fullscreen"
+                                    className="max-h-[85vh] max-w-full object-contain shadow-2xl rounded-sm"
+                                    onClick={(e) => e.stopPropagation()} // Prevent close on image click
+                                />
+
+                                {/* Next Button */}
+                                <button
+                                    onClick={nextPhoto}
+                                    className="absolute right-4 md:right-8 p-3 md:p-4 rounded-full bg-black/50 hover:bg-black/70 text-white transition z-20 backdrop-blur-sm"
+                                >
+                                    <div className="rotate-180"><FaArrowLeft size={20} /></div>
+                                </button>
+                            </div>
+
+                            {/* Thumbnails Strip (Overlay at Bottom) */}
+                            <div 
+                                className="absolute bottom-4 left-1/2 transform -translate-x-1/2 max-w-[90%] bg-black/60 backdrop-blur-md rounded-xl p-2 flex items-center gap-2 overflow-x-auto z-30 no-scrollbar"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {galleryImages.map((img, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setPhotoIndex(idx)}
+                                        className={`shrink-0 h-14 w-14 md:h-16 md:w-16 rounded-lg overflow-hidden border-2 transition-all ${photoIndex === idx ? 'border-white scale-105 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                    >
+                                        <img src={img} alt="Thumb" className="w-full h-full object-cover" />
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </motion.div>
-                )}
             </AnimatePresence>
 
             {/* 3. CONTENT GRID */}

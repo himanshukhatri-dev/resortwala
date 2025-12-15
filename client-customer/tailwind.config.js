@@ -7,11 +7,20 @@ export default {
     theme: {
         extend: {
             colors: {
-                primary: '#FF385C',
-                'primary-hover': '#D90B3E',
+                primary: {
+                    DEFAULT: '#0D9488', // Teal-600
+                    hover: '#0F766E',   // Teal-700
+                },
+                secondary: {
+                    DEFAULT: '#D97706', // Amber-600 (Gold)
+                    hover: '#B45309',   // Amber-700
+                },
+                'brand-dark': '#0F172A', // Slate-900 (Deep Navy)
+                'brand-darker': '#020617', // Slate-950 (Midnight)
             },
             fontFamily: {
-                sans: ['Instrument Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                sans: ['Inter', 'sans-serif'],
+                serif: ['Playfair Display', 'serif'],
             },
             animation: {
                 'fade-up': 'fadeUp 0.5s ease-out forwards',

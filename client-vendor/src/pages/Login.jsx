@@ -85,13 +85,13 @@ export default function Login() {
                     <button
                         type="button"
                         onClick={() => {
-                            setFormData({ email: 'mobiletest@test.com', password: 'password' });
+                            setFormData({ email: 'vendor@resortwala.com', password: 'password' });
                             // Trigger submit logic programmatically or just let user click login
                             setTimeout(() => document.querySelector('form').requestSubmit(), 100);
                         }}
                         style={{ width: '100%', padding: '10px', fontSize: '14px', fontWeight: '500', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '6px', marginTop: '10px', cursor: 'pointer' }}
                     >
-                        🪄 Quick Login (Debug)
+                        ⚡ Quick Vendor Login
                     </button>
                 </form>
 

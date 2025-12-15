@@ -15,7 +15,7 @@ export default function Header({ title }) {
     const handleLogout = async () => {
         setIsLoggingOut(true);
         try {
-            await axios.post('http://192.168.1.105:8000/api/vendor/logout', {}, {
+            await axios.post('/api/vendor/logout', {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         } catch (error) {
