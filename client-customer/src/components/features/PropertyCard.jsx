@@ -39,7 +39,10 @@ export default function PropertyCard({ property, searchParams }) {
     const queryString = buildQuery();
 
     return (
-        <div className="group rounded-xl overflow-hidden shadow-lg border border-white/10 bg-[#1E293B] hover:shadow-2xl transition-all duration-300">
+        <Link
+            to={`/property/${id}`}
+            className="group block rounded-xl overflow-hidden shadow-lg border border-white/10 bg-[#1E293B] hover:shadow-2xl transition-all duration-300 relative"
+        >
             {/* IMAGE */}
             <div className="relative aspect-[4/3] overflow-hidden">
                 <img
@@ -77,11 +80,11 @@ export default function PropertyCard({ property, searchParams }) {
                         <span className="text-xs text-gray-500 block">per night</span>
                     </div>
 
-                    <Link to={`/property/${id}`} className="bg-secondary hover:bg-secondary-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-lg transition-colors">
+                    <div className="bg-secondary hover:bg-secondary-hover text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-lg transition-colors pointer-events-none">
                         View Details
-                    </Link>
+                    </div>
                 </div>
             </div>
-        </div>
+        </Link>
     );
 }

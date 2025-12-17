@@ -9,6 +9,8 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 
 import PropertyDetails from './pages/PropertyDetails';
+import BookingPage from './pages/BookingPage';
+import UserBookings from './pages/UserBookings';
 import Contact from './pages/Contact';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
@@ -23,6 +25,8 @@ function App() {
               <Route index element={<Home />} />
               {/* Added Route for Property Details */}
               <Route path="/property/:id" element={<PropertyDetails />} />
+              <Route path="/book/:id" element={<BookingPage />} />
+              <Route path="/bookings" element={<UserBookings />} />
               <Route path="/contact" element={<Contact />} />
             </Route>
             <Route path="/login" element={<Login />} />

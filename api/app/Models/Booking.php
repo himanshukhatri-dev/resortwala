@@ -19,7 +19,13 @@ class Booking extends Model
         'Guests',
         'TotalAmount',
         'Status',
-        'SpecialRequest'
+        'SpecialRequest',
+        'coupon_code',
+        'discount_amount',
+        'tax_amount',
+        'base_amount',
+        'payment_method',
+        'payment_status'
     ];
 
     public function property()

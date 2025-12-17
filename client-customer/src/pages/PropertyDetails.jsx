@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useLocation, useNavigate, Link, useSearchParams } from 'react-router-dom';
+import axios from 'axios';
 import { FaStar, FaMapMarkerAlt, FaWifi, FaSwimmingPool, FaCar, FaUtensils, FaArrowLeft, FaHeart, FaShare, FaMinus, FaPlus, FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DayPicker } from 'react-day-picker';
@@ -14,6 +15,8 @@ export default function PropertyDetails() {
     // Initialize State from URL Query Params (Priority)
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [bookedDates, setBookedDates] = useState([]);
 
     const [dateRange, setDateRange] = useState({
         from: urlParams.get('start') ? new Date(urlParams.get('start')) : undefined,
@@ -76,23 +79,31 @@ export default function PropertyDetails() {
     useEffect(() => {
         const fetchProperty = async () => {
             try {
-                const res = await fetch(`http://192.168.1.105:8000/api/properties/${id}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setProperty(data);
-                } else {
-                    const resAll = await fetch(`http://192.168.1.105:8000/api/properties`);
-                    const allData = await resAll.json();
-                    const found = allData.find(p => (p.PropertyId == id || p.id == id));
-                    setProperty(found);
-                }
+                const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+                const response = await axios.get(`${baseURL}/api/properties/${id}`);
+                setProperty(response.data);
             } catch (error) {
                 console.error("Failed to fetch property details", error);
+                setError(error.message + (error.response ? ` (${error.response.status})` : ''));
             } finally {
                 setLoading(false);
             }
         };
         fetchProperty();
+    }, [id]);
+
+    // Fetch Booked Dates separately
+    useEffect(() => {
+        const fetchBookedDates = async () => {
+            try {
+                const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+                const res = await axios.get(`${baseURL}/api/properties/${id}/booked-dates`);
+                setBookedDates(res.data.booked_dates || []);
+            } catch (err) {
+                console.error("Error fetching booked dates", err);
+            }
+        };
+        if (id) fetchBookedDates();
     }, [id]);
 
     // Close DatePicker on click outside
@@ -128,10 +139,14 @@ export default function PropertyDetails() {
             setIsDatePickerOpen(true);
             return;
         }
-        console.log("Reserving", { property, dateRange, guests });
-        // Navigate to checkout or login
-        // navigate('/checkout', { state: { property, dateRange, guests } });
-        alert("Proceeding to reservation...");
+
+        navigate(`/book/${id}`, {
+            state: {
+                checkIn: dateRange.from,
+                checkOut: dateRange.to,
+                guests: guests.adults + guests.children
+            }
+        });
     };
 
     const handleShare = async () => {
@@ -164,10 +179,11 @@ export default function PropertyDetails() {
         );
     }
 
-    if (!property) {
+    if (!property && !loading) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center text-center">
-                <h2 className="text-2xl font-bold mb-4">Property not found</h2>
+            <div className="pt-32 pb-20 min-h-screen flex flex-col items-center justify-center">
+                <div className="text-2xl font-bold mb-4">Property not found</div>
+                {error && <div className="text-red-500 mb-4">Error: {error}</div>}
                 <Link to="/" className="text-primary hover:underline">Return Home</Link>
             </div>
         );
@@ -257,7 +273,6 @@ export default function PropertyDetails() {
                 </div>
             </div>
 
-            {/* LIGHTBOX MODAL */}
             <AnimatePresence>
                 {isGalleryOpen && (
                     <motion.div
@@ -265,11 +280,12 @@ export default function PropertyDetails() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 z-[100] bg-black text-white flex flex-col"
+                    >
                         {/* Minimalist Lightbox Content */}
                         <div className="relative flex-1 flex flex-col items-center justify-center w-full h-full overflow-hidden" onClick={() => setIsGalleryOpen(false)}>
-                            
+
                             {/* Close Button (Top Right) */}
-                            <button 
+                            <button
                                 onClick={(e) => { e.stopPropagation(); setIsGalleryOpen(false); }}
                                 className="absolute top-6 right-6 z-50 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition backdrop-blur-sm"
                             >
@@ -278,7 +294,7 @@ export default function PropertyDetails() {
 
                             {/* Main Image Container */}
                             <div className="relative w-full h-full flex items-center justify-center p-4 md:p-10" onClick={(e) => e.stopPropagation()}>
-                                
+
                                 {/* Prev Button */}
                                 <button
                                     onClick={prevPhoto}
@@ -310,7 +326,7 @@ export default function PropertyDetails() {
                             </div>
 
                             {/* Thumbnails Strip (Overlay at Bottom) */}
-                            <div 
+                            <div
                                 className="absolute bottom-4 left-1/2 transform -translate-x-1/2 max-w-[90%] bg-black/60 backdrop-blur-md rounded-xl p-2 flex items-center gap-2 overflow-x-auto z-30 no-scrollbar"
                                 onClick={(e) => e.stopPropagation()}
                             >
@@ -325,6 +341,8 @@ export default function PropertyDetails() {
                                 ))}
                             </div>
                         </div>
+                    </motion.div>
+                )}
             </AnimatePresence>
 
             {/* 3. CONTENT GRID */}
@@ -362,15 +380,21 @@ export default function PropertyDetails() {
                         </div>
 
                         {/* Date Picker Input */}
-                        <div className="relative border border-gray-400 rounded-lg overflow-hidden mb-4" ref={datePickerRef}>
-                            <div className="flex border-b border-gray-400 cursor-pointer" onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}>
-                                <div className="flex-1 p-3 border-r border-gray-400 hover:bg-gray-100">
-                                    <label className="block text-[10px] font-bold text-gray-700">CHECK-IN</label>
-                                    <div className="text-sm text-gray-900">{dateRange.from ? format(dateRange.from, 'dd/MM/yyyy') : 'Add date'}</div>
+                        <div className="relative mb-4" ref={datePickerRef}>
+                            <div className="border border-gray-400 rounded-lg overflow-hidden">
+                                <div className="flex border-b border-gray-400 cursor-pointer" onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}>
+                                    <div className="flex-1 p-3 border-r border-gray-400 hover:bg-gray-100">
+                                        <label className="block text-[10px] font-bold text-gray-700">CHECK-IN</label>
+                                        <div className="text-sm text-gray-900">{dateRange.from ? format(dateRange.from, 'dd/MM/yyyy') : 'Add date'}</div>
+                                    </div>
+                                    <div className="flex-1 p-3 hover:bg-gray-100">
+                                        <label className="block text-[10px] font-bold text-gray-700">CHECK-OUT</label>
+                                        <div className="text-sm text-gray-900">{dateRange.to ? format(dateRange.to, 'dd/MM/yyyy') : 'Add date'}</div>
+                                    </div>
                                 </div>
-                                <div className="flex-1 p-3 hover:bg-gray-100">
-                                    <label className="block text-[10px] font-bold text-gray-700">CHECK-OUT</label>
-                                    <div className="text-sm text-gray-900">{dateRange.to ? format(dateRange.to, 'dd/MM/yyyy') : 'Add date'}</div>
+                                <div className="p-3 hover:bg-gray-100 cursor-pointer">
+                                    <label className="block text-[10px] font-bold text-gray-700">GUESTS</label>
+                                    <div className="text-sm text-gray-900">{guests.adults + guests.children} guests</div>
                                 </div>
                             </div>
 
@@ -381,7 +405,7 @@ export default function PropertyDetails() {
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: -10 }}
-                                        className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-2xl p-4 z-50 border border-gray-100 w-[350px]"
+                                        className="absolute top-16 right-0 bg-white rounded-xl shadow-2xl p-4 z-50 border border-gray-100 w-[350px]"
                                     >
                                         <style>{`
                                             .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #000; --rdp-background-color: #f7f7f7; margin: 0; }
@@ -393,18 +417,16 @@ export default function PropertyDetails() {
                                             mode="range"
                                             selected={dateRange}
                                             onDayClick={handleDateSelect}
-                                            disabled={{ before: new Date() }}
+                                            disabled={[
+                                                { before: new Date() },
+                                                ...bookedDates.map(date => new Date(date))
+                                            ]}
                                             numberOfMonths={1}
                                             defaultMonth={dateRange.from || new Date()}
                                         />
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-
-                            <div className="p-3 hover:bg-gray-100 cursor-pointer">
-                                <label className="block text-[10px] font-bold text-gray-700">GUESTS</label>
-                                <div className="text-sm text-gray-900">{guests.adults + guests.children} guests</div>
-                            </div>
                         </div>
 
                         <button

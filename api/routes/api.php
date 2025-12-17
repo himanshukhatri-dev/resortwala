@@ -33,7 +33,9 @@ Route::get('/properties', [PropertyMasterController::class, 'index']);
 Route::get('/properties/{id}', [PropertyMasterController::class, 'show']);
 Route::get('/properties/{id}/images', [\App\Http\Controllers\PropertyImageController::class, 'getImages']);
 Route::post('/bookings', [\App\Http\Controllers\BookingController::class, 'store']);
+Route::get('/bookings/search', [\App\Http\Controllers\BookingController::class, 'search']);
 Route::get('/properties/{id}/booked-dates', [PropertyMasterController::class, 'getBookedDates']);
+Route::post('/coupons/check', [\App\Http\Controllers\CouponController::class, 'check']);
 
 // Customer Authentication Routes
 Route::post('/customer/register', [\App\Http\Controllers\CustomerAuthController::class, 'register']);
