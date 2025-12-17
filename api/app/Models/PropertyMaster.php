@@ -19,7 +19,7 @@ class PropertyMaster extends Model
         'IsDeleted', 'PerCost', 'ResortWalaRate', 'PropertyStatus',
         'IsVendorPropAvailable', 'IsPropertyUpdate', 'NoofRooms',
         'CheckinDate', 'CheckoutDate', 'Breakfast', 'Lunch', 'Dinner', 'HiTea',
-        'MaxCapacity', 'vendor_id', 'is_approved'
+        'MaxCapacity', 'vendor_id', 'is_approved', 'share_token'
     ];
 
     public function vendor()

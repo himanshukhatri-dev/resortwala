@@ -425,6 +425,23 @@ export default function Dashboard() {
                             📅 View Bookings
                         </button>
                         <button
+                            onClick={() => navigate('/properties/1/calendar')}
+                            style={{
+                                padding: '12px 24px',
+                                background: 'linear-gradient(135deg, #009688 0%, #00796b 100%)',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: 'white',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease'
+                            }}
+                            className="action-btn"
+                        >
+                            📅 Availability Calendar
+                        </button>
+                        <button
                             onClick={() => navigate('/day-wise-booking')}
                             style={{
                                 padding: '12px 24px',

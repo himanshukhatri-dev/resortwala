@@ -3,11 +3,13 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { FaEdit, FaStar, FaGoogle, FaMapMarkerAlt, FaCreditCard, FaHotel, FaShieldAlt } from 'react-icons/fa';
 import { format } from 'date-fns';
+import { useAuth } from '../context/AuthContext';
 
 export default function BookingPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const locationState = useLocation().state || {};
+    const { user } = useAuth(); // Auth Context
 
     const [form, setForm] = useState({
         CustomerName: '',
@@ -16,6 +18,18 @@ export default function BookingPage() {
         payment_method: 'hotel', // hotel, card, upi
         SpecialRequest: ''
     });
+
+    // Pre-fill form if logged in
+    useEffect(() => {
+        if (user) {
+            setForm(prev => ({
+                ...prev,
+                CustomerName: user.name || '',
+                CustomerEmail: user.email || '',
+                CustomerMobile: user.phone || ''
+            }));
+        }
+    }, [user]);
 
     const [property, setProperty] = useState(null);
     const [couponCode, setCouponCode] = useState('');
@@ -322,10 +336,10 @@ export default function BookingPage() {
                             <div className="pt-4">
                                 <h4 className="font-semibold mb-2 flex items-center gap-2"><FaMapMarkerAlt /> Location</h4>
                                 <div className="w-full h-40 bg-gray-200 rounded-lg overflow-hidden relative group cursor-pointer">
-                                    <img 
-                                        src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=600&auto=format&fit=crop" 
-                                        className="w-full h-full object-cover" 
-                                        alt="Map Placeholder" 
+                                    <img
+                                        src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=600&auto=format&fit=crop"
+                                        className="w-full h-full object-cover"
+                                        alt="Map Placeholder"
                                     />
                                     <div className="absolute inset-x-0 bottom-0 bg-white/90 p-2 text-center text-xs font-bold text-black backdrop-blur-sm">
                                         View on Maps

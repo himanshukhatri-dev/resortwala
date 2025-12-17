@@ -96,40 +96,30 @@ export default function Users() {
             let endpoint = '';
             let method = isEditMode ? 'put' : 'post';
 
+            // Endpoint Logic
             if (activeTab === 'customers') {
                 endpoint = isEditMode
                     ? `/api/admin/users/customers/${editId}`
                     : '/api/admin/users/customers';
             } else {
                 // Admins or Vendors (Users Table)
-                // Note: creating vendors via this Admin panel might not be standard (usually they register), 
-                // but we can allow creating Admins. Check constraints.
-                // Assuming we use generic updateUser for both.
-
                 if (isEditMode) {
                     endpoint = `/api/admin/users/${editId}`;
                 } else {
-                    // Create Logic
-                    endpoint = activeTab === 'admins'
-                        ? '/api/admin/users/admins'
-                        : '/api/admin/users/admins'; // Fallback / TODO: Add vendor create?
-
-                    if (activeTab === 'vendors') {
-                        // If we want to allow creating vendors here, we need an endpoint. 
-                        // For now, let's assume Add is primarily for Admins/Customers. 
-                        // Or warn if trying to add Vendor? 
-                        // Actually, let's just use the Admin create endpoint but force role? 
-                        // No, let's just block Add Vendor for now or strictly use Register.
-                        // But users might expect it. Let's keep it simple: Add Admin or Customer.
-                        // If Tab is Vendor, maybe Disable Add? Or generic user create?
-                        // Let's stick to what we have: Admins/Customers create.
-                    }
+                    endpoint = '/api/admin/users/admins'; // Default create to Admin for now
                 }
             }
 
             // Clean Payload
             const payload = { ...formData };
             if (!payload.password) delete payload.password; // Don't send empty password on edit
+
+            // Remove business_name if it is empty string (Admin) to avoid clutter/validation issues
+            if (activeTab === 'admins' || (!payload.business_name && activeTab !== 'vendors')) {
+                delete payload.business_name;
+            }
+
+            console.log(`Sending ${method.toUpperCase()} to ${endpoint}`, payload);
 
             await axios[method](endpoint, payload, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -139,8 +129,9 @@ export default function Users() {
             fetchUsers();
             showSuccess(isEditMode ? 'Updated' : 'Created', `User ${isEditMode ? 'updated' : 'created'} successfully`);
         } catch (error) {
-            console.error(error);
-            showError('Error', error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} user`);
+            console.error("Submit Error:", error);
+            const msg = error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} user`;
+            showError('Error', msg);
         }
     };
 

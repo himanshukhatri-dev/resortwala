@@ -120,22 +120,28 @@ export default function MyProperties() {
                                         </p>
                                     </div>
 
-                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                         <button
                                             onClick={() => navigate(`/properties/edit/${property.PropertyId}`)}
-                                            style={{ flex: 1, padding: '10px', backgroundColor: 'var(--hover-bg)', color: 'var(--primary-color)', border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
+                                            style={{ padding: '8px', backgroundColor: 'var(--hover-bg)', color: 'var(--primary-color)', border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
                                         >
                                             Edit
                                         </button>
                                         <button
+                                            onClick={() => navigate(`/properties/${property.PropertyId}/calendar`)}
+                                            style={{ padding: '8px', backgroundColor: '#e0f2f1', color: '#00695c', border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
+                                        >
+                                            Calendar
+                                        </button>
+                                        <button
                                             onClick={() => navigate(`/day-wise-booking?propertyId=${property.PropertyId}`)}
-                                            style={{ flex: 1, padding: '10px', backgroundColor: '#e3f2fd', color: '#1976d2', border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
+                                            style={{ padding: '8px', backgroundColor: '#e3f2fd', color: '#1976d2', border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
                                         >
                                             Bookings
                                         </button>
                                         <button
                                             onClick={() => handleDelete(property.PropertyId)}
-                                            style={{ flex: 1, padding: '10px', backgroundColor: 'var(--hover-bg-red)', color: 'var(--danger-color)', border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}
+                                            style={{ padding: '8px', backgroundColor: 'var(--hover-bg-red)', color: 'var(--danger-color)', border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}
                                         >
                                             Delete
                                         </button>

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FaArrowLeft } from 'react-icons/fa';
 
 export default function Login() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { login } = useAuth();
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
@@ -16,7 +17,15 @@ export default function Login() {
         setLoading(true);
         try {
             await login(formData.email, formData.password);
-            navigate('/');
+            await login(formData.email, formData.password);
+
+            // Check for redirect target
+            const state = location.state;
+            if (state?.returnTo) {
+                navigate(state.returnTo, { state: state.bookingState });
+            } else {
+                navigate('/');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
         } finally {

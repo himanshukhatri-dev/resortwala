@@ -29,7 +29,7 @@ return [
         'http://localhost:3005',
     ],
 
-    'allowed_origins_patterns' => ['*'],
+    'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
 

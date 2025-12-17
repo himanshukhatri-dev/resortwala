@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useLocation, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import { FaStar, FaMapMarkerAlt, FaWifi, FaSwimmingPool, FaCar, FaUtensils, FaArrowLeft, FaHeart, FaShare, FaMinus, FaPlus, FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DayPicker } from 'react-day-picker';
@@ -134,18 +135,34 @@ export default function PropertyDetails() {
         }
     };
 
+    const { user } = useAuth(); // Import auth context
+
     const handleReserve = () => {
         if (!dateRange.from || !dateRange.to) {
             setIsDatePickerOpen(true);
             return;
         }
 
-        navigate(`/book/${id}`, {
-            state: {
-                checkIn: dateRange.from,
-                checkOut: dateRange.to,
-                guests: guests.adults + guests.children
-            }
+        const targetPath = `/book/${id}`;
+        const bookingState = {
+            checkIn: dateRange.from,
+            checkOut: dateRange.to,
+            guests: guests.adults + guests.children
+        };
+
+        if (!user) {
+            // Redirect to Login, then to Booking
+            navigate('/login', {
+                state: {
+                    returnTo: targetPath,
+                    bookingState: bookingState
+                }
+            });
+            return;
+        }
+
+        navigate(targetPath, {
+            state: bookingState
         });
     };
 

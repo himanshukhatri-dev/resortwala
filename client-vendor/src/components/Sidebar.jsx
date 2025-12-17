@@ -75,7 +75,7 @@ export default function Sidebar({ userType = 'vendor', ...props }) {
                         alignItems: 'center',
                         gap: '10px'
                     }}>
-                        <span style={{ fontSize: '24px' }}>🏖️</span>
+                        <img src="/resortwala-logo.png" alt="ResortWala" style={{ height: '40px', width: 'auto' }} />
                         <span style={{
                             opacity: isHovered ? 1 : 0,
                             display: isHovered ? 'block' : 'none',

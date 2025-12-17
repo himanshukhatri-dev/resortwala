@@ -57,10 +57,14 @@ class BookingController extends Controller
 
         $query = Booking::query()->with('property'); // Eager load property
 
-        if ($request->has('email') && $request->email) {
-            $query->where('CustomerEmail', $request->email);
-        } elseif ($request->has('mobile') && $request->mobile) {
-            $query->where('CustomerMobile', $request->mobile);
+        $query = Booking::query()->with('property');
+
+        // Check for Email OR Mobile match (widest search)
+        if ($request->email || $request->mobile) {
+            $query->where(function($q) use ($request) {
+                if ($request->email) $q->orWhere('CustomerEmail', $request->email);
+                if ($request->mobile) $q->orWhere('CustomerMobile', $request->mobile);
+            });
         } else {
             return response()->json([]);
         }

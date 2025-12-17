@@ -9,6 +9,7 @@ import EditProperty from './pages/EditProperty';
 import VendorBookings from './pages/VendorBookings';
 import DayWiseBooking from './pages/DayWiseBooking';
 import Holiday from './pages/Holiday';
+import VendorCalendar from './pages/VendorCalendar';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -97,6 +98,14 @@ function App() {
                 <ProtectedRoute>
                   <VendorLayout title="Holiday Management">
                     <Holiday />
+                  </VendorLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/properties/:id/calendar" element={
+                <ProtectedRoute>
+                  <VendorLayout title="Availability Calendar">
+                    <VendorCalendar />
                   </VendorLayout>
                 </ProtectedRoute>
               } />

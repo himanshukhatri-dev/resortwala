@@ -11,6 +11,8 @@ import Signup from './pages/Signup';
 import PropertyDetails from './pages/PropertyDetails';
 import BookingPage from './pages/BookingPage';
 import UserBookings from './pages/UserBookings';
+import Profile from './pages/Profile';
+import PublicPropertyCalendar from './pages/PublicPropertyCalendar';
 import Contact from './pages/Contact';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
@@ -27,8 +29,13 @@ function App() {
               <Route path="/property/:id" element={<PropertyDetails />} />
               <Route path="/book/:id" element={<BookingPage />} />
               <Route path="/bookings" element={<UserBookings />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/contact" element={<Contact />} />
             </Route>
+
+            {/* Public Standalone Calendar View */}
+            <Route path="/stay/:uuid" element={<PublicPropertyCalendar />} />
+
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
           </Routes>

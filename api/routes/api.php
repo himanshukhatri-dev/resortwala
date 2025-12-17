@@ -84,6 +84,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/vendor/properties/{propertyId}/images/{imageId}', [\App\Http\Controllers\PropertyImageController::class, 'delete']);
     Route::put('/vendor/properties/{propertyId}/images/{imageId}/primary', [\App\Http\Controllers\PropertyImageController::class, 'setPrimary']);
     Route::put('/vendor/properties/{propertyId}/images/order', [\App\Http\Controllers\PropertyImageController::class, 'updateOrder']);
+
+    // Vendor Calendar & Automation
+    Route::get('/vendor/properties/{id}/calendar', [App\Http\Controllers\VendorCalendarController::class, 'index']);
+    Route::post('/vendor/bookings/lock', [App\Http\Controllers\VendorCalendarController::class, 'lock']);
+    Route::post('/vendor/bookings/{id}/approve', [App\Http\Controllers\VendorCalendarController::class, 'approve']);
 });
 
 // Admin Authentication Routes
@@ -123,4 +128,29 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/users/customers', [\App\Http\Controllers\AdminUserController::class, 'createCustomer']);
     Route::put('/admin/users/customers/{id}', [\App\Http\Controllers\AdminUserController::class, 'updateCustomer']);
     Route::delete('/admin/users/customers/{id}', [\App\Http\Controllers\AdminUserController::class, 'deleteCustomer']);
+});
+
+// Public Availability (Shareable Links)
+Route::prefix('public')->group(function () {
+    Route::get('properties/{uuid}/calendar', [App\Http\Controllers\PublicAvailabilityController::class, 'show']);
+    Route::post('bookings/request', [App\Http\Controllers\PublicAvailabilityController::class, 'request']);
+});
+
+// ZERO-SHOT DEV ROUTE - REMOVE AFTER USE
+Route::get('/dev/assign-vendors', function () {
+    $vendors = \App\Models\User::where('role', 'vendor')->pluck('id');
+    if ($vendors->isEmpty()) return response()->json(['error' => 'No vendors found'], 404);
+    
+    $properties = \App\Models\PropertyMaster::all();
+    $count = 0;
+    foreach ($properties as $prop) {
+        $prop->VendorId = $vendors->random();
+        $prop->save();
+        $count++;
+    }
+    
+    return response()->json([
+        'message' => "Assigned random vendors to $count properties",
+        'vendors' => $vendors
+    ]);
 });

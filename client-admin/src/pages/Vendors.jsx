@@ -46,7 +46,8 @@ export default function Vendors() {
             await axios.post(`/api/admin/vendors/${id}/approve`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setVendors(vendors.map(v => v.id === id ? { ...v, is_verified: 1 } : v));
+            // Update local state: is_approved = 1
+            setVendors(vendors.map(v => v.id === id ? { ...v, is_approved: 1 } : v));
             showSuccess('Approved', 'Vendor approved successfully');
         } catch (error) {
             console.error('Error approving vendor:', error);
@@ -84,8 +85,8 @@ export default function Vendors() {
 
     const filteredVendors = vendors.filter(vendor => {
         if (filter === 'all') return true;
-        if (filter === 'approved') return vendor.is_verified === 1;
-        if (filter === 'pending') return vendor.is_verified === 0;
+        if (filter === 'approved') return vendor.is_approved === 1 || vendor.is_approved === true;
+        if (filter === 'pending') return vendor.is_approved === 0 || vendor.is_approved === false;
         return true;
     });
 
@@ -153,14 +154,14 @@ export default function Vendors() {
                                             padding: '4px 8px',
                                             borderRadius: '4px',
                                             fontSize: '12px',
-                                            backgroundColor: vendor.is_verified ? '#d4edda' : '#fff3cd',
-                                            color: vendor.is_verified ? '#155724' : '#856404'
+                                            backgroundColor: vendor.is_approved ? '#d4edda' : '#fff3cd',
+                                            color: vendor.is_approved ? '#155724' : '#856404'
                                         }}>
-                                            {vendor.is_verified ? 'Approved' : 'Pending'}
+                                            {vendor.is_approved ? 'Approved' : 'Pending'}
                                         </span>
                                     </td>
                                     <td style={{ padding: '15px' }}>
-                                        {!vendor.is_verified && (
+                                        {!vendor.is_approved && (
                                             <button
                                                 onClick={() => handleApprove(vendor.id)}
                                                 style={{ marginRight: '8px', padding: '6px 12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
@@ -172,7 +173,7 @@ export default function Vendors() {
                                             onClick={() => handleReject(vendor.id)}
                                             style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                                         >
-                                            {vendor.is_verified ? 'Delete' : 'Reject'}
+                                            {vendor.is_approved ? 'Delete' : 'Reject'}
                                         </button>
                                     </td>
                                 </tr>
