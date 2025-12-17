@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/ui/FilterBar';
-import { motion, AnimatePresence } from 'framer-motion';
 import PropertyCard from '../components/features/PropertyCard';
 import MapView from '../components/features/MapView';
+// Framer Motion for Animations
+import { motion, AnimatePresence } from 'framer-motion';
 import { FaSwimmingPool, FaUmbrellaBeach, FaMountain, FaHome, FaHotel, FaMapMarkedAlt, FaList } from 'react-icons/fa';
 
 const CATEGORIES = [

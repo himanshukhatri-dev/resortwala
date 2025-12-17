@@ -145,21 +145,35 @@ export default function UserBookings() {
         setExpandedId(expandedId === id ? null : id);
     };
 
-    const handleShare = (booking) => {
-        // Ensure https protocol if missing (in dev it might be http)
+    const handleShare = async (booking) => {
         const origin = window.location.origin;
-        const shareUrl = `${origin}/stay/${booking.property?.share_token || booking.PropertyId}`;
-        const text = `Check out my upcoming trip to ${booking.property?.Name} at ${booking.property?.Location}! \nDates: ${format(new Date(booking.CheckInDate), 'MMM dd')} - ${format(new Date(booking.CheckOutDate), 'MMM dd')}.\nBooked via ResortWala.`;
+        // Construct deep link to property details or a dedicated "share trip" page if it existed.
+        // For now, linking to the property page is safest.
+        const shareUrl = `${origin}/property/${booking.PropertyId}`;
+
+        const checkIn = format(new Date(booking.CheckInDate), 'EEE, MMM dd');
+        const checkOut = format(new Date(booking.CheckOutDate), 'EEE, MMM dd');
+
+        const text = `Hey! I'm going to *${booking.property?.Name}* in ${booking.property?.Location || 'Paradise'}! 🌴✨\n\n📅 *Dates:* ${checkIn} - ${checkOut}\n🏡 *Stay:* Luxury Villa\n\nCheck it out here: ${shareUrl}\n\nBooked via ResortWala 🚀`;
 
         if (navigator.share) {
-            navigator.share({
-                title: 'My Trip Details',
-                text: text,
-                url: shareUrl,
-            }).catch(console.error);
+            try {
+                await navigator.share({
+                    title: `Trip to ${booking.property?.Name}`,
+                    text: text,
+                    url: shareUrl,
+                });
+            } catch (err) {
+                console.error("Share failed/cancelled", err);
+            }
         } else {
-            navigator.clipboard.writeText(`${text}\nLink: ${shareUrl}`);
-            alert("Trip link and details copied to clipboard!");
+            try {
+                await navigator.clipboard.writeText(text);
+                alert("Trip details copied to clipboard! Share it on WhatsApp or Instagram. 📋✨");
+            } catch (err) {
+                console.error("Clipboard failed", err);
+                alert("Could not copy to clipboard. Please manually copy the link.");
+            }
         }
     };
 
@@ -222,9 +236,9 @@ export default function UserBookings() {
 
                                     <div className="flex items-center gap-4 relative z-10">
                                         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm border ${booking.Status === 'Confirmed' ? 'bg-green-50 text-green-600 border-green-100' :
-                                                booking.Status === 'Pending' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-                                                    booking.Status === 'Cancelled' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                        'bg-gray-50 text-gray-400 border-gray-100'
+                                            booking.Status === 'Pending' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
+                                                booking.Status === 'Cancelled' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                    'bg-gray-50 text-gray-400 border-gray-100'
                                             }`}>
                                             {booking.Status === 'Confirmed' ? '✈️' : booking.Status === 'Pending' ? '⏳' : booking.Status === 'Cancelled' ? '🚫' : '❌'}
                                         </div>
@@ -242,8 +256,8 @@ export default function UserBookings() {
 
                                     <div className="flex items-center gap-4 relative z-10">
                                         <div className={`hidden sm:block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${booking.Status === 'Confirmed' ? 'bg-green-50 text-green-700' :
-                                                booking.Status === 'Pending' ? 'bg-yellow-50 text-yellow-700' :
-                                                    booking.Status === 'Cancelled' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-500'
+                                            booking.Status === 'Pending' ? 'bg-yellow-50 text-yellow-700' :
+                                                booking.Status === 'Cancelled' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-500'
                                             }`}>
                                             {booking.Status}
                                         </div>

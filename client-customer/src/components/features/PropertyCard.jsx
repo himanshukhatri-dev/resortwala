@@ -1,6 +1,6 @@
 import React from 'react';
 import { FaStar, FaHeart, FaMapMarkerAlt } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function PropertyCard({ property, searchParams }) {
     // Map API fields (PascalCase) to component props (camelCase)
@@ -38,11 +38,26 @@ export default function PropertyCard({ property, searchParams }) {
 
     const queryString = buildQuery();
 
+    const navigate = useNavigate();
+    const [isWishlisted, setIsWishlisted] = React.useState(false);
+
+    const handleCardClick = (e) => {
+        navigate(`/property/${id}?${queryString}`);
+    };
+
+    const handleWishlist = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setIsWishlisted(!isWishlisted);
+        // Toast or logic here
+        console.log("Wishlist toggled for", id);
+    };
+
     if (property?.variant === 'horizontal' || true) { // Forcing horizontal for now as per "1 by 1" request
         return (
-            <Link
-                to={`/property/${id}?${queryString}`}
-                className="group flex flex-col sm:flex-row gap-4 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 p-3"
+            <div
+                onClick={handleCardClick}
+                className="group flex flex-col sm:flex-row gap-4 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 p-3 cursor-pointer"
             >
                 {/* IMAGE (Left Side, Larger) */}
                 <div className="relative w-full sm:w-[280px] h-[220px] sm:h-auto flex-shrink-0 rounded-xl overflow-hidden">
@@ -69,8 +84,11 @@ export default function PropertyCard({ property, searchParams }) {
                                     {location}
                                 </div>
                             </div>
-                            <div className="bg-gray-50 p-2 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                                <FaHeart />
+                            <div
+                                onClick={handleWishlist}
+                                className={`p-2 rounded-full transition-all cursor-pointer hover:scale-110 active:scale-95 ${isWishlisted ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
+                            >
+                                <FaHeart className={isWishlisted ? "fill-current" : ""} />
                             </div>
                         </div>
 
@@ -100,7 +118,7 @@ export default function PropertyCard({ property, searchParams }) {
                         </button>
                     </div>
                 </div>
-            </Link>
+            </div>
         );
     }
 
