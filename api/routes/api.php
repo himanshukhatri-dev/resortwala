@@ -34,6 +34,7 @@ Route::get('/properties/{id}', [PropertyMasterController::class, 'show']);
 Route::get('/properties/{id}/images', [\App\Http\Controllers\PropertyImageController::class, 'getImages']);
 Route::post('/bookings', [\App\Http\Controllers\BookingController::class, 'store']);
 Route::get('/bookings/search', [\App\Http\Controllers\BookingController::class, 'search']);
+Route::post('/bookings/{id}/cancel', [\App\Http\Controllers\BookingController::class, 'cancel']);
 Route::get('/properties/{id}/booked-dates', [PropertyMasterController::class, 'getBookedDates']);
 Route::post('/coupons/check', [\App\Http\Controllers\CouponController::class, 'check']);
 
@@ -136,21 +137,4 @@ Route::prefix('public')->group(function () {
     Route::post('bookings/request', [App\Http\Controllers\PublicAvailabilityController::class, 'request']);
 });
 
-// ZERO-SHOT DEV ROUTE - REMOVE AFTER USE
-Route::get('/dev/assign-vendors', function () {
-    $vendors = \App\Models\User::where('role', 'vendor')->pluck('id');
-    if ($vendors->isEmpty()) return response()->json(['error' => 'No vendors found'], 404);
-    
-    $properties = \App\Models\PropertyMaster::all();
-    $count = 0;
-    foreach ($properties as $prop) {
-        $prop->VendorId = $vendors->random();
-        $prop->save();
-        $count++;
-    }
-    
-    return response()->json([
-        'message' => "Assigned random vendors to $count properties",
-        'vendors' => $vendors
-    ]);
-});
+

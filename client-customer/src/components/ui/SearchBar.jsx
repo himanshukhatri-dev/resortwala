@@ -143,18 +143,18 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
             )}
 
             {/* SEARCH BAR CONTAINER */}
-            <div className={`bg-white rounded-full shadow-2xl flex items-center ${isSticky ? 'p-1.5' : 'p-2'} relative z-40 border border-gray-100`}>
+            <div className={`bg-white transition-all duration-300 ${isSticky ? 'md:rounded-full rounded-2xl p-2' : 'md:rounded-full rounded-3xl p-4 md:p-2'} shadow-2xl flex flex-col md:flex-row md:items-center relative z-40 border border-gray-100 w-full`}>
 
                 {/* 1. LOCATION */}
                 <div
                     onClick={() => setActiveTab('location')}
-                    className={`flex-1 relative ${isSticky ? 'px-4 py-2' : 'px-8 py-3.5'} rounded-full cursor-pointer hover:bg-gray-100 transition ${activeTab === 'location' ? 'bg-white shadow-lg' : ''}`}
+                    className={`flex-1 relative w-full md:w-auto ${isSticky ? 'px-4 py-3 md:py-2' : 'px-4 py-3 md:px-8 md:py-3.5'} rounded-xl md:rounded-full cursor-pointer hover:bg-gray-100 transition ${activeTab === 'location' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''} border-b md:border-b-0 border-gray-100`}
                 >
-                    <label className="block text-xs font-bold text-gray-800 tracking-wider">WHERE</label>
+                    <label className="block text-xs font-bold text-gray-800 tracking-wider mb-1 md:mb-0">WHERE</label>
                     <input
                         ref={inputRef}
                         type="text"
-                        placeholder="Type location (e.g. Goa)"
+                        placeholder="Search destinations"
                         value={location}
                         onChange={(e) => {
                             handleLocationChange(e);
@@ -164,19 +164,19 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                             e.stopPropagation();
                             setActiveTab('location');
                         }}
-                        className="w-full bg-transparent border-none outline-none text-sm text-gray-600 placeholder-gray-400 p-0 relative z-10"
+                        className="w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500 p-0 relative z-10 font-medium truncate"
                     />
                 </div>
 
-                <div className="w-px h-8 bg-gray-200"></div>
+                <div className="hidden md:block w-px h-8 bg-gray-200"></div>
 
                 {/* 2. DATES */}
                 <div
                     onClick={() => setActiveTab('dates')}
-                    className={`flex-1 relative ${isSticky ? 'px-4 py-1.5' : 'px-8 py-3.5'} rounded-full cursor-pointer hover:bg-gray-100 transition ${activeTab === 'dates' ? 'bg-white shadow-lg' : ''}`}
+                    className={`flex-1 relative w-full md:w-auto ${isSticky ? 'px-4 py-3 md:py-1.5' : 'px-4 py-3 md:px-8 md:py-3.5'} rounded-xl md:rounded-full cursor-pointer hover:bg-gray-100 transition ${activeTab === 'dates' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''} border-b md:border-b-0 border-gray-100`}
                 >
-                    <label className="block text-xs font-bold text-gray-800 tracking-wider">WHEN</label>
-                    <div className="text-sm text-gray-600 truncate">
+                    <label className="block text-xs font-bold text-gray-800 tracking-wider mb-1 md:mb-0">WHEN</label>
+                    <div className={`text-sm ${dateRange.from ? 'text-gray-900 font-medium' : 'text-gray-500'} truncate`}>
                         {dateRange.from ? (
                             <>
                                 {format(dateRange.from, 'MMM d')}
@@ -186,29 +186,39 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                     </div>
                 </div>
 
-                <div className="w-px h-8 bg-gray-200"></div>
+                <div className="hidden md:block w-px h-8 bg-gray-200"></div>
 
                 {/* 3. WHO */}
                 <div
                     onClick={() => setActiveTab('guests')}
-                    className={`flex-[1.2] relative ${isSticky ? 'pl-4 pr-1 py-1' : 'pl-8 pr-2 py-2'} rounded-full cursor-pointer hover:bg-gray-100 transition flex items-center justify-between ${activeTab === 'guests' ? 'bg-white shadow-lg' : ''}`}
+                    className={`flex-[1.2] relative w-full md:w-auto ${isSticky ? 'px-4 py-3 md:pl-4 md:pr-1 md:py-1' : 'px-4 py-3 md:pl-8 md:pr-2 md:py-2'} rounded-xl md:rounded-full cursor-pointer hover:bg-gray-100 transition flex items-center justify-between ${activeTab === 'guests' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''}`}
                 >
                     <div>
-                        <label className="block text-xs font-bold text-gray-800 tracking-wider">WHO</label>
-                        <div className="text-sm text-gray-600 truncate">
+                        <label className="block text-xs font-bold text-gray-800 tracking-wider mb-1 md:mb-0">WHO</label>
+                        <div className="text-sm text-gray-900 font-medium truncate">
                             {guests.adults + guests.children} guests
                         </div>
                     </div>
 
-                    {/* SEARCH BUTTON */}
+                    {/* SEARCH BUTTON - DESKTOP */}
                     <button
                         onClick={(e) => { e.stopPropagation(); handleSearch(); }}
-                        className={`bg-[#FF385C] hover:bg-[#E00B41] text-white rounded-full ${isSticky ? 'p-3' : 'p-4'} shadow-md transition-all duration-300 flex items-center justify-center gap-2 group`}
+                        className={`hidden md:flex bg-[#FF385C] hover:bg-[#E00B41] text-white rounded-full ${isSticky ? 'p-3' : 'p-4'} shadow-md transition-all duration-300 items-center justify-center gap-2 group`}
                     >
                         <FaSearch size={isSticky ? 12 : 16} />
                         <span className={`max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-300 ${isSticky ? 'text-xs' : 'text-sm'} font-bold`}>
                             Search
                         </span>
+                    </button>
+                </div>
+
+                {/* SEARCH BUTTON - MOBILE */}
+                <div className="md:hidden w-full p-2 mt-2">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleSearch(); }}
+                        className="w-full bg-[#FF385C] text-white rounded-xl py-3 shadow-md font-bold text-lg flex items-center justify-center gap-2"
+                    >
+                        <FaSearch /> Search
                     </button>
                 </div>
             </div>

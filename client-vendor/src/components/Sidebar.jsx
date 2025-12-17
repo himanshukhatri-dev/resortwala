@@ -1,19 +1,21 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import axios from 'axios';
 import ConfirmModal from './ConfirmModal';
 
-export default function Sidebar({ userType = 'vendor', ...props }) {
+export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props }) {
     const location = useLocation();
     const navigate = useNavigate();
     const [isHovered, setIsHovered] = useState(false);
 
-    // Propagate hover state to parent
-    if (props.onHoverChange) {
-        props.onHoverChange(isHovered);
-    }
+    // Propagate hover state to parent securely
+    useEffect(() => {
+        if (props.onHoverChange) {
+            props.onHoverChange(isHovered);
+        }
+    }, [isHovered, props.onHoverChange]);
 
     const menuItems = [
         { path: '/dashboard', icon: '📊', label: 'Dashboard', roles: ['vendor', 'admin'] },
@@ -28,11 +30,28 @@ export default function Sidebar({ userType = 'vendor', ...props }) {
 
     const filteredItems = menuItems.filter(item => item.roles.includes(userType));
 
-
-
     return (
         <>
+            {/* Mobile Overlay */}
+            {isOpen && (
+                <div
+                    onClick={onClose}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        zIndex: 999,
+                        display: 'none', // Controlled by CSS media query
+                        className: 'mobile-overlay'
+                    }}
+                />
+            )}
+
             <div
+                className={`sidebar ${isOpen ? 'mobile-open' : ''}`}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
                 style={{
@@ -46,7 +65,7 @@ export default function Sidebar({ userType = 'vendor', ...props }) {
                     display: 'flex',
                     flexDirection: 'column',
                     zIndex: 1000,
-                    transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     boxShadow: isHovered ? '4px 0 20px rgba(0,0,0,0.1)' : 'none',
                     overflow: 'hidden',
                     color: 'var(--text-color)'
@@ -62,7 +81,8 @@ export default function Sidebar({ userType = 'vendor', ...props }) {
                     borderBottom: '1px solid var(--border-color)',
                     backgroundColor: 'var(--sidebar-bg)',
                     flexShrink: 0,
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    position: 'relative'
                 }}>
                     <Link to="/dashboard" style={{
                         fontSize: '22px',
@@ -85,6 +105,24 @@ export default function Sidebar({ userType = 'vendor', ...props }) {
                             ResortWala
                         </span>
                     </Link>
+
+                    {/* Mobile Close Button */}
+                    <button
+                        className="mobile-close-btn"
+                        onClick={onClose}
+                        style={{
+                            display: 'none',
+                            position: 'absolute',
+                            right: '10px',
+                            background: 'none',
+                            border: 'none',
+                            fontSize: '24px',
+                            color: 'var(--text-color)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        ×
+                    </button>
                 </div>
 
                 {/* Menu Items */}
@@ -95,6 +133,7 @@ export default function Sidebar({ userType = 'vendor', ...props }) {
                             <Link
                                 key={item.path}
                                 to={item.path}
+                                onClick={onClose} // Close on mobile when clicked
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -108,7 +147,8 @@ export default function Sidebar({ userType = 'vendor', ...props }) {
                                     fontWeight: isActive ? '600' : '500',
                                     borderLeft: isActive ? '3px solid var(--primary-color)' : '3px solid transparent',
                                     transition: 'all 0.2s ease',
-                                    justifyContent: isHovered ? 'flex-start' : 'center'
+                                    justifyContent: isHovered ? 'flex-start' : 'center',
+                                    whiteSpace: 'nowrap'
                                 }}
                                 title={!isHovered ? item.label : ''}
                                 className="sidebar-item"
@@ -127,20 +167,42 @@ export default function Sidebar({ userType = 'vendor', ...props }) {
                     })}
                 </nav>
 
-                {/* Theme Toggle & Logout */}
-                <div style={{ padding: isHovered ? '15px' : '10px', borderTop: '1px solid var(--border-color)' }}>
-                    <style>{`
+                {/* CSS for Mobile */}
+                <style>{`
                     .sidebar-item:hover {
                         background-color: var(--hover-bg) !important;
                         color: var(--primary-color) !important;
                     }
+                    
                     @media (max-width: 768px) {
-                        div[style*="width"] {
-                            width: 60px !important;
+                        .mobile-overlay {
+                            display: block !important;
+                        }
+
+                        .sidebar {
+                            transform: translateX(-100%);
+                            width: 240px !important; /* Always full width on mobile if open */
+                        }
+
+                        .sidebar.mobile-open {
+                            transform: translateX(0);
+                        }
+
+                        /* Force show labels on mobile when open */
+                        .sidebar.mobile-open span {
+                            opacity: 1 !important;
+                            display: block !important;
+                        }
+                        
+                        .sidebar.mobile-open .sidebar-item {
+                            justify-content: flex-start !important;
+                        }
+                        
+                        .mobile-close-btn {
+                            display: block !important;
                         }
                     }
                 `}</style>
-                </div>
             </div>
         </>
     );

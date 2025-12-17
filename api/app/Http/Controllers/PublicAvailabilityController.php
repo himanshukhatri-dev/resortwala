@@ -11,7 +11,12 @@ class PublicAvailabilityController extends Controller
     // Public view of calendar (via share token)
     public function show($uuid)
     {
-        $property = PropertyMaster::where('share_token', $uuid)->firstOrFail();
+        $property = PropertyMaster::where(function($query) use ($uuid) {
+                $query->where('share_token', $uuid)
+                      ->orWhere('PropertyId', $uuid);
+            })
+            ->where('is_approved', 1)
+            ->firstOrFail();
 
         // Only return necessary info (privacy)
         $bookings = Booking::where('PropertyId', $property->PropertyId)
@@ -39,6 +44,15 @@ class PublicAvailabilityController extends Controller
             'name' => 'required|string',
             'mobile' => 'required|string'
         ]);
+
+        // Verify Property is Approved
+        $property = PropertyMaster::where('PropertyId', $request->property_id)
+            ->where('is_approved', 1)
+            ->first();
+
+        if (!$property) {
+            return response()->json(['message' => 'Property is not available for booking'], 404);
+        }
 
         // Check conflicts
         $exists = Booking::where('PropertyId', $request->property_id)

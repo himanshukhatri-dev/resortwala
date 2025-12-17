@@ -98,8 +98,8 @@ export default function PublicPropertyCalendar() {
                 throw new Error(err.message || 'Failed');
             }
 
-            alert("Request Sent! The owner will confirm shortly.");
             setShowModal(false);
+            alert("Request Sent! The owner will confirm shortly.");
             setName('');
             setMobile('');
             fetchCalendarData(); // Refresh immediately
@@ -253,6 +253,20 @@ export default function PublicPropertyCalendar() {
                     </div>
                 </div>
             )}
+            {/* NON-INTRUSIVE ADVERTISEMENT */}
+            <a
+                href="/"
+                target="_blank"
+                className="fixed bottom-4 right-4 bg-white/90 backdrop-blur-md border border-gray-200 shadow-xl px-4 py-2 rounded-full flex items-center gap-3 z-50 hover:scale-105 transition-transform group"
+            >
+                <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white font-serif font-bold text-xs">
+                    RW
+                </div>
+                <div className="text-left">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Powered By</div>
+                    <div className="text-xs font-bold text-gray-900 group-hover:text-primary transition-colors">ResortWala</div>
+                </div>
+            </a>
         </div>
     );
 }

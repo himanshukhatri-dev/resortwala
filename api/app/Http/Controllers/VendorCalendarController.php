@@ -22,7 +22,7 @@ class VendorCalendarController extends Controller
 
         $bookings = Booking::where('PropertyId', $propertyId)
             ->whereIn('Status', ['confirmed', 'locked', 'pending'])
-            ->get(['BookingId', 'CheckInDate', 'CheckOutDate', 'Status', 'CustomerName', 'TotalAmount']);
+            ->get(['BookingId', 'CheckInDate', 'CheckOutDate', 'Status', 'CustomerName', 'CustomerMobile', 'Guests', 'TotalAmount']);
 
         // Use FRONTEND_URL env var or default to local React dev server
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');

@@ -3,12 +3,16 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useModal } from '../context/ModalContext';
+import ShareModal from '../components/ShareModal';
+import CalendarSelectorModal from '../components/CalendarSelectorModal';
 
 export default function Dashboard() {
     const { user, token, logout } = useAuth();
     const navigate = useNavigate();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [showCalendarModal, setShowCalendarModal] = useState(false);
 
     useEffect(() => {
         fetchStats();
@@ -64,6 +68,11 @@ export default function Dashboard() {
     return (
         <div style={{ padding: '0px' }}>
             <div className="dashboard-content" style={{ padding: '30px' }}>
+                <div style={{ marginBottom: '25px' }}>
+                    <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>Welcome, {user?.name || 'Vendor'} 👋</h2>
+                    <p style={{ margin: '5px 0 0', opacity: 0.6 }}>Here's what's happening today.</p>
+                </div>
+
                 {/* Status Alert */}
                 {stats?.approval_status !== 'approved' && (
                     <div style={{
@@ -278,103 +287,7 @@ export default function Dashboard() {
                     <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px' }}>Quick Actions</h3>
                     <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
                         <button
-                            onClick={async () => {
-                                try {
-                                    const response = await axios.get('/api/vendor/bookings', {
-                                        headers: { Authorization: `Bearer ${token}` }
-                                    });
-                                    const bookings = response.data;
-
-                                    const csvContent = "data:text/csv;charset=utf-8,"
-                                        + "Villa Name,Booked Dates\n"
-                                        + bookings.map(b => {
-                                            const checkIn = new Date(b.CheckInDate).toLocaleDateString();
-                                            const checkOut = new Date(b.CheckOutDate).toLocaleDateString();
-                                            return `"${b.property?.Name || 'N/A'}","${checkIn} - ${checkOut}"`;
-                                        }).join("\n");
-
-                                    const encodedUri = encodeURI(csvContent);
-                                    const link = document.createElement("a");
-                                    link.setAttribute("href", encodedUri);
-                                    link.setAttribute("download", "bookings_calendar.csv");
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-
-                                } catch (error) {
-                                    console.error("Export failed", error);
-                                    showError('Export Failed', 'Could not fetch bookings for export.');
-                                }
-                            }}
-                            className="action-btn"
-                            style={{
-                                padding: '12px 24px',
-                                background: '#10B981',
-                                border: 'none',
-                                borderRadius: '8px',
-                                color: 'white',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease'
-                            }}
-                        >
-                            📊 Export Excel
-                        </button>
-                        <button
-                            onClick={async () => {
-                                try {
-                                    const response = await axios.get('/api/vendor/bookings', {
-                                        headers: { Authorization: `Bearer ${token}` }
-                                    });
-                                    const bookings = response.data;
-
-                                    // Filter for next 30 days
-                                    const today = new Date();
-                                    const next30Days = new Date();
-                                    next30Days.setDate(today.getDate() + 30);
-
-                                    const nextMonthBookings = bookings.filter(b => {
-                                        const checkIn = new Date(b.CheckInDate);
-                                        const checkOut = new Date(b.CheckOutDate);
-                                        // Overlap logic: (StartA <= EndB) and (EndA >= StartB)
-                                        return checkIn <= next30Days && checkOut >= today;
-                                    });
-
-                                    if (nextMonthBookings.length === 0) {
-                                        window.open(`https://wa.me/?text=${encodeURIComponent("📅 *Availability Update*\n\nAll properties are *AVAILABLE* for the next 30 days! ✅")}`, '_blank');
-                                        return;
-                                    }
-
-                                    let message = "📅 *Booked Dates (Next 30 Days)*\n\n";
-
-                                    // Group by Property
-                                    const grouped = {};
-                                    nextMonthBookings.forEach(b => {
-                                        const propName = b.property?.Name || 'Villa';
-                                        if (!grouped[propName]) grouped[propName] = [];
-                                        grouped[propName].push(b);
-                                    });
-
-                                    for (const [prop, books] of Object.entries(grouped)) {
-                                        message += `*${prop}*:\n`;
-                                        books.forEach(b => {
-                                            const checkIn = new Date(b.CheckInDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-                                            const checkOut = new Date(b.CheckOutDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-                                            message += `❌ ${checkIn} - ${checkOut}\n`;
-                                        });
-                                        message += "\n";
-                                    }
-
-                                    message += "✅ All other dates are *AVAILABLE*";
-
-                                    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-
-                                } catch (error) {
-                                    console.error("Share failed", error);
-                                    showError('Share Failed', 'Could not fetch bookings to share.');
-                                }
-                            }}
+                            onClick={() => setShowShareModal(true)}
                             className="action-btn"
                             style={{
                                 padding: '12px 24px',
@@ -388,7 +301,7 @@ export default function Dashboard() {
                                 transition: 'all 0.3s ease'
                             }}
                         >
-                            💬 Share Availability
+                            💬 Share Property
                         </button>
                         <button
                             onClick={() => navigate('/properties')}
@@ -425,7 +338,7 @@ export default function Dashboard() {
                             📅 View Bookings
                         </button>
                         <button
-                            onClick={() => navigate('/properties/1/calendar')}
+                            onClick={() => setShowCalendarModal(true)}
                             style={{
                                 padding: '12px 24px',
                                 background: 'linear-gradient(135deg, #009688 0%, #00796b 100%)',
@@ -502,8 +415,30 @@ export default function Dashboard() {
                         div[style*="gridTemplateColumns"] {
                             grid-template-columns: 1fr !important; /* Stack stats cards */
                         }
+                        
+                        /* Font adjustments for mobile */
+                        h3 {
+                            font-size: 16px !important;
+                        }
+                        .action-btn {
+                            width: 100%;
+                            justify-content: center;
+                            font-size: 13px !important;
+                            padding: 10px 16px !important;
+                        }
+                        
+                        /* Stats Card Font Adjustment */
+                        div[style*="fontSize: 32px"] {
+                            font-size: 24px !important;
+                        }
+                        div[style*="fontSize: 14px"] {
+                            font-size: 13px !important;
+                        }
                     }
                 `}</style>
-        </div>
+
+            <ShareModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} />
+            <CalendarSelectorModal isOpen={showCalendarModal} onClose={() => setShowCalendarModal(false)} />
+        </div >
     );
 }

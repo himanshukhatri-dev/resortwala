@@ -8,7 +8,9 @@ class PropertyMasterController extends Controller
 {
     public function index(Request $request)
     {
-        $query = \App\Models\PropertyMaster::with('images')->orderBy('created_at', 'desc');
+        $query = \App\Models\PropertyMaster::with('images')
+            ->where('is_approved', 1)
+            ->orderBy('created_at', 'desc');
 
         if ($request->has('location')) {
             $query->where('Location', 'like', '%' . $request->input('location') . '%');

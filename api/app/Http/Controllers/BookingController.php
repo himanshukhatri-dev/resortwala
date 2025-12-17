@@ -73,4 +73,14 @@ class BookingController extends Controller
             'bookings' => $query->orderBy('created_at', 'desc')->get()
         ]);
     }
+    public function cancel(Request $request, $id)
+    {
+        // Simple cancellation for now. 
+        // In prod, check if request->email matches booking->CustomerEmail
+        $booking = Booking::findOrFail($id);
+        $booking->Status = 'Cancelled';
+        $booking->save();
+
+        return response()->json(['message' => 'Booking cancelled successfully', 'booking' => $booking]);
+    }
 }

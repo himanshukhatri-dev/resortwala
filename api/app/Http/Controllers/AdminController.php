@@ -113,7 +113,7 @@ class AdminController extends Controller
 
     public function getAllProperties(Request $request)
     {
-        $properties = PropertyMaster::with('vendor:id,name,business_name')
+        $properties = PropertyMaster::with('vendor:id,name,business_name,email')
             ->orderBy('created_at', 'desc')
             ->get();
 

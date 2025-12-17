@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SearchBar from '../components/ui/SearchBar';
+import FilterBar from '../components/ui/FilterBar';
+import { motion, AnimatePresence } from 'framer-motion';
 import PropertyCard from '../components/features/PropertyCard';
 import MapView from '../components/features/MapView';
 import { FaSwimmingPool, FaUmbrellaBeach, FaMountain, FaHome, FaHotel, FaMapMarkedAlt, FaList } from 'react-icons/fa';
@@ -49,7 +51,13 @@ export default function Home() {
         fetchProperties();
     }, []);
 
-    // Unified Filtering Effect
+    const [advancedFilters, setAdvancedFilters] = useState({
+        sortBy: 'all',
+        minPrice: '',
+        maxPrice: '',
+        amenities: []
+    });
+
     useEffect(() => {
         // Safety guard: ensure properties is array
         if (!properties || !Array.isArray(properties)) {
@@ -73,7 +81,7 @@ export default function Home() {
             });
         }
 
-        // 2. Filter by Search Params
+        // 2. Filter by Search Params (Location)
         if (searchParams) {
             const { location } = searchParams;
             if (location) {
@@ -88,8 +96,35 @@ export default function Home() {
             }
         }
 
-        setFilteredProperties(result);
-    }, [properties, activeCategory, searchParams]);
+        // 3. Filter by Price Range
+        if (advancedFilters.minPrice) {
+            result = result.filter(p => Number(p.Price) >= Number(advancedFilters.minPrice));
+        }
+        if (advancedFilters.maxPrice) {
+            result = result.filter(p => Number(p.Price) <= Number(advancedFilters.maxPrice));
+        }
+
+        // 4. Filter by Amenities (Text Search)
+        // Since Amenities may not be structured, we search descriptions for keywords
+        if (advancedFilters.amenities.length > 0) {
+            result = result.filter(p => {
+                const text = JSON.stringify(p).toLowerCase();
+                return advancedFilters.amenities.every(amenity => text.includes(amenity));
+            });
+        }
+
+        // 5. Sort
+        if (advancedFilters.sortBy === 'price_low') {
+            result.sort((a, b) => Number(a.Price) - Number(b.Price));
+        } else if (advancedFilters.sortBy === 'price_high') {
+            result.sort((a, b) => Number(b.Price) - Number(a.Price));
+        } else if (advancedFilters.sortBy === 'rating_high') {
+            // Mock rating property if missing
+            result.sort((a, b) => (b.Rating || 0) - (a.Rating || 0));
+        }
+
+        setFilteredProperties([...result]); // Spread to trigger re-render
+    }, [properties, activeCategory, searchParams, advancedFilters]);
 
     const handleSearch = (filters) => {
         setSearchParams(filters);
@@ -112,7 +147,7 @@ export default function Home() {
     return (
         <div className="pb-20">
             {/* 1. IMMERSIVE HERO */}
-            <div className="relative h-[65vh] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4">
+            <div className="relative min-h-[350px] md:min-h-[600px] h-auto md:h-[75vh] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-24 pb-8 md:pt-20 md:pb-20">
                 {/* Background */}
                 <div className="absolute inset-0 overflow-hidden">
                     <img
@@ -128,12 +163,12 @@ export default function Home() {
                 {/* Content */}
                 <div className="relative z-10 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
 
-                    <h1 className="text-4xl md:text-7xl font-bold text-white mb-8 drop-shadow-2xl font-serif italic tracking-wide leading-tight text-center">
+                    <h1 className="text-2xl md:text-7xl font-bold text-white mb-3 md:mb-6 drop-shadow-2xl font-serif italic tracking-wide leading-tight text-center">
                         Find your peace in <br className="hidden md:block" />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-2">paradise</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-1 md:mt-2">paradise</span>
                     </h1>
 
-                    <p className="text-white/90 text-lg md:text-xl mb-10 max-w-2xl text-center font-light drop-shadow-lg">
+                    <p className="text-white/90 text-sm md:text-xl mb-4 md:mb-8 max-w-2xl text-center font-light drop-shadow-lg px-2">
                         Discover luxury villas, water parks, and hidden gems across India's most beautiful destinations.
                     </p>
 
@@ -173,14 +208,18 @@ export default function Home() {
             </div>
 
 
+            {/* FILTER BAR SECTION */}
+            <div className="container mx-auto px-4 -mt-6 relative z-30">
+                <FilterBar onFilterChange={setAdvancedFilters} />
+            </div>
 
-            {/* 3. PROPERTY GRID */}
-            <div className="container mx-auto px-4 py-12 min-h-[50vh]">
+            {/* 3. SPLIT LAYOUT (Map + List) */}
+            <div className="container mx-auto px-4 py-6 min-h-[50vh]">
 
-                {/* DYNAMIC HEADER & TOGGLE */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 pb-4 border-b border-gray-200 gap-4">
+                {/* DYNAMIC HEADER (Mobile Toggle Only) */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 pb-4 border-b border-gray-200">
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-900 font-serif">
+                        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 font-serif">
                             {searchParams?.location
                                 ? `Stays in ${searchParams.location}`
                                 : activeCategory !== 'all'
@@ -188,16 +227,16 @@ export default function Home() {
                                     : "All Properties"
                             }
                         </h2>
-                        <p className="text-gray-500 mt-2">
+                        <p className="text-gray-500 mt-1 text-sm">
                             {loading
-                                ? "Searching best stays for you..."
-                                : `${filteredProperties.length} ${filteredProperties.length === 1 ? 'property' : 'properties'} found${searchParams ? ' matching your search' : ''}`
+                                ? "Searching..."
+                                : `${filteredProperties.length} properties found`
                             }
                         </p>
                     </div>
 
-                    {/* VIEW TOGGLE */}
-                    <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                    {/* Mobile View Toggle (Hidden on LG) */}
+                    <div className="lg:hidden flex items-center bg-gray-100 rounded-lg p-1 mt-4 md:mt-0 self-start md:self-auto">
                         <button
                             onClick={() => setViewMode('list')}
                             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
@@ -219,46 +258,44 @@ export default function Home() {
                         <p className="text-gray-400 animate-pulse">Loading amazing places...</p>
                     </div>
                 ) : (
-                    <>
-                        {filteredProperties.length > 0 ? (
-                            viewMode === 'map' ? (
-                                <div className="animate-fade-in">
-                                    <MapView properties={filteredProperties} />
+                    <div className="flex flex-col lg:flex-row gap-6 relative">
+
+                        {/* LEFT COLUMN: Property List (Scrollable) */}
+                        <div className={`w-full lg:w-[60%] lg:pr-2 ${viewMode === 'map' ? 'hidden lg:block' : 'block'}`}>
+                            {filteredProperties.length > 0 ? (
+                                <div className="flex flex-col gap-8">
+                                    <AnimatePresence mode='popLayout'>
+                                        {filteredProperties.map((p) => (
+                                            <motion.div
+                                                layout
+                                                key={p.PropertyId || p.id} // Ensure stable key
+                                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                                                transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
+                                            >
+                                                <PropertyCard property={p} searchParams={searchParams} variant="horizontal" />
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 gap-y-10">
-                                    {filteredProperties.map((p, i) => (
-                                        <div key={p.id || i} className="animate-fade-up" style={{ animationDelay: `${i * 50}ms` }}>
-                                            <PropertyCard property={p} searchParams={searchParams} />
-                                        </div>
-                                    ))}
+                                <div className="flex flex-col items-center justify-center py-20 text-center">
+                                    <h3 className="text-xl font-bold text-gray-800">No properties found</h3>
+                                    <p className="text-gray-500 mb-4">Try changing your search.</p>
+                                    <button onClick={() => { setActiveCategory('all'); setSearchParams(null); }} className="text-primary hover:underline">Clear Filters</button>
                                 </div>
-                            )
-                        ) : (
-                            /* EMPTY STATE */
-                            <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in px-4">
-                                <div className="bg-gray-100 p-6 rounded-full mb-6">
-                                    <FaHome className="text-4xl text-gray-400" />
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-800 mb-2">No properties found</h3>
-                                <p className="text-gray-500 max-w-md mx-auto mb-8">
-                                    We couldn't find any properties matching "{searchParams?.location || activeCategory}".
-                                    Try changing your filters or search for something else.
-                                </p>
-                                <button
-                                    onClick={() => {
-                                        setActiveCategory('all');
-                                        setSearchParams(null); // Clear search
-                                        setFilteredProperties(properties); // Reset
-                                        setViewMode('list');
-                                    }}
-                                    className="bg-black text-white px-6 py-3 rounded-lg hover:scale-105 transition-transform font-medium shadow-xl"
-                                >
-                                    Clear all filters
-                                </button>
+                            )}
+                        </div>
+
+                        {/* RIGHT COLUMN: Map (Sticky) */}
+                        <div className={`w-full lg:w-[40%] text-black ${viewMode === 'list' ? 'hidden lg:block' : 'block h-[60vh]'}`}>
+                            <div className="sticky top-[100px] h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-xl border border-gray-200">
+                                <MapView properties={filteredProperties} />
                             </div>
-                        )}
-                    </>
+                        </div>
+
+                    </div>
                 )}
             </div>
 

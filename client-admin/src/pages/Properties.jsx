@@ -46,7 +46,8 @@ export default function Properties() {
             await axios.post(`/api/admin/properties/${id}/approve`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setProperties(properties.map(p => p.PropertyId === id ? { ...p, Status: 'Approved' } : p));
+            // Update local state: is_approved = 1
+            setProperties(properties.map(p => p.PropertyId === id ? { ...p, is_approved: 1 } : p));
             showSuccess('Approved', 'Property approved successfully');
         } catch (error) {
             console.error('Error approving property:', error);
@@ -84,8 +85,8 @@ export default function Properties() {
 
     const filteredProperties = properties.filter(property => {
         if (filter === 'all') return true;
-        if (filter === 'approved') return property.Status === 'Approved';
-        if (filter === 'pending') return property.Status === 'Pending';
+        if (filter === 'approved') return property.is_approved == 1; // Strict check might fail if string '1' return
+        if (filter === 'pending') return !property.is_approved;
         return true;
     });
 
@@ -146,28 +147,33 @@ export default function Properties() {
                                 <tr key={property.PropertyId} style={{ borderBottom: '1px solid #eee' }}>
                                     <td style={{ padding: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         {/* Simplified Image Placeholder or Actual Image if available */}
-                                        <div style={{ width: '40px', height: '40px', backgroundColor: '#eee', borderRadius: '4px' }}></div>
+                                        <div style={{ width: '40px', height: '40px', backgroundColor: '#eee', borderRadius: '4px', overflow: 'hidden' }}>
+                                            {property.primary_image && <img src={property.primary_image.image_path} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                                        </div>
                                         <div>
                                             <div style={{ fontWeight: '600' }}>{property.Name}</div>
                                             <div style={{ fontSize: '12px', color: '#888' }}>ID: {property.PropertyId}</div>
                                         </div>
                                     </td>
                                     <td style={{ padding: '15px' }}>{property.Location}</td>
-                                    <td style={{ padding: '15px' }}>{property.vendor?.business_name || 'N/A'}</td>
+                                    <td style={{ padding: '15px' }}>
+                                        <div>{property.vendor?.business_name || property.vendor?.name || <span className="text-red-500 text-xs">Unassigned</span>}</div>
+                                        {property.vendor && <div style={{ fontSize: '11px', color: '#888' }}>{property.vendor.email}</div>}
+                                    </td>
                                     <td style={{ padding: '15px' }}>₹{property.Price}</td>
                                     <td style={{ padding: '15px' }}>
                                         <span style={{
                                             padding: '4px 8px',
                                             borderRadius: '4px',
                                             fontSize: '12px',
-                                            backgroundColor: property.Status === 'Approved' ? '#d4edda' : '#fff3cd',
-                                            color: property.Status === 'Approved' ? '#155724' : '#856404'
+                                            backgroundColor: property.is_approved ? '#d4edda' : '#fff3cd',
+                                            color: property.is_approved ? '#155724' : '#856404'
                                         }}>
-                                            {property.Status}
+                                            {property.is_approved ? 'Approved' : 'Pending'}
                                         </span>
                                     </td>
                                     <td style={{ padding: '15px' }}>
-                                        {property.Status === 'Pending' && (
+                                        {!property.is_approved && (
                                             <button
                                                 onClick={() => handleApprove(property.PropertyId)}
                                                 style={{ marginRight: '8px', padding: '6px 12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
@@ -179,7 +185,7 @@ export default function Properties() {
                                             onClick={() => handleReject(property.PropertyId)}
                                             style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                                         >
-                                            {property.Status === 'Approved' ? 'Delete' : 'Reject'}
+                                            {property.is_approved ? 'Delete' : 'Reject'}
                                         </button>
                                     </td>
                                 </tr>
