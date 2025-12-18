@@ -21,7 +21,7 @@ class VendorCalendarController extends Controller
         }
 
         $bookings = Booking::where('PropertyId', $propertyId)
-            ->whereIn('Status', ['confirmed', 'locked', 'pending'])
+            ->whereIn('Status', ['confirmed', 'locked', 'pending', 'blocked'])
             ->get(['BookingId', 'CheckInDate', 'CheckOutDate', 'Status', 'CustomerName', 'CustomerMobile', 'Guests', 'TotalAmount']);
 
         // Use FRONTEND_URL env var or default to local React dev server
@@ -78,5 +78,24 @@ class VendorCalendarController extends Controller
         $booking->save();
         
         return response()->json(['message' => 'Booking confirmed']);
+    }
+
+    // DEBUG: Seed dummy data for testing
+    public function seed(Request $request)
+    {
+        // We can allow passing property_id to the seeder if we refactor the seeder to accept arguments,
+        // but for now the seeder targets ID 20 specifically as requested.
+        // In a real app, we might pass arguments to the seeder class.
+        
+        try {
+            \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                '--class' => 'Database\\Seeders\\BookingSeeder',
+                '--force' => true // Force in production if needed
+            ]);
+            
+            return response()->json(['message' => 'Seeded dummy data successfully using BookingSeeder']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Seeding failed: ' . $e->getMessage()], 500);
+        }
     }
 }

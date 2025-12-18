@@ -105,6 +105,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/vendor/bookings/{id}/approve', [App\Http\Controllers\VendorCalendarController::class, 'approve']);
 });
 
+Route::post('/vendor/calendar/seed', [App\Http\Controllers\VendorCalendarController::class, 'seed']);
+
 // Admin Authentication Routes
 Route::post('/admin/login', [\App\Http\Controllers\AdminController::class, 'login']);
 

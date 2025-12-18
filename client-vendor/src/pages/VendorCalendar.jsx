@@ -29,6 +29,7 @@ export default function VendorCalendar() {
     const [events, setEvents] = useState([]);
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (token) {
@@ -64,6 +65,7 @@ export default function VendorCalendar() {
             setEvents(calendarEvents);
         } catch (error) {
             console.error("Failed to load calendar", error);
+            setError("Failed to load calendar data. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -199,7 +201,9 @@ export default function VendorCalendar() {
         );
     };
 
-    if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Calendar...</div>;
+    if (loading) return <div className="min-h-screen flex items-center justify-center">Loading Calendar...</div>;
+    if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
+    if (!property) return <div className="min-h-screen flex items-center justify-center">Property Not Found</div>;
 
     return (
         <div className="container mx-auto p-4 min-h-screen pt-24 pb-20" style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>

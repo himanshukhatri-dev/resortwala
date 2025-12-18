@@ -89,6 +89,43 @@ export default function GlobalCalendar() {
     }, [allBookings, selectedPropertyId]);
 
 
+    const handleSelectSlot = async ({ start, end }) => {
+        // Prevent past dates
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (start < today) {
+            showError('Invalid Selection', 'You cannot lock dates in the past.');
+            return;
+        }
+
+        if (selectedPropertyId === 'all') {
+            showError('Select Property', 'Please select a specific property from the filter above to lock dates.');
+            return;
+        }
+
+        const confirmed = await showConfirm(
+            'Freeze Dates',
+            `Freeze availability from ${format(start, 'yyyy-MM-dd')} to ${format(end, 'yyyy-MM-dd')}?`,
+            'Freeze',
+            'Cancel'
+        );
+        if (!confirmed) return;
+
+        try {
+            await axios.post('/api/vendor/bookings/lock', {
+                property_id: selectedPropertyId,
+                start_date: format(start, 'yyyy-MM-dd'),
+                end_date: format(end, 'yyyy-MM-dd')
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            await showSuccess('Frozen', "Dates Frozen Successfully!");
+            fetchData(); // Refresh
+        } catch (error) {
+            showError('Error', "Failed to freeze dates: " + (error.response?.data?.message || error.message));
+        }
+    };
+
     const handleSelectEvent = (event) => {
         showInfo(
             'Booking Details',
@@ -100,7 +137,7 @@ export default function GlobalCalendar() {
         let backgroundColor = '#3174ad';
         const st = (event.status || '').toLowerCase();
 
-        if (st === 'locked') backgroundColor = '#e74c3c';
+        if (st === 'locked' || st === 'blocked') backgroundColor = '#e74c3c';
         else if (st === 'confirmed') backgroundColor = '#2ecc71';
         else if (st === 'pending') backgroundColor = '#f39c12';
         else if (st === 'cancelled' || st === 'rejected') backgroundColor = '#95a5a6';
@@ -204,6 +241,8 @@ export default function GlobalCalendar() {
                             date={currentDate}
                             onNavigate={handleNavigate}
                             onSelectEvent={handleSelectEvent}
+                            selectable
+                            onSelectSlot={handleSelectSlot}
                             components={{
                                 toolbar: CustomToolbar,
                                 event: ({ event }) => (
