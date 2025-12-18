@@ -56,6 +56,14 @@ export default function Profile() {
                                 <div className="text-lg font-medium">{user.email}</div>
                             </div>
 
+                            <a href="/wishlist" className="block border-b pb-4 group cursor-pointer">
+                                <label className="block text-sm font-medium text-gray-500 mb-1 group-hover:text-primary transition-colors">Saved Properties</label>
+                                <div className="text-lg font-medium flex items-center justify-between">
+                                    <span>My Wishlist</span>
+                                    <span className="text-gray-400 text-sm group-hover:translate-x-1 transition-transform">View &rarr;</span>
+                                </div>
+                            </a>
+
                             <div className="border-b pb-4">
                                 <label className="block text-sm font-medium text-gray-500 mb-1">Phone Number</label>
                                 <div className="text-lg font-medium">{user.phone || 'Not provided'}</div>

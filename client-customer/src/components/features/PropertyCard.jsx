@@ -1,6 +1,8 @@
 import React from 'react';
 import { FaStar, FaHeart, FaMapMarkerAlt } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
+import { useWishlist } from '../../context/WishlistContext';
+import { toast } from 'react-hot-toast';
 
 export default function PropertyCard({ property, searchParams }) {
     // Map API fields (PascalCase) to component props (camelCase)
@@ -39,18 +41,27 @@ export default function PropertyCard({ property, searchParams }) {
     const queryString = buildQuery();
 
     const navigate = useNavigate();
-    const [isWishlisted, setIsWishlisted] = React.useState(false);
+    const { isWishlisted, toggleWishlist } = useWishlist();
+
+    // Check if real ID is available, otherwise default to false (shouldn't happen with real data)
+    const active = id ? isWishlisted(id) : false;
 
     const handleCardClick = (e) => {
         navigate(`/property/${id}?${queryString}`);
     };
 
-    const handleWishlist = (e) => {
+    const handleWishlist = async (e) => {
         e.stopPropagation();
         e.preventDefault();
-        setIsWishlisted(!isWishlisted);
-        // Toast or logic here
-        console.log("Wishlist toggled for", id);
+
+        if (!id) return;
+
+        const result = await toggleWishlist(id);
+        if (result.success) {
+            toast.success(result.message);
+        } else {
+            toast.error(result.message);
+        }
     };
 
     if (property?.variant === 'horizontal' || true) { // Forcing horizontal for now as per "1 by 1" request
@@ -86,9 +97,9 @@ export default function PropertyCard({ property, searchParams }) {
                             </div>
                             <div
                                 onClick={handleWishlist}
-                                className={`p-2 rounded-full transition-all cursor-pointer hover:scale-110 active:scale-95 ${isWishlisted ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
+                                className={`p-2 rounded-full transition-all cursor-pointer hover:scale-110 active:scale-95 ${active ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
                             >
-                                <FaHeart className={isWishlisted ? "fill-current" : ""} />
+                                <FaHeart className={active ? "fill-current" : ""} />
                             </div>
                         </div>
 

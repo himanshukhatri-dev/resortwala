@@ -51,7 +51,7 @@ class VendorPropertyController extends Controller
             'LongDescription' => 'nullable|string',
             'Address' => 'nullable|string',
             'PropertyType' => 'nullable|string',
-            'MaxCapacity' => 'required|integer|min:1',
+            'MaxCapacity' => 'nullable|integer|min:1',
             'NoofRooms' => 'nullable|integer',
             'Occupancy' => 'nullable|string',
             'CheckinDate' => 'nullable|date',

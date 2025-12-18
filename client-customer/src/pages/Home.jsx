@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/ui/FilterBar';
 import PropertyCard from '../components/features/PropertyCard';
 import MapView from '../components/features/MapView';
 // Framer Motion for Animations
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSwimmingPool, FaUmbrellaBeach, FaMountain, FaHome, FaHotel, FaMapMarkedAlt, FaList } from 'react-icons/fa';
+import { FaSwimmingPool, FaHome, FaHotel, FaMapMarkedAlt, FaList } from 'react-icons/fa';
 
 const CATEGORIES = [
     { id: 'all', label: 'All', icon: <FaHome /> },
@@ -20,6 +21,27 @@ export default function Home() {
     const [loading, setLoading] = useState(true);
     const [searchParams, setSearchParams] = useState(null); // To track active search
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'map'
+    const location = useLocation();
+    const resultsRef = useRef(null);
+
+    // Handle incoming search from MainLayout/Global Bubble
+    useEffect(() => {
+        if (location.state?.searchFilters) {
+            setSearchParams(location.state.searchFilters);
+            if (location.state.activeCategory) {
+                setActiveCategory(location.state.activeCategory);
+            }
+            // Scroll to results
+            setTimeout(() => {
+                if (resultsRef.current) {
+                    const yOffset = -120;
+                    const element = resultsRef.current;
+                    const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+            }, 500); // Slightly longer delay to ensure page load/render
+        }
+    }, [location.state]);
 
     useEffect(() => {
         const fetchProperties = async () => {
@@ -127,8 +149,6 @@ export default function Home() {
         setFilteredProperties([...result]); // Spread to trigger re-render
     }, [properties, activeCategory, searchParams, advancedFilters]);
 
-    // Scroll to results logic
-    const resultsRef = useRef(null);
 
     const handleSearch = (filters) => {
         setSearchParams(filters);
@@ -143,10 +163,11 @@ export default function Home() {
         }, 100);
     };
 
+    const containerRef = useRef(null);
     const [scrolled, setScrolled] = useState(false);
     useEffect(() => {
         const handleScroll = () => {
-            const threshold = 400;
+            const threshold = 300;
             setScrolled(window.scrollY > threshold);
         };
         window.addEventListener('scroll', handleScroll);
@@ -155,7 +176,7 @@ export default function Home() {
     }, []);
 
     return (
-        <div className="pb-20">
+        <div className="pb-20" ref={containerRef}>
             {/* 1. IMMERSIVE HERO */}
             <div className="relative min-h-[200px] md:min-h-[250px] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-20 pb-8 md:pt-24 md:pb-10">
                 {/* Background */}
@@ -187,7 +208,7 @@ export default function Home() {
                     <div className="w-full max-w-4xl h-auto scale-90 md:scale-100 origin-top">
                         <SearchBar
                             onSearch={handleSearch}
-                            isSticky={scrolled}
+                            isSticky={false} // Disabled sticky behavior here as we use Bubble now
                             properties={properties}
                             categories={CATEGORIES}
                             activeCategory={activeCategory}

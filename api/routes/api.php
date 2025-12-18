@@ -48,10 +48,13 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/customer/register', [\App\Http\Controllers\CustomerAuthController::class, 'register']);
 Route::post('/customer/login', [\App\Http\Controllers\CustomerAuthController::class, 'login']);
 
-Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customer/profile', [\App\Http\Controllers\CustomerAuthController::class, 'profile']);
     Route::post('/customer/logout', [\App\Http\Controllers\CustomerAuthController::class, 'logout']);
-});
+    
+    // Wishlist Routes
+    Route::get('/customer/wishlist', [\App\Http\Controllers\WishlistController::class, 'index']);
+    Route::post('/customer/wishlist/toggle', [\App\Http\Controllers\WishlistController::class, 'toggle']);
+
 
 
 // Vendor Authentication Routes
