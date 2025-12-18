@@ -28,6 +28,8 @@ return [
         'http://127.0.0.1:8000',
         'http://localhost:8081',
         'http://localhost:3005',
+        'http://localhost:3003',
+        'http://localhost:3004',
     ],
 
     'allowed_origins_patterns' => [],

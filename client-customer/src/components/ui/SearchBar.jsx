@@ -118,13 +118,13 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
 
     // STICKY STYLES: Use `visible` and `opacity` explicitly to prevent disappearance issues
     const containerClasses = isSticky
-        ? "fixed top-0 left-1/2 transform -translate-x-1/2 w-[95%] md:w-[50%] z-[10000] transition-all duration-300 ease-in-out origin-top opacity-100 visible"
+        ? "fixed bottom-8 left-1/2 transform -translate-x-1/2 w-auto max-w-2xl z-[1000] transition-all duration-300 ease-in-out origin-bottom opacity-100 visible"
         : "relative w-full max-w-4xl mx-auto transition-all duration-300 ease-in-out opacity-100 visible";
 
     return (
         <div className={containerClasses} ref={searchRef}>
-            {/* STICKY CATEGORIES ROW (Only when Sticky) */}
-            {isSticky && categories.length > 0 && (
+            {/* STICKY CATEGORIES ROW (HIDDEN when Sticky) */}
+            {!isSticky && categories.length > 0 && (
                 <div className="flex justify-center flex-wrap gap-2 mb-0 animate-fade-down overflow-hidden">
                     {categories.map(cat => (
                         <button
@@ -143,18 +143,20 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
             )}
 
             {/* SEARCH BAR CONTAINER */}
-            <div className={`bg-white transition-all duration-300 ${isSticky ? 'md:rounded-full rounded-2xl p-2' : 'md:rounded-full rounded-3xl p-4 md:p-2'} shadow-2xl flex flex-col md:flex-row md:items-center relative z-40 border border-gray-100 w-full`}>
+            <div className={`bg-white transition-all duration-300 ${isSticky
+                ? 'rounded-full py-2 px-4 shadow-md border border-gray-200 flex items-center justify-between gap-4 min-w-[320px] md:min-w-[600px]'
+                : 'md:rounded-full rounded-3xl p-4 md:p-2 shadow-2xl flex flex-col md:flex-row md:items-center relative z-40 border border-gray-100 w-full'}`}>
 
                 {/* 1. LOCATION */}
                 <div
                     onClick={() => setActiveTab('location')}
-                    className={`flex-1 relative w-full md:w-auto ${isSticky ? 'px-4 py-3 md:py-2' : 'px-4 py-3 md:px-8 md:py-3.5'} rounded-xl md:rounded-full cursor-pointer hover:bg-gray-100 transition ${activeTab === 'location' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''} border-b md:border-b-0 border-gray-100`}
+                    className={`flex-1 relative w-full md:w-auto ${isSticky ? 'px-2 border-r border-gray-200 hover:bg-gray-50 rounded-full' : 'px-4 py-3 md:px-8 md:py-3.5 hover:bg-gray-100 rounded-xl md:rounded-full'} cursor-pointer transition ${activeTab === 'location' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''} ${!isSticky ? 'border-b md:border-b-0 border-gray-100' : ''}`}
                 >
-                    <label className="block text-xs font-bold text-gray-800 tracking-wider mb-1 md:mb-0">WHERE</label>
+                    <label className={`block text-xs font-bold text-gray-800 tracking-wider ${isSticky ? 'hidden' : 'mb-1 md:mb-0'}`}>WHERE</label>
                     <input
                         ref={inputRef}
                         type="text"
-                        placeholder="Search destinations"
+                        placeholder={isSticky ? "Anywhere" : "Search destinations"}
                         value={location}
                         onChange={(e) => {
                             handleLocationChange(e);
@@ -164,63 +166,67 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                             e.stopPropagation();
                             setActiveTab('location');
                         }}
-                        className="w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500 p-0 relative z-10 font-medium truncate"
+                        className={`w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500 p-0 relative z-10 font-medium truncate ${isSticky ? 'text-center md:text-left' : ''}`}
                     />
                 </div>
 
-                <div className="hidden md:block w-px h-8 bg-gray-200"></div>
+                {!isSticky && <div className="hidden md:block w-px h-8 bg-gray-200"></div>}
 
                 {/* 2. DATES */}
                 <div
                     onClick={() => setActiveTab('dates')}
-                    className={`flex-1 relative w-full md:w-auto ${isSticky ? 'px-4 py-3 md:py-1.5' : 'px-4 py-3 md:px-8 md:py-3.5'} rounded-xl md:rounded-full cursor-pointer hover:bg-gray-100 transition ${activeTab === 'dates' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''} border-b md:border-b-0 border-gray-100`}
+                    className={`flex-1 relative w-full md:w-auto ${isSticky ? 'px-2 border-r border-gray-200 hover:bg-gray-50 rounded-full text-center md:text-left' : 'px-4 py-3 md:px-8 md:py-3.5 hover:bg-gray-100 rounded-xl md:rounded-full'} cursor-pointer transition ${activeTab === 'dates' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''} ${!isSticky ? 'border-b md:border-b-0 border-gray-100' : ''}`}
                 >
-                    <label className="block text-xs font-bold text-gray-800 tracking-wider mb-1 md:mb-0">WHEN</label>
+                    <label className={`block text-xs font-bold text-gray-800 tracking-wider ${isSticky ? 'hidden' : 'mb-1 md:mb-0'}`}>WHEN</label>
                     <div className={`text-sm ${dateRange.from ? 'text-gray-900 font-medium' : 'text-gray-500'} truncate`}>
                         {dateRange.from ? (
                             <>
                                 {format(dateRange.from, 'MMM d')}
                                 {dateRange.to ? ` - ${format(dateRange.to, 'MMM d')}` : ''}
                             </>
-                        ) : 'Add dates'}
+                        ) : (isSticky ? 'Any Week' : 'Add dates')}
                     </div>
                 </div>
 
-                <div className="hidden md:block w-px h-8 bg-gray-200"></div>
+                {!isSticky && <div className="hidden md:block w-px h-8 bg-gray-200"></div>}
 
                 {/* 3. WHO */}
                 <div
                     onClick={() => setActiveTab('guests')}
-                    className={`flex-[1.2] relative w-full md:w-auto ${isSticky ? 'px-4 py-3 md:pl-4 md:pr-1 md:py-1' : 'px-4 py-3 md:pl-8 md:pr-2 md:py-2'} rounded-xl md:rounded-full cursor-pointer hover:bg-gray-100 transition flex items-center justify-between ${activeTab === 'guests' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''}`}
+                    className={`flex-[1.2] relative w-full md:w-auto ${isSticky ? 'px-2 hover:bg-gray-50 rounded-full' : 'px-4 py-3 md:pl-8 md:pr-2 md:py-2 hover:bg-gray-100 rounded-xl md:rounded-full'} cursor-pointer transition flex items-center justify-between ${activeTab === 'guests' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''}`}
                 >
-                    <div>
-                        <label className="block text-xs font-bold text-gray-800 tracking-wider mb-1 md:mb-0">WHO</label>
-                        <div className="text-sm text-gray-900 font-medium truncate">
-                            {guests.adults + guests.children} guests
+                    <div className={`${isSticky ? 'text-center md:text-left w-full' : ''}`}>
+                        <label className={`block text-xs font-bold text-gray-800 tracking-wider ${isSticky ? 'hidden' : 'mb-1 md:mb-0'}`}>WHO</label>
+                        <div className={`text-sm text-gray-900 font-medium truncate ${isSticky ? 'text-gray-500' : ''}`}>
+                            {guests.adults + guests.children > 0 ? `${guests.adults + guests.children} guests` : (isSticky ? 'Add Guests' : 'Add guests')}
                         </div>
                     </div>
 
                     {/* SEARCH BUTTON - DESKTOP */}
                     <button
                         onClick={(e) => { e.stopPropagation(); handleSearch(); }}
-                        className={`hidden md:flex bg-[#FF385C] hover:bg-[#E00B41] text-white rounded-full ${isSticky ? 'p-3' : 'p-4'} shadow-md transition-all duration-300 items-center justify-center gap-2 group`}
+                        className={`hidden md:flex bg-[#FF385C] hover:bg-[#E00B41] text-white rounded-full ${isSticky ? 'p-2.5 w-8 h-8' : 'p-4'} shadow-md transition-all duration-300 items-center justify-center gap-2 group`}
                     >
-                        <FaSearch size={isSticky ? 12 : 16} />
-                        <span className={`max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-300 ${isSticky ? 'text-xs' : 'text-sm'} font-bold`}>
-                            Search
-                        </span>
+                        <FaSearch size={isSticky ? 14 : 16} />
+                        {!isSticky && (
+                            <span className={`max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-300 ${isSticky ? 'text-xs' : 'text-sm'} font-bold`}>
+                                Search
+                            </span>
+                        )}
                     </button>
                 </div>
 
                 {/* SEARCH BUTTON - MOBILE */}
-                <div className="md:hidden w-full p-2 mt-2">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); handleSearch(); }}
-                        className="w-full bg-[#FF385C] text-white rounded-xl py-3 shadow-md font-bold text-lg flex items-center justify-center gap-2"
-                    >
-                        <FaSearch /> Search
-                    </button>
-                </div>
+                {!isSticky && (
+                    <div className="md:hidden w-full p-2 mt-2">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleSearch(); }}
+                            className="w-full bg-[#FF385C] text-white rounded-xl py-3 shadow-md font-bold text-lg flex items-center justify-center gap-2"
+                        >
+                            <FaSearch /> Search
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* EXPANDED DROPDOWNS (AnimatePresence) */}

@@ -14,6 +14,7 @@ import VendorBookings from './pages/VendorBookings';
 import Holiday from './pages/Holiday';
 import VendorCalendar from './pages/VendorCalendar';
 import './App.css';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -34,7 +35,7 @@ import ResetPassword from './pages/ResetPassword';
 import VendorLayout from './components/VendorLayout';
 import Profile from './pages/Profile';
 import Status from './pages/Status';
-import PublicCalendar from './pages/PublicCalendar';
+
 import PublicMasterCalendar from './pages/PublicMasterCalendar';
 
 function App() {

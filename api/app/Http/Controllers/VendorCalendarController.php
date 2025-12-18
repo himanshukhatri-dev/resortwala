@@ -49,8 +49,8 @@ class VendorCalendarController extends Controller
         $exists = Booking::where('PropertyId', $request->property_id)
             ->where('Status', '!=', 'cancelled')
             ->where(function($q) use ($request) {
-                $q->whereBetween('CheckInDate', [$request->start_date, $request->end_date])
-                  ->orWhereBetween('CheckOutDate', [$request->start_date, $request->end_date]);
+                $q->where('CheckInDate', '<', $request->end_date)
+                  ->where('CheckOutDate', '>', $request->start_date);
             })->exists();
 
         if ($exists) {

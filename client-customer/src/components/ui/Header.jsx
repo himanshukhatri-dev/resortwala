@@ -50,7 +50,7 @@ export default function Header() {
 
     return (
         <header
-            className={`fixed top-0 w-full z-30 transition-all duration-300 pointer-events-none ${scrolled || !isHomePage ? 'bg-white shadow-sm h-[120px]' : 'bg-transparent h-[100px]'
+            className={`fixed top-0 w-full z-30 transition-all duration-300 pointer-events-none ${scrolled || !isHomePage ? 'bg-white shadow-sm h-[80px]' : 'bg-transparent h-[100px]'
                 }`}
         >
             <div className="container mx-auto px-4 h-full flex items-center justify-between relative pointer-events-auto">

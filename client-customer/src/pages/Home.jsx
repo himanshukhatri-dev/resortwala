@@ -157,7 +157,7 @@ export default function Home() {
     return (
         <div className="pb-20">
             {/* 1. IMMERSIVE HERO */}
-            <div className="relative min-h-[250px] md:min-h-[400px] h-auto md:h-[50vh] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-12 pb-16 md:pt-16 md:pb-20">
+            <div className="relative min-h-[200px] md:min-h-[250px] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-20 pb-8 md:pt-24 md:pb-10">
                 {/* Background */}
                 <div className="absolute inset-0 overflow-hidden">
                     <img
@@ -171,36 +171,20 @@ export default function Home() {
 
                 {/* Content */}
                 <div className="relative z-10 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
-                    <h1 className="text-2xl md:text-7xl font-bold text-white mb-3 md:mb-6 drop-shadow-2xl font-serif italic tracking-wide leading-tight text-center">
+                    <h1 className="text-xl md:text-3xl font-bold text-white mb-1 md:mb-2 drop-shadow-2xl font-serif italic tracking-wide leading-tight text-center">
                         Find your peace in <br className="hidden md:block" />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-1 md:mt-2">paradise</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-0.5">paradise</span>
                     </h1>
 
-                    <p className="text-white/90 text-sm md:text-xl mb-4 md:mb-8 max-w-2xl text-center font-light drop-shadow-lg px-2">
-                        Discover luxury villas, water parks, and hidden gems across India's most beautiful destinations.
+                    <p className="text-white/90 text-xs md:text-sm mb-2 md:mb-4 max-w-xl text-center font-light drop-shadow-lg px-2">
+                        Discover luxury villas, water parks, and hidden gems across India.
                     </p>
 
-                    {/* CATEGORIES */}
-                    <div className="flex gap-3 overflow-x-auto no-scrollbar max-w-full pb-4 items-center justify-center">
-                        {CATEGORIES.map(cat => (
-                            <button
-                                key={cat.id}
-                                onClick={() => setActiveCategory(cat.id)}
-                                className={`flex items-center gap-2 px-6 py-3 rounded-full transition-all whitespace-nowrap backdrop-blur-xl border ${activeCategory === cat.id
-                                    ? 'bg-white/20 text-white shadow-2xl scale-105 border-white/50'
-                                    : 'bg-black/20 text-white/80 hover:bg-black/40 border-white/10'
-                                    }`}
-                            >
-                                <span className="text-lg">{cat.icon}</span>
-                                <span className="font-medium text-sm tracking-wide">{cat.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                    {/* CATEGORIES - Handled by SearchBar now */}
+                    <div className="mb-2"></div>
 
-                {/* SEARCH BAR - Pulled up into Hero */}
-                <div className="absolute -bottom-10 left-0 right-0 z-40 flex justify-center px-4">
-                    <div className="w-full max-w-5xl h-[80px]">
+                    {/* SEARCH BAR - Integrated into Hero Flow */}
+                    <div className="w-full max-w-4xl h-auto scale-90 md:scale-100 origin-top">
                         <SearchBar
                             onSearch={handleSearch}
                             isSticky={scrolled}
@@ -208,16 +192,17 @@ export default function Home() {
                             categories={CATEGORIES}
                             activeCategory={activeCategory}
                             onCategoryChange={setActiveCategory}
+                            compact={true}
                         />
                     </div>
                 </div>
             </div>
 
-            {/* 3. SPLIT LAYOUT (Map + List) */}
-            <div ref={resultsRef} className="container mx-auto px-4 py-6 min-h-[50vh] scroll-mt-28 mt-8">
+            {/* 3. COLUMNS LAYOUT (Filter + List + Map) */}
+            <div ref={resultsRef} className="container mx-auto px-4 py-6 min-h-[50vh] scroll-mt-28 mt-4">
 
-                {/* DYNAMIC HEADER - Only Visible on Mobile or List Mode specific areas */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-2 pb-2">
+                {/* DYNAMIC HEADER */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 pb-2">
                     <div>
                         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 font-serif">
                             {searchParams?.location
@@ -257,10 +242,15 @@ export default function Home() {
                         <p className="text-gray-400 animate-pulse">Loading amazing places...</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col lg:flex-row gap-6 relative items-start">
+                    <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr_350px] gap-6 relative items-start">
 
-                        {/* LEFT COLUMN: Property List */}
-                        <div className={`w-full lg:w-[65%] lg:pr-2 ${viewMode === 'map' ? 'hidden lg:block' : 'block'}`}>
+                        {/* LEFT COLUMN: Filters (Sticky) */}
+                        <div className="hidden lg:block sticky top-[90px] h-[calc(100vh-100px)] overflow-y-auto no-scrollbar">
+                            <FilterBar onFilterChange={setAdvancedFilters} />
+                        </div>
+
+                        {/* MIDDLE COLUMN: Property List */}
+                        <div className={`w-full ${viewMode === 'map' ? 'hidden lg:block' : 'block'}`}>
                             {filteredProperties.length > 0 ? (
                                 <div className="flex flex-col gap-6">
                                     <AnimatePresence mode='popLayout'>
@@ -287,14 +277,9 @@ export default function Home() {
                             )}
                         </div>
 
-                        {/* RIGHT COLUMN: Filter + Map (Sticky) */}
-                        <div className={`w-full lg:w-[35%] text-black ${viewMode === 'list' ? 'hidden lg:flex' : 'flex'} flex-col gap-4 sticky top-[90px] h-[calc(100vh-100px)] overflow-y-auto no-scrollbar pb-10`}>
-
-                            {/* FILTERS (Placed above Map) */}
-                            <FilterBar onFilterChange={setAdvancedFilters} />
-
-                            {/* MAP */}
-                            <div className="w-full flex-grow min-h-[400px] rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
+                        {/* RIGHT COLUMN: Map (Sticky) */}
+                        <div className={`w-full lg:block ${viewMode === 'list' ? 'hidden' : 'block'} sticky top-[90px] h-[calc(100vh-100px)]`}>
+                            <div className="w-full h-full rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
                                 <MapView properties={filteredProperties} />
                             </div>
                         </div>

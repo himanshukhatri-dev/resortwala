@@ -39,8 +39,14 @@ class VendorPropertyController extends Controller
 
         $validated = $request->validate([
             'Name' => 'required|string|max:255',
+            'ShortName' => 'nullable|string|max:255',
             'Location' => 'required|string|max:255',
+            'CityName' => 'nullable|string|max:255',
             'Price' => 'required|numeric|min:0',
+            'ContactPerson' => 'nullable|string|max:255',
+            'MobileNo' => 'nullable|string|max:20',
+            'Email' => 'nullable|email|max:255',
+            'Website' => 'nullable|string|max:255',
             'ShortDescription' => 'nullable|string',
             'LongDescription' => 'nullable|string',
             'Address' => 'nullable|string',
@@ -94,8 +100,14 @@ class VendorPropertyController extends Controller
 
         $validated = $request->validate([
             'Name' => 'sometimes|string|max:255',
+            'ShortName' => 'nullable|string|max:255',
             'Location' => 'sometimes|string|max:255',
+            'CityName' => 'nullable|string|max:255',
             'Price' => 'sometimes|numeric|min:0',
+            'ContactPerson' => 'nullable|string|max:255',
+            'MobileNo' => 'nullable|string|max:20',
+            'Email' => 'nullable|email|max:255',
+            'Website' => 'nullable|string|max:255',
             'ShortDescription' => 'nullable|string',
             'LongDescription' => 'nullable|string',
             'Address' => 'nullable|string',

@@ -228,85 +228,78 @@ export default function PublicPropertyCalendar() {
     if (loading) return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Loading Availability...</div>;
 
     return (
-        <div className="container mx-auto p-2 md:p-4 min-h-screen pt-10 md:pt-24 pb-20">
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-5xl mx-auto border border-gray-100">
-                {/* Clean Header with Big Logo */}
-                <div className="p-4 pb-0 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                        <div className="w-20 h-20 mb-2 flex items-center justify-center">
-                            <img src="/logo_booked.png" alt="ResortWala" className="w-full h-full object-contain drop-shadow-sm" />
+        <div className="h-screen flex flex-col bg-white overflow-hidden">
+            {/* COMPACT CLEAN HEADER */}
+            <div className="flex-none p-2 border-b border-gray-100 bg-white z-10 shadow-sm">
+                <div className="flex items-center justify-between max-w-7xl mx-auto w-full px-2 md:px-4">
+                    {/* Left: Branding */}
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
+                            <img src="/logo_booked.png" alt="ResortWala" className="w-full h-full object-contain" />
                         </div>
-
-                        {/* Clickable Property Name */}
-                        <a
-                            href={`/property/${property?.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-2xl md:text-3xl font-serif mb-2 tracking-wide text-gray-900 font-bold hover:text-primary underline decoration-dotted decoration-gray-300 hover:decoration-primary transition-all cursor-pointer"
-                        >
-                            {property?.name}
-                        </a>
-
-                        {/* Address & Contact */}
-                        <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-gray-500 text-sm mb-4">
-                            <span className="flex items-center gap-1.5"><span className="text-lg">📍</span> {property?.Address || property?.Location || "India"}</span>
-                            {property?.MobileNo && (
-                                <span className="flex items-center gap-1.5"><span className="text-lg">📞</span> {property?.MobileNo}</span>
-                            )}
+                        <div>
+                            <h1 className="text-lg md:text-xl font-bold text-gray-900 leading-tight truncate max-w-[200px] md:max-w-md">
+                                {property?.name}
+                            </h1>
+                            <p className="text-xs text-gray-500 flex items-center gap-1 truncate max-w-[200px] md:max-w-md">
+                                <span>📍</span> {property?.Address || property?.Location || "India"}
+                            </p>
                         </div>
+                    </div>
 
-                        {/* Action Link (Just Location) */}
-                        <div className="flex flex-wrap justify-center gap-4">
-                            {(property?.GoogleMapLink || property?.Location) && (
-                                <a
-                                    href={property?.GoogleMapLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property?.Location)}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="px-6 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-xs font-bold transition-all text-gray-600 flex items-center gap-2"
-                                >
-                                    <span>📍</span> View Location
-                                </a>
-                            )}
-                        </div>
+                    {/* Right: Action */}
+                    <div>
+                        {(property?.GoogleMapLink || property?.Location) && (
+                            <a
+                                href={property?.GoogleMapLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property?.Location)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-xs font-bold transition-all text-gray-600 flex items-center gap-1.5"
+                            >
+                                <span>🗺️</span> <span className="hidden md:inline">View on Map</span>
+                            </a>
+                        )}
                     </div>
                 </div>
+            </div>
 
-                <div className="p-4 md:p-8">
-                    <div className="h-[500px] md:h-[600px] mb-8">
-                        <Calendar
-                            localizer={localizer}
-                            events={events}
-                            startAccessor="start"
-                            endAccessor="end"
-                            style={{ height: '100%', minHeight: '500px' }}
-                            selectable
-                            onSelectSlot={handleSelectSlot}
-                            eventPropGetter={eventStyleGetter}
-                            dayPropGetter={dayPropGetter}
-                            views={['month']}
-                            date={currentDate}
-                            onNavigate={handleNavigate}
-                            components={{
-                                toolbar: CustomToolbar,
-                                event: CustomEvent
-                            }}
-                        />
-                    </div>
+            {/* MAIN CALENDAR AREA - GROWS TO FILL */}
+            <div className="flex-1 relative w-full max-w-7xl mx-auto p-2 md:p-4 overflow-hidden flex flex-col">
+                <div className="flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-gray-100 p-2 md:p-4">
+                    <Calendar
+                        localizer={localizer}
+                        events={events}
+                        startAccessor="start"
+                        endAccessor="end"
+                        style={{ height: '100%' }}
+                        selectable
+                        onSelectSlot={handleSelectSlot}
+                        eventPropGetter={eventStyleGetter}
+                        dayPropGetter={dayPropGetter}
+                        views={['month']}
+                        date={currentDate}
+                        onNavigate={handleNavigate}
+                        components={{
+                            toolbar: CustomToolbar,
+                            event: CustomEvent
+                        }}
+                    />
+                </div>
 
-                    <div className="flex gap-4 text-xs md:text-sm justify-center flex-wrap">
-                        <div className="flex items-center gap-2"><div className="w-4 h-4 bg-red-50 border border-red-100 rounded flex items-center justify-center overflow-hidden"><img src="/logo_booked.png" className="w-full h-full object-contain opacity-50" /></div> Unavailable</div>
-                        <div className="flex items-center gap-2"><span className="w-4 h-4 bg-yellow-500 rounded"></span> Request Pending</div>
-                        <div className="flex items-center gap-2"><div className="w-4 h-4 bg-white border border-gray-300 rounded"></div> Available (Click to Book)</div>
-                    </div>
+                {/* COMPACT LEGEND */}
+                <div className="flex-none pt-2 flex gap-4 text-[10px] md:text-xs justify-center flex-wrap">
+                    <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-50 border border-red-100 rounded flex items-center justify-center overflow-hidden"><img src="/logo_booked.png" className="w-full h-full object-contain opacity-50" /></div> Unavailable</div>
+                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 bg-yellow-500 rounded"></span> Request Pending</div>
+                    <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-gray-300 rounded"></div> Available</div>
                 </div>
             </div>
 
             {/* Booking Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl p-8 max-w-md w-full animate-fade-up">
-                        <h2 className="text-2xl font-bold mb-4">Request Booking</h2>
-                        <p className="mb-4 text-gray-600">
+                    <div className="bg-white rounded-xl p-6 md:p-8 max-w-md w-full animate-fade-up shadow-2xl">
+                        <h2 className="text-xl md:text-2xl font-bold mb-4">Request Booking</h2>
+                        <p className="mb-4 text-gray-600 font-medium">
                             {format(selectedSlot.start, 'MMM dd')} - {format(selectedSlot.end, 'MMM dd, yyyy')}
                         </p>
 
@@ -315,7 +308,7 @@ export default function PublicPropertyCalendar() {
                                 <label className="block text-sm font-medium text-gray-700">Your Name</label>
                                 <input
                                     type="text"
-                                    className="w-full border p-2 rounded mt-1"
+                                    className="w-full border border-gray-300 p-2 rounded-lg mt-1 focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all"
                                     value={name}
                                     onChange={e => setName(e.target.value)}
                                     placeholder="John Doe"
@@ -326,7 +319,7 @@ export default function PublicPropertyCalendar() {
                                 <label className="block text-sm font-medium text-gray-700">Mobile Number</label>
                                 <input
                                     type="tel"
-                                    className="w-full border p-2 rounded mt-1"
+                                    className="w-full border border-gray-300 p-2 rounded-lg mt-1 focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all"
                                     value={mobile}
                                     onChange={e => setMobile(e.target.value)}
                                     placeholder="+91 9999999999"
@@ -338,13 +331,13 @@ export default function PublicPropertyCalendar() {
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="flex-1 px-4 py-2 border rounded text-gray-600 hover:bg-gray-50"
+                                    className="flex-1 px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
+                                    className="flex-1 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors shadow-md"
                                 >
                                     Send Request
                                 </button>
@@ -357,14 +350,14 @@ export default function PublicPropertyCalendar() {
             <a
                 href="/"
                 target="_blank"
-                className="fixed bottom-4 right-4 bg-white/90 backdrop-blur-md border border-gray-200 shadow-xl px-4 py-2 rounded-full flex items-center gap-3 z-50 hover:scale-105 transition-transform group"
+                className="fixed bottom-3 right-3 bg-white/90 backdrop-blur-md border border-gray-200 shadow-xl px-3 py-1.5 rounded-full flex items-center gap-2 z-50 hover:scale-105 transition-transform group"
             >
-                <div className="w-10 h-10 bg-white border border-gray-100 rounded-full flex items-center justify-center p-1 overflow-hidden">
+                <div className="w-8 h-8 bg-white border border-gray-100 rounded-full flex items-center justify-center p-1 overflow-hidden">
                     <img src="/logo_booked.png" alt="RW" className="w-full h-full object-contain" />
                 </div>
                 <div className="text-left">
-                    <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Powered By</div>
-                    <div className="text-xs font-bold text-gray-900 group-hover:text-primary transition-colors">ResortWala</div>
+                    <div className="text-[8px] text-gray-500 uppercase tracking-wider font-bold">Powered By</div>
+                    <div className="text-[10px] font-bold text-gray-900 group-hover:text-primary transition-colors">ResortWala</div>
                 </div>
             </a>
 
@@ -372,6 +365,10 @@ export default function PublicPropertyCalendar() {
                 .past-date .rbc-button-link {
                      color: #ccc !important;
                      pointer-events: none;
+                 }
+                /* Hide scrollbar within calendar if needed, but flex-1 should handle it */
+                .rbc-month-view {
+                    border: none;
                 }
             `}</style>
         </div>
