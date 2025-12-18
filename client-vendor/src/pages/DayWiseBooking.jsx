@@ -4,25 +4,28 @@ import { useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-
 import { useModal } from '../context/ModalContext';
 
 export default function DayWiseBooking() {
     const { token } = useAuth();
-    const { theme, setTheme } = useTheme();
     const { showConfirm, showSuccess, showError, showInfo } = useModal();
     const location = useLocation();
+
     const [selectedProperty, setSelectedProperty] = useState('');
     const [properties, setProperties] = useState([]);
     const [bookings, setBookings] = useState([]);
     const [holidays, setHolidays] = useState([]);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [loading, setLoading] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Freeze Modal State
     const [isFreezeModalOpen, setFreezeModalOpen] = useState(false);
     const [freezeDetails, setFreezeDetails] = useState({ year: null, month: null, day: null });
     const [freezeReason, setFreezeReason] = useState('');
+
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     useEffect(() => {
         fetchProperties();
@@ -42,12 +45,10 @@ export default function DayWiseBooking() {
             });
             setProperties(response.data);
 
-            // Check for query param
             const queryParams = new URLSearchParams(location.search);
             const propIdParam = queryParams.get('propertyId');
 
             if (propIdParam) {
-                // Verify user owns this property
                 const exists = response.data.find(p => p.PropertyId == propIdParam);
                 if (exists) {
                     setSelectedProperty(propIdParam);
@@ -55,7 +56,6 @@ export default function DayWiseBooking() {
                 }
             }
 
-            // Default to first property if no param or param invalid
             if (response.data.length > 0) {
                 setSelectedProperty(response.data[0].PropertyId);
             }
@@ -76,12 +76,9 @@ export default function DayWiseBooking() {
     const fetchBookings = async () => {
         setLoading(true);
         try {
-            // Fetch all bookings and filter by property client-side for now
-            // Ideal: API should support filtering
             const response = await axios.get('/api/vendor/bookings', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-
             const propertyBookings = response.data.filter(b =>
                 b.PropertyId == selectedProperty &&
                 b.Status !== 'cancelled' &&
@@ -96,28 +93,14 @@ export default function DayWiseBooking() {
     };
 
     const handleStatusUpdate = async (bookingId, newStatus) => {
-        const confirmed = await showConfirm(
-            'Update Status',
-            `Are you sure you want to ${newStatus === 'cancelled' ? 'cancel/unfreeze' : newStatus} this booking?`,
-            'Yes, Confirm',
-            'Cancel',
-            'warning'
-        );
-
+        const confirmed = await showConfirm('Update Status', `Are you sure you want to ${newStatus}?`, 'Confirm', 'Cancel');
         if (!confirmed) return;
-
         try {
-            await axios.post(`/api/vendor/bookings/${bookingId}/status`,
-                { status: newStatus },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            // Refresh bookings
+            await axios.post(`/api/vendor/bookings/${bookingId}/status`, { status: newStatus }, { headers: { Authorization: `Bearer ${token}` } });
             fetchBookings();
-            showSuccess('Updated', `Status updated to ${newStatus} successfully!`);
+            showSuccess('Updated', 'Status updated successfully!');
         } catch (error) {
-            console.error('Error updating status:', error);
-            showError('Error', 'Failed to update booking status');
+            showError('Error', 'Failed to update status');
         }
     };
 
@@ -133,9 +116,9 @@ export default function DayWiseBooking() {
 
     const submitFreeze = async () => {
         if (!freezeDetails.year || !selectedProperty) return;
-
         const { year, month, day } = freezeDetails;
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        // Next day for end_date logic
         const nextDate = new Date(year, month, day + 1);
         const nextDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
 
@@ -145,42 +128,55 @@ export default function DayWiseBooking() {
                 start_date: dateStr,
                 end_date: nextDateStr,
                 reason: freezeReason || 'Manual Freeze'
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            }, { headers: { Authorization: `Bearer ${token}` } });
+
             fetchBookings();
             setFreezeModalOpen(false);
             showSuccess('Frozen', 'Date successfully frozen/blocked.');
         } catch (error) {
-            console.error('Freeze error:', error);
-            showError('Freeze Failed', 'Failed to freeze date: ' + (error.response?.data?.message || error.message));
+            showError('Freeze Failed', 'Failed to freeze date.');
         }
     };
 
-    const getDaysInMonth = (date) => {
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const days = new Date(year, month + 1, 0).getDate();
-        const firstDay = new Date(year, month, 1).getDay();
-        return { days, firstDay };
+    const getSelectedPropDetails = () => {
+        return properties.find(p => p.PropertyId == selectedProperty) || {};
     };
 
-    const nextMonth = () => {
-        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+    const shareProperty = () => {
+        const prop = getSelectedPropDetails();
+        if (!prop.PropertyId) return;
+
+        const link = `https://resortwala.com/property/${prop.PropertyId}`;
+        const text = `🏡 *Check out this amazing property: ${prop.Name}*\n📍 ${prop.Location}\n\n🔗 *Book here:* ${link}\n\n✨ Contact us for best rates!`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
-    const prevMonth = () => {
-        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+    const shareAvailability = () => {
+        const prop = getSelectedPropDetails();
+        if (!prop.PropertyId) return;
+
+        const monthStr = `${monthNames[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
+        let text = `📅 *Availability Update: ${prop.Name}*\n🗓️ *${monthStr}*\n\n`;
+
+        const busyDates = [];
+        const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+        for (let d = 1; d <= daysInMonth; d++) {
+            const booking = isDateBooked(currentMonth.getFullYear(), currentMonth.getMonth(), d);
+            if (booking) busyDates.push({ date: d, status: booking.Status === 'blocked' ? 'Frozen ❄️' : 'Booked ✅' });
+        }
+
+        if (busyDates.length === 0) text += "✅ All dates available this month!";
+        else {
+            text += "🔴 *Busy Dates:*\n";
+            busyDates.forEach(item => text += `• ${item.date}: ${item.status}\n`);
+            text += "\n✅ All other dates empty.";
+        }
+        text += `\n\n🔗 ${`https://resortwala.com/property/${prop.PropertyId}`}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
     const isDateBooked = (year, month, day) => {
         const checkDate = new Date(year, month, day).setHours(0, 0, 0, 0);
-
-        // Find booking that covers this date
-        // Note: CheckOutDate usually means they leave that morning, so the night is NOT booked.
-        // We exclude the CheckoutDate from the "Booked" visualization slightly/logic specific.
-        // If user booked 14th to 15th. 14th is booked. 15th is free.
-
         return bookings.find(b => {
             const start = new Date(b.CheckInDate).setHours(0, 0, 0, 0);
             const end = new Date(b.CheckOutDate).setHours(0, 0, 0, 0);
@@ -193,649 +189,231 @@ export default function DayWiseBooking() {
         return holidays.find(h => h.date === dateStr);
     };
 
-    const { days, firstDay } = getDaysInMonth(currentMonth);
-    const monthNames = ["January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    ];
+    const daysArray = (() => {
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDayOfWeek = new Date(year, month, 1).getDay();
+        const arr = [];
+        for (let i = 0; i < firstDayOfWeek; i++) arr.push({ type: 'empty', id: `empty-${i}` });
+        for (let d = 1; d <= daysInMonth; d++) arr.push({ type: 'day', day: d, date: new Date(year, month, d) });
+        return arr;
+    })();
+
+    const propDetails = getSelectedPropDetails();
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-color)', }}>
-            <Sidebar activePage="day-wise-booking" />
+        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-color)', overflowX: 'hidden' }}>
+            <Sidebar activePage="day-wise-booking" isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
 
             <div className="main-content">
-                {/* Header - Sticky */}
-                <div className="day-wise-header" style={{
-                    marginBottom: '20px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    position: 'sticky',
-                    top: 0,
-                    backgroundColor: 'var(--bg-color)',
-                    zIndex: 100,
-                    paddingBottom: '15px',
-                    paddingTop: '5px',
-                    borderBottom: '1px solid rgba(0,0,0,0.05)',
-                    flexWrap: 'wrap', // Allow wrapping
-                    gap: '15px'
-                }}>
-                    <div>
-                        <h1 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-color)', marginBottom: '5px' }}>
-                            Day Wise Availability
-                        </h1>
-                        <p style={{ color: '#666', fontSize: '14px' }}>View month-by-month booking status</p>
-                    </div>
-
-                    <div className="header-controls" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <select
-                            value={theme}
-                            onChange={(e) => setTheme(e.target.value)}
-                            style={{
-                                padding: '10px',
-                                borderRadius: '10px',
-                                border: '1px solid #e0e0e0',
-                                backgroundColor: 'white',
-                                color: '#333',
-                                cursor: 'pointer',
-                                outline: 'none',
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
-                            }}
-                        >
-                            <option value="light">☀️</option>
-                            <option value="dark">🌙</option>
-                            <option value="website">🎨</option>
-                        </select>
-
-                        <div className="help-tip">
-                            ℹ️ Click empty date to <strong>Freeze</strong>
+                {/* Unified Header */}
+                <div className="sticky-header">
+                    <div className="header-top">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                            <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>☰</button>
+                            <div>
+                                <h1 className="page-title">{propDetails.Name || 'My Availability'}</h1>
+                                <p className="page-subtitle">{propDetails.Location || 'Manage your calendar'}</p>
+                            </div>
                         </div>
-
-                        <button
-                            onClick={() => {
-                                if (!bookings || bookings.length === 0) {
-                                    showInfo('No Data', 'No bookings to export for this month/property.');
-                                    return;
-                                }
-
-                                // CSV Headers
-                                const headers = ['BookingId', 'CustomerName', 'Mobile', 'CheckInDate', 'CheckOutDate', 'Guests', 'Status', 'TotalAmount'];
-
-                                // CSV Rows
-                                const rows = bookings.map(b => [
-                                    b.BookingId,
-                                    `"${b.CustomerName || ''}"`, // Quote strings to handle commas
-                                    `"${b.Mobile || ''}"`,
-                                    new Date(b.CheckInDate).toLocaleDateString(),
-                                    new Date(b.CheckOutDate).toLocaleDateString(),
-                                    b.Guests,
-                                    b.Status,
-                                    b.TotalAmount
-                                ]);
-
-                                // Combine headers and rows
-                                const csvContent = [
-                                    headers.join(','),
-                                    ...rows.map(r => r.join(','))
-                                ].join('\n');
-
-                                // Create download link
-                                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                                const url = URL.createObjectURL(blob);
-                                const link = document.createElement('a');
-                                link.setAttribute('href', url);
-                                link.setAttribute('download', `bookings_${selectedProperty}_${new Date().toISOString().split('T')[0]}.csv`);
-                                link.style.visibility = 'hidden';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                            }}
-                            style={{
-                                padding: '10px 16px',
-                                borderRadius: '10px',
-                                border: 'none',
-                                backgroundColor: '#2e7d32', // Excel/Sheet Green
-                                color: 'white',
-                                cursor: 'pointer',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                boxShadow: '0 4px 12px rgba(46, 125, 50, 0.2)'
-                            }}
-                            title="Export to CSV"
-                        >
-                            <span>📊</span> Export CSV
-                        </button>
-
-                        <div className="property-select-container">
-                            <select
-                                value={selectedProperty}
-                                onChange={e => setSelectedProperty(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 14px',
-                                    borderRadius: '10px',
-                                    border: '1px solid #e0e0e0',
-                                    fontSize: '14px',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-                                    outline: 'none',
-                                    cursor: 'pointer',
-                                    backgroundColor: 'white',
-                                    fontWeight: '500'
-                                }}
-                            >
+                        <div className="select-wrapper">
+                            <select className="styled-select" value={selectedProperty} onChange={e => setSelectedProperty(e.target.value)}>
                                 <option value="">Select Property</option>
-                                {properties.map(p => (
-                                    <option key={p.PropertyId} value={p.PropertyId}>{p.Name}</option>
-                                ))}
+                                {properties.map(p => <option key={p.PropertyId} value={p.PropertyId}>{p.Name}</option>)}
                             </select>
                         </div>
                     </div>
+
+                    {/* Action Bar */}
+                    <div className="action-bar-grid">
+                        <button onClick={shareProperty} className="action-btn share-prop">
+                            <span className="icon">🏡</span> Share Property
+                        </button>
+                        <button onClick={shareAvailability} className="action-btn share-cal">
+                            <span className="icon">📅</span> Share Calendar
+                        </button>
+                    </div>
+
+                    <div className="month-nav">
+                        <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="nav-btn">←</button>
+                        <h2 className="month-title">{monthNames[currentMonth.getMonth()]} <span>{currentMonth.getFullYear()}</span></h2>
+                        <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="nav-btn">→</button>
+                    </div>
                 </div>
 
-                {/* Calendar Container */}
-                <div style={{
-                    backgroundColor: 'white',
-                    borderRadius: '16px',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
-                    overflow: 'hidden',
-                    border: '1px solid #f0f0f0',
-                    position: 'relative',
-                    minHeight: '400px'
-                }}>
-                    {loading && (
-                        <div style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: 'rgba(255,255,255,0.8)',
-                            zIndex: 50,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            backdropFilter: 'blur(2px)'
-                        }}>
-                            <div className="spinner"></div>
-                            <p style={{ marginTop: '15px', color: 'var(--primary-color)', fontWeight: '600' }}>Loading Availability...</p>
+                {/* Calendar Content */}
+                <div className="calendar-container">
+                    {loading && <div className="loading-overlay"><div className="spinner"></div></div>}
+
+                    {/* Desktop Grid */}
+                    <div className="desktop-view">
+                        <div className="week-header">
+                            {weekDays.map((d, i) => <div key={d} className={`week-day ${i === 0 || i === 6 ? 'weekend' : ''}`}>{d}</div>)}
                         </div>
-                    )}
-                    {/* Calendar Controls - Sticky within container if needed, but top header is already sticky. 
-                        Let's keep this part of the card flow. */}
-                    <div style={{
-                        padding: '20px 30px',
-                        borderBottom: '1px solid #eee',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        backgroundColor: 'var(--sidebar-bg)'
-                    }}>
-                        <button onClick={prevMonth} className="nav-btn">
-                            ← Previous Month
-                        </button>
-                        <h2 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-color)' }}>
-                            {monthNames[currentMonth.getMonth()]} <span style={{ color: '#00bcd4' }}>{currentMonth.getFullYear()}</span>
-                        </h2>
-                        <button onClick={nextMonth} className="nav-btn">
-                            Next Month →
-                        </button>
+                        <div className="days-grid">
+                            {daysArray.map((item, idx) => {
+                                if (item.type === 'empty') return <div key={item.id} className="empty-cell" />;
+                                const day = item.day;
+                                const booking = isDateBooked(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                                const holiday = isHoliday(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                                const isToday = new Date().toDateString() === item.date.toDateString();
+                                const isWeekend = item.date.getDay() === 0 || item.date.getDay() === 6;
+
+                                return (
+                                    <div key={day} className={`day-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend-bg' : ''}`}
+                                        onClick={() => !booking && !holiday && handleFreezeDate(currentMonth.getFullYear(), currentMonth.getMonth(), day)}>
+                                        <div className="day-header"><span className={`day-number ${isToday ? 'active' : ''}`}>{day}</span>{holiday && <span>🎉</span>}</div>
+                                        {booking && (
+                                            <div className={`status-badge ${booking.Status}`}>
+                                                {booking.Status === 'blocked' ?
+                                                    <><span>❄️ Frozen</span><button className="del-btn" onClick={(e) => { e.stopPropagation(); handleStatusUpdate(booking.BookingId, 'cancelled') }}>×</button></>
+                                                    : booking.CustomerName}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
 
-                    {/* Week Days */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(7, 1fr)',
-                        backgroundColor: 'var(--hover-bg)',
-                        borderBottom: `1px solid var(--border-color)`
-                    }}>
-                        {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, index) => (
-                            <div key={d} style={{
-                                textAlign: 'center',
-                                fontWeight: '700',
-                                color: index === 0 || index === 6 ? '#d32f2f' : 'var(--text-color)', // Red for weekends
-                                padding: '15px 10px',
-                                fontSize: '13px',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px'
-                            }}>
-                                {d}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Days Grid */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(7, 1fr)',
-                        gridAutoRows: 'minmax(140px, auto)',
-                        backgroundColor: 'var(--bg-color)',
-                        className: 'calendar-grid' // Marker for CSS targeting
-                    }}>
-                        {Array(firstDay).fill(null).map((_, i) => (
-                            <div key={`empty-${i}`} style={{
-                                borderBottom: '1px solid var(--border-color)',
-                                borderRight: '1px solid var(--border-color)',
-                                backgroundColor: 'var(--hover-bg)'
-                            }} />
-                        ))}
-
-                        {Array(days).fill(null).map((_, i) => {
-                            const day = i + 1;
-                            const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-                            const dayOfWeek = dateObj.getDay(); // 0=Sun, 6=Sat
-
+                    {/* Mobile List View */}
+                    <div className="mobile-view">
+                        {daysArray.filter(d => d.type === 'day').map(item => {
+                            const day = item.day;
                             const booking = isDateBooked(currentMonth.getFullYear(), currentMonth.getMonth(), day);
                             const holiday = isHoliday(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-                            const isToday = new Date().getDate() === day && new Date().getMonth() === currentMonth.getMonth() && new Date().getFullYear() === currentMonth.getFullYear();
-
-                            // Determine background color
-                            let bgColor = 'white';
-                            if (isToday) bgColor = 'var(--hover-bg)';
-                            else if (booking && booking.Status === 'blocked') bgColor = 'var(--hover-bg-red)';
-                            else if (dayOfWeek === 0 || dayOfWeek === 6 || holiday) bgColor = '#ffebee'; // Red background for weekends/holidays
+                            const isToday = new Date().toDateString() === item.date.toDateString();
+                            const isWeekend = item.date.getDay() === 0 || item.date.getDay() === 6;
 
                             return (
-                                <div
-                                    key={day}
-                                    onClick={() => !booking && !holiday && handleFreezeDate(currentMonth.getFullYear(), currentMonth.getMonth(), day)}
-                                    style={{
-                                        borderBottom: '1px solid var(--border-color)',
-                                        borderRight: '1px solid var(--border-color)',
-                                        padding: '12px',
-                                        position: 'relative',
-                                        backgroundColor: bgColor,
-                                        cursor: !booking && !holiday ? 'pointer' : 'default',
-                                        transition: 'all 0.2s',
-                                        opacity: booking && booking.Status === 'blocked' ? 0.9 : 1
-                                    }}
-                                    className={!booking && !holiday ? "calendar-cell-hover" : ""}
-                                    title={!booking && !holiday ? "Click to Freeze Date" : ""}
-                                >
-                                    <div style={{
-                                        fontWeight: '700',
-                                        marginBottom: '8px',
-                                        color: (isToday ? 'var(--primary-color)' : (dayOfWeek === 0 || dayOfWeek === 6 || holiday ? '#d32f2f' : 'var(--text-color)')),
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        fontSize: '15px'
-                                    }}>
-                                        <span style={{
-                                            width: '28px',
-                                            height: '28px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            borderRadius: '50%',
-                                            backgroundColor: isToday ? 'var(--primary-color)' : 'transparent',
-                                            color: isToday ? 'white' : 'inherit'
-                                        }}>{day}</span>
+                                <div key={day} className={`mobile-row ${isToday ? 'highlight' : ''}`}>
+                                    <div className="date-box">
+                                        <span className="big-date">{day}</span>
+                                        <span className="small-day">{weekDays[item.date.getDay()]}</span>
                                     </div>
-
-                                    {holiday && (
-                                        <div style={{
-                                            marginBottom: '5px',
-                                            fontSize: '11px',
-                                            fontWeight: '600',
-                                            color: 'var(--primary-color)',
-                                            backgroundColor: 'var(--hover-bg)',
-                                            padding: '3px 8px',
-                                            borderRadius: '10px',
-                                            display: 'inline-block',
-                                            boxShadow: '0 2px 4px rgba(0, 150, 136, 0.1)'
-                                        }}>
-                                            🎉 {holiday.name}
-                                        </div>
-                                    )}
-
-                                    {booking && (
-                                        <div style={{
-                                            backgroundColor: booking.Status === 'blocked' ? 'var(--hover-bg-red)' : (booking.Status === 'pending' || !booking.Status ? 'var(--hover-bg)' : 'var(--bg-color)'),
-                                            borderLeft: `4px solid ${booking.Status === 'confirmed' ? 'var(--primary-color)' : booking.Status === 'blocked' ? 'var(--border-color)' : booking.Status === 'pending' || !booking.Status ? 'var(--primary-color)' : 'var(--primary-color)'}`,
-                                            padding: '8px 10px',
-                                            borderRadius: '6px',
-                                            fontSize: '12px',
-                                            marginTop: '5px',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
-                                        }}>
-                                            {booking.Status === 'blocked' ? (
-                                                <>
-                                                    <div style={{ fontWeight: '700', color: '#455a64', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                        ❄️ FROZEN
-                                                    </div>
-                                                    <div style={{ fontSize: '11px', color: '#78909c', margin: '2px 0' }}>{Math.floor(Math.random() * 1000) > 500 ? 'Maintenance' : 'Owner Block'}</div>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleStatusUpdate(booking.BookingId, 'cancelled');
-                                                        }}
-                                                        style={{
-                                                            marginTop: '6px',
-                                                            border: 'none',
-                                                            backgroundColor: 'var(--sidebar-bg)',
-                                                            color: 'var(--text-color)',
-                                                            border: `1px solid var(--border-color)`,
-                                                            padding: '3px 8px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '10px',
-                                                            fontWeight: '600',
-                                                            width: '100%'
-                                                        }}
-                                                    >
-                                                        Unfreeze
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div style={{ fontWeight: '600', color: '#333', marginBottom: '2px', fontSize: '13px' }}>
-                                                        {booking.CustomerName}
-                                                    </div>
-                                                    <div style={{ color: '#666', fontSize: '11px' }}>
-                                                        {booking.Guests} Guests
-                                                    </div>
-                                                    <div style={{
-                                                        marginTop: '5px',
-                                                        fontSize: '10px',
-                                                        textTransform: 'uppercase',
-                                                        fontWeight: 'bold',
-                                                        color: booking.Status === 'confirmed' ? '#0097a7' : '#f57f17'
-                                                    }}>
-                                                        {booking.Status || 'Pending'}
-                                                    </div>
-
-                                                    {/* Action Buttons for Pending Bookings */}
-                                                    {(!booking.Status || booking.Status === 'pending') && (
-                                                        <div style={{ display: 'flex', gap: '5px', marginTop: '8px' }}>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleStatusUpdate(booking.BookingId, 'confirmed');
-                                                                }}
-                                                                style={{
-                                                                    border: 'none',
-                                                                    backgroundColor: 'var(--primary-color)',
-                                                                    color: 'white',
-                                                                    borderRadius: '4px',
-                                                                    padding: '5px',
-                                                                    cursor: 'pointer',
-                                                                    fontSize: '10px',
-                                                                    flex: 1,
-                                                                    fontWeight: '600'
-                                                                }}
-                                                                title="Approve"
-                                                            >
-                                                                ✓
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleStatusUpdate(booking.BookingId, 'rejected');
-                                                                }}
-                                                                style={{
-                                                                    border: 'none',
-                                                                    backgroundColor: 'var(--hover-bg-red)',
-                                                                    color: 'var(--text-color)',
-                                                                    borderRadius: '4px',
-                                                                    padding: '5px',
-                                                                    cursor: 'pointer',
-                                                                    fontSize: '10px',
-                                                                    flex: 1,
-                                                                    fontWeight: '600'
-                                                                }}
-                                                                title="Reject"
-                                                            >
-                                                                ✕
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
+                                    <div className="info-box">
+                                        {holiday && <div className="tag holiday">🎉 {holiday.name}</div>}
+                                        {booking ? (
+                                            booking.Status === 'blocked' ?
+                                                <div className="status-row frozen">
+                                                    <span>❄️ Frozen</span>
+                                                    <button onClick={() => handleStatusUpdate(booking.BookingId, 'cancelled')}>Unfreeze</button>
+                                                </div> :
+                                                <div className="status-row booked">
+                                                    <span className="c-name">{booking.CustomerName}</span>
+                                                    <span className="tag booked">{booking.Status}</span>
+                                                </div>
+                                        ) : (
+                                            <div className="available" onClick={() => handleFreezeDate(currentMonth.getFullYear(), currentMonth.getMonth(), day)}>
+                                                <span style={{ color: '#10b981' }}>Available</span> <span className="plus">+</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })}
                     </div>
                 </div>
 
-                <style>{`
-                    .main-content {
-                        flex: 1;
-                        margin-left: 200px;
-                        padding: 30px;
-                        transition: all 0.2s;
-                        background-color: var(--bg-color);
-                    }
-                    .property-select-container {
-                        width: 250px;
-                    }
-                    .help-tip {
-                        font-size: 14px;
-                        color: var(--primary-color);
-                        background-color: var(--hover-bg);
-                        padding: 8px 16px;
-                        borderRadius: 20px;
-                        font-weight: 500;
-                        display: flex;
-                        alignItems: center;
-                        gap: 5px;
-                    }
-                    .nav-btn {
-                        background-color: var(--sidebar-bg);
-                        border: 1px solid var(--border-color);
-                        padding: 10px 20px;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-weight: 600;
-                        color: var(--text-color);
-                        transition: all 0.2s;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-                    }
-                    .nav-btn:hover {
-                        background-color: var(--hover-bg);
-                        color: var(--primary-color);
-                        border-color: var(--border-color);
-                        transform: translateY(-1px);
-                    }
-                    .calendar-cell-hover:hover {
-                        background-color: var(--hover-bg) !important;
-                        box-shadow: inset 0 0 0 2px var(--primary-color);
-                    }
-                    
-                    /* Modal Styles */
-                    .modal-overlay {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background-color: rgba(0,0,0,0.6);
-                        backdrop-filter: blur(4px);
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        z-index: 2000;
-                    }
-                    .modal-content {
-                        background-color: white;
-                        border-radius: 16px;
-                        padding: 30px;
-                        width: 90%;
-                        max-width: 420px;
-                        box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-                        animation: slideUp 0.3s ease;
-                    }
-                    @keyframes slideUp {
-                        from { transform: translateY(30px); opacity: 0; }
-                        to { transform: translateY(0); opacity: 1; }
-                    }
-                    .modal-title {
-                        margin: 0 0 10px 0;
-                        font-size: 22px;
-                        color: #333;
-                        font-weight: 700;
-                    }
-                    .modal-label {
-                        display: block;
-                        margin-bottom: 8px;
-                        font-weight: 600;
-                        font-size: 14px;
-                        color: #444;
-                    }
-                    .modal-input {
-                        width: 100%;
-                        padding: 12px;
-                        border: 1px solid #ddd;
-                        border-radius: 8px;
-                        margin-bottom: 24px;
-                        font-size: 15px;
-                        transition: border-color 0.2s;
-                    }
-                    .modal-input:focus {
-                        border-color: #00bcd4;
-                        outline: none;
-                        box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
-                    }
-                    .modal-actions {
-                        display: flex;
-                        gap: 12px;
-                        justify-content: flex-end;
-                    }
-                    .btn-primary {
-                        background-color: #00bcd4;
-                        color: white;
-                        border: none;
-                        padding: 10px 24px;
-                        border-radius: 8px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        transition: background-color 0.2s;
-                    }
-                    .btn-primary:hover {
-                        background-color: #0097a7;
-                    }
-                    .btn-secondary {
-                        background-color: #f5f5f5;
-                        color: #555;
-                        border: 1px solid #ddd;
-                        padding: 10px 24px;
-                        border-radius: 8px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        transition: all 0.2s;
-                    }
-                    .btn-secondary:hover {
-                        background-color: #eeeeee;
-                        color: #333;
-                    }
-
-                    @media (max-width: 768px) {
-                        .main-content {
-                            margin-left: 0 !important; /* Full width on mobile */
-                            padding: 15px !important;
-                            overflow-x: hidden;
-                        }
-                        
-                        .day-wise-header {
-                            flex-direction: column;
-                            align-items: flex-start !important;
-                            gap: 15px;
-                            position: relative !important; /* Unstick on very small screens if needed, or keep sticky but reduce size */
-                        }
-
-                        .header-controls {
-                            width: 100%;
-                            justify-content: space-between;
-                        }
-
-                        .property-select-container {
-                            flex: 1;
-                        }
-
-                        .help-tip {
-                            display: none; /* Save space on mobile */
-                        }
-                        
-                        h1 { font-size: 20px !important; margin-bottom: 2px !important; }
-                        p { font-size: 12px !important; margin: 0 !important; }
-
-                        h2 { font-size: 16px !important; }
-                        .nav-btn { padding: 6px 10px; font-size: 12px; }
-                        
-                        /* Calendar stack adjustments */
-                        div[style*="min-height: 600px"] {
-                            padding: 10px !important;
-                            min-height: auto !important;
-                        }
-                        
-                        div[style*="gridAutoRows: 'minmax(140px, auto)'"] {
-                             grid-auto-rows: minmax(100px, auto) !important; /* Smaller rows on mobile */
-                        }
-                    }
-
-                    /* Spinner Animation */
-                    .spinner {
-                        width: 40px;
-                        height: 40px;
-                        border: 4px solid rgba(0, 188, 212, 0.1);
-                        border-left-color: var(--primary-color);
-                        border-radius: 50%;
-                        animation: spin 1s linear infinite;
-                    }
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                `}</style>
-
-                {/* Freeze Modal */}
+                {/* Modal */}
                 {isFreezeModalOpen && (
                     <div className="modal-overlay" onClick={() => setFreezeModalOpen(false)}>
                         <div className="modal-content" onClick={e => e.stopPropagation()}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                                <span style={{ fontSize: '24px' }}>❄️</span>
-                                <h3 className="modal-title">Freeze Date</h3>
-                            </div>
-                            <p style={{ marginBottom: '25px', color: '#666', lineHeight: '1.5', fontSize: '14px' }}>
-                                This will block bookings for this date. Customers will see it as unavailable.
-                            </p>
-
-                            <label className="modal-label">Selected Date</label>
-                            <div style={{
-                                marginBottom: '20px',
-                                fontWeight: '700',
-                                fontSize: '18px',
-                                color: '#00bcd4',
-                                backgroundColor: '#e0f7fa',
-                                padding: '10px',
-                                borderRadius: '8px',
-                                textAlign: 'center'
-                            }}>
-                                {freezeDetails.year}-{String(freezeDetails.month + 1).padStart(2, '0')}-{String(freezeDetails.day).padStart(2, '0')}
-                            </div>
-
-                            <label className="modal-label">Reason (Optional)</label>
-                            <input
-                                className="modal-input"
-                                value={freezeReason}
-                                onChange={e => setFreezeReason(e.target.value)}
-                                placeholder="e.g. Maintenance, Personal Use..."
-                                autoFocus
-                            />
-
+                            <h3>Freeze {freezeDetails.day} {monthNames[freezeDetails.month]}</h3>
+                            <input className="modal-input" placeholder="Reason" value={freezeReason} onChange={e => setFreezeReason(e.target.value)} />
                             <div className="modal-actions">
-                                <button onClick={() => setFreezeModalOpen(false)} className="btn-secondary">Cancel</button>
-                                <button onClick={submitFreeze} className="btn-primary">Confirm Freeze</button>
+                                <button className="btn-sec" onClick={() => setFreezeModalOpen(false)}>Cancel</button>
+                                <button className="btn-pri" onClick={submitFreeze}>Freeze It</button>
                             </div>
                         </div>
                     </div>
                 )}
             </div>
-        </div >
+
+            <style>{`
+                /* General */
+                .main-content { flex: 1; margin-left: 70px; background: var(--bg-color); transition: margin-left 0.3s; }
+                .main-content:hover { margin-left: 240px; }
+                .sticky-header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.98); border-bottom: 1px solid #eee; padding: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+                
+                .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+                .page-title { font-size: 20px; font-weight: 800; margin: 0; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px; }
+                .page-subtitle { margin: 0; font-size: 13px; color: #64748b; }
+                .select-wrapper { min-width: 150px; }
+                .styled-select { padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; width: 100%; outline: none; background: white; font-weight: 500; }
+
+                /* Action Bar */
+                .action-bar-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+                .action-btn { border: none; padding: 12px; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; transition: transform 0.2s; }
+                .action-btn:active { transform: scale(0.98); }
+                .share-prop { background: #eff6ff; color: #2563eb; }
+                .share-cal { background: #f0fdf4; color: #16a34a; }
+                
+                .month-nav { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 10px; border-radius: 12px; }
+                .nav-btn { background: white; border: 1px solid #e2e8f0; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+                .month-title { margin: 0; font-size: 16px; font-weight: 700; color: #333; }
+
+                /* Desktop Grid */
+                .desktop-view { display: block; background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin: 20px; overflow: hidden; border: 1px solid #f1f5f9; }
+                .week-header { display: grid; grid-template-columns: repeat(7, 1fr); background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+                .week-day { padding: 12px; text-align: center; font-weight: 600; color: #64748b; font-size: 12px; text-transform: uppercase; }
+                .weekend { color: #ef4444; }
+                .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); background: white; }
+                .day-cell { min-height: 110px; border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; padding: 8px; cursor: pointer; transition: bg 0.2s; position: relative; }
+                .day-cell:hover { background: #f8fafc; }
+                .day-cell.today { background: #f0f9ff; }
+                .day-number { font-weight: 600; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 13px; }
+                .day-number.active { background: #3b82f6; color: white; }
+                
+                .status-badge { margin-top: 6px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
+                .status-badge.blocked { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+                .status-badge.confirmed { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+                .status-badge.pending { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+                .del-btn { border: none; background: none; color: inherit; font-size: 14px; cursor: pointer; padding: 0 4px; }
+
+                /* Mobile View */
+                .mobile-view { display: none; padding: 10px; }
+                .mobile-row { display: flex; background: white; margin-bottom: 10px; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; align-items: center; gap: 15px; }
+                .mobile-row.highlight { border: 2px solid #3b82f6; background: #eff6ff; }
+                .date-box { display: flex; flex-direction: column; align-items: center; min-width: 45px; border-right: 2px solid #f1f5f9; padding-right: 15px; }
+                .big-date { font-size: 22px; font-weight: 800; color: #1e293b; line-height: 1; }
+                .small-day { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 2px; }
+                
+                .info-box { flex: 1; }
+                .tag { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+                .tag.holiday { background: #f1f5f9; color: #64748b; margin-bottom: 4px; }
+                .tag.booked { background: #dcfce7; color: #166534; margin-left: auto; }
+                
+                .status-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+                .status-row.frozen { color: #ef4444; font-weight: 600; font-size: 14px; }
+                .status-row.frozen button { background: white; border: 1px solid #ef4444; color: #ef4444; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+                .c-name { font-weight: 600; color: #333; font-size: 14px; }
+                
+                .available { font-weight: 600; display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 5px 0; }
+                .plus { background: #dcfce7; color: #15803d; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+                .mobile-menu-btn { display: none; background: none; border: none; font-size: 24px; color: #333; cursor: pointer; }
+
+                /* Modal */
+                .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+                .modal-content { background: white; width: 90%; max-width: 350px; padding: 25px; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+                .modal-input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #cbd5e1; border-radius: 8px; }
+                .modal-actions { display: flex; gap: 10px; }
+                .btn-pri { background: #3b82f6; color: white; flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: 600; }
+                .btn-sec { background: #f1f5f9; color: #475569; flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: 600; }
+
+                @media (max-width: 768px) {
+                    .main-content { margin-left: 0; }
+                    .main-content:hover { margin-left: 0; }
+                    .mobile-menu-btn { display: block; }
+                    .desktop-view { display: none; }
+                    .mobile-view { display: block; }
+                    .header-top { flex-direction: column; align-items: stretch; gap: 10px; }
+                    .header-top > div:first-child { display: flex; justify-content: flex-start; align-items: center; }
+                    .select-wrapper { width: 100%; }
+                }
+            `}</style>
+        </div>
     );
 }

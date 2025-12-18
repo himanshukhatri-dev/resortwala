@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { FaEdit, FaStar, FaGoogle, FaMapMarkerAlt, FaCreditCard, FaHotel, FaShieldAlt } from 'react-icons/fa';
-import { format } from 'date-fns';
+import { format, eachDayOfInterval, startOfDay, subDays, getDay } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 
 export default function BookingPage() {
@@ -36,6 +36,7 @@ export default function BookingPage() {
     const [couponError, setCouponError] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [bookingStatus, setBookingStatus] = useState('idle'); // idle, loading, success, error
+    const [holidays, setHolidays] = useState([]);
 
     // Defaults from location state or mock
     const checkIn = locationState.checkIn ? new Date(locationState.checkIn) : new Date();
@@ -55,6 +56,16 @@ export default function BookingPage() {
             }
         };
         fetchProperty();
+
+        // Fetch Holidays
+        const fetchHolidays = async () => {
+            try {
+                const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+                const res = await axios.get(`${baseURL}/api/holidays?property_id=${id}`);
+                setHolidays(res.data);
+            } catch (err) { console.error("Error fetching holidays", err); }
+        };
+        if (id) fetchHolidays();
     }, [id]);
 
     const handleCouponApply = async () => {
@@ -74,7 +85,54 @@ export default function BookingPage() {
     };
 
     const calculateTotal = () => {
-        const basePrice = (property?.PricePerNight || 5000) * nights;
+        let basePrice = 0;
+
+        if (property) {
+            // Logic: Iterate through dates from checkIn to checkOut - 1 day
+            const start = startOfDay(checkIn);
+            const end = startOfDay(checkOut);
+
+            // Generate range of dates involved (excluding checkout day)
+            // If stay is 1 night (14th to 15th), we need key for 14th.
+            const nightDates = eachDayOfInterval({ start, end: subDays(end, 1) });
+
+            nightDates.forEach(date => {
+                const dayOfWeek = getDay(date); // 0=Sun, 1=Mon... 6=Sat
+                let nightlyRate = Number(property.PricePerNight) || 5000; // Fallback
+                let appliedHoliday = null;
+
+                // Check Overrides
+                if (holidays && holidays.length > 0) {
+                    appliedHoliday = holidays.find(h => {
+                        const from = new Date(h.from_date);
+                        const to = new Date(h.to_date);
+                        from.setHours(0, 0, 0, 0);
+                        to.setHours(23, 59, 59, 999);
+
+                        const checking = new Date(date);
+                        checking.setHours(12, 0, 0, 0);
+                        return checking >= from && checking <= to;
+                    });
+                }
+
+                if (appliedHoliday) {
+                    nightlyRate = Number(appliedHoliday.base_price);
+                } else {
+                    if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+                        if (property.price_mon_thu) nightlyRate = Number(property.price_mon_thu);
+                    } else if (dayOfWeek === 5 || dayOfWeek === 0) {
+                        if (property.price_fri_sun) nightlyRate = Number(property.price_fri_sun);
+                    } else if (dayOfWeek === 6) {
+                        if (property.price_sat) nightlyRate = Number(property.price_sat);
+                    }
+                }
+
+                basePrice += nightlyRate;
+            });
+        } else {
+            basePrice = 5000 * nights;
+        }
+
         const taxes = basePrice * 0.18; // 18% GST Mock
         let discount = 0;
 
@@ -119,13 +177,11 @@ export default function BookingPage() {
             };
 
             const res = await axios.post(`${baseURL}/api/bookings`, payload);
-            // alert(`Booking Confirmed! ID: ${res.data.booking.id}`);
 
-            // Store user identity for "My Bookings" (Guest Mode)
+            // Store user identity
             if (form.CustomerEmail) localStorage.setItem('user_email', form.CustomerEmail);
             if (form.CustomerMobile) localStorage.setItem('user_mobile', form.CustomerMobile);
 
-            // Navigate with state for Success Toast/Message
             navigate('/bookings', { state: { bookingSuccess: true } });
         } catch (err) {
             console.error(err);
@@ -153,7 +209,6 @@ export default function BookingPage() {
 
                     {/* LEFT COLUMN: FORM */}
                     <div className="space-y-8">
-                        {/* ... (Form Content Same) ... */}
 
                         {/* 1. Trip Details */}
                         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
@@ -293,7 +348,7 @@ export default function BookingPage() {
                             <div className="space-y-1">
                                 <h3 className="text-xl font-bold mb-4">Price details</h3>
                                 <div className="flex justify-between text-gray-600">
-                                    <span>₹{property.PricePerNight || 5000} x {nights} nights</span>
+                                    <span>Total Base Price ({nights} nights)</span>
                                     <span>₹{basePrice.toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between text-gray-600">

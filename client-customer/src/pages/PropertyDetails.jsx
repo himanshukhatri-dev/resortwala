@@ -18,6 +18,7 @@ export default function PropertyDetails() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [bookedDates, setBookedDates] = useState([]);
+    const [holidays, setHolidays] = useState([]);
 
     const [dateRange, setDateRange] = useState({
         from: urlParams.get('start') ? new Date(urlParams.get('start')) : undefined,
@@ -105,6 +106,19 @@ export default function PropertyDetails() {
             }
         };
         if (id) fetchBookedDates();
+    }, [id]);
+
+    // Fetch Holidays
+    useEffect(() => {
+        const fetchHolidays = async () => {
+            if (!id) return;
+            try {
+                const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+                const res = await axios.get(`${baseURL}/api/holidays?property_id=${id}`);
+                setHolidays(res.data);
+            } catch (err) { console.error("Error fetching holidays", err); }
+        };
+        fetchHolidays();
     }, [id]);
 
     // Close DatePicker on click outside
@@ -207,9 +221,56 @@ export default function PropertyDetails() {
     }
 
     // Calculations
+    const calculateTotalPrice = () => {
+        if (!dateRange.from || !dateRange.to) return 0;
+        let total = 0;
+        const start = dateRange.from;
+        // Iterate up to but not including end date
+        const days = differenceInDays(dateRange.to, dateRange.from);
+
+        for (let i = 0; i < days; i++) {
+            const currentDate = new Date(start);
+            currentDate.setDate(currentDate.getDate() + i);
+            const dayOfWeek = currentDate.getDay(); // 0=Sun, 1=Mon... 6=Sat
+
+            let nightlyRate = parseFloat(property.Price || property.ResortWalaRate || 0) || 15000;
+            let appliedHoliday = null;
+
+            // Check Holiday Overlay
+            if (holidays && holidays.length > 0) {
+                appliedHoliday = holidays.find(h => {
+                    const from = new Date(h.from_date);
+                    const to = new Date(h.to_date);
+                    from.setHours(0, 0, 0, 0);
+                    to.setHours(23, 59, 59, 999);
+
+                    // Reset current for comparison
+                    const checking = new Date(currentDate);
+                    checking.setHours(12, 0, 0, 0); // Mid-day to be safe
+
+                    return checking >= from && checking <= to;
+                });
+            }
+
+            if (appliedHoliday) {
+                nightlyRate = Number(appliedHoliday.base_price);
+            } else {
+                if (dayOfWeek >= 1 && dayOfWeek <= 4) { // Mon-Thu
+                    if (property.price_mon_thu) nightlyRate = Number(property.price_mon_thu);
+                } else if (dayOfWeek === 5 || dayOfWeek === 0) { // Fri, Sun
+                    if (property.price_fri_sun) nightlyRate = Number(property.price_fri_sun);
+                } else if (dayOfWeek === 6) { // Sat
+                    if (property.price_sat) nightlyRate = Number(property.price_sat);
+                }
+            }
+            total += nightlyRate;
+        }
+        return total;
+    };
+
     const price = parseFloat(property.Price || property.ResortWalaRate || 0) || 15000;
     const nights = (dateRange.from && dateRange.to) ? differenceInDays(dateRange.to, dateRange.from) : 0;
-    const totalBase = price * nights;
+    const totalBase = calculateTotalPrice();
     const cleaningFee = 2500;
     const total = totalBase + cleaningFee;
 

@@ -18,7 +18,10 @@ export default function AddProperty() {
         Facilities: '',
         MaxCapacity: '',
         CheckinDate: '',
-        CheckoutDate: ''
+        CheckoutDate: '',
+        price_mon_thu: '',
+        price_fri_sun: '',
+        price_sat: ''
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -58,120 +61,81 @@ export default function AddProperty() {
                     )}
 
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {/* Row 1: Name & Type */}
+                        {/* Row 1 */}
                         <div className="form-grid">
                             <div>
-                                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>Property Name *</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.Name}
-                                    onChange={e => setFormData({ ...formData, Name: e.target.value })}
-                                    style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                                />
+                                <label className="form-label">Property Name *</label>
+                                <input className="form-input" type="text" required value={formData.Name} onChange={e => setFormData({ ...formData, Name: e.target.value })} />
                             </div>
-
                             <div>
-                                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>Property Type *</label>
-                                <select
-                                    required
-                                    value={formData.PropertyType}
-                                    onChange={e => setFormData({ ...formData, PropertyType: e.target.value })}
-                                    style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                                >
+                                <label className="form-label">PropertyType *</label>
+                                <select className="form-input" required value={formData.PropertyType} onChange={e => setFormData({ ...formData, PropertyType: e.target.value })}>
                                     <option value="Villa">Villa</option>
                                     <option value="Waterpark">Waterpark</option>
                                 </select>
                             </div>
                         </div>
 
-                        {/* Row 2: Location (Full Width) */}
+                        {/* Row 2 */}
                         <div>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>Location *</label>
-                            <input
-                                type="text"
-                                required
-                                value={formData.Location}
-                                onChange={e => setFormData({ ...formData, Location: e.target.value })}
-                                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                            />
+                            <label className="form-label">Location *</label>
+                            <input className="form-input" type="text" required value={formData.Location} onChange={e => setFormData({ ...formData, Location: e.target.value })} />
                         </div>
 
                         {/* Row 3: Price & Capacity */}
                         <div className="form-grid">
                             <div>
-                                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>Price per Night (₹) *</label>
-                                <input
-                                    type="number"
-                                    required
-                                    min="0"
-                                    value={formData.Price}
-                                    onChange={e => setFormData({ ...formData, Price: e.target.value })}
-                                    style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                                />
+                                <label className="form-label">Default Price per Night (₹) *</label>
+                                <input className="form-input" type="number" required min="0" value={formData.Price} onChange={e => setFormData({ ...formData, Price: e.target.value })} />
                             </div>
-
                             <div>
-                                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>Max Capacity *</label>
-                                <input
-                                    type="number"
-                                    required
-                                    min="1"
-                                    value={formData.MaxCapacity}
-                                    onChange={e => setFormData({ ...formData, MaxCapacity: e.target.value })}
-                                    style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                                />
+                                <label className="form-label">Max Capacity *</label>
+                                <input className="form-input" type="number" required min="1" value={formData.MaxCapacity} onChange={e => setFormData({ ...formData, MaxCapacity: e.target.value })} />
                             </div>
                         </div>
 
-                        {/* Row 4: Short Description */}
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>Short Description</label>
-                            <input
-                                type="text"
-                                value={formData.ShortDescription}
-                                onChange={e => setFormData({ ...formData, ShortDescription: e.target.value })}
-                                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                            />
+                        {/* Dynamic Pricing Section */}
+                        <div style={{ background: '#f9fafb', padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                            <label style={{ display: 'block', marginBottom: '10px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>Dynamic Pricing (Optional)</label>
+                            <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
+                                <div>
+                                    <label className="form-label" style={{ fontSize: '12px' }}>Mon-Thu Price</label>
+                                    <input className="form-input" type="number" min="0" placeholder="Default" value={formData.price_mon_thu} onChange={e => setFormData({ ...formData, price_mon_thu: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="form-label" style={{ fontSize: '12px' }}>Fri & Sun Price</label>
+                                    <input className="form-input" type="number" min="0" placeholder="Default" value={formData.price_fri_sun} onChange={e => setFormData({ ...formData, price_fri_sun: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="form-label" style={{ fontSize: '12px' }}>Saturday Price</label>
+                                    <input className="form-input" type="number" min="0" placeholder="Default" value={formData.price_sat} onChange={e => setFormData({ ...formData, price_sat: e.target.value })} />
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Row 5: Long Description */}
+                        {/* Row 4 */}
                         <div>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>Long Description</label>
-                            <textarea
-                                rows="4"
-                                value={formData.LongDescription}
-                                onChange={e => setFormData({ ...formData, LongDescription: e.target.value })}
-                                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', resize: 'vertical' }}
-                            />
+                            <label className="form-label">Short Description</label>
+                            <input className="form-input" type="text" value={formData.ShortDescription} onChange={e => setFormData({ ...formData, ShortDescription: e.target.value })} />
                         </div>
 
-                        {/* Row 6: Facilities */}
+                        {/* Row 5 */}
                         <div>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500' }}>Facilities (comma-separated)</label>
-                            <input
-                                type="text"
-                                placeholder="WiFi, Pool, Parking, Restaurant"
-                                value={formData.Facilities}
-                                onChange={e => setFormData({ ...formData, Facilities: e.target.value })}
-                                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
-                            />
+                            <label className="form-label">Long Description</label>
+                            <textarea className="form-input" rows="4" value={formData.LongDescription} onChange={e => setFormData({ ...formData, LongDescription: e.target.value })} style={{ resize: 'vertical' }} />
+                        </div>
+
+                        {/* Row 6 */}
+                        <div>
+                            <label className="form-label">Facilities (comma-separated)</label>
+                            <input className="form-input" type="text" placeholder="WiFi, Pool, Parking..." value={formData.Facilities} onChange={e => setFormData({ ...formData, Facilities: e.target.value })} />
                         </div>
 
                         <div style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="btn"
-                                style={{ flex: 1, padding: '14px', fontSize: '16px', fontWeight: '600' }}
-                            >
+                            <button type="submit" disabled={loading} className="btn" style={{ flex: 1, padding: '14px', fontSize: '16px', fontWeight: '600' }}>
                                 {loading ? 'Creating...' : 'Create Property'}
                             </button>
-                            <button
-                                type="button"
-                                onClick={() => navigate('/properties')}
-                                style={{ flex: 1, padding: '14px', fontSize: '16px', fontWeight: '600', backgroundColor: 'transparent', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer' }}
-                            >
+                            <button type="button" onClick={() => navigate('/properties')} style={{ flex: 1, padding: '14px', fontSize: '16px', fontWeight: '600', background: 'transparent', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer' }}>
                                 Cancel
                             </button>
                         </div>
@@ -179,18 +143,12 @@ export default function AddProperty() {
                 </div>
             </div>
             <style>{`
-                .form-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 20px;
-                }
+                .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+                .form-label { display: block; margin-bottom: 6px; fontSize: 14px; font-weight: 500; }
+                .form-input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; fontSize: 14px; }
+                .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
                 @media (max-width: 768px) {
-                    .form-grid {
-                        grid-template-columns: 1fr;
-                    }
-                    .container {
-                        padding: 20px 10px !important;
-                    }
+                    .form-grid { grid-template-columns: 1fr !important; }
                 }
             `}</style>
         </div>

@@ -59,6 +59,9 @@ Route::get('/ping', function () {
 
 Route::get('/health', [StatusController::class, 'check']); // Alias for status
 
+// Public Holiday Route (for pricing calculation)
+Route::get('/holidays', [\App\Http\Controllers\HolidayController::class, 'index']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vendor/profile', [\App\Http\Controllers\VendorController::class, 'profile']);
     Route::put('/vendor/profile', [\App\Http\Controllers\VendorController::class, 'updateProfile']);
@@ -66,12 +69,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vendor/stats', [\App\Http\Controllers\VendorController::class, 'getStats']);
     Route::get('/vendor/bookings', [\App\Http\Controllers\VendorController::class, 'getBookings']);
     
-    Route::get('/holidays', [\App\Http\Controllers\HolidayController::class, 'index']);
+    Route::get('/vendor/bookings', [\App\Http\Controllers\VendorController::class, 'getBookings']);
 
     // Protected routes
     Route::post('/vendor/bookings/{id}/status', [\App\Http\Controllers\VendorController::class, 'updateBookingStatus']);
     Route::post('/vendor/bookings/freeze', [\App\Http\Controllers\VendorController::class, 'freezeDate']);
     Route::post('/holidays', [\App\Http\Controllers\HolidayController::class, 'store']);
+    Route::delete('/holidays/{id}', [\App\Http\Controllers\HolidayController::class, 'destroy']);
 
     // Vendor Property Management
     Route::get('/vendor/properties', [\App\Http\Controllers\VendorPropertyController::class, 'index']);

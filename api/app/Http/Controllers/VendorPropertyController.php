@@ -50,6 +50,9 @@ class VendorPropertyController extends Controller
             'Occupancy' => 'nullable|string',
             'CheckinDate' => 'nullable|date',
             'CheckoutDate' => 'nullable|date',
+            'price_mon_thu' => 'nullable|numeric|min:0',
+            'price_fri_sun' => 'nullable|numeric|min:0',
+            'price_sat' => 'nullable|numeric|min:0',
         ]);
 
         $property = PropertyMaster::create([
@@ -94,6 +97,9 @@ class VendorPropertyController extends Controller
             'Occupancy' => 'nullable|string',
             'CheckinDate' => 'nullable|date',
             'CheckoutDate' => 'nullable|date',
+            'price_mon_thu' => 'nullable|numeric|min:0',
+            'price_fri_sun' => 'nullable|numeric|min:0',
+            'price_sat' => 'nullable|numeric|min:0',
         ]);
 
         $property->update($validated);

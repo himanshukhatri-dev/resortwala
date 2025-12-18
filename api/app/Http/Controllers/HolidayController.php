@@ -30,4 +30,11 @@ class HolidayController extends Controller
         $holiday = \App\Models\Holiday::create($validated);
         return response()->json($holiday, 201);
     }
+
+    public function destroy($id)
+    {
+        $holiday = \App\Models\Holiday::findOrFail($id);
+        $holiday->delete();
+        return response()->json(['message' => 'Holiday deleted successfully']);
+    }
 }
