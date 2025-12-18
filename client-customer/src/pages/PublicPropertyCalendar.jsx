@@ -7,8 +7,7 @@ import startOfWeek from 'date-fns/startOfWeek';
 import getDay from 'date-fns/getDay';
 import enUS from 'date-fns/locale/en-US';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-// import axios from 'axios'; // We need a configured axios or fetch
-import { FaCheck, FaTimes } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({
@@ -113,7 +112,7 @@ export default function PublicPropertyCalendar() {
         if (event.status === 'confirmed' || event.status === 'locked') {
             return {
                 style: {
-                    backgroundColor: 'transparent', // We'll handle background in the component
+                    backgroundColor: 'transparent',
                     padding: 0,
                     outline: 'none',
                     boxShadow: 'none'
@@ -124,21 +123,40 @@ export default function PublicPropertyCalendar() {
         return { style: { backgroundColor } };
     };
 
+    // Custom coloring for past dates using dayPropGetter
+    const dayPropGetter = (date) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (date < today) {
+            return {
+                style: {
+                    backgroundColor: '#f9fafb',
+                    color: '#ccc',
+                    pointerEvents: 'none', // Effectively disables clicking
+                },
+                className: 'past-date'
+            };
+        }
+        return {};
+    };
+
     const CustomEvent = ({ event }) => {
         const isBooked = event.status === 'confirmed' || event.status === 'locked';
 
         if (isBooked) {
             return (
                 <div className="relative w-full h-full group flex items-center justify-center">
-                    {/* Fancy Container for Logo */}
+                    {/* Fancy Container for Logo - RED Background as requested */}
                     <div className="w-full h-full bg-red-50 border border-red-100 rounded-md overflow-hidden relative flex items-center justify-center">
+                        {/* Logo with slight opacity */}
                         <img
                             src="/logo_booked.png"
                             alt="Booked"
-                            className="w-auto h-[80%] object-contain opacity-90 transition-transform duration-300 group-hover:scale-110"
+                            className="w-auto h-[70%] object-contain opacity-50 transition-transform duration-300 group-hover:scale-110"
                         />
-                        {/* Diagonal 'Booked' Text Overlay (Optional, visually nice) */}
-                        <div className="absolute inset-0 bg-red-500/5 mix-blend-multiply" />
+                        {/* Red Overlay for 'Unavailable' feel */}
+                        <div className="absolute inset-0 bg-red-100/20 mix-blend-multiply" />
                     </div>
 
                     {/* HOVER TOOLTIP */}
@@ -173,34 +191,36 @@ export default function PublicPropertyCalendar() {
             toolbar.onNavigate('NEXT');
         };
 
-        const goToCurrent = () => {
-            toolbar.onNavigate('TODAY');
-        };
-
         const label = () => {
             const date = toolbar.date;
             return (
-                <span className="text-xl font-bold text-gray-800 capitalize">
+                <span className="text-xl md:text-2xl font-bold text-gray-800 capitalize" style={{ minWidth: '200px', textAlign: 'center' }}>
                     {format(date, 'MMMM yyyy')}
                 </span>
             );
         };
 
         return (
-            <div className="flex justify-between items-center mb-6 px-2">
-                <div className="flex gap-2">
-                    <button onClick={goToBack} className="p-2 rounded-full hover:bg-gray-100 transition duration-200" title="Previous Month">
-                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+            <div className="flex justify-center items-center mb-4 px-2 relative">
+                <div className="flex items-center justify-between gap-4 bg-white shadow-sm px-6 py-2 rounded-full border border-gray-100 min-w-[300px]">
+                    <button
+                        onClick={goToBack}
+                        className="p-2 rounded-full hover:bg-gray-100 text-gray-800 hover:text-black transition-all duration-200"
+                        title="Previous Month"
+                    >
+                        <FaArrowLeft size={16} />
                     </button>
-                    <button onClick={goToCurrent} className="px-4 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition duration-200">
-                        Today
-                    </button>
-                    <button onClick={goToNext} className="p-2 rounded-full hover:bg-gray-100 transition duration-200" title="Next Month">
-                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+
+                    {label()}
+
+                    <button
+                        onClick={goToNext}
+                        className="p-2 rounded-full hover:bg-gray-100 text-gray-800 hover:text-black transition-all duration-200"
+                        title="Next Month"
+                    >
+                        <FaArrowRight size={16} />
                     </button>
                 </div>
-                <div>{label()}</div>
-                <div className="w-[100px]"></div> {/* Spacer for alignment */}
             </div>
         );
     };
@@ -208,62 +228,61 @@ export default function PublicPropertyCalendar() {
     if (loading) return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Loading Availability...</div>;
 
     return (
-        <div className="container mx-auto p-4 min-h-screen pt-24 pb-20">
+        <div className="container mx-auto p-2 md:p-4 min-h-screen pt-10 md:pt-24 pb-20">
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-5xl mx-auto border border-gray-100">
-                <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-8 relative overflow-hidden">
-                    <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left">
-                        {/* BIG LOGO */}
-                        <div className="w-24 h-24 md:w-32 md:h-32 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center p-6 md:p-8 border border-white/20 shadow-2xl shrink-0">
-                            <img src="/logo_booked.png" alt="Logo" className="w-full h-full object-contain drop-shadow-lg" />
+                {/* Clean Header with Big Logo */}
+                <div className="p-4 pb-0 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                        <div className="w-20 h-20 mb-2 flex items-center justify-center">
+                            <img src="/logo_booked.png" alt="ResortWala" className="w-full h-full object-contain drop-shadow-sm" />
                         </div>
 
-                        <div className="flex-1">
-                            <h1 className="text-3xl md:text-4xl font-serif mb-2 tracking-wide text-[#FF385C] font-bold">{property?.name}</h1>
+                        {/* Clickable Property Name */}
+                        <a
+                            href={`/property/${property?.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-2xl md:text-3xl font-serif mb-2 tracking-wide text-gray-900 font-bold hover:text-primary underline decoration-dotted decoration-gray-300 hover:decoration-primary transition-all cursor-pointer"
+                        >
+                            {property?.name}
+                        </a>
 
-                            {/* Address & Contact */}
-                            <div className="flex flex-col md:flex-row items-center md:items-start gap-4 text-gray-300 text-sm mb-6">
-                                <span className="flex items-center gap-1.5"><span className="text-xl">📍</span> {property?.Address || property?.Location || "India"}</span>
-                                {property?.MobileNo && (
-                                    <span className="flex items-center gap-1.5"><span className="text-xl">📞</span> {property?.MobileNo}</span>
-                                )}
-                            </div>
+                        {/* Address & Contact */}
+                        <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-gray-500 text-sm mb-4">
+                            <span className="flex items-center gap-1.5"><span className="text-lg">📍</span> {property?.Address || property?.Location || "India"}</span>
+                            {property?.MobileNo && (
+                                <span className="flex items-center gap-1.5"><span className="text-lg">📞</span> {property?.MobileNo}</span>
+                            )}
+                        </div>
 
-                            <p className="text-white/50 text-xs uppercase tracking-widest font-medium mb-4">Availability Calendar</p>
-
-                            <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                        {/* Action Link (Just Location) */}
+                        <div className="flex flex-wrap justify-center gap-4">
+                            {(property?.GoogleMapLink || property?.Location) && (
                                 <a
-                                    href={`/property/${property?.id}`}
+                                    href={property?.GoogleMapLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property?.Location)}`}
                                     target="_blank"
-                                    className="px-6 py-2.5 bg-white text-black hover:bg-gray-100 rounded-full text-sm font-bold transition-all shadow-lg flex items-center gap-2"
+                                    rel="noreferrer"
+                                    className="px-6 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full text-xs font-bold transition-all text-gray-600 flex items-center gap-2"
                                 >
-                                    <span>🏡</span> View Details
+                                    <span>📍</span> View Location
                                 </a>
-                                {(property?.GoogleMapLink || property?.Location) && (
-                                    <a
-                                        href={property?.GoogleMapLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property?.Location)}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="px-6 py-2.5 bg-black/30 hover:bg-black/50 border border-white/20 rounded-full text-sm font-medium transition-all backdrop-blur-sm text-white flex items-center gap-2"
-                                    >
-                                        <span>📍</span> View Location
-                                    </a>
-                                )}
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                <div className="p-8">
-                    <div className="h-[600px] mb-8">
+                <div className="p-4 md:p-8">
+                    <div className="h-[500px] md:h-[600px] mb-8">
                         <Calendar
                             localizer={localizer}
                             events={events}
                             startAccessor="start"
                             endAccessor="end"
-                            style={{ height: 600 }}
+                            style={{ height: '100%', minHeight: '500px' }}
                             selectable
                             onSelectSlot={handleSelectSlot}
                             eventPropGetter={eventStyleGetter}
+                            dayPropGetter={dayPropGetter}
                             views={['month']}
                             date={currentDate}
                             onNavigate={handleNavigate}
@@ -274,7 +293,7 @@ export default function PublicPropertyCalendar() {
                         />
                     </div>
 
-                    <div className="flex gap-4 text-sm justify-center">
+                    <div className="flex gap-4 text-xs md:text-sm justify-center flex-wrap">
                         <div className="flex items-center gap-2"><div className="w-4 h-4 bg-red-50 border border-red-100 rounded flex items-center justify-center overflow-hidden"><img src="/logo_booked.png" className="w-full h-full object-contain opacity-50" /></div> Unavailable</div>
                         <div className="flex items-center gap-2"><span className="w-4 h-4 bg-yellow-500 rounded"></span> Request Pending</div>
                         <div className="flex items-center gap-2"><div className="w-4 h-4 bg-white border border-gray-300 rounded"></div> Available (Click to Book)</div>
@@ -348,6 +367,13 @@ export default function PublicPropertyCalendar() {
                     <div className="text-xs font-bold text-gray-900 group-hover:text-primary transition-colors">ResortWala</div>
                 </div>
             </a>
+
+            <style>{`
+                .past-date .rbc-button-link {
+                     color: #ccc !important;
+                     pointer-events: none;
+                }
+            `}</style>
         </div>
     );
 }

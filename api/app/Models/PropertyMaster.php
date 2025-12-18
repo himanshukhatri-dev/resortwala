@@ -20,7 +20,14 @@ class PropertyMaster extends Model
         'IsVendorPropAvailable', 'IsPropertyUpdate', 'NoofRooms',
         'CheckinDate', 'CheckoutDate', 'Breakfast', 'Lunch', 'Dinner', 'HiTea',
         'MaxCapacity', 'vendor_id', 'is_approved', 'share_token',
-        'price_mon_thu', 'price_fri_sun', 'price_sat'
+        'price_mon_thu', 'price_fri_sun', 'price_sat',
+        'onboarding_data', 'video_url'
+    ];
+
+    protected $casts = [
+        'onboarding_data' => 'array',
+        'IsActive' => 'boolean',
+        'PropertyStatus' => 'boolean'
     ];
 
     public function vendor()

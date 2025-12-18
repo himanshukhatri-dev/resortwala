@@ -78,7 +78,7 @@ class VendorDataSeeder extends Seeder
             if ($property->images()->count() == 0) {
                 PropertyImage::create([
                     'property_id' => $property->PropertyId,
-                    'image_url' => $prop['Image'],
+                    'image_path' => $prop['Image'],
                     'is_primary' => true
                 ]);
             }

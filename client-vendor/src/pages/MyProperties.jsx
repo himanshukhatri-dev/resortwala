@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { useModal } from '../context/ModalContext';
 import { FaPlus, FaSearch, FaMapMarkerAlt, FaBed, FaUsers, FaEdit, FaCalendarAlt, FaTrash, FaChartLine, FaClipboardList, FaHome } from 'react-icons/fa';
+import Loader from '../components/Loader';
 
 export default function MyProperties() {
     const { token, user } = useAuth();
@@ -66,11 +67,7 @@ export default function MyProperties() {
         }
     };
 
-    if (loading) return (
-        <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 border-4 border-gray-200 border-t-primary rounded-full animate-spin"></div>
-        </div>
-    );
+    if (loading) return <Loader />;
 
     return (
         <div style={{ color: 'var(--text-color)', maxWidth: '1200px', margin: '0 auto', padding: '0 20px 40px' }}>
@@ -246,7 +243,7 @@ export default function MyProperties() {
                                 </div>
 
                                 {/* Actions */}
-                                <div style={{ marginTop: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '8px' }}>
+                                <div style={{ marginTop: 'auto', display: 'grid', gridTemplateColumns: 'minmax(80px, 1fr) minmax(80px, 1fr) auto', gap: '8px' }}>
                                     <button
                                         onClick={() => navigate(`/properties/edit/${property.PropertyId}`)}
                                         title="Edit Details"
@@ -273,20 +270,6 @@ export default function MyProperties() {
                                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--bg-color)'}
                                     >
                                         <FaCalendarAlt /> Cal
-                                    </button>
-
-                                    <button
-                                        onClick={() => navigate(`/day-wise-booking?propertyId=${property.PropertyId}`)}
-                                        title="Manage Bookings"
-                                        style={{
-                                            padding: '10px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-                                            backgroundColor: 'var(--bg-color)', color: '#1976d2', fontWeight: '600', fontSize: '13px',
-                                            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', transition: 'background-color 0.2s'
-                                        }}
-                                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#e3f2fd'}
-                                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--bg-color)'}
-                                    >
-                                        <FaClipboardList /> Book
                                     </button>
 
                                     <button

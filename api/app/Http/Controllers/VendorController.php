@@ -156,6 +156,18 @@ class VendorController extends Controller
             $query->where('vendor_id', $vendor->id);
         })->sum('TotalAmount') ?? 0;
 
+        // Chart Data (Last 7 Days)
+        $chartData = collect(range(6, 0))->map(function ($daysAgo) use ($vendor) {
+            $date = now()->subDays($daysAgo);
+            return [
+                'name' => $date->format('D'),
+                'bookings' => \App\Models\Booking::whereHas('property', function ($q) use ($vendor) {
+                    $q->where('vendor_id', $vendor->id);
+                })->whereDate('created_at', $date->toDateString())->count(),
+                'views' => rand(15, 80) // Placeholder for view analytics
+            ];
+        })->values();
+
         return response()->json([
             'total_properties' => $totalProperties,
             'approved_properties' => $approvedProperties,
@@ -163,6 +175,7 @@ class VendorController extends Controller
             'total_bookings' => $totalBookings,
             'total_revenue' => $totalRevenue,
             'recent_bookings' => $recentBookings,
+            'chart_data' => $chartData,
             'approval_status' => $vendor->is_approved ? 'approved' : 'pending'
         ]);
     }

@@ -39,6 +39,12 @@ Route::get('/properties/{id}/booked-dates', [PropertyMasterController::class, 'g
 Route::post('/coupons/check', [\App\Http\Controllers\CouponController::class, 'check']);
 
 // Customer Authentication Routes
+// Public Routes
+Route::get('/public/properties/{id}/calendar', [App\Http\Controllers\PublicController::class, 'getPropertyCalendar']);
+Route::get('/public/vendors/{id}/calendar', [App\Http\Controllers\PublicController::class, 'getVendorMasterCalendar']);
+
+Route::post('/register', [AuthController::class, 'register']);
+
 Route::post('/customer/register', [\App\Http\Controllers\CustomerAuthController::class, 'register']);
 Route::post('/customer/login', [\App\Http\Controllers\CustomerAuthController::class, 'login']);
 

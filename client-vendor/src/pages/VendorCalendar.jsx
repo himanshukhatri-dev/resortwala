@@ -165,34 +165,36 @@ export default function VendorCalendar() {
             toolbar.onNavigate('NEXT');
         };
 
-        const goToCurrent = () => {
-            toolbar.onNavigate('TODAY');
-        };
-
         const label = () => {
             const date = toolbar.date;
             return (
-                <span className="text-xl font-bold text-gray-800 capitalize" style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1f2937', textTransform: 'capitalize' }}>
+                <span className="text-2xl font-bold text-gray-800 capitalize" style={{ minWidth: '200px', textAlign: 'center' }}>
                     {format(date, 'MMMM yyyy')}
                 </span>
             );
         };
 
         return (
-            <div className="flex justify-between items-center mb-6 px-2" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingLeft: '0.5rem', paddingRight: '0.5rem' }}>
-                <div className="flex gap-2" style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={goToBack} className="p-2 rounded-full hover:bg-gray-100 transition duration-200" title="Previous Month" style={{ padding: '0.5rem', borderRadius: '9999px', transition: 'background-color 0.2s', border: 'none', background: 'transparent', cursor: 'pointer' }}>
-                        <svg className="w-5 h-5 text-gray-600" style={{ width: '1.25rem', height: '1.25rem', color: '#4b5563' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+            <div className="flex justify-center items-center mb-4 px-2 relative">
+                <div className="flex items-center justify-between gap-4 bg-white shadow-sm px-6 py-2 rounded-full border border-gray-100 min-w-[300px]">
+                    <button
+                        onClick={goToBack}
+                        className="p-2 rounded-full hover:bg-gray-100 text-gray-800 hover:text-black transition-all duration-200"
+                        title="Previous Month"
+                    >
+                        <FaArrowLeft size={16} />
                     </button>
-                    <button onClick={goToCurrent} className="px-4 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition duration-200" style={{ paddingLeft: '1rem', paddingRight: '1rem', paddingTop: '0.375rem', paddingBottom: '0.375rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151', backgroundColor: '#f3f4f6', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
-                        Today
-                    </button>
-                    <button onClick={goToNext} className="p-2 rounded-full hover:bg-gray-100 transition duration-200" title="Next Month" style={{ padding: '0.5rem', borderRadius: '9999px', transition: 'background-color 0.2s', border: 'none', background: 'transparent', cursor: 'pointer' }}>
-                        <svg className="w-5 h-5 text-gray-600" style={{ width: '1.25rem', height: '1.25rem', color: '#4b5563' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+
+                    {label()}
+
+                    <button
+                        onClick={goToNext}
+                        className="p-2 rounded-full hover:bg-gray-100 text-gray-800 hover:text-black transition-all duration-200"
+                        title="Next Month"
+                    >
+                        <FaArrowRight size={16} />
                     </button>
                 </div>
-                <div>{label()}</div>
-                <div style={{ width: '100px' }}></div> {/* Spacer */}
             </div>
         );
     };
@@ -203,26 +205,40 @@ export default function VendorCalendar() {
         <div className="container mx-auto p-4 min-h-screen pt-24 pb-20" style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-5xl mx-auto border border-gray-100" style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', overflow: 'hidden', border: '1px solid #f3f4f6' }}>
 
-                {/* Header Section with Gradient */}
-                <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-8 text-center relative overflow-hidden" style={{ background: 'linear-gradient(to right, #111827, #1f2937)', color: 'white', padding: '2rem', textAlign: 'center', position: 'relative' }}>
-                    <div className="relative z-10" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ textAlign: 'left' }}>
-                            <h1 className="text-3xl font-serif mb-2 tracking-wide text-[#FF385C]" style={{ fontSize: '1.875rem', fontFamily: 'serif', marginBottom: '0.5rem', letterSpacing: '0.025em', color: '#FF385C', margin: 0 }}>{property?.name}</h1>
-                            <p className="text-gray-300 text-sm uppercase tracking-widest font-medium" style={{ color: '#d1d5db', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 500, margin: 0 }}>Manage Availability (Vendor)</p>
-                        </div>
-                        <button
-                            onClick={shareOnWhatsapp}
+                {/* Header Section with Logo */}
+                <div className="p-4 pb-0 text-center relative">
+                    {/* Share Button (Top Right) */}
+                    <button
+                        onClick={shareOnWhatsapp}
+                        style={{
+                            position: 'absolute',
+                            top: '1rem',
+                            right: '1rem',
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            backgroundColor: '#25D366', color: 'white',
+                            padding: '8px 16px', borderRadius: '50px',
+                            border: 'none', cursor: 'pointer',
+                            fontWeight: '600', fontSize: '14px',
+                            boxShadow: '0 4px 6px rgba(37, 211, 102, 0.2)',
+                            zIndex: 10
+                        }}
+                    >
+                        <FaWhatsapp size={18} /> Share
+                    </button>
+
+                    <div className="flex flex-col items-center justify-center mb-2">
+                        <img
+                            src="/loader-logo.png"
+                            alt="ResortWala"
                             style={{
-                                display: 'flex', alignItems: 'center', gap: '8px',
-                                backgroundColor: '#25D366', color: 'white',
-                                padding: '8px 16px', borderRadius: '8px',
-                                border: 'none', cursor: 'pointer',
-                                fontWeight: '600', fontSize: '14px',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                height: '60px',
+                                width: 'auto',
+                                objectFit: 'contain',
+                                marginBottom: '0.5rem'
                             }}
-                        >
-                            <FaWhatsapp size={18} /> Share
-                        </button>
+                        />
+                        <h1 className="text-xl font-bold text-gray-800">{property?.name}</h1>
+                        <p className="text-gray-500 text-xs font-medium">Manage Availability</p>
                     </div>
                 </div>
 
@@ -247,7 +263,7 @@ export default function VendorCalendar() {
                                         <div className="font-semibold truncate w-full flex items-center gap-1">
                                             {/* Status Dot */}
                                             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${event.status === 'confirmed' ? 'bg-white' :
-                                                    event.status === 'pending' ? 'bg-yellow-200' : 'bg-red-200'
+                                                event.status === 'pending' ? 'bg-yellow-200' : 'bg-red-200'
                                                 }`}></span>
                                             <span className="truncate">{event.resource.CustomerName}</span>
                                         </div>

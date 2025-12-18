@@ -31,9 +31,16 @@ export default function ShareModal({ isOpen, onClose }) {
     };
 
     const handleShare = (property) => {
-        const currentOrigin = window.location.origin;
-        const port = currentOrigin.split(':').pop();
-        const link = currentOrigin.replace(port, '5173') + `/stay/${property.share_token || property.PropertyId}`;
+        // Use environment variable for client URL or fallback to current origin logic
+        // If we are on vendor app, we want to link to customer app.
+        // In local: window default is 5173 (Customer) vs 8081/3002 (Vendor)
+        // In prod: window usually same domain different port or path.
+
+        // Better logic: Use the known production customer URL if available, else standard fallback
+        const customerBaseUrl = import.meta.env.VITE_CUSTOMER_URL ||
+            (window.location.hostname === 'localhost' ? 'http://localhost:5173' : window.location.origin.replace(':8081', ''));
+
+        const link = `${customerBaseUrl}/stay/${property.share_token || property.PropertyId}`;
         const message = `Check out *${property.Name}* in ${property.Location}!\n\n${property.ShortDescription || 'Beautiful property available for booking.'}\n\nPrice: ₹${property.Price}/night\n\nView details & availability: ${link}`;
 
         window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');

@@ -43,7 +43,10 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 3. Seed Properties
-        $this->call(PropertyMasterSeeder::class);
+        // 3. Seed Properties & Detailed Vendor Data
+        $this->call([
+            VendorDataSeeder::class, // This contains the 3 demo properties
+            HolidaySeeder::class,    // This contains the holiday data
+        ]);
     }
 }

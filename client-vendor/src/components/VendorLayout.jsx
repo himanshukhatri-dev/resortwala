@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Sidebar from './Sidebar';
-import Header from './Header';
+
 
 export default function VendorLayout({ children, title }) {
     const [isSidebarHovered, setIsSidebarHovered] = useState(false);
@@ -50,7 +50,6 @@ export default function VendorLayout({ children, title }) {
                 height: '100vh',
                 overflowY: 'auto'
             }} className="content-area">
-                <Header title={title} />
                 <div style={{ padding: '30px' }} className="page-content">
                     {children}
                 </div>

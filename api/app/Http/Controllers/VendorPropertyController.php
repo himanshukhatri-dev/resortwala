@@ -53,10 +53,18 @@ class VendorPropertyController extends Controller
             'price_mon_thu' => 'nullable|numeric|min:0',
             'price_fri_sun' => 'nullable|numeric|min:0',
             'price_sat' => 'nullable|numeric|min:0',
+            'video_url' => 'nullable|url',
+            'onboarding_data' => 'nullable' // Can be JSON string
         ]);
 
+        // Decode JSON string if present (FormData sends strings)
+        $data = $validated;
+        if ($request->has('onboarding_data') && is_string($request->onboarding_data)) {
+            $data['onboarding_data'] = json_decode($request->onboarding_data, true);
+        }
+
         $property = PropertyMaster::create([
-            ...$validated,
+            ...$data,
             'vendor_id' => $request->user()->id,
             'is_approved' => false, // Requires admin approval
             'IsActive' => true,
@@ -100,9 +108,16 @@ class VendorPropertyController extends Controller
             'price_mon_thu' => 'nullable|numeric|min:0',
             'price_fri_sun' => 'nullable|numeric|min:0',
             'price_sat' => 'nullable|numeric|min:0',
+            'video_url' => 'nullable|url',
+            'onboarding_data' => 'nullable'
         ]);
 
-        $property->update($validated);
+        $data = $validated;
+        if ($request->has('onboarding_data') && is_string($request->onboarding_data)) {
+            $data['onboarding_data'] = json_decode($request->onboarding_data, true);
+        }
+
+        $property->update($data);
 
         return response()->json([
             'message' => 'Property updated successfully',

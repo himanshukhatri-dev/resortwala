@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('property_masters', function (Blueprint $table) {
-            $table->decimal('price_mon_thu', 10, 2)->nullable()->comment('Price for Monday to Thursday')->after('PricePerNight');
+            $table->decimal('price_mon_thu', 10, 2)->nullable()->comment('Price for Monday to Thursday')->after('Price');
             $table->decimal('price_fri_sun', 10, 2)->nullable()->comment('Price for Friday and Sunday')->after('price_mon_thu');
             $table->decimal('price_sat', 10, 2)->nullable()->comment('Price for Saturday')->after('price_fri_sun');
         });

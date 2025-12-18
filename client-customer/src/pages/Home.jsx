@@ -127,28 +127,37 @@ export default function Home() {
         setFilteredProperties([...result]); // Spread to trigger re-render
     }, [properties, activeCategory, searchParams, advancedFilters]);
 
+    // Scroll to results logic
+    const resultsRef = useRef(null);
+
     const handleSearch = (filters) => {
         setSearchParams(filters);
+        // Scroll to results after a short delay to allow state update
+        setTimeout(() => {
+            if (resultsRef.current) {
+                const yOffset = -120; // Offset for sticky header
+                const element = resultsRef.current;
+                const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }
+        }, 100);
     };
 
     const [scrolled, setScrolled] = useState(false);
     useEffect(() => {
         const handleScroll = () => {
-            // Trigger when scrolled past 400px
             const threshold = 400;
             setScrolled(window.scrollY > threshold);
         };
-
         window.addEventListener('scroll', handleScroll);
-        handleScroll(); // Initial check
-
+        handleScroll();
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     return (
         <div className="pb-20">
             {/* 1. IMMERSIVE HERO */}
-            <div className="relative min-h-[350px] md:min-h-[600px] h-auto md:h-[75vh] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-24 pb-8 md:pt-20 md:pb-20">
+            <div className="relative min-h-[250px] md:min-h-[400px] h-auto md:h-[50vh] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-12 pb-16 md:pt-16 md:pb-20">
                 {/* Background */}
                 <div className="absolute inset-0 overflow-hidden">
                     <img
@@ -156,14 +165,12 @@ export default function Home() {
                         alt="Sunrise Background"
                         className="w-full h-full object-cover opacity-100"
                     />
-                    {/* Lighter Dark Overlay for text readability (sunrise needs less overlay) */}
                     <div className="absolute inset-0 bg-black/20" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-black/10" />
                 </div>
 
                 {/* Content */}
                 <div className="relative z-10 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
-
                     <h1 className="text-2xl md:text-7xl font-bold text-white mb-3 md:mb-6 drop-shadow-2xl font-serif italic tracking-wide leading-tight text-center">
                         Find your peace in <br className="hidden md:block" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-1 md:mt-2">paradise</span>
@@ -173,8 +180,8 @@ export default function Home() {
                         Discover luxury villas, water parks, and hidden gems across India's most beautiful destinations.
                     </p>
 
-                    {/* CATEGORIES (Moved Inside Hero) */}
-                    <div className="flex gap-3 mb-6 overflow-x-auto no-scrollbar max-w-full pb-4">
+                    {/* CATEGORIES */}
+                    <div className="flex gap-3 overflow-x-auto no-scrollbar max-w-full pb-4 items-center justify-center">
                         {CATEGORIES.map(cat => (
                             <button
                                 key={cat.id}
@@ -189,12 +196,10 @@ export default function Home() {
                             </button>
                         ))}
                     </div>
-
                 </div>
 
-                {/* SEARCH BAR (Outside animated container to fix sticky positioning) */}
-                <div className="relative z-40 w-full flex justify-center">
-                    {/* Placeholder for SearchBar when it is sticky (prevents layout jump) */}
+                {/* SEARCH BAR - Pulled up into Hero */}
+                <div className="absolute -bottom-10 left-0 right-0 z-40 flex justify-center px-4">
                     <div className="w-full max-w-5xl h-[80px]">
                         <SearchBar
                             onSearch={handleSearch}
@@ -208,17 +213,11 @@ export default function Home() {
                 </div>
             </div>
 
-
-            {/* FILTER BAR SECTION */}
-            <div className="container mx-auto px-4 -mt-6 relative z-30">
-                <FilterBar onFilterChange={setAdvancedFilters} />
-            </div>
-
             {/* 3. SPLIT LAYOUT (Map + List) */}
-            <div className="container mx-auto px-4 py-6 min-h-[50vh]">
+            <div ref={resultsRef} className="container mx-auto px-4 py-6 min-h-[50vh] scroll-mt-28 mt-8">
 
-                {/* DYNAMIC HEADER (Mobile Toggle Only) */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                {/* DYNAMIC HEADER - Only Visible on Mobile or List Mode specific areas */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-2 pb-2">
                     <div>
                         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 font-serif">
                             {searchParams?.location
@@ -236,7 +235,6 @@ export default function Home() {
                         </p>
                     </div>
 
-                    {/* Mobile View Toggle (Hidden on LG) */}
                     <div className="lg:hidden flex items-center bg-gray-100 rounded-lg p-1 mt-4 md:mt-0 self-start md:self-auto">
                         <button
                             onClick={() => setViewMode('list')}
@@ -259,21 +257,21 @@ export default function Home() {
                         <p className="text-gray-400 animate-pulse">Loading amazing places...</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col lg:flex-row gap-6 relative">
+                    <div className="flex flex-col lg:flex-row gap-6 relative items-start">
 
-                        {/* LEFT COLUMN: Property List (Scrollable) */}
-                        <div className={`w-full lg:w-[60%] lg:pr-2 ${viewMode === 'map' ? 'hidden lg:block' : 'block'}`}>
+                        {/* LEFT COLUMN: Property List */}
+                        <div className={`w-full lg:w-[65%] lg:pr-2 ${viewMode === 'map' ? 'hidden lg:block' : 'block'}`}>
                             {filteredProperties.length > 0 ? (
-                                <div className="flex flex-col gap-8">
+                                <div className="flex flex-col gap-6">
                                     <AnimatePresence mode='popLayout'>
                                         {filteredProperties.map((p) => (
                                             <motion.div
                                                 layout
-                                                key={p.PropertyId || p.id} // Ensure stable key
-                                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                                key={p.PropertyId || p.id}
+                                                initial={{ opacity: 0, scale: 0.98, y: 10 }}
                                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                                 exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                                                transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
+                                                transition={{ duration: 0.3 }}
                                             >
                                                 <PropertyCard property={p} searchParams={searchParams} variant="horizontal" />
                                             </motion.div>
@@ -281,29 +279,28 @@ export default function Home() {
                                     </AnimatePresence>
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <div className="flex flex-col items-center justify-center py-20 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
                                     <h3 className="text-xl font-bold text-gray-800">No properties found</h3>
-                                    <p className="text-gray-500 mb-4">Try changing your search.</p>
-                                    <button onClick={() => { setActiveCategory('all'); setSearchParams(null); }} className="text-primary hover:underline">Clear Filters</button>
+                                    <p className="text-gray-500 mb-4">Try changing your search filters.</p>
+                                    <button onClick={() => { setActiveCategory('all'); setSearchParams(null); }} className="text-primary hover:underline font-bold">Clear Filters</button>
                                 </div>
                             )}
                         </div>
 
-                        {/* RIGHT COLUMN: Map (Sticky) */}
-                        <div className={`w-full lg:w-[40%] text-black ${viewMode === 'list' ? 'hidden lg:block' : 'block h-[60vh]'}`}>
-                            <div className="sticky top-[100px] h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-xl border border-gray-200">
+                        {/* RIGHT COLUMN: Filter + Map (Sticky) */}
+                        <div className={`w-full lg:w-[35%] text-black ${viewMode === 'list' ? 'hidden lg:flex' : 'flex'} flex-col gap-4 sticky top-[90px] h-[calc(100vh-100px)] overflow-y-auto no-scrollbar pb-10`}>
+
+                            {/* FILTERS (Placed above Map) */}
+                            <FilterBar onFilterChange={setAdvancedFilters} />
+
+                            {/* MAP */}
+                            <div className="w-full flex-grow min-h-[400px] rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
                                 <MapView properties={filteredProperties} />
                             </div>
                         </div>
 
                     </div>
                 )}
-            </div>
-
-            {/* DEBUG FOOTER */}
-            <div className={`fixed bottom-0 left-0 right-0 text-white text-xs p-2 z-[9999] pointer-events-none break-all ${properties.length === 0 ? 'bg-red-900' : 'bg-black/80'}`}>
-                Status: {loading ? 'Loading...' : `Loaded ${properties.length} props`}
-                | {properties.length === 0 && !loading ? 'ERROR: See Console' : `Key: ${properties[0] ? Object.keys(properties[0])[0] : 'None'}`}
             </div>
         </div>
     );

@@ -1,5 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import GlobalCalendar from './pages/GlobalCalendar';
+import PublicCalendar from './pages/PublicCalendar';
+
+
+
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -7,7 +11,6 @@ import MyProperties from './pages/MyProperties';
 import AddProperty from './pages/AddProperty';
 import EditProperty from './pages/EditProperty';
 import VendorBookings from './pages/VendorBookings';
-import DayWiseBooking from './pages/DayWiseBooking';
 import Holiday from './pages/Holiday';
 import VendorCalendar from './pages/VendorCalendar';
 import './App.css';
@@ -31,6 +34,8 @@ import ResetPassword from './pages/ResetPassword';
 import VendorLayout from './components/VendorLayout';
 import Profile from './pages/Profile';
 import Status from './pages/Status';
+import PublicCalendar from './pages/PublicCalendar';
+import PublicMasterCalendar from './pages/PublicMasterCalendar';
 
 function App() {
   return (
@@ -86,14 +91,6 @@ function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path="/day-wise-booking" element={
-                <ProtectedRoute>
-                  <VendorLayout title="Day Wise Availability">
-                    <DayWiseBooking />
-                  </VendorLayout>
-                </ProtectedRoute>
-              } />
-
               <Route path="/holiday-management" element={
                 <ProtectedRoute>
                   <VendorLayout title="Holiday Management">
@@ -117,16 +114,21 @@ function App() {
                   </VendorLayout>
                 </ProtectedRoute>
               } />
-              <Route path="/profile" element={
+
+              <Route path="/calendar" element={
                 <ProtectedRoute>
-                  <VendorLayout title="My Profile">
-                    <Profile />
+                  <VendorLayout title="Master Calendar">
+                    <GlobalCalendar />
                   </VendorLayout>
                 </ProtectedRoute>
               } />
 
               {/* Status Page (Public for now, or protected if prefered) */}
               <Route path="/status" element={<Status />} />
+
+              {/* Public Calendar Share Link */}
+              <Route path="/s/:id" element={<PublicCalendar />} />
+              <Route path="/s/m/:id" element={<PublicMasterCalendar />} />
             </Routes>
           </BrowserRouter>
         </ModalProvider>

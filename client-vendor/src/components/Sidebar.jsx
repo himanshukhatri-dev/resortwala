@@ -1,7 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import axios from 'axios';
 import ConfirmModal from './ConfirmModal';
 
@@ -9,6 +8,24 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
     const location = useLocation();
     const navigate = useNavigate();
     const [isHovered, setIsHovered] = useState(false);
+    const { user, token, logout } = useAuth();
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        try {
+            await axios.post('/api/vendor/logout', {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            setIsLoggingOut(false);
+            logout();
+            navigate('/login');
+        }
+    };
 
     // Propagate hover state to parent securely
     useEffect(() => {
@@ -21,10 +38,10 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
         { path: '/dashboard', icon: '📊', label: 'Dashboard', roles: ['vendor', 'admin'] },
         { path: '/vendors', icon: '🏢', label: 'Vendor', roles: ['admin'] },
         { path: '/customers', icon: '👥', label: 'Customer', roles: ['admin'] },
+        { path: '/calendar', icon: '🗓️', label: 'Calendar', roles: ['vendor', 'admin'] },
         { path: '/properties', icon: '🏠', label: 'Property', roles: ['vendor', 'admin'] },
         { path: '/bookings', icon: '📅', label: 'Booking', roles: ['vendor', 'admin'] },
-        { path: '/day-wise-booking', icon: '📊', label: 'Day Wise Booking', roles: ['vendor', 'admin'] },
-        { path: '/holidays', icon: '🌴', label: 'Holiday', roles: ['vendor', 'admin'] },
+        { path: '/holiday-management', icon: '🌴', label: 'Holiday', roles: ['vendor', 'admin'] },
         { path: '/reviews', icon: '⭐', label: 'Review', roles: ['vendor', 'admin'] },
     ];
 
@@ -73,38 +90,27 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
             >
                 {/* Logo Area */}
                 <div style={{
-                    height: '70px',
+                    height: '80px',
                     display: 'flex',
                     alignItems: 'center',
                     padding: isHovered ? '0 20px' : '0',
-                    justifyContent: isHovered ? 'flex-start' : 'center',
+                    justifyContent: 'center',
                     borderBottom: '1px solid var(--border-color)',
                     backgroundColor: 'var(--sidebar-bg)',
                     flexShrink: 0,
                     transition: 'all 0.3s ease',
                     position: 'relative'
                 }}>
-                    <Link to="/dashboard" style={{
-                        fontSize: '22px',
-                        fontWeight: '800',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        textDecoration: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px'
-                    }}>
-                        <img src="/resortwala-logo.png" alt="ResortWala" style={{ height: '40px', width: 'auto' }} />
-                        <span style={{
-                            opacity: isHovered ? 1 : 0,
-                            display: isHovered ? 'block' : 'none',
-                            transition: 'opacity 0.2s ease',
-                            whiteSpace: 'nowrap'
-                        }}>
-                            ResortWala
-                        </span>
-                    </Link>
+                    <img
+                        src="/loader-logo.png"
+                        alt="ResortWala"
+                        style={{
+                            height: isHovered ? '40px' : '28px',
+                            width: 'auto',
+                            transition: 'all 0.3s ease',
+                            objectFit: 'contain'
+                        }}
+                    />
 
                     {/* Mobile Close Button */}
                     <button
@@ -167,6 +173,73 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
                     })}
                 </nav>
 
+                <div style={{
+                    borderTop: '1px solid var(--border-color)',
+                    padding: isHovered ? '20px' : '20px 0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '15px',
+                    backgroundColor: 'var(--sidebar-bg)',
+                    alignItems: isHovered ? 'stretch' : 'center',
+                    transition: 'all 0.3s ease'
+                }}>
+                    {/* User Profile */}
+                    <Link to="/profile" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        justifyContent: isHovered ? 'flex-start' : 'center'
+                    }}>
+                        <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            backgroundColor: 'var(--primary-color)',
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            fontSize: '18px',
+                            flexShrink: 0
+                        }}>
+                            {user?.name?.charAt(0).toUpperCase() || 'V'}
+                        </div>
+                        {isHovered && (
+                            <div style={{ overflow: 'hidden' }}>
+                                <div style={{ fontWeight: '600', fontSize: '14px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{user?.name || 'Vendor'}</div>
+                                <div style={{ fontSize: '12px', opacity: 0.7, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{user?.business_name || 'Business'}</div>
+                            </div>
+                        )}
+                    </Link>
+
+                    {/* Logout Button */}
+                    <button
+                        onClick={() => setShowLogoutModal(true)}
+                        style={{
+                            padding: isHovered ? '10px' : '10px',
+                            backgroundColor: 'var(--hover-bg-red)', // Define this or use faint red
+                            color: '#dc2626',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: isHovered ? 'flex-start' : 'center',
+                            gap: '10px',
+                            transition: 'all 0.2s'
+                        }}
+                        title="Logout"
+                    >
+                        <span style={{ fontSize: '18px' }}>🚪</span>
+                        {isHovered && <span>Logout</span>}
+                    </button>
+                </div>
+
                 {/* CSS for Mobile */}
                 <style>{`
                     .sidebar-item:hover {
@@ -204,6 +277,18 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
                     }
                 `}</style>
             </div>
+
+            <ConfirmModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={handleLogout}
+                title="Confirm Logout"
+                message="Are you sure you want to log out?"
+                type="danger"
+                confirmText={isLoggingOut ? "Logging out..." : "Logout"}
+                cancelText="Cancel"
+                isLoading={isLoggingOut}
+            />
         </>
     );
 }

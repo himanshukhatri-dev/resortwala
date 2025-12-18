@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useLocation, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { FaStar, FaMapMarkerAlt, FaWifi, FaSwimmingPool, FaCar, FaUtensils, FaArrowLeft, FaHeart, FaShare, FaMinus, FaPlus, FaTimes } from 'react-icons/fa';
+import { FaStar, FaMapMarkerAlt, FaWifi, FaSwimmingPool, FaCar, FaUtensils, FaArrowLeft, FaHeart, FaShare, FaMinus, FaPlus, FaTimes, FaCheck, FaWater } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
@@ -422,26 +422,158 @@ export default function PropertyDetails() {
                     </motion.div>
                 )}
             </AnimatePresence>
-
             {/* 3. CONTENT GRID */}
             <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-12">
 
                 {/* LEFT COLUMN */}
-                <div className="md:col-span-2 space-y-8">
-                    <div className="border-b border-gray-200 pb-8">
-                        <h2 className="text-xl font-bold mb-4">About this place</h2>
-                        <p className="text-gray-700 leading-relaxed whitespace-pre-line">{description}</p>
+                <div className="md:col-span-2 space-y-10">
+                    {/* DESCRIPTION */}
+                    <div className="border-b border-gray-100 pb-8">
+                        <h2 className="text-2xl font-bold mb-4 text-gray-900">About this place</h2>
+                        <p className="text-gray-700 leading-relaxed text-lg whitespace-pre-line">{description}</p>
                     </div>
-                    {/* Offers */}
-                    <div className="pb-8">
-                        <h2 className="text-xl font-bold mb-6">What this place offers</h2>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex items-center gap-3 text-gray-700"><FaWifi /> Wifi</div>
-                            <div className="flex items-center gap-3 text-gray-700"><FaCar /> Free parking on premises</div>
-                            <div className="flex items-center gap-3 text-gray-700"><FaSwimmingPool /> Private pool</div>
-                            <div className="flex items-center gap-3 text-gray-700"><FaUtensils /> Kitchen</div>
+
+                    {/* PROPERTY VIDEO TOUR */}
+                    {property?.video_url && (
+                        <div className="border-b border-gray-100 pb-8">
+                            <h2 className="text-2xl font-bold mb-6 text-gray-900 flex items-center gap-2">
+                                <span className="text-red-500">▶</span> Property Tour
+                            </h2>
+                            <div className="aspect-video rounded-2xl overflow-hidden shadow-lg bg-black">
+                                <iframe
+                                    className="w-full h-full"
+                                    src={property.video_url.replace("watch?v=", "embed/")}
+                                    title="Property Video"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                ></iframe>
+                            </div>
                         </div>
+                    )}
+
+                    {/* AMENITIES SECTION */}
+                    {property.onboarding_data?.amenities && Object.keys(property.onboarding_data.amenities).length > 0 && (
+                        <div className="border-b border-gray-100 pb-8">
+                            <h2 className="text-2xl font-bold mb-6 text-gray-900">What this place offers</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-y-4 gap-x-8">
+                                {Object.entries(property.onboarding_data.amenities).map(([key, val]) => {
+                                    if (!val) return null;
+                                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                                    const display = typeof val === 'boolean' ? label : `${val} ${label}`;
+
+                                    // Icon Logic
+                                    let Icon = FaCheck;
+                                    let iconColor = "text-gray-600";
+                                    if (key.includes('pool')) { Icon = FaSwimmingPool; iconColor = "text-blue-500"; }
+                                    if (key.includes('food') || key.includes('dining')) { Icon = FaUtensils; iconColor = "text-orange-500"; }
+                                    if (key.includes('wifi')) { Icon = FaWifi; iconColor = "text-indigo-500"; }
+                                    if (key.includes('parking')) { Icon = FaCar; iconColor = "text-green-500"; }
+
+                                    return (
+                                        <div key={key} className="flex items-center gap-4 text-gray-700 text-lg group">
+                                            <div className={`p-2 rounded-lg bg-gray-50 group-hover:bg-gray-100 transition-colors ${iconColor}`}>
+                                                <Icon size={20} />
+                                            </div>
+                                            <span className="font-medium">{display}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* FOOD & DINING */}
+                    {property.onboarding_data?.foodOptions && (
+                        <div className="border-b border-gray-100 pb-8">
+                            <h2 className="text-2xl font-bold mb-6 text-gray-900">Food & Dining</h2>
+                            <div className="bg-gray-50 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {Object.entries(property.onboarding_data.foodOptions).map(([meal, opt]) => (
+                                    <div key={meal} className="flex flex-col">
+                                        <span className="uppercase text-xs font-bold text-gray-400 tracking-wider mb-1">{meal.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                        <span className="font-semibold text-gray-800 text-lg">{opt || "Not Included"}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* POLICIES & RULES GRID */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        {/* HOUSE RULES */}
+                        {property.onboarding_data?.rules && (
+                            <div>
+                                <h2 className="text-xl font-bold mb-4 text-gray-900">House Rules</h2>
+                                <ul className="space-y-3">
+                                    {Object.entries(property.onboarding_data.rules).map(([idx, val]) => {
+                                        if (val === false) return null;
+                                        // Hardcoded mapping to match AddProperty (Must match exactly)
+                                        const RULES_TEXT = [
+                                            "Primary guest must be 18+",
+                                            "Government ID required",
+                                            "Pets allowed",
+                                            "Outside food allowed",
+                                            "Extra charges may apply",
+                                            "Valid Photo ID required",
+                                            "Subject to availability",
+                                            "Safety features present",
+                                            "No refund for no-show",
+                                            "Offers not combinable",
+                                            "Smoking allowed",
+                                            "Alcohol allowed"
+                                        ];
+                                        const ruleText = RULES_TEXT[idx];
+                                        if (!ruleText) return null;
+
+                                        return (
+                                            <li key={idx} className="flex items-start gap-3 text-gray-700">
+                                                <span className="text-black mt-1.5 text-[8px]">●</span> {ruleText}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* CHILD POLICIES */}
+                        {property.onboarding_data?.childCriteria && (
+                            <div>
+                                <h2 className="text-xl font-bold mb-4 text-gray-900">Child Settings</h2>
+                                <div className="space-y-4 bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+                                    <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                                        <span className="text-gray-600 font-medium">Free Entry</span>
+                                        <span className="font-bold text-green-600">Under {property.onboarding_data.childCriteria.freeAge} yrs</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-600 font-medium">Child Rates Apply</span>
+                                        <span className="font-bold text-orange-600">{property.onboarding_data.childCriteria.chargeAgeFrom}-{property.onboarding_data.childCriteria.chargeAgeTo} yrs</span>
+                                    </div>
+                                    {property.onboarding_data.childPricing && (
+                                        <div className="mt-2 pt-2 border-t border-gray-100 flex gap-4 text-sm">
+                                            <div className="bg-gray-100 px-3 py-1 rounded-md">
+                                                <span className="block text-xs text-gray-500">Mon-Fri</span>
+                                                <span className="font-bold">₹{property.onboarding_data.childPricing.monFri}</span>
+                                            </div>
+                                            <div className="bg-gray-100 px-3 py-1 rounded-md">
+                                                <span className="block text-xs text-gray-500">Sat-Sun</span>
+                                                <span className="font-bold">₹{property.onboarding_data.childPricing.satSun}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
+
+                    {/* Fallback for Legacy Data (if no onboarding_data) */}
+                    {!property.onboarding_data && (
+                        <div className="pb-8">
+                            <h2 className="text-xl font-bold mb-6">What this place offers</h2>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center gap-3 text-gray-700"><FaSwimmingPool /> Private pool</div>
+                                <div className="flex items-center gap-3 text-gray-700"><FaUtensils /> Kitchen</div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* RIGHT COLUMN: Sticky Booking Card */}
@@ -486,19 +618,64 @@ export default function PropertyDetails() {
                                         className="absolute top-16 right-0 bg-white rounded-xl shadow-2xl p-4 z-50 border border-gray-100 w-[350px]"
                                     >
                                         <style>{`
-                                            .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #000; --rdp-background-color: #f7f7f7; margin: 0; }
+                                            .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #FF385C; --rdp-background-color: #f7f7f7; margin: 0; }
                                             .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f0f0f0; }
-                                            .rdp-day_selected { background-color: black !important; color: white !important; }
+                                            .rdp-day_selected { background-color: #FF385C !important; color: white !important; font-weight: bold; }
                                             .rdp-day_today { font-weight: bold; color: #FF385C; }
+                                            .rdp-day_disabled { opacity: 0.5; cursor: not-allowed; text-decoration: line-through; color: #EF4444 !important; }
                                         `}</style>
                                         <DayPicker
                                             mode="range"
                                             selected={dateRange}
                                             onDayClick={handleDateSelect}
-                                            disabled={[
-                                                { before: new Date() },
-                                                ...bookedDates.map(date => new Date(date))
-                                            ]}
+                                            disabled={(date) => {
+                                                // 1. Block past dates
+                                                const today = new Date();
+                                                today.setHours(0, 0, 0, 0);
+                                                if (date < today) return true;
+
+                                                const dateStr = format(date, 'yyyy-MM-dd');
+                                                const isBooked = bookedDates.includes(dateStr);
+
+                                                // 2. If Picking Start Date (or fully reset): Block ALL booked dates
+                                                if (!dateRange.from || (dateRange.from && dateRange.to)) {
+                                                    return isBooked;
+                                                }
+
+                                                // 3. If Picking End Date (from is set, to is null):
+                                                // Allow clicking the FIRST booked date after start (as checkout).
+                                                // Disable anything AFTER that first booked date.
+                                                if (dateRange.from && !dateRange.to) {
+                                                    // Find the immediately next booked date after start
+                                                    const sortedBooked = [...bookedDates]
+                                                        .map(d => new Date(d))
+                                                        .sort((a, b) => a - b);
+
+                                                    const firstBlock = sortedBooked.find(d => d > dateRange.from);
+
+                                                    // If there is a future booking blocking us:
+                                                    if (firstBlock) {
+                                                        // Disable if date is strictly AFTER the first block
+                                                        // i.e., we can touch the block (checkout on arrival day of next guest)
+                                                        // but cannot go past it.
+                                                        if (date > firstBlock) return true;
+                                                    }
+
+                                                    // If the date itself is booked...
+                                                    if (isBooked) {
+                                                        // It is allowed ONLY if it IS the firstBlock (touching)
+                                                        // If it's not the first block (e.g. random future block), it's handled above? 
+                                                        // No, if no firstBlock found (weird), or if checking logic.
+
+                                                        // Actually, if date == firstBlock, we return FALSE (Enabled).
+                                                        // Because we want to allow checkout on that day.
+                                                        // So we don't return 'isBooked' here.
+                                                        return false;
+                                                    }
+                                                }
+
+                                                return isBooked;
+                                            }}
                                             numberOfMonths={1}
                                             defaultMonth={dateRange.from || new Date()}
                                         />
@@ -533,6 +710,6 @@ export default function PropertyDetails() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
