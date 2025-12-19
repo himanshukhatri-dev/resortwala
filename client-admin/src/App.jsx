@@ -31,7 +31,7 @@ function App() {
   return (
     <AuthProvider>
       <ModalProvider>
-        <BrowserRouter>
+        <BrowserRouter basename="/admin">
           <TokenHandler />
           <Routes>
             <Route path="/login" element={<Login />} />

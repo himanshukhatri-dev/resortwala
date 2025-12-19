@@ -44,7 +44,7 @@ function App() {
     <AuthProvider>
       <ThemeProvider>
         <ModalProvider>
-          <BrowserRouter>
+          <BrowserRouter basename="/vendor">
             <TokenHandler />
             <Routes>
               <Route path="/login" element={<Login />} />
