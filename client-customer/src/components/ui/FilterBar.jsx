@@ -36,7 +36,7 @@ export default function FilterBar({ onFilterChange }) {
     const toggleSection = (sec) => setOpenSection(openSection === sec ? null : sec);
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 px-4 flex flex-wrap items-center gap-4 mb-6 transition-all hover:shadow-md">
+        <div className="w-full relative z-20 bg-white rounded-2xl shadow-sm border border-gray-200 p-2 px-4 flex flex-wrap items-center gap-4 mb-6 transition-all hover:shadow-md">
             <div className="flex items-center gap-2 text-gray-400 border-r border-gray-100 pr-4 py-2">
                 <FaFilter className="text-secondary text-xs" />
                 <span className="text-xs font-bold uppercase tracking-wider">Filters</span>
