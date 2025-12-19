@@ -72,18 +72,18 @@ export default function PropertyCard({ property, searchParams }) {
     return (
         <div
             onClick={handleCardClick}
-            className="group flex flex-col xl:flex-row gap-6 bg-white rounded-[2rem] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all duration-500 border border-gray-100 p-4 cursor-pointer relative"
+            className="group flex flex-col xl:flex-row gap-5 bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 p-3 cursor-pointer relative hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300"
         >
             {/* IMAGE SLIDER (Left Side) */}
-            <div className="relative w-full xl:w-[400px] h-[280px] xl:h-[320px] flex-shrink-0 rounded-[1.5rem] overflow-hidden bg-gray-100">
+            <div className="relative w-full xl:w-[300px] h-[240px] xl:h-[260px] flex-shrink-0 rounded-[1.2rem] overflow-hidden bg-gray-100">
                 <AnimatePresence mode="wait">
                     <motion.img
                         key={currentImageIndex}
                         src={images[currentImageIndex]}
                         alt={name}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
                         className="w-full h-full object-cover"
                     />
@@ -92,67 +92,66 @@ export default function PropertyCard({ property, searchParams }) {
                 {/* HEART BUTTON */}
                 <div
                     onClick={handleWishlist}
-                    className={`absolute top-4 right-4 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all backdrop-blur-md ${active ? 'bg-red-500 text-white' : 'bg-white/70 text-gray-700 hover:bg-white hover:text-red-500'}`}
+                    className={`absolute top-4 right-4 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-all backdrop-blur-md ${active ? 'bg-red-500 text-white' : 'bg-white/70 text-gray-700 hover:bg-white hover:text-red-500'}`}
                 >
-                    <FaHeart className={active ? "fill-current" : "text-xl"} />
+                    <FaHeart className={active ? "fill-current" : "text-lg"} />
                 </div>
 
                 {/* SLIDER CONTROLS */}
-                <div className="absolute inset-0 flex items-center justify-between px-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={prevImage} className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-gray-800 hover:bg-white transition-all shadow-lg select-none">
-                        <FaChevronLeft size={12} />
+                <div className="absolute inset-0 flex items-center justify-between px-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={prevImage} className="w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-800 hover:bg-white transition-all shadow-md">
+                        <FaChevronLeft size={10} />
                     </button>
-                    <button onClick={nextImage} className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-gray-800 hover:bg-white transition-all shadow-lg select-none">
-                        <FaChevronRight size={12} />
+                    <button onClick={nextImage} className="w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-800 hover:bg-white transition-all shadow-md">
+                        <FaChevronRight size={10} />
                     </button>
                 </div>
 
                 {/* DOTS */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
                     {images.map((_, i) => (
                         <div
                             key={i}
-                            className={`h-1.5 rounded-full transition-all ${i === currentImageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/40'}`}
+                            className={`h-1 rounded-full transition-all ${i === currentImageIndex ? 'w-3 bg-white' : 'w-1 bg-white/50'}`}
                         />
                     ))}
                 </div>
 
-                <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-1.5 shadow-xl">
-                    <div className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" /> Trending Now
-                </div>
+                {(property?.PropertyType === 'Villa' || property?.IsTrending) && (
+                    <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white uppercase tracking-wider flex items-center gap-1.5 shadow-lg border border-white/10">
+                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" /> Popular
+                    </div>
+                )}
             </div>
 
             {/* CONTENT (Right Side) */}
-            <div className="flex-1 flex flex-col justify-between py-2 px-2">
+            <div className="flex-1 flex flex-col pt-1 pb-1 pr-2">
                 <div>
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-[11px] font-black text-secondary uppercase tracking-[0.2em]">
-                                <FaStar className="mb-0.5" /> {rating} • Superhost Choice
-                            </div>
-                            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 font-serif leading-tight">
-                                {name}
-                            </h3>
-                            <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
-                                <FaMapMarkerAlt className="text-secondary/60" size={12} />
-                                {location}
-                            </div>
+                    {/* ROW 1: Title Only */}
+                    <div className="mb-2">
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 font-serif leading-tight line-clamp-2" title={name}>
+                            {name}
+                        </h3>
+                    </div>
+
+                    {/* ROW 2: Rating & Location (Moved Below Title) */}
+                    <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
+                            <FaStar className="text-yellow-400 text-xs mb-0.5" />
+                            <span>{rating}</span>
                         </div>
-                        <div className="text-right">
-                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Price Per Night</div>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-bold text-gray-900 font-sans">₹{price.toLocaleString()}</span>
-                                <span className="text-gray-400 text-sm font-medium">/ night</span>
-                            </div>
+                        <div className="flex items-center gap-1.5 text-gray-500 font-medium">
+                            <FaMapMarkerAlt className="text-gray-400" size={12} />
+                            <span className="truncate max-w-[200px]">{location}</span>
                         </div>
                     </div>
 
-                    <p className="text-gray-500 text-sm md:text-base leading-relaxed line-clamp-2 mb-6 max-w-2xl">
+                    <p className="text-gray-500 text-sm md:text-base leading-relaxed line-clamp-2 mb-4 max-w-2xl">
                         {description}
                     </p>
 
                     {/* QUICK STATS & AMENITIES */}
-                    <div className="flex flex-col gap-4 mb-6">
+                    <div className="flex flex-col gap-3 mb-4">
                         {/* Quick Stats Row */}
                         <div className="flex items-center gap-6 text-sm text-gray-700 font-medium">
                             <div className="flex items-center gap-2">
@@ -185,7 +184,7 @@ export default function PropertyCard({ property, searchParams }) {
                 </div>
 
 
-                <div className="flex items-center justify-between border-t border-gray-50 pt-6 mt-auto">
+                <div className="flex items-center justify-between border-t border-gray-50 pt-4 mt-auto">
                     <div className="flex items-center gap-3">
                         <div className="flex -space-x-2 overflow-hidden">
                             {[1, 2, 3].map(i => (
@@ -202,9 +201,15 @@ export default function PropertyCard({ property, searchParams }) {
                         </div>
                     </div>
 
-                    <button className="px-6 py-3 bg-white border-2 border-gray-100 text-gray-900 rounded-xl font-bold text-sm hover:border-black hover:bg-black hover:text-white transition-all shadow-sm active:scale-95">
-                        View Details
-                    </button>
+                    <div className="flex flex-col items-end gap-2">
+                        <div className="text-right">
+                            <span className="text-2xl font-bold text-gray-900 font-sans">₹{price.toLocaleString()}</span>
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide ml-1">/ night</span>
+                        </div>
+                        <button className="px-6 py-3 bg-white border-2 border-gray-100 text-gray-900 rounded-xl font-bold text-sm hover:border-black hover:bg-black hover:text-white transition-all shadow-sm active:scale-95">
+                            View Details
+                        </button>
+                    </div>
                 </div>
             </div>
 

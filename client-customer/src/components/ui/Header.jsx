@@ -5,7 +5,9 @@ import { FaBars, FaUserCircle, FaHome } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 
-export default function Header({ onOpenSearch }) {
+import SearchBar from '../ui/SearchBar';
+
+export default function Header({ onOpenSearch, onSearch, properties, categories, activeCategory, onCategoryChange }) {
     const location = useLocation();
     const { user, logout } = useAuth();
     const isHomePage = location.pathname === '/';
@@ -15,7 +17,7 @@ export default function Header({ onOpenSearch }) {
 
     useEffect(() => {
         const handleScroll = () => {
-            setScrolled(window.scrollY > 20);
+            setScrolled(window.scrollY > 300); // Wait until hero is passed
         };
         window.addEventListener('scroll', handleScroll);
         handleScroll();
@@ -51,13 +53,25 @@ export default function Header({ onOpenSearch }) {
                     />
                 </Link>
 
-                {/* 2. CENTER - EMPTY (Reverted) */}
-                <div className="hidden md:block w-full max-w-md"></div>
+                {/* 2. CENTER - SEARCH BAR (Sticky) */}
+                <div className="hidden md:flex flex-1 justify-center px-8 transition-all duration-500">
+                    <div className={`transition-all duration-500 transform ${scrolled || !isHomePage ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-10 opacity-0 scale-95 pointer-events-none'}`}>
+                        <SearchBar
+                            compact={true}
+                            isSticky={true}
+                            onSearch={onSearch} // Pass the handler from MainLayout
+                            properties={properties}
+                            categories={categories}
+                            activeCategory={activeCategory}
+                            onCategoryChange={onCategoryChange}
+                        />
+                    </div>
+                </div>
 
                 {/* 3. RIGHT - MENU */}
                 <div className="flex items-center gap-4 relative" ref={menuRef}>
                     <a
-                        href="http://stagingvendor.resortwala.com"
+                        href={window.location.hostname === '72.61.242.42' ? '/vendor/' : 'http://stagingvendor.resortwala.com'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hidden lg:flex items-center gap-2 group"

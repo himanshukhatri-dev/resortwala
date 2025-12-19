@@ -4,7 +4,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/ui/Header';
 import Footer from '../components/ui/Footer';
 import ChatWidget from '../components/common/ChatWidget';
-import DraggableSearchBubble from '../components/ui/DraggableSearchBubble';
+
 import SearchModal from '../components/ui/SearchModal';
 
 
@@ -75,6 +75,11 @@ export default function MainLayout() {
         <div className="flex flex-col min-h-screen bg-white font-sans text-gray-900 relative">
             <Header
                 onOpenSearch={() => setShowSearchModal(true)}
+                onSearch={handleSearch}
+                properties={properties}
+                categories={CATEGORIES}
+                activeCategory={activeCategory}
+                onCategoryChange={setActiveCategory}
             />
 
 
@@ -83,10 +88,7 @@ export default function MainLayout() {
                 <Outlet />
             </main>
 
-            {/* Global Search Bubble */}
-            {(scrolled || location.pathname !== '/') && (
-                <DraggableSearchBubble onClick={() => setShowSearchModal(true)} />
-            )}
+
 
             <SearchModal
 

@@ -139,7 +139,7 @@ export default function MapView({ properties }) {
                                 <div className="flex justify-between items-center mt-2">
                                     <span className="font-bold text-lg text-black">₹{Number(p.Price).toLocaleString()}</span>
                                     <Link
-                                        to={`/stay/${p.share_token || p.PropertyId}`}
+                                        to={`/property/${p.PropertyId}`}
                                         className="text-white bg-black hover:bg-gray-800 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                                     >
                                         View

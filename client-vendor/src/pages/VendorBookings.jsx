@@ -6,12 +6,11 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import Sidebar from '../components/Sidebar';
 import { useModal } from '../context/ModalContext';
+import { FaSearch, FaCalendarAlt, FaFilter, FaCheck, FaTimes, FaBan, FaBars } from 'react-icons/fa';
 
 export default function VendorBookings() {
     const { user, token } = useAuth();
-    const { theme, setTheme } = useTheme();
     const { showConfirm, showSuccess, showError } = useModal();
-    const navigate = useNavigate();
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -28,7 +27,8 @@ export default function VendorBookings() {
 
     const fetchBookings = async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/admin/vendor/bookings`, {
+            // FIXED: API Path
+            const response = await axios.get(`${API_BASE_URL}/vendor/bookings`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setBookings(response.data);
@@ -51,7 +51,8 @@ export default function VendorBookings() {
         if (!confirmed) return;
 
         try {
-            await axios.post(`${API_BASE_URL}/admin/vendor/bookings/${bookingId}/status`,
+            // FIXED: API Path
+            await axios.post(`${API_BASE_URL}/vendor/bookings/${bookingId}/status`,
                 { status: newStatus },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -92,103 +93,89 @@ export default function VendorBookings() {
     }, [bookings, searchText, dateFrom, dateTo, statusFilter]);
 
     // Status Badge Helper
-    const getStatusStyle = (status) => {
+    const getStatusColor = (status) => {
         switch (status) {
-            case 'confirmed': return { bg: '#def7ec', color: '#03543f', border: '1px solid #bcf0da' };
-            case 'pending': return { bg: '#fff8db', color: '#92400e', border: '1px solid #fceebf' };
-            case 'cancelled': return { bg: '#fde8e8', color: '#9b1c1c', border: '1px solid #fbd5d5' };
-            case 'rejected': return { bg: '#fde8e8', color: '#9b1c1c', border: '1px solid #fbd5d5' };
-            default: return { bg: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb' };
+            case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
+            case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+            case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
+            default: return 'bg-gray-100 text-gray-800 border-gray-200';
         }
     };
 
-    if (loading) {
-        return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-color)' }}>Loading bookings...</div>;
-    }
+    if (loading) return <div className="flex h-screen items-center justify-center text-gray-500">Loading bookings...</div>;
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-color)', overflowX: 'hidden' }}>
+        <div className="flex min-h-screen bg-gray-50">
             <Sidebar
                 activePage="vendor-bookings"
                 isOpen={isMobileMenuOpen}
                 onClose={() => setIsMobileMenuOpen(false)}
             />
 
-            <div className="main-content">
+            <div className="flex-1 md:ml-[70px] transition-all duration-300 w-full">
                 {/* 1. Header Area - Sticky */}
-                <div className="header-sticky">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                            <button
-                                className="mobile-menu-btn"
-                                onClick={() => setIsMobileMenuOpen(true)}
-                            >
-                                ☰
+                <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md px-6 py-4 border-b border-gray-100">
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-4">
+                            <button className="md:hidden text-2xl" onClick={() => setIsMobileMenuOpen(true)}>
+                                <FaBars />
                             </button>
                             <div>
-                                <h1 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-color)', margin: 0 }}>
-                                    Bookings
-                                </h1>
-                                <p style={{ color: 'var(--text-color)', opacity: 0.6, fontSize: '13px', margin: '2px 0 0 0' }}>
-                                    Manage your reservations
-                                </p>
+                                <h1 className="text-xl md:text-2xl font-bold text-gray-900">Bookings</h1>
+                                <p className="text-sm text-gray-500 hidden md:block">Manage your reservations</p>
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                            <div className="desktop-only" style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-color)' }}>{user?.name || 'Vendor'}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-color)', opacity: 0.6 }}>Property Owner</div>
+                        <div className="flex items-center gap-3">
+                            <div className="text-right hidden md:block">
+                                <div className="font-bold text-gray-900 text-sm">{user?.name || 'Vendor'}</div>
+                                <div className="text-xs text-gray-500">Property Owner</div>
                             </div>
-                            <div style={{
-                                width: '35px',
-                                height: '35px',
-                                borderRadius: '50%',
-                                background: 'linear-gradient(135deg, var(--primary-color), #2196f3)',
-                                color: 'white',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 'bold',
-                                fontSize: '16px'
-                            }}>
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-500 to-blue-500 text-white flex items-center justify-center font-bold shadow-sm">
                                 {user?.name?.charAt(0).toUpperCase()}
                             </div>
                         </div>
                     </div>
 
-                    {/* 2. Compact Filter Row - Redesigned */}
-                    <div className="filter-container">
-                        <div className="search-box">
-                            <span className="search-icon">🔍</span>
+                    {/* 2. Compact Filter Row */}
+                    <div className="bg-white p-3 rounded-full border border-gray-200 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+                        <div className="relative flex-1 min-w-[200px]">
+                            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Search guest, ID..."
                                 value={searchText}
                                 onChange={(e) => setSearchText(e.target.value)}
-                                className="filter-input search-input"
+                                className="w-full bg-gray-50 pl-10 pr-4 py-2.5 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-black/5"
                             />
                         </div>
 
-                        <div className="filter-controls">
-                            <div className="date-group">
-                                <span className="label">From</span>
-                                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="filter-input date-input" />
+                        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+                            <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-full border border-gray-100">
+                                <span className="text-xs font-bold text-gray-400 uppercase">From</span>
+                                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="bg-transparent text-sm font-medium outline-none" />
                             </div>
-                            <div className="date-group">
-                                <span className="label">To</span>
-                                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="filter-input date-input" />
+                            <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-full border border-gray-100">
+                                <span className="text-xs font-bold text-gray-400 uppercase">To</span>
+                                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="bg-transparent text-sm font-medium outline-none" />
                             </div>
-
-                            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="filter-input select-input">
-                                <option value="all">All Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="confirmed">Confirmed</option>
-                                <option value="cancelled">Cancelled</option>
-                            </select>
+                            <div className="relative">
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="appearance-none bg-gray-50 pl-4 pr-10 py-2.5 rounded-full text-sm font-bold border border-gray-100 outline-none cursor-pointer hover:bg-gray-100 transition"
+                                >
+                                    <option value="all">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                                <FaFilter className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none" />
+                            </div>
 
                             {(searchText || dateFrom || dateTo || statusFilter !== 'all') && (
-                                <button onClick={() => { setSearchText(''); setDateFrom(''); setDateTo(''); setStatusFilter('all'); }} className="reset-btn">
+                                <button onClick={() => { setSearchText(''); setDateFrom(''); setDateTo(''); setStatusFilter('all'); }} className="px-4 py-2 bg-red-50 text-red-500 rounded-full text-xs font-bold hover:bg-red-100 transition">
                                     Reset
                                 </button>
                             )}
@@ -197,307 +184,97 @@ export default function VendorBookings() {
                 </div>
 
                 {/* 3. Content Area */}
-                <div style={{ padding: '15px 20px' }}>
+                <div className="p-4 md:p-6">
                     {filteredBookings.length === 0 ? (
-                        <div className="empty-state">
-                            <p>No bookings match your filters.</p>
+                        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-3xl">📅</div>
+                            <p className="text-gray-500 font-medium">No bookings match your filters.</p>
                         </div>
                     ) : (
                         <>
                             {/* Desktop Table View */}
-                            <div className="desktop-table-container">
-                                <table className="booking-table">
+                            <div className="hidden md:block bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden border border-gray-100">
+                                <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Guest</th>
-                                            <th>Property</th>
-                                            <th>Check-In</th>
-                                            <th>Check-Out</th>
-                                            <th>Amount</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
+                                        <tr className="bg-gray-50 border-b border-gray-100">
+                                            <th className="p-5 text-xs font-extrabold text-gray-400 uppercase tracking-wider">ID</th>
+                                            <th className="p-5 text-xs font-extrabold text-gray-400 uppercase tracking-wider">Guest</th>
+                                            <th className="p-5 text-xs font-extrabold text-gray-400 uppercase tracking-wider">Property</th>
+                                            <th className="p-5 text-xs font-extrabold text-gray-400 uppercase tracking-wider">Dates</th>
+                                            <th className="p-5 text-xs font-extrabold text-gray-400 uppercase tracking-wider">Amount</th>
+                                            <th className="p-5 text-xs font-extrabold text-gray-400 uppercase tracking-wider">Status</th>
+                                            <th className="p-5 text-xs font-extrabold text-gray-400 uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {filteredBookings.map((booking) => {
-                                            const statusStyle = getStatusStyle(booking.Status || 'pending');
-                                            return (
-                                                <tr key={booking.BookingId}>
-                                                    <td className="fw-600">#{booking.BookingId}</td>
-                                                    <td>
-                                                        <div className="fw-600">{booking.CustomerName || 'Guest'}</div>
-                                                        <div className="sub-text">{booking.CustomerMobile}</div>
-                                                    </td>
-                                                    <td>
-                                                        <div className="fw-500">{booking.property?.Name || 'Unknown'}</div>
-                                                        <div className="sub-text">{booking.property?.Location}</div>
-                                                    </td>
-                                                    <td className="fw-500">{new Date(booking.CheckInDate).toLocaleDateString()}</td>
-                                                    <td className="fw-500">{new Date(booking.CheckOutDate).toLocaleDateString()}</td>
-                                                    <td className="fw-600">₹{booking.TotalAmount?.toLocaleString()}</td>
-                                                    <td>
-                                                        <span className="status-badge" style={{ backgroundColor: statusStyle.bg, color: statusStyle.color, border: statusStyle.border }}>
-                                                            {booking.Status || 'Pending'}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <ActionButtons booking={booking} onUpdate={handleStatusUpdate} />
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
+                                    <tbody className="divide-y divide-gray-50">
+                                        {filteredBookings.map((booking) => (
+                                            <tr key={booking.BookingId} className="hover:bg-gray-50/50 transition duration-150">
+                                                <td className="p-5 font-bold text-gray-900">#{booking.BookingId}</td>
+                                                <td className="p-5">
+                                                    <div className="font-bold text-gray-900">{booking.CustomerName || 'Guest'}</div>
+                                                    <div className="text-xs text-gray-500 mt-0.5">{booking.CustomerMobile}</div>
+                                                </td>
+                                                <td className="p-5">
+                                                    <div className="font-medium text-gray-900">{booking.property?.Name || 'Unknown'}</div>
+                                                    <div className="text-xs text-gray-500 mt-0.5">{booking.property?.Location}</div>
+                                                </td>
+                                                <td className="p-5 text-sm font-medium text-gray-600">
+                                                    {new Date(booking.CheckInDate).toLocaleDateString()} <span className="text-gray-300">➜</span> {new Date(booking.CheckOutDate).toLocaleDateString()}
+                                                </td>
+                                                <td className="p-5 font-bold text-gray-900">₹{booking.TotalAmount?.toLocaleString()}</td>
+                                                <td className="p-5">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(booking.Status || 'pending')}`}>
+                                                        {booking.Status || 'Pending'}
+                                                    </span>
+                                                </td>
+                                                <td className="p-5">
+                                                    <ActionButtons booking={booking} onUpdate={handleStatusUpdate} />
+                                                </td>
+                                            </tr>
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>
 
                             {/* Mobile Card View */}
-                            <div className="mobile-card-list">
-                                {filteredBookings.map((booking) => {
-                                    const statusStyle = getStatusStyle(booking.Status || 'pending');
-                                    return (
-                                        <div key={booking.BookingId} className="booking-card">
-                                            <div className="card-header">
-                                                <div>
-                                                    <span className="card-id">#{booking.BookingId}</span>
-                                                    <div className="fw-600 name-text">{booking.CustomerName || 'Guest'}</div>
-                                                    <div className="sub-text">{booking.property?.Name}</div>
-                                                </div>
-                                                <span className="status-badge" style={{ backgroundColor: statusStyle.bg, color: statusStyle.color, border: statusStyle.border }}>
-                                                    {booking.Status || 'Pending'}
-                                                </span>
+                            <div className="md:hidden space-y-4">
+                                {filteredBookings.map((booking) => (
+                                    <div key={booking.BookingId} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <span className="text-xs font-bold text-gray-400">#{booking.BookingId}</span>
+                                                <div className="font-bold text-gray-900 text-lg mt-1">{booking.CustomerName || 'Guest'}</div>
+                                                <div className="text-xs text-gray-500">{booking.property?.Name}</div>
                                             </div>
-
-                                            <div className="card-body">
-                                                <div className="date-row">
-                                                    <div>
-                                                        <div className="label">Check In</div>
-                                                        <div className="val">{new Date(booking.CheckInDate).toLocaleDateString()}</div>
-                                                    </div>
-                                                    <div className="arrow">➜</div>
-                                                    <div style={{ textAlign: 'right' }}>
-                                                        <div className="label">Check Out</div>
-                                                        <div className="val">{new Date(booking.CheckOutDate).toLocaleDateString()}</div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="amount-row">
-                                                    <span>Total Amount</span>
-                                                    <span className="amount">₹{booking.TotalAmount?.toLocaleString()}</span>
-                                                </div>
-                                            </div>
-
-                                            {(!booking.Status || booking.Status === 'confirmed' || booking.Status === 'pending') && (
-                                                <div className="card-actions">
-                                                    <ActionButtons booking={booking} onUpdate={handleStatusUpdate} isMobile />
-                                                </div>
-                                            )}
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(booking.Status || 'pending')}`}>
+                                                {booking.Status || 'Pending'}
+                                            </span>
                                         </div>
-                                    );
-                                })}
+
+                                        <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-xl mb-4 text-sm font-medium text-gray-700">
+                                            <FaCalendarAlt className="text-gray-400" />
+                                            <span>{new Date(booking.CheckInDate).toLocaleDateString()}</span>
+                                            <span className="text-gray-400">➜</span>
+                                            <span>{new Date(booking.CheckOutDate).toLocaleDateString()}</span>
+                                        </div>
+
+                                        <div className="flex justify-between items-center mb-4">
+                                            <span className="text-sm font-bold text-gray-400 uppercase">Total</span>
+                                            <span className="text-xl font-bold text-gray-900">₹{booking.TotalAmount?.toLocaleString()}</span>
+                                        </div>
+
+                                        {(!booking.Status || booking.Status === 'confirmed' || booking.Status === 'pending') && (
+                                            <div className="pt-4 border-t border-gray-100">
+                                                <ActionButtons booking={booking} onUpdate={handleStatusUpdate} isMobile />
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </>
                     )}
                 </div>
             </div>
-
-            <style>{`
-                .main-content {
-                    flex: 1;
-                    margin-left: 70px; /* Fixed margin matching collapsed sidebar width */
-                    width: calc(100% - 70px);
-                    background-color: var(--bg-color);
-                    transition: all 0.3s ease;
-                }
-                
-                /* Remove hover shift to prevent table movement */
-                /* .main-content:hover { margin-left: 240px; } */
-
-                .header-sticky {
-                    position: sticky;
-                    top: 0;
-                    z-index: 99;
-                    background-color: rgba(255, 255, 255, 0.9);
-                    backdrop-filter: blur(10px);
-                    padding: 20px 30px;
-                    border-bottom: 1px solid rgba(0,0,0,0.05);
-                }
-
-                .filter-container {
-                    background-color: white;
-                    padding: 12px;
-                    border-radius: 100px; /* Pill shape for premium feel */
-                    border: 1px solid #e5e7eb;
-                    display: flex;
-                    gap: 15px;
-                    align-items: center;
-                    flex-wrap: wrap;
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-                }
-
-                .search-box {
-                    position: relative;
-                    flex-grow: 1;
-                    min-width: 250px;
-                }
-                .search-icon {
-                    position: absolute;
-                    left: 16px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    opacity: 0.4;
-                    font-size: 16px;
-                }
-                .filter-input {
-                    padding: 10px 16px;
-                    border-radius: 50px;
-                    border: 1px solid transparent;
-                    background-color: #f3f4f6;
-                    color: #1f2937;
-                    font-size: 14px;
-                    font-weight: 500;
-                    outline: none;
-                    transition: all 0.2s;
-                }
-                .search-input { width: 100%; padding-left: 42px; border-radius: 50px; }
-                .filter-input:focus { background-color: white; border-color: #000; box-shadow: 0 0 0 4px rgba(0,0,0,0.05); }
-
-                .filter-controls {
-                    display: flex;
-                    gap: 10px;
-                    align-items: center;
-                    flex-wrap: wrap;
-                }
-                .date-group { display: flex; alignItems: center; gap: 8px; }
-                .label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.5; }
-                .date-input { width: auto; font-family: inherit; }
-                .select-input { padding-right: 32px; cursor: pointer; }
-
-                .reset-btn {
-                    padding: 8px 16px;
-                    background: #fee2e2;
-                    color: #ef4444;
-                    border: none;
-                    border-radius: 50px;
-                    font-size: 13px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-                .reset-btn:hover { background: #fecaca; }
-
-                /* Table Styles */
-                .desktop-table-container { 
-                    display: block; 
-                    background-color: white;
-                    border-radius: 20px;
-                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.01);
-                    overflow: hidden;
-                    border: 1px solid #f3f4f6;
-                    margin-top: 10px;
-                }
-                .booking-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 900px; }
-                .booking-table th { 
-                    padding: 20px 24px; 
-                    text-align: left; 
-                    font-size: 12px; 
-                    font-weight: 800; 
-                    color: #9ca3af; 
-                    border-bottom: 2px solid #f3f4f6;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    background: white;
-                }
-                .booking-table td { 
-                    padding: 20px 24px; 
-                    border-bottom: 1px solid #f3f4f6; 
-                    font-size: 14px; 
-                    color: #374151; 
-                    vertical-align: middle; 
-                    transition: background 0.1s;
-                }
-                .booking-table tr:last-child td { border-bottom: none; }
-                .booking-table tr:hover td { background-color: #f9fafb; }
-                
-                .fw-600 { font-weight: 600; color: #111827; }
-                .fw-500 { font-weight: 500; }
-                .sub-text { font-size: 12px; color: #6b7280; margin-top: 4px; }
-                .status-badge { 
-                    padding: 6px 12px; 
-                    border-radius: 50px; 
-                    font-size: 12px; 
-                    font-weight: 700; 
-                    text-transform: capitalize; 
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                }
-                .status-badge::before {
-                    content: '';
-                    width: 6px;
-                    height: 6px;
-                    border-radius: 50%;
-                    background-color: currentColor;
-                }
-
-                .empty-state { text-align: center; padding: 60px; color: #9ca3af; font-size: 16px; background: white; border-radius: 20px; border: 2px dashed #e5e7eb; }
-
-                /* Action Buttons */
-                .action-group { display: flex; gap: 8px; }
-                .btn-action { 
-                    padding: 8px 16px; 
-                    border-radius: 8px; 
-                    font-size: 13px; 
-                    font-weight: 600; 
-                    border: none; 
-                    cursor: pointer; 
-                    transition: all 0.2s; 
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .btn-confirm { background-color: #10b981; color: white; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2); }
-                .btn-confirm:hover { background-color: #059669; transform: translateY(-1px); }
-                
-                .btn-reject { background-color: white; color: #ef4444; border: 1px solid #fee2e2; }
-                .btn-reject:hover { background-color: #fef2f2; border-color: #fca5a5; }
-                
-                .btn-cancel { border: 1px solid #e5e7eb; background: white; color: #6b7280; }
-                .btn-cancel:hover { background: #f9fafb; border-color: #d1d5db; color: #374151; }
-                
-                /* Mobile Card Styles */
-                .mobile-card-list { display: none; flex-direction: column; gap: 15px; }
-                .booking-card {
-                    background-color: white;
-                    padding: 20px;
-                    border-radius: 16px;
-                    border: 1px solid #f3f4f6;
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-                }
-                .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-                .card-id { font-size: 12px; color: #9ca3af; font-weight: 700; letter-spacing: 0.5px; }
-                .name-text { font-size: 16px; margin-top: 4px; color: #111827; }
-                
-                .card-body { border-top: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6; padding: 16px 0; margin-bottom: 16px; }
-                .amount-row .amount { color: #111827; font-weight: 800; font-size: 18px; }
-
-                /* Responsive */
-                @media (max-width: 768px) {
-                    .main-content { margin-left: 0; width: 100%; padding: 0 !important; }
-                    .header-sticky { padding: 15px; }
-                    .filter-container { padding: 10px; border-radius: 16px; }
-                    .desktop-only { display: none; }
-                    .mobile-menu-btn { display: block; background: none; border: none; font-size: 24px; cursor: pointer; }
-                    
-                    .desktop-table-container { display: none; }
-                    .mobile-card-list { display: flex; padding: 0 15px 30px; }
-                    
-                    .filter-controls { width: 100%; }
-                    .date-group { flex: 1; min-width: 45%; }
-                    .date-input { width: 100%; padding: 8px 12px; }
-                    .select-input { width: 100%; padding: 8px 12px; }
-                }
-            `}</style>
         </div>
     );
 }
@@ -505,28 +282,27 @@ export default function VendorBookings() {
 function ActionButtons({ booking, onUpdate, isMobile }) {
     if (!booking.Status || booking.Status === 'pending') {
         return (
-            <div className={`action-group ${isMobile ? 'w-100' : ''}`}>
+            <div className={`flex gap-2 ${isMobile ? 'w-full' : ''}`}>
                 <button
                     onClick={() => onUpdate(booking.BookingId, 'confirmed')}
-                    className="btn-action btn-confirm">
-                    Confirm
+                    className={`flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-sm ${isMobile ? 'flex-1' : ''}`}>
+                    <FaCheck /> Confirm
                 </button>
                 <button
                     onClick={() => onUpdate(booking.BookingId, 'rejected')}
-                    className="btn-action btn-reject">
-                    Reject
+                    className={`flex items-center justify-center gap-2 px-4 py-2 bg-white border border-red-100 text-red-500 hover:bg-red-50 rounded-xl text-xs font-bold transition ${isMobile ? 'flex-1' : ''}`}>
+                    <FaTimes /> Reject
                 </button>
             </div>
         );
     }
     if (booking.Status === 'confirmed') {
         return (
-            <div className={isMobile ? 'w-100' : ''} style={isMobile ? { width: '100%', display: 'flex' } : {}}>
+            <div className={isMobile ? 'flex w-full' : ''}>
                 <button
                     onClick={() => onUpdate(booking.BookingId, 'cancelled')}
-                    className="btn-action btn-cancel"
-                    style={isMobile ? { flex: 1 } : {}}>
-                    Cancel Booking
+                    className={`flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl text-xs font-bold transition ${isMobile ? 'flex-1' : ''}`}>
+                    <FaBan /> Cancel Booking
                 </button>
             </div>
         );

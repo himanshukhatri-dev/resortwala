@@ -102,7 +102,22 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
             else {
                 // Ensure we don't just set 'to', but keep 'from'
                 setDateRange({ from: dateRange.from, to: day });
-                setTimeout(() => setActiveTab(null), 200); // Close faster
+
+                // Auto Search / Focus Down
+                setTimeout(() => {
+                    if (onSearch) {
+                        // Build the updated dates manually since state isn't updated yet
+                        onSearch({
+                            location,
+                            dates: {
+                                start: format(dateRange.from, 'yyyy-MM-dd'),
+                                end: format(day, 'yyyy-MM-dd')
+                            },
+                            guests
+                        });
+                    }
+                    setActiveTab(null);
+                }, 100);
             }
         }
     };
@@ -116,22 +131,22 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
         numberOfMonths={2}
     />
 
-    // STICKY STYLES: Use `visible` and `opacity` explicitly to prevent disappearance issues
+    // STICKY STYLES
     const containerClasses = isSticky
-        ? "fixed bottom-8 left-1/2 transform -translate-x-1/2 w-auto max-w-2xl z-[1000] transition-all duration-300 ease-in-out origin-bottom opacity-100 visible"
+        ? "w-auto flex flex-col items-center justify-center p-0 m-0 z-[1000] relative"
         : "relative w-full max-w-4xl mx-auto transition-all duration-300 ease-in-out opacity-100 visible";
 
     return (
         <div className={containerClasses} ref={searchRef}>
-            {/* STICKY CATEGORIES ROW (HIDDEN when Sticky) */}
-            {!isSticky && categories.length > 0 && (
-                <div className="flex justify-center flex-wrap gap-2 mb-0 animate-fade-down overflow-hidden">
+            {/* CATEGORIES ROW */}
+            {categories.length > 0 && (
+                <div className={`${isSticky ? 'flex justify-center gap-1 mb-1 scale-75 origin-bottom' : 'flex justify-center flex-wrap gap-2 mb-0 animate-fade-down overflow-hidden'}`}>
                     {categories.map(cat => (
                         <button
                             key={cat.id}
                             onClick={() => onCategoryChange && onCategoryChange(cat.id)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all backdrop-blur-md border ${activeCategory === cat.id
-                                ? 'bg-brand-dark text-white border-white/20 shadow-md'
+                                ? 'bg-black text-white border-black/20 shadow-md'
                                 : 'bg-white/80 text-gray-700 hover:bg-white border-transparent'
                                 }`}
                         >
@@ -144,13 +159,13 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
 
             {/* SEARCH BAR CONTAINER */}
             <div className={`bg-white transition-all duration-300 ${isSticky
-                ? 'rounded-full py-2 px-4 shadow-md border border-gray-200 flex items-center justify-between gap-4 min-w-[320px] md:min-w-[600px]'
+                ? 'rounded-full py-1.5 px-2 shadow-sm border border-gray-200 flex items-center justify-between gap-0 min-w-[400px] h-[45px]'
                 : 'md:rounded-full rounded-3xl p-4 md:p-2 shadow-2xl flex flex-col md:flex-row md:items-center relative z-40 border border-gray-100 w-full'}`}>
 
                 {/* 1. LOCATION */}
                 <div
                     onClick={() => setActiveTab('location')}
-                    className={`flex-1 relative w-full md:w-auto ${isSticky ? 'px-2 border-r border-gray-200 hover:bg-gray-50 rounded-full' : 'px-4 py-3 md:px-8 md:py-3.5 hover:bg-gray-100 rounded-xl md:rounded-full'} cursor-pointer transition ${activeTab === 'location' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''} ${!isSticky ? 'border-b md:border-b-0 border-gray-100' : ''}`}
+                    className={`flex-1 relative w-full md:w-auto ${isSticky ? 'px-3 border-r border-gray-200 hover:bg-gray-50 rounded-l-full' : 'px-4 py-3 md:px-8 md:py-3.5 hover:bg-gray-100 rounded-xl md:rounded-full'} cursor-pointer transition ${activeTab === 'location' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''} ${!isSticky ? 'border-b md:border-b-0 border-gray-100' : ''}`}
                 >
                     <label className={`block text-xs font-bold text-gray-800 tracking-wider ${isSticky ? 'hidden' : 'mb-1 md:mb-0'}`}>WHERE</label>
                     <input
@@ -167,6 +182,11 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                             setActiveTab('location');
                         }}
                         className={`w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500 p-0 relative z-10 font-medium truncate ${isSticky ? 'text-center md:text-left' : ''}`}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                handleSearch();
+                            }
+                        }}
                     />
                 </div>
 
@@ -175,7 +195,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                 {/* 2. DATES */}
                 <div
                     onClick={() => setActiveTab('dates')}
-                    className={`flex-1 relative w-full md:w-auto ${isSticky ? 'px-2 border-r border-gray-200 hover:bg-gray-50 rounded-full text-center md:text-left' : 'px-4 py-3 md:px-8 md:py-3.5 hover:bg-gray-100 rounded-xl md:rounded-full'} cursor-pointer transition ${activeTab === 'dates' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''} ${!isSticky ? 'border-b md:border-b-0 border-gray-100' : ''}`}
+                    className={`flex-1 relative w-full md:w-auto ${isSticky ? 'px-3 border-r border-gray-200 hover:bg-gray-50 text-center md:text-left' : 'px-4 py-3 md:px-8 md:py-3.5 hover:bg-gray-100 rounded-xl md:rounded-full'} cursor-pointer transition ${activeTab === 'dates' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''} ${!isSticky ? 'border-b md:border-b-0 border-gray-100' : ''}`}
                 >
                     <label className={`block text-xs font-bold text-gray-800 tracking-wider ${isSticky ? 'hidden' : 'mb-1 md:mb-0'}`}>WHEN</label>
                     <div className={`text-sm ${dateRange.from ? 'text-gray-900 font-medium' : 'text-gray-500'} truncate`}>
@@ -193,7 +213,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                 {/* 3. WHO */}
                 <div
                     onClick={() => setActiveTab('guests')}
-                    className={`flex-[1.2] relative w-full md:w-auto ${isSticky ? 'px-2 hover:bg-gray-50 rounded-full' : 'px-4 py-3 md:pl-8 md:pr-2 md:py-2 hover:bg-gray-100 rounded-xl md:rounded-full'} cursor-pointer transition flex items-center justify-between ${activeTab === 'guests' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''}`}
+                    className={`flex-[1.2] relative w-full md:w-auto ${isSticky ? 'px-3 hover:bg-gray-50 rounded-r-full' : 'px-4 py-3 md:pl-8 md:pr-2 md:py-2 hover:bg-gray-100 rounded-xl md:rounded-full'} cursor-pointer transition flex items-center justify-between ${activeTab === 'guests' ? 'bg-gray-50 md:bg-white md:shadow-lg' : ''}`}
                 >
                     <div className={`${isSticky ? 'text-center md:text-left w-full' : ''}`}>
                         <label className={`block text-xs font-bold text-gray-800 tracking-wider ${isSticky ? 'hidden' : 'mb-1 md:mb-0'}`}>WHO</label>
@@ -205,7 +225,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                     {/* SEARCH BUTTON - DESKTOP */}
                     <button
                         onClick={(e) => { e.stopPropagation(); handleSearch(); }}
-                        className={`hidden md:flex bg-[#FF385C] hover:bg-[#E00B41] text-white rounded-full ${isSticky ? 'p-2.5 w-8 h-8' : 'p-4'} shadow-md transition-all duration-300 items-center justify-center gap-2 group`}
+                        className={`hidden md:flex bg-[#FF385C] hover:bg-[#E00B41] text-white rounded-full ${isSticky ? 'p-2 w-7 h-7' : 'p-4'} shadow-md transition-all duration-300 items-center justify-center gap-2 group`}
                     >
                         <FaSearch size={isSticky ? 14 : 16} />
                         {!isSticky && (
@@ -280,11 +300,11 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                             {activeTab === 'dates' && (
                                 <div className="flex flex-col items-center justify-center w-full">
                                     <style>{`
-                                        .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #000; --rdp-background-color: #f7f7f7; }
-                                        .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f0f0f0; }
-                                        .rdp-day_selected { background-color: black !important; color: white !important; }
-                                        .rdp-day_today { font-weight: bold; color: #FF385C; }
-                                        .rdp-caption_label { font-size: 1rem; font-weight: 600; }
+                                        .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #0D9488; --rdp-background-color: #f0fdfa; }
+                                        .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f0fdfa; color: #0D9488; }
+                                        .rdp-day_selected { background-color: #0D9488 !important; color: white !important; }
+                                        .rdp-day_today { font-weight: bold; color: #D97706; }
+                                        .rdp-caption_label { font-size: 1rem; font-weight: 600; color: #0F172A; }
                                     `}</style>
                                     <DayPicker
                                         mode="range"

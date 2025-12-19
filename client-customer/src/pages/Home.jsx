@@ -201,7 +201,7 @@ export default function Home() {
                 </div>
 
                 {/* Content */}
-                <div className="relative z-10 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
+                <div className="relative z-30 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
                     <h1 className="text-xl md:text-3xl font-bold text-white mb-1 md:mb-2 drop-shadow-2xl font-serif italic tracking-wide leading-tight text-center">
                         Find your peace in <br className="hidden md:block" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-0.5">paradise</span>
@@ -273,7 +273,7 @@ export default function Home() {
                         <p className="text-gray-400 animate-pulse">Loading amazing places...</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-10 relative items-start">
+                    <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8 relative items-start">
 
                         {/* LEFT COLUMN: Map (Sticky) */}
                         <div className={`w-full lg:block ${viewMode === 'list' ? 'hidden' : 'block'} sticky top-[100px] h-[calc(100vh-140px)]`}>
