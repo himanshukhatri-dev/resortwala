@@ -8,19 +8,39 @@ if (!isset($_GET['auth']) || $_GET['auth'] !== $correctAuth) {
     die('<h1>Access Denied</h1><p>Append ?auth=SecretKey123 to URL</p>');
 }
 
-// Load Laravel Config (to get DB creds)
-require __DIR__ . '/../vendor/autoload.php';
-$app = require_once __DIR__ . '/../bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
-$response = $kernel->handle(
-    $request = Illuminate\Http\Request::capture()
-);
+// Manual .env parser
+function loadEnv($path) {
+    if (!file_exists($path)) return [];
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    $env = [];
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        list($name, $value) = explode('=', $line, 2);
+        $name = trim($name);
+        $value = trim($value);
+        // Strip quotes
+        $value = trim($value, '"\'');
+        $env[$name] = $value;
+    }
+    return $env;
+}
+
+// Load Config
+$envPath = __DIR__ . '/../.env';
+$env = loadEnv($envPath);
+
+$host = $env['DB_HOST'] ?? '127.0.0.1';
+$db   = $env['DB_DATABASE'] ?? 'resortwala';
+$user = $env['DB_USERNAME'] ?? 'root';
+$pass = $env['DB_PASSWORD'] ?? '';
+$port = $env['DB_PORT'] ?? '3306';
 
 // Get DB connection
 try {
-    $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
-    $config = \Illuminate\Support\Facades\DB::connection()->getConfig();
-    $dbDetails = "Host: {$config['host']} | DB: {$config['database']} | User: {$config['username']}";
+    $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
+    $pdo = new PDO($dsn, $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $dbDetails = "Host: $host | DB: $db | User: $user";
 } catch (\Exception $e) {
     die("<h1>Database Connection Failed</h1><p>" . $e->getMessage() . "</p>");
 }

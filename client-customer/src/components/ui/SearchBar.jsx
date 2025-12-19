@@ -39,8 +39,8 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                 const safeP = p || {};
                 return {
                     id: safeP.id || safeP.PropertyId || safeP.property_id || Math.random().toString(),
-                    label: safeP.Name || safeP.name || "Unknown Property",
-                    subLabel: safeP.Location || safeP.location || safeP.CityName || safeP.city_name || "Unknown Location",
+                    label: (safeP.Name || safeP.name || "Unknown Property").replace(', India', ''),
+                    subLabel: (safeP.Location || safeP.location || safeP.CityName || safeP.city_name || "Unknown Location").replace(', India', ''),
                     type: 'property'
                 };
             });
@@ -269,12 +269,9 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                                                 </div>
                                             ))
                                         ) : (
-                                            ['Lonavala, India', 'Goa, India', 'Mahabaleshwar, India'].map(place => (
-                                                <div key={place} onClick={() => { setLocation(place); setActiveTab('dates'); }} className="flex items-center gap-4 cursor-pointer hover:bg-gray-50 p-2 rounded-lg">
-                                                    <div className="bg-gray-100 p-3 rounded-lg"><FaMapMarkerAlt /></div>
-                                                    <span className="text-gray-700 font-medium">{place}</span>
-                                                </div>
-                                            ))
+                                            <div className="p-4 text-center text-gray-400 text-sm">
+                                                Start typing to see destinations...
+                                            </div>
                                         )}
                                     </div>
                                 </div>
