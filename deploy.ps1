@@ -19,9 +19,9 @@
 #>
 
 param (
-    [string]$ServerIP = "103.118.16.150",
-    [string]$User = "zohaib",
-    [string]$RemoteBasePath = "C:/inetpub"
+    [string]$ServerIP = "72.61.242.42",
+    [string]$User = "root",
+    [string]$RemoteBasePath = "/var/www/html"
 )
 
 # Configuration
@@ -43,7 +43,13 @@ $Paths = @{
         "DistDir"     = "." 
         "RemotePath"  = "$RemoteBasePath/stagingapi.resortwala.com"
         "Type"        = "Laravel"
-        "Excludes"    = @(".env", "node_modules", ".git", "storage/*.key", "tests") # Vendor included
+        "Excludes"    = @(".env", "node_modules", "vendor", ".git", "storage/*.key", "tests") # Vendor excluded (install on server)
+    }
+    "Vendor"   = @{
+        "LocalSource" = "$PSScriptRoot/client-vendor"
+        "DistDir"     = "dist"
+        "RemotePath"  = "$RemoteBasePath/stagingvendor.resortwala.com"
+        "Type"        = "React"
     }
 }
 
@@ -124,46 +130,54 @@ function Deploy-Component {
         $SourcePath = $TempDir
     }
 
-    # 2. Compress (Fast .NET)
-    $ZipPath = Join-Path $Env:TEMP "deploy_package.zip"
-    if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
-    
-    Write-Host "[$Name] Compressing..." -ForegroundColor Yellow
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $CompressionLevel = [System.IO.Compression.CompressionLevel]::Optimal
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($SourcePath, $ZipPath, $CompressionLevel, $false)
-    
-    # 3. Clean Remote Folder (Base64 Encoded SSH)
+    # 3. Clean Remote Folder (Linux)
     Write-Host "[$Name] Cleaning Remote Directory..." -ForegroundColor Red
-    Write-Host "   -> Password Prompt 1/3 (SSH Clean)" -ForegroundColor Magenta
     
-    # Command: if (Test-Path 'PATH') { Get-ChildItem 'PATH' -Exclude '.env' | Remove-Item -Recurse -Force }
-    $RemoteCleanScript = "if (Test-Path '$($Config.RemotePath)') { Get-ChildItem '$($Config.RemotePath)' -Exclude '.env' | Remove-Item -Recurse -Force }"
-    $Bytes = [System.Text.Encoding]::Unicode.GetBytes($RemoteCleanScript)
-    $EncodedClean = [Convert]::ToBase64String($Bytes)
+    # Ensure remote directory exists
+    ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "mkdir -p $($Config.RemotePath)"
+
+    # Clean contents (preserve .env)
+    $RemoteCleanCmd = "find $($Config.RemotePath)/ -mindepth 1 ! -name '.env' -delete"
+    ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "$RemoteCleanCmd"
     
-    ssh "${User}@${ServerIP}" "powershell -EncodedCommand $EncodedClean"
+    # 2. Compress (Tar Gzip for Linux Compatibility)
+    # Use localized filename to avoid 'tar' interpreting "C:" as a remote host in MinGW
+    $TarFileName = "deploy_package.tar.gz"
+    # Create in current directory to ensure relative path usage
+    $TarPath = ".\$TarFileName"
     
-    # 4. Transfer Zip
+    if (Test-Path $TarPath) { Remove-Item $TarPath -Force }
+    
+    Write-Host "[$Name] Compressing (tar.gz)..." -ForegroundColor Yellow
+    
+    # Use --force-local if supported, or just rely on relative path
+    # We use relative path for output: "$TarPath"
+    tar -czf "$TarPath" -C "$SourcePath" .
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "[$Name] Compression Failed. Ensure 'tar' is in your PATH (Windows 10+)."
+        return
+    }
+
+    # 4. Transfer
     Write-Host "[$Name] Uploading..." -ForegroundColor Cyan
-    Write-Host "   -> Password Prompt 2/3 (SCP Upload)" -ForegroundColor Magenta
     
-    scp "$ZipPath" "${User}@${ServerIP}:$($Config.RemotePath)/deploy_package.zip"
+    # Use Resolve-Path to get absolute path for SCP to avoid ambiguity
+    $AbsTarPath = (Resolve-Path $TarPath).Path
+    scp -o StrictHostKeyChecking=no "$AbsTarPath" "${User}@${ServerIP}:$($Config.RemotePath)/$TarFileName"
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[$Name] Extracting..." -ForegroundColor Green
         
-        # 5. Unzip Remotely (Base64 Encoded SSH)
-        # Command: Expand-Archive -Path 'ZIP' -Destination 'DEST' -Force; Remove-Item 'ZIP' -Force
-        $RemoteUnzipScript = "Expand-Archive -Path '$($Config.RemotePath)\deploy_package.zip' -DestinationPath '$($Config.RemotePath)' -Force; Remove-Item '$($Config.RemotePath)\deploy_package.zip' -Force"
-        $Bytes2 = [System.Text.Encoding]::Unicode.GetBytes($RemoteUnzipScript)
-        $EncodedUnzip = [Convert]::ToBase64String($Bytes2)
+        # 5. Extract Remotely (Linux)
+        $RemoteExtractCmd = "tar -xzf $($Config.RemotePath)/$TarFileName -C $($Config.RemotePath) && rm $($Config.RemotePath)/$TarFileName"
         
-        Write-Host "   -> Password Prompt 3/3 (SSH Unzip)" -ForegroundColor Magenta
-        ssh "${User}@${ServerIP}" "powershell -EncodedCommand $EncodedUnzip"
+        ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "$RemoteExtractCmd"
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host "[$Name] SUCCESS." -ForegroundColor Green
+            # Fix permissions
+            ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "chmod -R 755 $($Config.RemotePath)"
         }
         else {
             Write-Host "[$Name] Extraction Failed (SSH Error)." -ForegroundColor Red
@@ -174,7 +188,7 @@ function Deploy-Component {
     }
     
     # Cleanup local
-    if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
+    if (Test-Path $TarPath) { Remove-Item $TarPath -Force }
     if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force }
 }
 
@@ -186,7 +200,8 @@ Write-Host "=========================================="
 Write-Host "1. Deploy Customer App (React)"
 Write-Host "2. Deploy Admin App (React)"
 Write-Host "3. Deploy API (Laravel)"
-Write-Host "4. Deploy ALL"
+Write-Host "4. Deploy Vendor App (React)"
+Write-Host "5. Deploy ALL"
 Write-Host "Q. Quit"
 Write-Host "=========================================="
 
@@ -203,9 +218,13 @@ switch ($Selection) {
         if (Build-Laravel "API" $Paths.API) { Deploy-Component "API" $Paths.API }
     }
     "4" {
+        if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor }
+    }
+    "5" {
         if (Build-ReactApp "Customer" $Paths.Customer) { Deploy-Component "Customer" $Paths.Customer }
         if (Build-ReactApp "Admin" $Paths.Admin) { Deploy-Component "Admin" $Paths.Admin }
         if (Build-Laravel "API" $Paths.API) { Deploy-Component "API" $Paths.API }
+        if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor }
     }
     "Q" { exit }
     Default { Write-Host "Invalid Selection" -ForegroundColor Red }
