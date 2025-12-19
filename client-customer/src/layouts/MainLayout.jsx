@@ -6,6 +6,8 @@ import Footer from '../components/ui/Footer';
 import ChatWidget from '../components/common/ChatWidget';
 import DraggableSearchBubble from '../components/ui/DraggableSearchBubble';
 import SearchModal from '../components/ui/SearchModal';
+
+
 import { FaSwimmingPool, FaHome, FaHotel } from 'react-icons/fa';
 
 const CATEGORIES = [
@@ -71,7 +73,12 @@ export default function MainLayout() {
 
     return (
         <div className="flex flex-col min-h-screen bg-white font-sans text-gray-900 relative">
-            <Header />
+            <Header
+                onOpenSearch={() => setShowSearchModal(true)}
+            />
+
+
+
             <main className="flex-grow">
                 <Outlet />
             </main>
@@ -82,6 +89,7 @@ export default function MainLayout() {
             )}
 
             <SearchModal
+
                 isOpen={showSearchModal}
                 onClose={() => setShowSearchModal(false)}
                 onSearch={handleSearch}
@@ -91,8 +99,10 @@ export default function MainLayout() {
                 onCategoryChange={setActiveCategory}
             />
 
+
             <ChatWidget />
             <Footer />
         </div>
     );
 }
+

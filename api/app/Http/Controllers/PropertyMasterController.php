@@ -8,21 +8,19 @@ class PropertyMasterController extends Controller
 {
     public function index(Request $request)
     {
-        $query = \App\Models\PropertyMaster::with('images')
-            ->where('is_approved', 1)
-            ->orderBy('created_at', 'desc');
+        try {
+            $query = \App\Models\PropertyMaster::with('images')
+                ->where('is_approved', 1)
+                ->orderBy('created_at', 'desc');
 
-        if ($request->has('location')) {
-            $query->where('Location', 'like', '%' . $request->input('location') . '%');
+            if ($request->has('location')) {
+                $query->where('Location', 'like', '%' . $request->input('location') . '%');
+            }
+
+            return response()->json($query->get());
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()], 500);
         }
-
-        // Guests filter stub (assuming 'MaxGuest' or similar column exists, otherwise simple pass-through for now)
-        // Adjust column name based on actual schema if known, or just stub it.
-        // Based on SOW "Customer will search... with People", assuming capacity check.
-        // For now, let's look for a column that might indicate capacity.
-        // Since I haven't seen the full schema, I will skip complex capacity logic unless I verify the column.
-        
-        return response()->json($query->get());
     }
 
     public function show($id)

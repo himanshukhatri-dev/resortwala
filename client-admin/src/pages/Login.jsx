@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 import { useModal } from '../context/ModalContext';
 
@@ -22,7 +23,7 @@ export default function Login() {
         setLoading(true);
 
         try {
-            const response = await axios.post('/api/admin/login', formData);
+            const response = await axios.post(`${API_BASE_URL}/admin/login`, formData);
             console.log('Login response:', response.data);
             login(response.data.token, response.data.user);
             await showSuccess('Welcome Admin', 'Logged in successfully');

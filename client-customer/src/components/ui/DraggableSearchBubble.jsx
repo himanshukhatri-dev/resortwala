@@ -14,7 +14,8 @@ export default function DraggableSearchBubble({ onClick }) {
             // Let's use logic to keep it in view.
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className="fixed bottom-28 right-6 z-[900] cursor-grab active:cursor-grabbing"
+            className="fixed bottom-24 right-6 z-[900] cursor-grab active:cursor-grabbing"
+
             onClick={onClick}
             style={{ touchAction: 'none' }} // Prevent scrolling while dragging
         >

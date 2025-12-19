@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { useModal } from '../context/ModalContext';
+import { API_BASE_URL } from '../config';
 
 export default function Register() {
     const navigate = useNavigate();
@@ -45,7 +46,7 @@ export default function Register() {
         }
 
         try {
-            const response = await axios.post('/api/vendor/register', formData);
+            const response = await axios.post(`${API_BASE_URL}/vendor/register`, formData);
             console.log('Registration response:', response.data);
             login(response.data.token, response.data.user);
             await showSuccess('Welcome!', response.data.message || 'Registration successful');

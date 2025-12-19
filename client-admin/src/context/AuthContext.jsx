@@ -1,5 +1,6 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 const AuthContext = createContext();
 
@@ -14,7 +15,7 @@ export function AuthProvider({ children }) {
             const storedToken = localStorage.getItem('admin_token');
             if (storedToken) {
                 try {
-                    const res = await axios.get('/api/admin/profile', {
+                    const res = await axios.get(`${API_BASE_URL}/admin/profile`, {
                         headers: { Authorization: `Bearer ${storedToken}` }
                     });
                     setUser(res.data.user);

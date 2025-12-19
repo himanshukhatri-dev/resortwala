@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -19,7 +20,7 @@ export default function Login() {
         setLoading(true);
 
         try {
-            const response = await axios.post('/api/vendor/login', formData);
+            const response = await axios.post(`${API_BASE_URL}/vendor/login`, formData);
             console.log('Login response:', response.data);
             login(response.data.token, response.data.user);
             // Small delay to ensure state updates

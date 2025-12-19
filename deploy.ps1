@@ -176,8 +176,32 @@ function Deploy-Component {
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host "[$Name] SUCCESS." -ForegroundColor Green
-            # Fix permissions
-            ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "chmod -R 755 $($Config.RemotePath)"
+            
+            # Additional Steps for Laravel
+            if ($Config.Type -eq "Laravel") {
+                Write-Host "[$Name] Finalizing Laravel Setup on Server..." -ForegroundColor Cyan
+                
+                # Use a single line with && to ensure steps run sequentially and fail fast
+                # We also explicitly set permission 777 on logs to avoid any ambiguity
+                $RemoteSetupCmd = "cd $($Config.RemotePath) && " +
+                "chown -R www-data:www-data . && " +
+                "mkdir -p storage/logs storage/framework/views storage/framework/cache/data storage/framework/sessions bootstrap/cache && " +
+                "chown -R www-data:www-data storage bootstrap/cache && " +
+                "chmod -R 775 storage bootstrap/cache && " +
+                "chmod -R 777 storage/logs && " +
+                "export COMPOSER_ALLOW_SUPERUSER=1 && " +
+                "composer install --no-dev --optimize-autoloader --no-interaction && " +
+                "chown -R www-data:www-data storage bootstrap/cache vendor && " +
+                "chmod -R 775 storage bootstrap/cache && " +
+                "php artisan migrate --force"
+
+                ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "$RemoteSetupCmd"
+
+            }
+            else {
+                # Regular permissions for static React apps
+                ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "chmod -R 755 $($Config.RemotePath)"
+            }
         }
         else {
             Write-Host "[$Name] Extraction Failed (SSH Error)." -ForegroundColor Red

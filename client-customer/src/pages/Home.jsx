@@ -7,7 +7,7 @@ import PropertyCard from '../components/features/PropertyCard';
 import MapView from '../components/features/MapView';
 // Framer Motion for Animations
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSwimmingPool, FaHome, FaHotel, FaMapMarkedAlt, FaList } from 'react-icons/fa';
+import { FaSwimmingPool, FaHome, FaHotel, FaMapMarkedAlt, FaList, FaSearch } from 'react-icons/fa';
 
 const CATEGORIES = [
     { id: 'all', label: 'All', icon: <FaHome /> },
@@ -273,26 +273,44 @@ export default function Home() {
                         <p className="text-gray-400 animate-pulse">Loading amazing places...</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr_350px] gap-6 relative items-start">
+                    <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-10 relative items-start">
 
-                        {/* LEFT COLUMN: Filters (Sticky) */}
-                        <div className="hidden lg:block sticky top-[90px] h-[calc(100vh-100px)] overflow-y-auto no-scrollbar">
-                            <FilterBar onFilterChange={setAdvancedFilters} />
+                        {/* LEFT COLUMN: Map (Sticky) */}
+                        <div className={`w-full lg:block ${viewMode === 'list' ? 'hidden' : 'block'} sticky top-[100px] h-[calc(100vh-140px)]`}>
+                            <div className="w-full h-full rounded-2xl overflow-hidden shadow-2xl border border-gray-100 relative group">
+                                <MapView properties={filteredProperties} />
+                                <div className="absolute top-4 left-4 z-[1000] opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-gray-100 shadow-xl flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                                        <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Live Map View</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* MIDDLE COLUMN: Property List */}
+                        {/* RIGHT COLUMN: Property List */}
                         <div className={`w-full ${viewMode === 'map' ? 'hidden lg:block' : 'block'}`}>
+
+                            {/* HORIZONTAL FILTERS */}
+                            <div className="mb-6">
+                                <FilterBar onFilterChange={setAdvancedFilters} />
+                            </div>
+
                             {filteredProperties.length > 0 ? (
-                                <div className="flex flex-col gap-6">
+                                <div className="flex flex-col gap-8">
                                     <AnimatePresence mode='popLayout'>
                                         {filteredProperties.map((p) => (
                                             <motion.div
                                                 layout
                                                 key={p.PropertyId || p.id}
-                                                initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
                                                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                                                transition={{ duration: 0.3 }}
+                                                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                                                transition={{
+                                                    layout: { type: "spring", stiffness: 45, damping: 12 }, // Bouncy sort
+                                                    opacity: { duration: 0.3 },
+                                                    y: { type: "spring", stiffness: 100, damping: 20 }
+                                                }}
                                             >
                                                 <PropertyCard property={p} searchParams={searchParams} variant="horizontal" />
                                             </motion.div>
@@ -300,19 +318,20 @@ export default function Home() {
                                     </AnimatePresence>
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-20 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                                    <h3 className="text-xl font-bold text-gray-800">No properties found</h3>
-                                    <p className="text-gray-500 mb-4">Try changing your search filters.</p>
-                                    <button onClick={() => { setActiveCategory('all'); setSearchParams(null); }} className="text-primary hover:underline font-bold">Clear Filters</button>
+                                <div className="flex flex-col items-center justify-center py-24 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
+                                    <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                                        <FaSearch className="text-gray-300 text-3xl" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-gray-800">No properties found</h3>
+                                    <p className="text-gray-500 mb-6 max-w-xs">We couldn't find any stays matching your current filters.</p>
+                                    <button
+                                        onClick={() => { setActiveCategory('all'); setSearchParams(null); setAdvancedFilters({ sortBy: 'all', minPrice: '', maxPrice: '', amenities: [] }); }}
+                                        className="px-8 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg active:scale-95"
+                                    >
+                                        Clear all filters
+                                    </button>
                                 </div>
                             )}
-                        </div>
-
-                        {/* RIGHT COLUMN: Map (Sticky) */}
-                        <div className={`w-full lg:block ${viewMode === 'list' ? 'hidden' : 'block'} sticky top-[90px] h-[calc(100vh-100px)]`}>
-                            <div className="w-full h-full rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
-                                <MapView properties={filteredProperties} />
-                            </div>
                         </div>
 
                     </div>

@@ -24,15 +24,33 @@ export default function Signup() {
         }
     };
 
+    const handleBackdropClick = () => {
+        if (location.key !== 'default') {
+            navigate(-1);
+        } else {
+            navigate('/');
+        }
+    };
+
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-            <div className="absolute top-4 left-4">
-                <Link to="/" className="flex items-center text-gray-600 hover:text-black transition">
+        <div
+            onClick={handleBackdropClick}
+            className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 cursor-pointer"
+        >
+            <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute top-4 left-4 z-10"
+            >
+                <Link to="/" className="flex items-center text-gray-600 hover:text-black transition p-2 bg-white/50 rounded-full hover:bg-white">
                     <FaArrowLeft className="mr-2" /> Back to Home
                 </Link>
             </div>
 
-            <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100 animate-fade-up">
+            <div
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100 animate-fade-up cursor-default"
+            >
+
                 <div className="flex justify-center mb-6">
                     <img src="/resortwala-logo.png" alt="ResortWala" className="h-12 w-auto" />
                 </div>
