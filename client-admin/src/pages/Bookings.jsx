@@ -19,7 +19,7 @@ export default function Bookings() {
     const fetchBookings = async () => {
         setLoading(true);
         try {
-            const res = await axios.get('/api/admin/bookings', {
+            const res = await axios.get('/admin/bookings', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setBookings(res.data);
@@ -44,7 +44,7 @@ export default function Bookings() {
         if (!confirmed) return;
 
         try {
-            await axios.post(`/api/admin/bookings/${id}/status`,
+            await axios.post(`/admin/bookings/${id}/status`,
                 { status },
                 { headers: { Authorization: `Bearer ${token}` } }
             );

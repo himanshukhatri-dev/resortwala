@@ -18,7 +18,7 @@ export default function Properties() {
 
     const fetchProperties = async () => {
         try {
-            const response = await axios.get('/api/admin/properties', {
+            const response = await axios.get('/admin/properties', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProperties(response.data);
@@ -43,7 +43,7 @@ export default function Properties() {
 
         setActionLoading(true);
         try {
-            await axios.post(`/api/admin/properties/${id}/approve`, {}, {
+            await axios.post(`/admin/properties/${id}/approve`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Update local state: is_approved = 1
@@ -70,7 +70,7 @@ export default function Properties() {
 
         setActionLoading(true);
         try {
-            await axios.delete(`/api/admin/properties/${id}/reject`, {
+            await axios.delete(`/admin/properties/${id}/reject`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProperties(properties.filter(p => p.PropertyId !== id));

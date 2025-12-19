@@ -18,7 +18,7 @@ export default function Vendors() {
 
     const fetchVendors = async () => {
         try {
-            const response = await axios.get('/api/admin/vendors', {
+            const response = await axios.get('/admin/vendors', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setVendors(response.data);
@@ -43,7 +43,7 @@ export default function Vendors() {
 
         setActionLoading(true);
         try {
-            await axios.post(`/api/admin/vendors/${id}/approve`, {}, {
+            await axios.post(`/admin/vendors/${id}/approve`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Update local state: is_approved = 1
@@ -70,7 +70,7 @@ export default function Vendors() {
 
         setActionLoading(true);
         try {
-            await axios.delete(`/api/admin/vendors/${id}/reject`, {
+            await axios.delete(`/admin/vendors/${id}/reject`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setVendors(vendors.filter(v => v.id !== id));

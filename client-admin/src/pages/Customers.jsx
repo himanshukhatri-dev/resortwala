@@ -26,7 +26,7 @@ export default function Customers() {
 
     const fetchCustomers = async () => {
         try {
-            const response = await axios.get('/api/admin/users/customers', {
+            const response = await axios.get('/admin/users/customers', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setCustomers(response.data);
@@ -47,7 +47,7 @@ export default function Customers() {
             onConfirm: async () => {
                 setActionLoading(true);
                 try {
-                    await axios.delete(`/api/admin/users/customers/${id}`, {
+                    await axios.delete(`/admin/users/customers/${id}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     setCustomers(customers.filter(c => c.id !== id));

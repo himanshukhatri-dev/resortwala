@@ -25,9 +25,9 @@ export default function Users() {
         setLoading(true);
         try {
             let endpoint = '';
-            if (activeTab === 'admins') endpoint = '/api/admin/users/admins';
-            else if (activeTab === 'vendors') endpoint = '/api/admin/users/vendors';
-            else endpoint = '/api/admin/users/customers';
+            if (activeTab === 'admins') endpoint = '/admin/users/admins';
+            else if (activeTab === 'vendors') endpoint = '/admin/users/vendors';
+            else endpoint = '/admin/users/customers';
 
             const res = await axios.get(endpoint, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -55,8 +55,8 @@ export default function Users() {
             // Vendors and Admins are in 'users' table, handled by deleteUser
             // Customers are in 'customers' table, handled by deleteCustomer
             const endpoint = activeTab === 'customers'
-                ? `/api/admin/users/customers/${id}`
-                : `/api/admin/users/${id}`;
+                ? `/admin/users/customers/${id}`
+                : `/admin/users/${id}`;
 
             await axios.delete(endpoint, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -99,14 +99,14 @@ export default function Users() {
             // Endpoint Logic
             if (activeTab === 'customers') {
                 endpoint = isEditMode
-                    ? `/api/admin/users/customers/${editId}`
-                    : '/api/admin/users/customers';
+                    ? `/admin/users/customers/${editId}`
+                    : '/admin/users/customers';
             } else {
                 // Admins or Vendors (Users Table)
                 if (isEditMode) {
-                    endpoint = `/api/admin/users/${editId}`;
+                    endpoint = `/admin/users/${editId}`;
                 } else {
-                    endpoint = '/api/admin/users/admins'; // Default create to Admin for now
+                    endpoint = '/admin/users/admins'; // Default create to Admin for now
                 }
             }
 
@@ -137,7 +137,7 @@ export default function Users() {
 
     const handleLoginAs = async (userId) => {
         try {
-            const res = await axios.post(`/api/admin/impersonate/${userId}`, {}, {
+            const res = await axios.post(`/admin/impersonate/${userId}`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
