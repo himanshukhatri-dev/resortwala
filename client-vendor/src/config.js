@@ -3,7 +3,7 @@ const getApiBaseUrl = () => {
     if (import.meta.env.PROD) {
         const hostname = window.location.hostname;
         // Strict staging check as requested by user
-        if (hostname.includes('staging')) {
+        if (hostname.includes('staging') || hostname === '72.61.242.42') {
             return 'http://stagingapi.resortwala.com/api';
         }
         // Main production fallback
