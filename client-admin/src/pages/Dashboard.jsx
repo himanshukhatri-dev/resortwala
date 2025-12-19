@@ -111,7 +111,7 @@ export default function Dashboard() {
     const handleApprove = async (type, id) => {
         setActionLoading(true);
         try {
-            const endpoint = type === 'vendor' ? `/admin/vendors/${id}/approve` : `/admin/properties/${id}/approve`;
+            const endpoint = type === 'vendor' ? `${API_BASE_URL}/admin/vendors/${id}/approve` : `${API_BASE_URL}/admin/properties/${id}/approve`;
             await axios.post(endpoint, {}, { headers: { Authorization: `Bearer ${token}` } });
             fetchDashboardData(); // Refresh
         } catch (err) {

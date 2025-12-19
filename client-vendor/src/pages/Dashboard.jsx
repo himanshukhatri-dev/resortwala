@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 import { useModal } from '../context/ModalContext';
 import CalendarSelectorModal from '../components/CalendarSelectorModal';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -22,7 +23,7 @@ export default function Dashboard() {
 
     const fetchStats = async () => {
         try {
-            const response = await axios.get('/api/vendor/stats', {
+            const response = await axios.get(`${API_BASE_URL}/admin/vendor/stats`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setStats(response.data);
@@ -47,7 +48,7 @@ export default function Dashboard() {
         if (!confirmed) return;
 
         try {
-            await axios.post(`/api/vendor/bookings/${bookingId}/status`,
+            await axios.post(`${API_BASE_URL}/admin/vendor/bookings/${bookingId}/status`,
                 { status: newStatus },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
