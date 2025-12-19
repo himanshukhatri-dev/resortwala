@@ -53,7 +53,7 @@ export default function Profile() {
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await axios.put(`${API_BASE_URL}/admin/vendor/profile`, profile, {
+            const response = await axios.put(`${API_BASE_URL}/vendor/profile`, profile, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 

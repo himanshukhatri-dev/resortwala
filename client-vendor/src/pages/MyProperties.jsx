@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 import { useModal } from '../context/ModalContext';
 import { FaPlus, FaSearch, FaMapMarkerAlt, FaBed, FaUsers, FaEdit, FaCalendarAlt, FaTrash, FaChartLine, FaClipboardList, FaHome } from 'react-icons/fa';
 import Loader from '../components/Loader';

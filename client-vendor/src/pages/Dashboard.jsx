@@ -23,7 +23,7 @@ export default function Dashboard() {
 
     const fetchStats = async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/admin/vendor/stats`, {
+            const response = await axios.get(`${API_BASE_URL}/vendor/stats`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setStats(response.data);
@@ -48,7 +48,7 @@ export default function Dashboard() {
         if (!confirmed) return;
 
         try {
-            await axios.post(`${API_BASE_URL}/admin/vendor/bookings/${bookingId}/status`,
+            await axios.post(`${API_BASE_URL}/vendor/bookings/${bookingId}/status`,
                 { status: newStatus },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
