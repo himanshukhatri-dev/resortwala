@@ -30,7 +30,7 @@ export default function UserBookings() {
 
             try {
                 // Fixed URL spacing
-                const res = await axios.get(`${API_BASE_URL}/api/bookings/search`, {
+                const res = await axios.get(`${API_BASE_URL}/bookings/search`, {
                     params: { email, mobile }
                 });
                 console.log('Bookings API Response:', res.data);
@@ -61,7 +61,7 @@ export default function UserBookings() {
         if (!confirm("Are you sure you want to cancel this booking? This action cannot be undone.")) return;
 
         try {
-            await axios.post(`${API_BASE_URL}/api/bookings/${id}/cancel`);
+            await axios.post(`${API_BASE_URL}/bookings/${id}/cancel`);
             // Update UI locally
             const updatedBookings = bookings.map(b => b.BookingId === id ? { ...b, Status: 'Cancelled' } : b);
             setBookings(updatedBookings);

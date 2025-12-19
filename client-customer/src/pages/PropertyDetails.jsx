@@ -59,9 +59,9 @@ export default function PropertyDetails() {
                 // Parallel fetch for speed
                 // Parallel fetch for speed
                 const [propRes, bookedRes, holidayRes] = await Promise.all([
-                    axios.get(`${API_BASE_URL}/api/properties/${id}`),
-                    axios.get(`${API_BASE_URL}/api/properties/${id}/booked-dates`),
-                    axios.get(`${API_BASE_URL}/api/holidays?property_id=${id}`)
+                    axios.get(`${API_BASE_URL}/properties/${id}`),
+                    axios.get(`${API_BASE_URL}/properties/${id}/booked-dates`),
+                    axios.get(`${API_BASE_URL}/holidays?property_id=${id}`)
                 ]);
 
                 setProperty(propRes.data);

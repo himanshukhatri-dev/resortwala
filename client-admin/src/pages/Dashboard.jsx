@@ -85,16 +85,18 @@ export default function Dashboard() {
         fetchDashboardData();
     }, []);
 
+    import { API_BASE_URL } from '../config';
+
+    // ...
     const fetchDashboardData = async () => {
         try {
             const headers = { Authorization: `Bearer ${token}` };
-            const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
             const [statsRes, vendorsRes, propsRes, bookingsRes] = await Promise.all([
-                axios.get(`${baseURL}/admin/stats`, { headers }),
-                axios.get(`${baseURL}/admin/vendors/pending`, { headers }),
-                axios.get(`${baseURL}/admin/properties/pending`, { headers }),
-                axios.get(`${baseURL}/admin/bookings`, { headers }) // Assuming this returns all, we slice top 5
+                axios.get(`${API_BASE_URL}/admin/stats`, { headers }),
+                axios.get(`${API_BASE_URL}/admin/vendors/pending`, { headers }),
+                axios.get(`${API_BASE_URL}/admin/properties/pending`, { headers }),
+                axios.get(`${API_BASE_URL}/admin/bookings`, { headers }) // Assuming this returns all, we slice top 5
             ]);
 
             setStats(statsRes.data);
