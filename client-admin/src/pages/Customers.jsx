@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Loader from '../components/Loader';
 import Modal from '../components/Modal';
+import { API_BASE_URL } from '../config';
 
 export default function Customers() {
     const { token } = useAuth();
@@ -26,7 +27,7 @@ export default function Customers() {
 
     const fetchCustomers = async () => {
         try {
-            const response = await axios.get('/admin/users/customers', {
+            const response = await axios.get(`${API_BASE_URL}/admin/users/customers`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setCustomers(response.data);
@@ -47,7 +48,7 @@ export default function Customers() {
             onConfirm: async () => {
                 setActionLoading(true);
                 try {
-                    await axios.delete(`/admin/users/customers/${id}`, {
+                    await axios.delete(`${API_BASE_URL}/admin/users/customers/${id}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     setCustomers(customers.filter(c => c.id !== id));

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Loader from '../components/Loader';
 import { useModal } from '../context/ModalContext';
+import { API_BASE_URL } from '../config';
 
 export default function Properties() {
     const { token } = useAuth();
@@ -18,7 +19,7 @@ export default function Properties() {
 
     const fetchProperties = async () => {
         try {
-            const response = await axios.get('/admin/properties', {
+            const response = await axios.get(`${API_BASE_URL}/admin/properties`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProperties(response.data);
@@ -43,7 +44,7 @@ export default function Properties() {
 
         setActionLoading(true);
         try {
-            await axios.post(`/admin/properties/${id}/approve`, {}, {
+            await axios.post(`${API_BASE_URL}/admin/properties/${id}/approve`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Update local state: is_approved = 1
@@ -70,7 +71,7 @@ export default function Properties() {
 
         setActionLoading(true);
         try {
-            await axios.delete(`/admin/properties/${id}/reject`, {
+            await axios.delete(`${API_BASE_URL}/admin/properties/${id}/reject`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProperties(properties.filter(p => p.PropertyId !== id));

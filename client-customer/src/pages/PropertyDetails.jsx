@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import {
     FaStar, FaMapMarkerAlt, FaWifi, FaSwimmingPool, FaCar, FaUtensils,
@@ -55,13 +56,12 @@ export default function PropertyDetails() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
+                // Parallel fetch for speed
                 // Parallel fetch for speed
                 const [propRes, bookedRes, holidayRes] = await Promise.all([
-                    axios.get(`${baseURL}/api/properties/${id}`),
-                    axios.get(`${baseURL}/api/properties/${id}/booked-dates`),
-                    axios.get(`${baseURL}/api/holidays?property_id=${id}`)
+                    axios.get(`${API_BASE_URL}/api/properties/${id}`),
+                    axios.get(`${API_BASE_URL}/api/properties/${id}/booked-dates`),
+                    axios.get(`${API_BASE_URL}/api/holidays?property_id=${id}`)
                 ]);
 
                 setProperty(propRes.data);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaQrcode, FaShareAlt, FaPlus, FaMinus, FaMapMarkerAlt, FaCalendarAlt, FaUserFriends, FaMoneyBillWave } from 'react-icons/fa';
@@ -28,9 +29,8 @@ export default function UserBookings() {
             }
 
             try {
-                const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
                 // Fixed URL spacing
-                const res = await axios.get(`${baseURL}/api/bookings/search`, {
+                const res = await axios.get(`${API_BASE_URL}/api/bookings/search`, {
                     params: { email, mobile }
                 });
                 console.log('Bookings API Response:', res.data);
@@ -61,8 +61,7 @@ export default function UserBookings() {
         if (!confirm("Are you sure you want to cancel this booking? This action cannot be undone.")) return;
 
         try {
-            const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-            await axios.post(`${baseURL}/api/bookings/${id}/cancel`);
+            await axios.post(`${API_BASE_URL}/api/bookings/${id}/cancel`);
             // Update UI locally
             const updatedBookings = bookings.map(b => b.BookingId === id ? { ...b, Status: 'Cancelled' } : b);
             setBookings(updatedBookings);

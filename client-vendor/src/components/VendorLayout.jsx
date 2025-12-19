@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import Sidebar from './Sidebar';
+import { useAuth } from '../context/AuthContext';
+import AccountPending from './AccountPending';
 
 
 export default function VendorLayout({ children, title }) {
     const [isSidebarHovered, setIsSidebarHovered] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { user } = useAuth();
+    const isApproved = user?.is_approved === 1 || user?.is_approved === true;
 
     return (
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: 'var(--bg-color)' }}>
@@ -51,7 +55,10 @@ export default function VendorLayout({ children, title }) {
                 overflowY: 'auto'
             }} className="content-area">
                 <div style={{ padding: '30px' }} className="page-content">
-                    {children}
+                    <div style={{ padding: '30px' }} className="page-content">
+                        {/* Approval Guard */}
+                        {isApproved ? children : <AccountPending />}
+                    </div>
                 </div>
             </div>
 

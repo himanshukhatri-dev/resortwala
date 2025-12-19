@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import { useModal } from '../context/ModalContext';
+import { API_BASE_URL } from '../config';
 
 export default function Users() {
     const { token } = useAuth();
@@ -29,7 +30,7 @@ export default function Users() {
             else if (activeTab === 'vendors') endpoint = '/admin/users/vendors';
             else endpoint = '/admin/users/customers';
 
-            const res = await axios.get(endpoint, {
+            const res = await axios.get(`${API_BASE_URL}${endpoint}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setUsers(res.data);
@@ -58,7 +59,7 @@ export default function Users() {
                 ? `/admin/users/customers/${id}`
                 : `/admin/users/${id}`;
 
-            await axios.delete(endpoint, {
+            await axios.delete(`${API_BASE_URL}${endpoint}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchUsers();
@@ -121,7 +122,7 @@ export default function Users() {
 
             console.log(`Sending ${method.toUpperCase()} to ${endpoint}`, payload);
 
-            await axios[method](endpoint, payload, {
+            await axios[method](`${API_BASE_URL}${endpoint}`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -137,7 +138,7 @@ export default function Users() {
 
     const handleLoginAs = async (userId) => {
         try {
-            const res = await axios.post(`/admin/impersonate/${userId}`, {}, {
+            const res = await axios.post(`${API_BASE_URL}/admin/impersonate/${userId}`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 

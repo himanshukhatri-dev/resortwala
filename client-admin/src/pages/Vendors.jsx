@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Loader from '../components/Loader';
 import { useModal } from '../context/ModalContext';
+import { API_BASE_URL } from '../config';
 
 export default function Vendors() {
     const { token } = useAuth();
@@ -18,7 +19,7 @@ export default function Vendors() {
 
     const fetchVendors = async () => {
         try {
-            const response = await axios.get('/admin/vendors', {
+            const response = await axios.get(`${API_BASE_URL}/admin/vendors`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setVendors(response.data);
@@ -43,7 +44,7 @@ export default function Vendors() {
 
         setActionLoading(true);
         try {
-            await axios.post(`/admin/vendors/${id}/approve`, {}, {
+            await axios.post(`${API_BASE_URL}/admin/vendors/${id}/approve`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Update local state: is_approved = 1
@@ -70,7 +71,7 @@ export default function Vendors() {
 
         setActionLoading(true);
         try {
-            await axios.delete(`/admin/vendors/${id}/reject`, {
+            await axios.delete(`${API_BASE_URL}/admin/vendors/${id}/reject`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setVendors(vendors.filter(v => v.id !== id));

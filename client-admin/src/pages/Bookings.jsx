@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useModal } from '../context/ModalContext';
+import { API_BASE_URL } from '../config';
 
 export default function Bookings() {
     const { token } = useAuth();
@@ -19,7 +20,7 @@ export default function Bookings() {
     const fetchBookings = async () => {
         setLoading(true);
         try {
-            const res = await axios.get('/admin/bookings', {
+            const res = await axios.get(`${API_BASE_URL}/admin/bookings`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setBookings(res.data);
@@ -44,7 +45,7 @@ export default function Bookings() {
         if (!confirmed) return;
 
         try {
-            await axios.post(`/admin/bookings/${id}/status`,
+            await axios.post(`${API_BASE_URL}/admin/bookings/${id}/status`,
                 { status },
                 { headers: { Authorization: `Bearer ${token}` } }
             );

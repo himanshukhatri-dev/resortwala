@@ -11,6 +11,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { FaWhatsapp, FaLock, FaCheck } from 'react-icons/fa';
 import { useModal } from '../context/ModalContext';
+import { API_BASE_URL } from '../config';
 
 const locales = { 'en-US': enUS };
 
@@ -45,7 +46,7 @@ function VendorCalendarContent() {
 
     const fetchCalendarData = async () => {
         try {
-            const res = await axios.get(`/api/vendor/properties/${id}/calendar`, {
+            const res = await axios.get(`${API_BASE_URL}/vendor/properties/${id}/calendar`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProperty(res.data.property);
@@ -92,7 +93,7 @@ function VendorCalendarContent() {
         if (!confirmed) return;
 
         try {
-            await axios.post('/api/vendor/bookings/lock', {
+            await axios.post(`${API_BASE_URL}/vendor/bookings/lock`, {
                 property_id: id,
                 start_date: format(start, 'yyyy-MM-dd'),
                 end_date: format(end, 'yyyy-MM-dd')
@@ -120,7 +121,7 @@ function VendorCalendarContent() {
 
             if (confirmed) {
                 try {
-                    await axios.post(`/api/vendor/bookings/${event.id}/approve`, {}, {
+                    await axios.post(`${API_BASE_URL}/vendor/bookings/${event.id}/approve`, {}, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     await showSuccess('Confirmed', "Booking Confirmed!");

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 import { FaEdit, FaStar, FaGoogle, FaMapMarkerAlt, FaCreditCard, FaHotel, FaShieldAlt } from 'react-icons/fa';
 import { format, eachDayOfInterval, startOfDay, subDays, getDay } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
@@ -48,8 +49,7 @@ export default function BookingPage() {
         // Fetch Property Details
         const fetchProperty = async () => {
             try {
-                const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-                const response = await axios.get(`${baseURL}/api/properties/${id}`);
+                const response = await axios.get(`${API_BASE_URL}/api/properties/${id}`);
                 setProperty(response.data);
             } catch (error) {
                 console.error("Error fetching property", error);
@@ -60,8 +60,7 @@ export default function BookingPage() {
         // Fetch Holidays
         const fetchHolidays = async () => {
             try {
-                const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-                const res = await axios.get(`${baseURL}/api/holidays?property_id=${id}`);
+                const res = await axios.get(`${API_BASE_URL}/api/holidays?property_id=${id}`);
                 setHolidays(res.data);
             } catch (err) { console.error("Error fetching holidays", err); }
         };
@@ -73,8 +72,7 @@ export default function BookingPage() {
         setBookingStatus('loading');
         setCouponError('');
         try {
-            const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-            const res = await axios.post(`${baseURL}/api/coupons/check`, { code: couponCode });
+            const res = await axios.post(`${API_BASE_URL}/api/coupons/check`, { code: couponCode });
             setAppliedCoupon(res.data.coupon);
             setBookingStatus('idle');
         } catch (err) {
@@ -156,27 +154,7 @@ export default function BookingPage() {
         e.preventDefault();
         setBookingStatus('submitting');
         try {
-            const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-            const { basePrice, taxes, discount, total } = calculateTotal();
-
-            const payload = {
-                PropertyId: id,
-                CustomerName: form.CustomerName,
-                CustomerMobile: form.CustomerMobile,
-                CustomerEmail: form.CustomerEmail,
-                CheckInDate: format(checkIn, 'yyyy-MM-dd'),
-                CheckOutDate: format(checkOut, 'yyyy-MM-dd'),
-                Guests: guests,
-                coupon_code: appliedCoupon ? appliedCoupon.code : null,
-                discount_amount: discount,
-                tax_amount: taxes,
-                base_amount: basePrice,
-                TotalAmount: total,
-                payment_method: form.payment_method,
-                SpecialRequest: form.SpecialRequest
-            };
-
-            const res = await axios.post(`${baseURL}/api/bookings`, payload);
+            const res = await axios.post(`${API_BASE_URL}/api/bookings`, payload);
 
             // Store user identity
             if (form.CustomerEmail) localStorage.setItem('user_email', form.CustomerEmail);
