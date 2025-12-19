@@ -91,10 +91,10 @@ export default function Dashboard() {
             const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
             const [statsRes, vendorsRes, propsRes, bookingsRes] = await Promise.all([
-                axios.get(`${baseURL}/api/admin/stats`, { headers }),
-                axios.get(`${baseURL}/api/admin/vendors/pending`, { headers }),
-                axios.get(`${baseURL}/api/admin/properties/pending`, { headers }),
-                axios.get(`${baseURL}/api/admin/bookings`, { headers }) // Assuming this returns all, we slice top 5
+                axios.get(`${baseURL}/admin/stats`, { headers }),
+                axios.get(`${baseURL}/admin/vendors/pending`, { headers }),
+                axios.get(`${baseURL}/admin/properties/pending`, { headers }),
+                axios.get(`${baseURL}/admin/bookings`, { headers }) // Assuming this returns all, we slice top 5
             ]);
 
             setStats(statsRes.data);
@@ -111,7 +111,7 @@ export default function Dashboard() {
     const handleApprove = async (type, id) => {
         setActionLoading(true);
         try {
-            const endpoint = type === 'vendor' ? `/api/admin/vendors/${id}/approve` : `/api/admin/properties/${id}/approve`;
+            const endpoint = type === 'vendor' ? `/admin/vendors/${id}/approve` : `/admin/properties/${id}/approve`;
             await axios.post(endpoint, {}, { headers: { Authorization: `Bearer ${token}` } });
             fetchDashboardData(); // Refresh
         } catch (err) {
