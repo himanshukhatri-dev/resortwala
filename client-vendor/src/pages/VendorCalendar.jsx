@@ -22,7 +22,10 @@ const localizer = dateFnsLocalizer({
     locales,
 });
 
-export default function VendorCalendar() {
+
+import ErrorBoundary from '../components/common/ErrorBoundary';
+
+function VendorCalendarContent() {
     const { id } = useParams();
     const { token } = useAuth();
     const { showConfirm, showSuccess, showError, showInfo } = useModal();
@@ -309,3 +312,12 @@ export default function VendorCalendar() {
         </div>
     );
 }
+
+export default function VendorCalendar() {
+    return (
+        <ErrorBoundary>
+            <VendorCalendarContent />
+        </ErrorBoundary>
+    );
+}
+
