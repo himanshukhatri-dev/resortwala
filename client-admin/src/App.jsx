@@ -25,12 +25,14 @@ function ProtectedRoute({ children }) {
 
 
 import { ModalProvider } from './context/ModalContext';
+import TokenHandler from './components/TokenHandler';
 
 function App() {
   return (
     <AuthProvider>
       <ModalProvider>
         <BrowserRouter>
+          <TokenHandler />
           <Routes>
             <Route path="/login" element={<Login />} />
 

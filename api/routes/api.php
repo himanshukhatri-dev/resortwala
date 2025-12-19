@@ -153,3 +153,8 @@ Route::prefix('public')->group(function () {
 });
 
 
+
+// Admin Impersonation Route
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/admin/impersonate/{userId}', [\App\Http\Controllers\ImpersonationController::class, 'impersonate']);
+});

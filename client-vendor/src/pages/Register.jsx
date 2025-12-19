@@ -25,6 +25,25 @@ export default function Register() {
         setError('');
         setLoading(true);
 
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            setError('Please enter a valid email address.');
+            setLoading(false);
+            return;
+        }
+
+        if (formData.phone.length !== 10) {
+            setError('Phone number must be exactly 10 digits.');
+            setLoading(false);
+            return;
+        }
+
+        if (formData.password !== formData.password_confirmation) {
+            setError('Passwords do not match.');
+            setLoading(false);
+            return;
+        }
+
         try {
             const response = await axios.post('/api/vendor/register', formData);
             console.log('Registration response:', response.data);
@@ -53,7 +72,9 @@ export default function Register() {
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>Full Name</label>
+                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>
+                            Full Name <span style={{ color: 'red' }}>*</span>
+                        </label>
                         <input
                             type="text"
                             required
@@ -64,7 +85,9 @@ export default function Register() {
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>Email</label>
+                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>
+                            Email <span style={{ color: 'red' }}>*</span>
+                        </label>
                         <input
                             type="email"
                             required
@@ -75,7 +98,9 @@ export default function Register() {
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>Business Name</label>
+                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>
+                            Business Name <span style={{ color: 'red' }}>*</span>
+                        </label>
                         <input
                             type="text"
                             required
@@ -86,18 +111,28 @@ export default function Register() {
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>Phone</label>
+                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>
+                            Phone <span style={{ color: 'red' }}>*</span>
+                        </label>
                         <input
                             type="tel"
                             required
                             value={formData.phone}
-                            onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                            onChange={e => {
+                                const val = e.target.value;
+                                if (/^\d*$/.test(val) && val.length <= 10) {
+                                    setFormData({ ...formData, phone: val });
+                                }
+                            }}
+                            placeholder="10 digit mobile number"
                             style={{ width: '100%', padding: '10px', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '14px', backgroundColor: 'var(--bg-color)', color: 'var(--text-color)' }}
                         />
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>Property Type</label>
+                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>
+                            Property Type <span style={{ color: 'red' }}>*</span>
+                        </label>
                         <select
                             required
                             value={formData.vendor_type}
@@ -111,7 +146,9 @@ export default function Register() {
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>Password</label>
+                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>
+                            Password <span style={{ color: 'red' }}>*</span>
+                        </label>
                         <input
                             type="password"
                             required
@@ -123,7 +160,9 @@ export default function Register() {
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>Confirm Password</label>
+                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>
+                            Confirm Password <span style={{ color: 'red' }}>*</span>
+                        </label>
                         <input
                             type="password"
                             required

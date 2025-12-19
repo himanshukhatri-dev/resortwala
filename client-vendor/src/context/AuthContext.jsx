@@ -49,8 +49,14 @@ export function AuthProvider({ children }) {
         setUser(userData);
     };
 
+    const loginWithToken = (newToken) => {
+        localStorage.setItem('vendor_token', newToken);
+        setToken(newToken);
+        // User will be fetched by existing useEffect logic
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, loading, updateUser }}>
+        <AuthContext.Provider value={{ user, token, login, logout, loading, updateUser, loginWithToken }}>
             {children}
         </AuthContext.Provider>
     );

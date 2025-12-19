@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
 import ScrollToTop from './components/utils/ScrollToTop';
+import TokenHandler from './components/common/TokenHandler';
 
 import { AuthProvider } from './context/AuthContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -25,6 +26,7 @@ function App() {
         <WishlistProvider>
           <BrowserRouter>
             <ScrollToTop />
+            <TokenHandler />
             <Routes>
               <Route path="/" element={<MainLayout />}>
                 <Route index element={<Home />} />

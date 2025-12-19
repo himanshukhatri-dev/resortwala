@@ -135,6 +135,26 @@ export default function Users() {
         }
     };
 
+    const handleLoginAs = async (userId) => {
+        try {
+            const res = await axios.post(`/api/admin/impersonate/${userId}`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const { token: newToken, redirect_url } = res.data;
+
+            // Open in new tab with token appended
+            const separator = redirect_url.includes('?') ? '&' : '?';
+            const finalUrl = `${redirect_url}${separator}impersonate_token=${newToken}`;
+
+            window.open(finalUrl, '_blank');
+            showSuccess('Success', 'Redirecting to user dashboard...');
+        } catch (error) {
+            console.error('Impersonation Error:', error);
+            showError('Error', 'Failed to impersonate user');
+        }
+    };
+
     return (
         <div style={{ padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -195,6 +215,19 @@ export default function Users() {
                                     <td style={{ padding: '15px' }}>{new Date(user.created_at).toLocaleDateString()}</td>
                                     <td style={{ padding: '15px' }}>
                                         <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button
+                                                onClick={() => handleLoginAs(user.id)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    backgroundColor: '#e8f5e9',
+                                                    color: '#2e7d32',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                Login As
+                                            </button>
                                             <button
                                                 onClick={() => openEditModal(user)}
                                                 style={{

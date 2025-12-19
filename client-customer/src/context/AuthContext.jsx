@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
     const [token, setToken] = useState(localStorage.getItem('customer_token'));
     const [loading, setLoading] = useState(true);
 
-const API_URL = import.meta.env.VITE_API_BASE_URL;
+    const API_URL = import.meta.env.VITE_API_BASE_URL;
 
     // Initialize Auth
     useEffect(() => {
@@ -70,8 +70,14 @@ const API_URL = import.meta.env.VITE_API_BASE_URL;
         setUser(null);
     };
 
+    const loginWithToken = (newToken) => {
+        localStorage.setItem('customer_token', newToken);
+        setToken(newToken);
+        // User will be fetched by useEffect logic
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, token, login, register, logout, loading, loginWithToken }}>
             {children}
         </AuthContext.Provider>
     );

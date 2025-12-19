@@ -37,6 +37,7 @@ import Profile from './pages/Profile';
 import Status from './pages/Status';
 
 import PublicMasterCalendar from './pages/PublicMasterCalendar';
+import TokenHandler from './components/common/TokenHandler';
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
       <ThemeProvider>
         <ModalProvider>
           <BrowserRouter>
+            <TokenHandler />
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
