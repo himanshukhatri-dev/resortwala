@@ -230,95 +230,94 @@ export default function Home() {
             </div>
 
             {/* 3. COLUMNS LAYOUT (Filter + List + Map) */}
-            {hasSearched && (
-                <div ref={resultsRef} className="container mx-auto px-4 py-6 min-h-[50vh] scroll-mt-28 mt-4">
+            <div ref={resultsRef} className="container mx-auto px-4 py-6 min-h-[50vh] scroll-mt-28 mt-4">
 
-                    {/* DYNAMIC HEADER */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 pb-2">
-                        <div>
-                            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 font-serif">
-                                {searchParams?.location
-                                    ? `Stays in ${searchParams.location}`
-                                    : activeCategory !== 'all'
-                                        ? `${CATEGORIES.find(c => c.id === activeCategory)?.label || 'Selected'} Stays`
-                                        : "All Properties"
-                                }
-                            </h2>
-                            <p className="text-gray-500 mt-1 text-sm">
-                                {loading
-                                    ? "Searching..."
-                                    : `${filteredProperties.length} properties found`
-                                }
-                            </p>
-                        </div>
-
-                        <div className="lg:hidden flex items-center bg-gray-100 rounded-lg p-1 mt-4 md:mt-0 self-start md:self-auto">
-                            <button
-                                onClick={() => setViewMode('list')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                <FaList /> List
-                            </button>
-                            <button
-                                onClick={() => setViewMode('map')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'map' ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                                <FaMapMarkedAlt /> Map
-                            </button>
-                        </div>
+                {/* DYNAMIC HEADER */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 pb-2">
+                    <div>
+                        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 font-serif">
+                            {searchParams?.location
+                                ? `Stays in ${searchParams.location}`
+                                : activeCategory !== 'all'
+                                    ? `${CATEGORIES.find(c => c.id === activeCategory)?.label || 'Selected'} Stays`
+                                    : "All Properties"
+                            }
+                        </h2>
+                        <p className="text-gray-500 mt-1 text-sm">
+                            {loading
+                                ? "Searching..."
+                                : `${filteredProperties.length} properties found`
+                            }
+                        </p>
                     </div>
 
-                    {loading ? (
-                        <div className="flex flex-col justify-center items-center py-20">
-                            <div className="w-16 h-16 border-4 border-gray-200 border-t-primary rounded-full animate-spin mb-4"></div>
-                            <p className="text-gray-400 animate-pulse">Loading amazing places...</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr_350px] gap-6 relative items-start">
-
-                            {/* LEFT COLUMN: Filters (Sticky) */}
-                            <div className="hidden lg:block sticky top-[90px] h-[calc(100vh-100px)] overflow-y-auto no-scrollbar">
-                                <FilterBar onFilterChange={setAdvancedFilters} />
-                            </div>
-
-                            {/* MIDDLE COLUMN: Property List */}
-                            <div className={`w-full ${viewMode === 'map' ? 'hidden lg:block' : 'block'}`}>
-                                {filteredProperties.length > 0 ? (
-                                    <div className="flex flex-col gap-6">
-                                        <AnimatePresence mode='popLayout'>
-                                            {filteredProperties.map((p) => (
-                                                <motion.div
-                                                    layout
-                                                    key={p.PropertyId || p.id}
-                                                    initial={{ opacity: 0, scale: 0.98, y: 10 }}
-                                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                    exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                                                    transition={{ duration: 0.3 }}
-                                                >
-                                                    <PropertyCard property={p} searchParams={searchParams} variant="horizontal" />
-                                                </motion.div>
-                                            ))}
-                                        </AnimatePresence>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-20 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                                        <h3 className="text-xl font-bold text-gray-800">No properties found</h3>
-                                        <p className="text-gray-500 mb-4">Try changing your search filters.</p>
-                                        <button onClick={() => { setActiveCategory('all'); setSearchParams(null); }} className="text-primary hover:underline font-bold">Clear Filters</button>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* RIGHT COLUMN: Map (Sticky) */}
-                            <div className={`w-full lg:block ${viewMode === 'list' ? 'hidden' : 'block'} sticky top-[90px] h-[calc(100vh-100px)]`}>
-                                <div className="w-full h-full rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
-                                    <MapView properties={filteredProperties} />
-                                </div>
-                            </div>
-
-                        </div>
-                    )}
+                    <div className="lg:hidden flex items-center bg-gray-100 rounded-lg p-1 mt-4 md:mt-0 self-start md:self-auto">
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <FaList /> List
+                        </button>
+                        <button
+                            onClick={() => setViewMode('map')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'map' ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <FaMapMarkedAlt /> Map
+                        </button>
+                    </div>
                 </div>
+
+                {loading ? (
+                    <div className="flex flex-col justify-center items-center py-20">
+                        <div className="w-16 h-16 border-4 border-gray-200 border-t-primary rounded-full animate-spin mb-4"></div>
+                        <p className="text-gray-400 animate-pulse">Loading amazing places...</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr_350px] gap-6 relative items-start">
+
+                        {/* LEFT COLUMN: Filters (Sticky) */}
+                        <div className="hidden lg:block sticky top-[90px] h-[calc(100vh-100px)] overflow-y-auto no-scrollbar">
+                            <FilterBar onFilterChange={setAdvancedFilters} />
+                        </div>
+
+                        {/* MIDDLE COLUMN: Property List */}
+                        <div className={`w-full ${viewMode === 'map' ? 'hidden lg:block' : 'block'}`}>
+                            {filteredProperties.length > 0 ? (
+                                <div className="flex flex-col gap-6">
+                                    <AnimatePresence mode='popLayout'>
+                                        {filteredProperties.map((p) => (
+                                            <motion.div
+                                                layout
+                                                key={p.PropertyId || p.id}
+                                                initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                                                transition={{ duration: 0.3 }}
+                                            >
+                                                <PropertyCard property={p} searchParams={searchParams} variant="horizontal" />
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-20 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
+                                    <h3 className="text-xl font-bold text-gray-800">No properties found</h3>
+                                    <p className="text-gray-500 mb-4">Try changing your search filters.</p>
+                                    <button onClick={() => { setActiveCategory('all'); setSearchParams(null); }} className="text-primary hover:underline font-bold">Clear Filters</button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* RIGHT COLUMN: Map (Sticky) */}
+                        <div className={`w-full lg:block ${viewMode === 'list' ? 'hidden' : 'block'} sticky top-[90px] h-[calc(100vh-100px)]`}>
+                            <div className="w-full h-full rounded-xl overflow-hidden shadow-xl border border-gray-200 relative">
+                                <MapView properties={filteredProperties} />
+                            </div>
+                        </div>
+
+                    </div>
+                )}
+            </div>
             )}
         </div>
     );

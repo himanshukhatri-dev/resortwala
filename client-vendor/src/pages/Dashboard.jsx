@@ -66,7 +66,7 @@ export default function Dashboard() {
             {/* Header / Welcome Section */}
             <div className="flex flex-col md:flex-row justify-between items-end gap-4">
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">Welcome back, {user?.name?.split(' ')[0] || 'Partner'}! 👋</h1>
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">Welcome back, {user?.name?.split(' ')[0] || 'Partner'}! (v2.0) 👋</h1>
                     <p className="text-gray-500 mt-2 text-lg font-medium">Here's how your business is performing today.</p>
                 </div>
                 <div className="text-right hidden md:block">

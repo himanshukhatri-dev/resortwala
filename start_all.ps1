@@ -5,7 +5,7 @@ Write-Host "Starting ResortWala Docker Environment..." -ForegroundColor Green
 # 1. Start Docker Containers
 Write-Host "Step 1: Starting Docker Containers..." -ForegroundColor Cyan
 docker-compose down
-docker-compose up -d --build
+docker-compose up -d --build db api api_web adminer
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to start Docker containers. Ensure Docker Desktop is running."
 }
@@ -32,7 +32,7 @@ if (-not (Test-Path ".\client-customer\node_modules")) {
     Write-Host "Installing Customer dependencies..."
     Start-Process -FilePath "npm.cmd" -ArgumentList "install" -WorkingDirectory ".\client-customer" -Wait -NoNewWindow
 }
-$customerProcess = Start-Process -FilePath "npm.cmd" -ArgumentList "run dev -- --port 3002 --host" -WorkingDirectory ".\client-customer" -PassThru -NoNewWindow
+$customerProcess = Start-Process -FilePath "npm.cmd" -ArgumentList "run dev -- --port 3003 --host" -WorkingDirectory ".\client-customer" -PassThru -NoNewWindow
 Write-Host "Customer App started (PID: $($customerProcess.Id))"
 
 # 4. Start Vendor App
@@ -41,8 +41,17 @@ if (-not (Test-Path ".\client-vendor\node_modules")) {
     Write-Host "Installing Vendor dependencies..."
     Start-Process -FilePath "npm.cmd" -ArgumentList "install" -WorkingDirectory ".\client-vendor" -Wait -NoNewWindow
 }
-$vendorProcess = Start-Process -FilePath "npm.cmd" -ArgumentList "run dev -- --port 3003 --host" -WorkingDirectory ".\client-vendor" -PassThru -NoNewWindow
+$vendorProcess = Start-Process -FilePath "npm.cmd" -ArgumentList "run dev -- --port 3002 --host" -WorkingDirectory ".\client-vendor" -PassThru -NoNewWindow
 Write-Host "Vendor App started (PID: $($vendorProcess.Id))"
+
+# 4.5. Start Admin App
+Write-Host "Step 4.5: Starting Admin Frontend..." -ForegroundColor Cyan
+if (-not (Test-Path ".\client-admin\node_modules")) {
+    Write-Host "Installing Admin dependencies..."
+    Start-Process -FilePath "npm.cmd" -ArgumentList "install" -WorkingDirectory ".\client-admin" -Wait -NoNewWindow
+}
+$adminProcess = Start-Process -FilePath "npm.cmd" -ArgumentList "run dev" -WorkingDirectory ".\client-admin" -PassThru -NoNewWindow
+Write-Host "Admin App started (PID: $($adminProcess.Id))"
 
 # 5. Launch Browser
 Write-Host "Step 5: Launching Browsers..." -ForegroundColor Green
@@ -50,6 +59,7 @@ Start-Sleep -Seconds 5
 Start-Process "http://localhost:8000"
 Start-Process "http://localhost:3002"
 Start-Process "http://localhost:3003"
+Start-Process "http://localhost:3004"
 
 Write-Host "All services started!" -ForegroundColor Green
 Write-Host "Press any key to stop the frontend servers and exit..."
@@ -57,3 +67,4 @@ $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 
 Stop-Process -Id $customerProcess.Id -ErrorAction SilentlyContinue
 Stop-Process -Id $vendorProcess.Id -ErrorAction SilentlyContinue
+Stop-Process -Id $adminProcess.Id -ErrorAction SilentlyContinue
