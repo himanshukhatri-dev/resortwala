@@ -49,7 +49,7 @@ export default function BookingPage() {
         // Fetch Property Details
         const fetchProperty = async () => {
             try {
-                const response = await axios.get(`${API_BASE_URL}/api/properties/${id}`);
+                const response = await axios.get(`${API_BASE_URL}/properties/${id}`);
                 setProperty(response.data);
             } catch (error) {
                 console.error("Error fetching property", error);
@@ -60,7 +60,7 @@ export default function BookingPage() {
         // Fetch Holidays
         const fetchHolidays = async () => {
             try {
-                const res = await axios.get(`${API_BASE_URL}/api/holidays?property_id=${id}`);
+                const res = await axios.get(`${API_BASE_URL}/holidays?property_id=${id}`);
                 setHolidays(res.data);
             } catch (err) { console.error("Error fetching holidays", err); }
         };
@@ -72,7 +72,7 @@ export default function BookingPage() {
         setBookingStatus('loading');
         setCouponError('');
         try {
-            const res = await axios.post(`${API_BASE_URL}/api/coupons/check`, { code: couponCode });
+            const res = await axios.post(`${API_BASE_URL}/coupons/check`, { code: couponCode });
             setAppliedCoupon(res.data.coupon);
             setBookingStatus('idle');
         } catch (err) {
@@ -154,7 +154,7 @@ export default function BookingPage() {
         e.preventDefault();
         setBookingStatus('submitting');
         try {
-            const res = await axios.post(`${API_BASE_URL}/api/bookings`, payload);
+            const res = await axios.post(`${API_BASE_URL}/bookings`, payload);
 
             // Store user identity
             if (form.CustomerEmail) localStorage.setItem('user_email', form.CustomerEmail);
