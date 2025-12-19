@@ -71,7 +71,7 @@ export default function Header() {
                 {/* 3. RIGHT - MENU */}
                 <div className="flex items-center gap-4 z-20 relative" ref={menuRef}>
                     <a
-                        href={import.meta.env.VITE_VENDOR_URL || "http://stagingvendor.resortwala.com"}
+                        href="http://stagingvendor.resortwala.com"
                         target="_blank"
                         rel="noopener noreferrer"
                         className={`hidden md:block font-medium text-sm hover:bg-white/10 px-4 py-2 rounded-full transition cursor-pointer ${scrolled || !isHomePage ? 'text-gray-900 hover:bg-gray-100' : 'text-white'}`}

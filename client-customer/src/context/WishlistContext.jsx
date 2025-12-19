@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 
@@ -24,7 +25,7 @@ export function WishlistProvider({ children }) {
             // Optimally, backend could just return IDs if we only need to check status
             // But if we want to show a "Wishlist Page", we need details. 
             // Let's assume endpoint returns array of objects with PropertyId
-            const res = await fetch('/api/customer/wishlist', {
+            const res = await fetch(`${API_BASE_URL}/customer/wishlist`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'
@@ -59,7 +60,7 @@ export function WishlistProvider({ children }) {
 
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/customer/wishlist/toggle', {
+            const res = await fetch(`${API_BASE_URL}/customer/wishlist/toggle`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

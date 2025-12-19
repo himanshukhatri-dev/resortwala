@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../config';
+import React, { useState, useEffect } from 'react';
 import { useWishlist } from '../context/WishlistContext';
 import PropertyCard from '../components/features/PropertyCard';
 import { useAuth } from '../context/AuthContext';
@@ -26,7 +27,7 @@ export default function Wishlist() {
                 const token = localStorage.getItem('token');
                 if (!token) return;
 
-                const res = await fetch('/api/customer/wishlist', {
+                const res = await fetch(`${API_BASE_URL}/customer/wishlist`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {

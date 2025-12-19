@@ -30,6 +30,11 @@ return [
         'http://localhost:3005',
         'http://localhost:3003',
         'http://localhost:3004',
+        // Staging Domains
+        'http://staging.resortwala.com',
+        'http://stagingvendor.resortwala.com',
+        'http://stagingadmin.resortwala.com',
+        'http://stagingapi.resortwala.com',
     ],
 
     'allowed_origins_patterns' => [],

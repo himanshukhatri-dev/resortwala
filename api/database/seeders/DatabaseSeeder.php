@@ -43,10 +43,13 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 3. Seed Properties & Detailed Vendor Data
+        // 3. Seed Properties & Detailed Data
         $this->call([
-            VendorDataSeeder::class, // This contains the 3 demo properties
-            HolidaySeeder::class,    // This contains the holiday data
+            UserSeeder::class,       // Create mass users first
+            VendorDataSeeder::class, // Keep existing specific demo data
+            PropertySeeder::class,   // Create 50+ random properties
+            BookingSeeder::class,    // Create bookings
+            HolidaySeeder::class,
         ]);
     }
 }

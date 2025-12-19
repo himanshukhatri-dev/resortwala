@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { API_BASE_URL } from '../config';
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/ui/FilterBar';
 import PropertyCard from '../components/features/PropertyCard';
@@ -48,10 +49,10 @@ export default function Home() {
             try {
                 // Ensure this matches your Laravel API route
                 // Try LAN IP first, fallback/debug if fails
-                console.log("Fetching properties...");
+                console.log("Fetching properties from:", API_BASE_URL);
 
                 // Using proxy (vite.config.js) to avoid CORS
-                const response = await fetch('/api/properties');
+                const response = await fetch(`${API_BASE_URL}/properties`);
 
                 if (!response.ok) throw new Error('Failed to fetch');
                 const data = await response.json();
@@ -121,10 +122,16 @@ export default function Home() {
 
         // 3. Filter by Price Range
         if (advancedFilters.minPrice) {
-            result = result.filter(p => Number(p.Price) >= Number(advancedFilters.minPrice));
+            result = result.filter(p => {
+                const price = Number(p.Price || p.PricePerNight || 0);
+                return price >= Number(advancedFilters.minPrice);
+            });
         }
         if (advancedFilters.maxPrice) {
-            result = result.filter(p => Number(p.Price) <= Number(advancedFilters.maxPrice));
+            result = result.filter(p => {
+                const price = Number(p.Price || p.PricePerNight || 0);
+                return price <= Number(advancedFilters.maxPrice);
+            });
         }
 
         // 4. Filter by Amenities (Text Search)
@@ -138,9 +145,9 @@ export default function Home() {
 
         // 5. Sort
         if (advancedFilters.sortBy === 'price_low') {
-            result.sort((a, b) => Number(a.Price) - Number(b.Price));
+            result.sort((a, b) => Number(a.Price || a.PricePerNight || 0) - Number(b.Price || b.PricePerNight || 0));
         } else if (advancedFilters.sortBy === 'price_high') {
-            result.sort((a, b) => Number(b.Price) - Number(a.Price));
+            result.sort((a, b) => Number(b.Price || b.PricePerNight || 0) - Number(a.Price || a.PricePerNight || 0));
         } else if (advancedFilters.sortBy === 'rating_high') {
             // Mock rating property if missing
             result.sort((a, b) => (b.Rating || 0) - (a.Rating || 0));

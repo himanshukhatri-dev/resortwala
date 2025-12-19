@@ -12,7 +12,7 @@ export default function PropertyCard({ property, searchParams }) {
         name = property?.Name || property?.name || "Luxury Villa",
         location = property?.Location || property?.CityName || "India",
         // Handle Price string "14000.00" -> 14000
-        price = parseFloat(property?.Price || property?.ResortWalaRate || 0) || 15000,
+        price = parseFloat(property?.Price || property?.PricePerNight || property?.ResortWalaRate || 0) || 15000,
         rating = property?.Rating || 4.9,
         // Image: API returns empty array currently, so we rely on fallback mostly. 
         // Adding check just in case.

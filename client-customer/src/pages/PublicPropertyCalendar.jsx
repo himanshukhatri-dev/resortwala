@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
@@ -40,7 +41,7 @@ export default function PublicPropertyCalendar() {
     const fetchCalendarData = async () => {
         try {
             // Using fetch to avoid axios config issues in quick setup, assuming /api proxy works
-            const res = await fetch(`/api/public/properties/${uuid}/calendar`);
+            const res = await fetch(`${API_BASE_URL}/public/properties/${uuid}/calendar`);
             if (!res.ok) throw new Error('Failed to load');
             const data = await res.json();
 
@@ -80,7 +81,7 @@ export default function PublicPropertyCalendar() {
         }
 
         try {
-            const res = await fetch('/api/public/bookings/request', {
+            const res = await fetch(`${API_BASE_URL}/public/bookings/request`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

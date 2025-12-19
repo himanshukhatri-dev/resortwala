@@ -16,6 +16,9 @@ class BookingSeeder extends Seeder
      */
     public function run()
     {
+        $faker = \Faker\Factory::create();
+        
+        // 1. Keep the specific debugging data for Property 20
         // Default to Property 20 if passed via command line argument could be complex, 
         // so we'll just target the first property or specific ID 20 for this specific "move to server" request.
         $propertyId = 20;
