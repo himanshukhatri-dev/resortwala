@@ -40,7 +40,7 @@ export default function DayWiseBooking() {
 
     const fetchProperties = async () => {
         try {
-            const response = await axios.get('/api/vendor/properties', {
+            const response = await axios.get(`${API_BASE_URL}/admin/vendor/properties`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProperties(response.data);
@@ -66,7 +66,7 @@ export default function DayWiseBooking() {
 
     const fetchHolidays = async () => {
         try {
-            const response = await axios.get('/api/holidays');
+            const response = await axios.get(`${API_BASE_URL}/api/holidays`);
             setHolidays(response.data);
         } catch (error) {
             console.error('Error fetching holidays:', error);
@@ -76,7 +76,7 @@ export default function DayWiseBooking() {
     const fetchBookings = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('/api/vendor/bookings', {
+            const response = await axios.get(`${API_BASE_URL}/admin/vendor/bookings`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const propertyBookings = response.data.filter(b =>
@@ -96,7 +96,7 @@ export default function DayWiseBooking() {
         const confirmed = await showConfirm('Update Status', `Are you sure you want to ${newStatus}?`, 'Confirm', 'Cancel');
         if (!confirmed) return;
         try {
-            await axios.post(`/api/vendor/bookings/${bookingId}/status`, { status: newStatus }, { headers: { Authorization: `Bearer ${token}` } });
+            await axios.post(`${API_BASE_URL}/admin/vendor/bookings/${bookingId}/status`, { status: newStatus }, { headers: { Authorization: `Bearer ${token}` } });
             fetchBookings();
             showSuccess('Updated', 'Status updated successfully!');
         } catch (error) {
@@ -123,7 +123,7 @@ export default function DayWiseBooking() {
         const nextDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
 
         try {
-            await axios.post('/api/vendor/bookings/freeze', {
+            await axios.post(`${API_BASE_URL}/admin/vendor/bookings/freeze`, {
                 property_id: selectedProperty,
                 start_date: dateStr,
                 end_date: nextDateStr,

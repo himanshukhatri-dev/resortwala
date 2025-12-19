@@ -27,7 +27,7 @@ export default function VendorBookings() {
 
     const fetchBookings = async () => {
         try {
-            const response = await axios.get('/api/vendor/bookings', {
+            const response = await axios.get(`${API_BASE_URL}/admin/vendor/bookings`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setBookings(response.data);
@@ -50,7 +50,7 @@ export default function VendorBookings() {
         if (!confirmed) return;
 
         try {
-            await axios.post(`/api/vendor/bookings/${bookingId}/status`,
+            await axios.post(`${API_BASE_URL}/admin/vendor/bookings/${bookingId}/status`,
                 { status: newStatus },
                 { headers: { Authorization: `Bearer ${token}` } }
             );

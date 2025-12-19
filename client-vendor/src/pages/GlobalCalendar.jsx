@@ -44,8 +44,8 @@ export default function GlobalCalendar() {
         setLoading(true);
         try {
             const [propsRes, bookingsRes] = await Promise.all([
-                axios.get('/api/vendor/properties', { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('/api/vendor/bookings', { headers: { Authorization: `Bearer ${token}` } })
+                axios.get(`${API_BASE_URL}/admin/vendor/properties`, { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get(`${API_BASE_URL}/admin/vendor/bookings`, { headers: { Authorization: `Bearer ${token}` } })
             ]);
 
             setProperties(propsRes.data);
@@ -112,7 +112,7 @@ export default function GlobalCalendar() {
         if (!confirmed) return;
 
         try {
-            await axios.post('/api/vendor/bookings/lock', {
+            await axios.post(`${API_BASE_URL}/admin/vendor/bookings/lock`, {
                 property_id: selectedPropertyId,
                 start_date: format(start, 'yyyy-MM-dd'),
                 end_date: format(end, 'yyyy-MM-dd')
