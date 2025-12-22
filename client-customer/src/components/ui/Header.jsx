@@ -39,7 +39,7 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
     return (
         <header
             className={`fixed top-0 w-full z-50 transition-all duration-300 border-b ${scrolled || !isHomePage
-                ? 'bg-white/80 backdrop-blur-xl border-gray-100 shadow-sm h-[70px]'
+                ? 'bg-white border-gray-100 shadow-sm h-[70px]'
                 : 'bg-white border-transparent h-[80px]'
                 }`}
         >

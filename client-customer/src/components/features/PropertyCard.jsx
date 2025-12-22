@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { FaStar, FaHeart, FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaWifi, FaSwimmingPool, FaParking, FaSnowflake, FaBed, FaBath, FaUserFriends } from 'react-icons/fa';
+import { FaStar, FaHeart, FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaWifi, FaSwimmingPool, FaParking, FaSnowflake, FaBed, FaBath, FaUserFriends, FaExchangeAlt } from 'react-icons/fa';
 
 import { Link, useNavigate } from 'react-router-dom';
 import { useWishlist } from '../../context/WishlistContext';
+import { useCompare } from '../../context/CompareContext';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -54,6 +55,7 @@ export default function PropertyCard({ property, searchParams }) {
     const queryString = buildQuery();
     const navigate = useNavigate();
     const { isWishlisted, toggleWishlist } = useWishlist();
+    const { toggleCompare, compareList } = useCompare();
     const active = id ? isWishlisted(id) : false;
 
     const handleCardClick = (e) => {
@@ -74,8 +76,8 @@ export default function PropertyCard({ property, searchParams }) {
             onClick={handleCardClick}
             className="group flex flex-col xl:flex-row gap-5 bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 p-3 cursor-pointer relative hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300"
         >
-            {/* IMAGE SLIDER (Left Side) */}
-            <div className="relative w-full xl:w-[300px] h-[240px] xl:h-[260px] flex-shrink-0 rounded-[1.2rem] overflow-hidden bg-gray-100">
+            {/* IMAGE SLIDER (Left Side) - Increased Height (~15%) */}
+            <div className="relative w-full xl:w-[300px] h-[276px] xl:h-[300px] flex-shrink-0 rounded-[1.2rem] overflow-hidden bg-gray-100">
                 <AnimatePresence mode="wait">
                     <motion.img
                         key={currentImageIndex}
@@ -88,6 +90,18 @@ export default function PropertyCard({ property, searchParams }) {
                         className="w-full h-full object-cover"
                     />
                 </AnimatePresence>
+
+                {/* COMPARE BUTTON */}
+                <div
+                    onClick={(e) => { e.stopPropagation(); toggleCompare(property); }}
+                    className={`absolute top-4 left-4 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-all backdrop-blur-md cursor-pointer shadow-sm ${compareList?.find(p => p.id === id || p.PropertyId === id)
+                        ? 'bg-black text-white'
+                        : 'bg-white/70 text-gray-700 hover:bg-white hover:text-black'
+                        }`}
+                    title="Compare"
+                >
+                    <FaExchangeAlt size={12} />
+                </div>
 
                 {/* HEART BUTTON */}
                 <div
@@ -117,9 +131,16 @@ export default function PropertyCard({ property, searchParams }) {
                     ))}
                 </div>
 
-                {(property?.PropertyType === 'Villa' || property?.IsTrending) && (
-                    <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white uppercase tracking-wider flex items-center gap-1.5 shadow-lg border border-white/10">
-                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" /> Popular
+                {(property?.PropertyType || property?.IsTrending) && (
+                    <div className="absolute top-3 left-3 flex flex-col gap-2 items-start">
+                        {/* PROPERTY TYPE BADGE - REMOVED (Moved to content area) */}
+
+                        {/* TRENDING BADGE */}
+                        {property?.IsTrending && (
+                            <div className="bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white uppercase tracking-wider flex items-center gap-1.5 shadow-lg border border-white/10">
+                                <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" /> Popular
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -134,8 +155,18 @@ export default function PropertyCard({ property, searchParams }) {
                         </h3>
                     </div>
 
-                    {/* ROW 2: Rating & Location (Moved Below Title) */}
-                    <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
+                    {/* ROW 2: Property Type, Rating & Location (Moved Below Title) */}
+                    <div className="flex flex-wrap items-center gap-3 mb-2 text-sm">
+                        {/* PROPERTY TYPE BADGE - Moved Here */}
+                        {property?.PropertyType && (
+                            <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${property.PropertyType === 'Waterpark'
+                                ? 'bg-blue-50 text-blue-700 border-blue-100'
+                                : 'bg-purple-50 text-purple-700 border-purple-100'
+                                }`}>
+                                {property.PropertyType}
+                            </div>
+                        )}
+
                         <div className="flex items-center gap-1.5 font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
                             <FaStar className="text-yellow-400 text-xs mb-0.5" />
                             <span>{rating}</span>
@@ -146,12 +177,12 @@ export default function PropertyCard({ property, searchParams }) {
                         </div>
                     </div>
 
-                    <p className="text-gray-500 text-sm md:text-base leading-relaxed line-clamp-2 mb-4 max-w-2xl">
+                    <p className="text-gray-500 text-sm md:text-base leading-relaxed line-clamp-2 mb-2 max-w-2xl">
                         {description}
                     </p>
 
                     {/* QUICK STATS & AMENITIES */}
-                    <div className="flex flex-col gap-3 mb-4">
+                    <div className="flex flex-col gap-2 mb-2">
                         {/* Quick Stats Row */}
                         <div className="flex items-center gap-6 text-sm text-gray-700 font-medium">
                             <div className="flex items-center gap-2">
@@ -204,7 +235,7 @@ export default function PropertyCard({ property, searchParams }) {
                     <div className="flex flex-col items-end gap-2">
                         <div className="text-right">
                             <span className="text-2xl font-bold text-gray-900 font-sans">₹{price.toLocaleString()}</span>
-                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide ml-1">/ night</span>
+                            <span className="text-[10px] font-normal text-gray-400 opacity-60 ml-0.5">/ night</span>
                         </div>
                         <button className="px-6 py-3 bg-white border-2 border-gray-100 text-gray-900 rounded-xl font-bold text-sm hover:border-black hover:bg-black hover:text-white transition-all shadow-sm active:scale-95">
                             View Details

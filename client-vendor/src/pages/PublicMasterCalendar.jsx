@@ -9,7 +9,7 @@ import enUS from 'date-fns/locale/en-US';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
-import { FaWhatsapp, FaCalendarAlt, FaBuilding, FaArrowLeft, FaArrowRight, FaShareAlt, FaCheckCircle, FaTimesCircle, FaLock } from 'react-icons/fa';
+import { FaWhatsapp, FaCalendarAlt, FaBuilding, FaArrowLeft, FaArrowRight, FaShareAlt, FaCheckCircle, FaTimesCircle, FaLock, FaFilter } from 'react-icons/fa';
 import { useModal } from '../context/ModalContext'; // Assuming this exists or we built a local one
 
 const locales = { 'en-US': enUS };
@@ -36,6 +36,9 @@ const PublicMasterCalendar = () => {
     const [submitting, setSubmitting] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
 
+    // State for filtering
+    const [selectedPropertyId, setSelectedPropertyId] = useState('all');
+
     useEffect(() => {
         fetchData();
     }, [id]);
@@ -52,14 +55,14 @@ const PublicMasterCalendar = () => {
                 setBookingForm(prev => ({ ...prev, propertyId: res.data.properties[0].PropertyId }));
             }
 
-            const formattedEvents = res.data.events.map(evt => ({
+            const rawEvents = (res.data.events || []).map(evt => ({
                 ...evt,
                 start: new Date(evt.start),
                 end: new Date(evt.end),
                 title: 'Booked',
                 resourceId: evt.resourceId
             }));
-            setEvents(formattedEvents);
+            setEvents(rawEvents);
             setLoading(false);
         } catch (err) {
             console.error("Fetch Error:", err);
@@ -67,6 +70,12 @@ const PublicMasterCalendar = () => {
             setLoading(false);
         }
     };
+
+    // Filter events based on selection
+    const filteredEvents = React.useMemo(() => {
+        if (selectedPropertyId === 'all') return events;
+        return events.filter(evt => String(evt.resourceId) === String(selectedPropertyId));
+    }, [events, selectedPropertyId]);
 
     const handleSelectSlot = ({ start, end }) => {
         // Prevent past dates
@@ -89,7 +98,6 @@ const PublicMasterCalendar = () => {
             return;
         }
 
-        setSubmitting(true);
         setSubmitting(true);
         try {
             await axios.post(`${API_BASE_URL}/public/bookings/request`, {
@@ -121,7 +129,12 @@ const PublicMasterCalendar = () => {
             }).catch(console.error);
         } else {
             // Fallback
-            navigator.clipboard.writeText(window.location.href);
+            const textArea = document.createElement("textarea");
+            textArea.value = window.location.href;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
             alert("Link copied to clipboard!");
         }
     };
@@ -132,16 +145,33 @@ const PublicMasterCalendar = () => {
         const goToNext = () => { toolbar.onNavigate('NEXT'); };
 
         return (
-            <div className="flex justify-between items-center mb-6 px-2">
-                <button onClick={goToBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition">
-                    <FaArrowLeft />
-                </button>
-                <span className="text-xl font-bold text-gray-800 capitalize">
-                    {format(toolbar.date, 'MMMM yyyy')}
-                </span>
-                <button onClick={goToNext} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition">
-                    <FaArrowRight />
-                </button>
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 px-2">
+                <div className="flex items-center gap-4">
+                    <button onClick={goToBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition">
+                        <FaArrowLeft />
+                    </button>
+                    <span className="text-xl font-bold text-gray-800 capitalize min-w-[150px] text-center">
+                        {format(toolbar.date, 'MMMM yyyy')}
+                    </span>
+                    <button onClick={goToNext} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition">
+                        <FaArrowRight />
+                    </button>
+                </div>
+
+                {/* Property Filter */}
+                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-full shadow-sm">
+                    <FaFilter className="text-gray-400" size={12} />
+                    <select
+                        value={selectedPropertyId}
+                        onChange={(e) => setSelectedPropertyId(e.target.value)}
+                        className="bg-transparent outline-none text-sm font-bold text-gray-700 min-w-[150px] cursor-pointer"
+                    >
+                        <option value="all">All Properties</option>
+                        {properties.map(p => (
+                            <option key={p.PropertyId} value={p.PropertyId}>{p.Name}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
         );
     };
@@ -168,17 +198,14 @@ const PublicMasterCalendar = () => {
                 {/* Calendar */}
                 <div className="bg-white rounded-3xl shadow-xl overflow-hidden p-4 md:p-6 mb-24 border border-gray-100">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-gray-800 text-base flex items-center gap-2"><FaCalendarAlt className="text-indigo-600" /> check Availability</h3>
-                        <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider">
-                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div> Booked</span>
-                            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> Free</span>
-                        </div>
+                        <h3 className="font-bold text-gray-800 text-base flex items-center gap-2"><FaCalendarAlt className="text-indigo-600" /> Check Availability</h3>
+
                     </div>
 
-                    <div className="h-[550px] public-calendar">
+                    <div className="h-[600px] public-calendar">
                         <Calendar
                             localizer={localizer}
-                            events={events}
+                            events={filteredEvents}
                             startAccessor="start"
                             endAccessor="end"
                             views={['month']}

@@ -1,0 +1,968 @@
+{
+  "Villa": [
+    {
+      "Page Name": "Details",
+      "Title": "Property Name",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Display Name",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Contact Person",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Mobile No",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Email",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Address",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Website",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "City Name",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Long Description",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Short Description",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Location (Nearest Railway Station)",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Payment Facility(multiple option)",
+      "Options (if)": "Cash, UPI, Debit Card, Credit Card"
+    },
+    {
+      "Title": "Property Offers Details",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "GST %",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Booking Special Message",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Page Name": "Amenities",
+      "Title": "Spa",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Indoor Games",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Free Wi-Fi",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Free Parking",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Fire Extinguishers",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Luggage Storage",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Doctor on Call",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Reception",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Kitchen",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Swimming Pool",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Bonfire",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Laundry Service",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Dining Area",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "CCTV",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Wheelchair",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Massage",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Printer",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Gym",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Bar",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Room Service",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Coffee Shop",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "First-aid Services",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Pool/ Beach towels",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Seating Area",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Security Guard",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Restaurant",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Steam and Sauna",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Power Backup",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Barbeque",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Multilingual Staff",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Wheelchair accessible",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Lawn",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Game Room",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Page Name": "Rules",
+      "Title": "Primary guest should be atleast 18 years of age",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "ID proofs accepted"
+    },
+    {
+      "Options (if)": "Passport"
+    },
+    {
+      "Options (if)": "Driving License"
+    },
+    {
+      "Options (if)": "PAN card"
+    },
+    {
+      "Options (if)": "Aadhar Card"
+    },
+    {
+      "Title": "Pets allowed",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Outside food allowed",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "If yes Then"
+    },
+    {
+      "Title": "Non veg food is allowed",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Extra-person charges may apply and vary depending on property policy",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Government-issued photo identification and a credit card, debit card, or cash deposit may be required at check-in for incidental charges.",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Special requests are subject to availability upon check-in and may incur additional charges; special requests cannot be guaranteed",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Safety features at this property include a fire extinguisher, a security system, a first aid kit, and window guards",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Check-in Time",
+      "Options (if)": "Select time"
+    },
+    {
+      "Title": "Check-out Time",
+      "Options (if)": "Select time"
+    },
+    {
+      "Title": "Smoking within the premises is allowed",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Alcohol consumption is allowed within the property premises.",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "This property is not accessible to guests who use a wheelchair. Please make arrangements accordingly",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Allows private parties or events",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "No show no refund",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Extra bed will be provided to accommodate any child included in the booking."
+    },
+    {
+      "Title": "If yes Then"
+    },
+    {
+      "Title": "An extra bed will be provided to accommodate any additional guest included in the booking for a charge mentioned below.",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Extra mattress charge per guest. (To be paid at the property)",
+      "Options (if)": "Enter Price",
+      "__EMPTY": "This you can avoid"
+    },
+    {
+      "Page Name": "Description",
+      "Title": "Occupancy",
+      "Options (if)": "Enter no of person allowed at base price"
+    },
+    {
+      "Title": "No Of Rooms",
+      "Options (if)": "Enter"
+    },
+    {
+      "Title": "Max Capacity",
+      "Options (if)": "No. of person max allowed"
+    },
+    {
+      "Title": "ROOMs",
+      "Options (if)": "Add Rooms"
+    },
+    {
+      "Title": "Living Room"
+    },
+    {
+      "Title": "Bed Type"
+    },
+    {
+      "Options (if)": "Sofa"
+    },
+    {
+      "Options (if)": "Sofa cum Bed"
+    },
+    {
+      "Title": "Room Type"
+    },
+    {
+      "Options (if)": "AC"
+    },
+    {
+      "Options (if)": "Non AC"
+    },
+    {
+      "Title": "Bathroom in Room"
+    },
+    {
+      "Options (if)": "Yes"
+    },
+    {
+      "Options (if)": "No"
+    },
+    {
+      "Title": "If Yes Then"
+    },
+    {
+      "Title": "Toilet Style"
+    },
+    {
+      "Options (if)": "English"
+    },
+    {
+      "Options (if)": "Indian"
+    },
+    {
+      "Title": "Balcony in Room"
+    },
+    {
+      "Options (if)": "Yes"
+    },
+    {
+      "Options (if)": "No"
+    },
+    {
+      "Title": "Then Add bedrooms"
+    },
+    {
+      "Title": "Bedroom1"
+    },
+    {
+      "Title": "Same question of living room."
+    },
+    {
+      "Title": "Pricing"
+    },
+    {
+      "Title": "Monday–Thursday (Without-Food)",
+      "Options (if)": "Enter Price"
+    },
+    {
+      "Title": "Friday and Sunday (Without-Food)",
+      "Options (if)": "Enter Price"
+    },
+    {
+      "Title": "Saturday (Without-Food)",
+      "Options (if)": "Enter Price"
+    },
+    {
+      "Title": "Veg",
+      "Options (if)": "Enter Price"
+    },
+    {
+      "Title": "Non-Veg",
+      "Options (if)": "Enter Price"
+    },
+    {
+      "Title": "Jain Food",
+      "Options (if)": "Enter Price"
+    },
+    {
+      "Title": "Per Person MealPrice",
+      "Options (if)": "Enter Price"
+    },
+    {
+      "Title": "Extra Person Price",
+      "Options (if)": "Enter Price"
+    },
+    {
+      "Title": "Food Included"
+    },
+    {
+      "Title": "Breakfast"
+    },
+    {
+      "Options (if)": "Veg"
+    },
+    {
+      "Options (if)": "Non Veg"
+    },
+    {
+      "Options (if)": "Not Included"
+    },
+    {
+      "Title": "Lunch"
+    },
+    {
+      "Options (if)": "Veg"
+    },
+    {
+      "Options (if)": "Non Veg"
+    },
+    {
+      "Options (if)": "Not Included"
+    },
+    {
+      "Title": "Dinner"
+    },
+    {
+      "Options (if)": "Veg"
+    },
+    {
+      "Options (if)": "Non Veg"
+    },
+    {
+      "Options (if)": "Not Included"
+    },
+    {
+      "Title": "Hi Tea"
+    },
+    {
+      "Options (if)": "Tea"
+    },
+    {
+      "Options (if)": "Coffee"
+    },
+    {
+      "Options (if)": "Snacks"
+    },
+    {
+      "Options (if)": "Not Included"
+    },
+    {
+      "Title": "Images"
+    },
+    {
+      "Title": "Video URL",
+      "Options (if)": "Enter URL"
+    },
+    {
+      "Title": "Images",
+      "Options (if)": "Choose file option"
+    },
+    {
+      "Title": "Submit"
+    },
+    {
+      "Page Name": "Admin"
+    },
+    {
+      "Page Name": "After Submitting, details go to Admin. Admin can, view, edit, delete, update price. Once every thing is done then change the status to active and confirm property changes done."
+    },
+    {
+      "Page Name": "Pricing",
+      "Title": "Monday–Thursday (Without-Food)",
+      "Options (if)": "This will be already fiiled the same figure of vendor."
+    },
+    {
+      "Title": "Final Website Price for clients Monday–Thursday (Without-Food)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Resortwala Negotiated Price with Vendor Monday–Thursday (Without-Food)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Friday and Sunday (Without-Food)",
+      "Options (if)": "This will be already fiiled the same figure of vendor."
+    },
+    {
+      "Title": "Final Website Price for clients Friday and Sunday (Without-Food)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Resortwala Negotiated Price with Vendor Friday and Sunday (Without-Food)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Saturday (Without-Food)",
+      "Options (if)": "This will be already fiiled the same figure of vendor."
+    },
+    {
+      "Title": "Final Website Price for clients Saturday (Without-Food)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Resortwala Negotiated Price with Vendor Saturday (Without-Food)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Veg",
+      "Options (if)": "This will be already fiiled the same figure of vendor."
+    },
+    {
+      "Title": "Final Website Price for clients (PerPerson-MealPrice)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Resortwala Negotiated Price with Vendor (PerPerson-MealPrice)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Non-Veg",
+      "Options (if)": "This will be already fiiled the same figure of vendor."
+    },
+    {
+      "Title": "Final Website Price for clients (PerPerson-MealPrice)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Resortwala Negotiated Price with Vendor (PerPerson-MealPrice)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Jain Food",
+      "Options (if)": "This will be already fiiled the same figure of vendor."
+    },
+    {
+      "Title": "Final Website Price for clients (PerPerson-MealPrice)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Resortwala Negotiated Price with Vendor (PerPerson-MealPrice)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Extra Person Price",
+      "Options (if)": "This will be already fiiled the same figure of vendor."
+    },
+    {
+      "Title": "Final Website Price for clients (Extra-PersonPrice)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Resortwala Negotiated Price with Vendor (Extra-PersonPrice)",
+      "Options (if)": "Enter amount"
+    }
+  ],
+  "Waterpark": [
+    {
+      "Page Name": "Details",
+      "Title": "Property Name",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Display Name",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Contact Person",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Mobile No",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Email",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Address",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Website",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "City Name",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Long Description",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Short Description",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Location (Nearest Railway Station)",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Payment Facility(multiple option)",
+      "Options (if)": "Cash, UPI, Debit Card, Credit Card"
+    },
+    {
+      "Title": "Property Offers Details",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Page Name": "Amenities",
+      "Title": "Number of Big swimming pools",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Number of Small swimming pools",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Number of Big Water & Tube slides",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Number of small Water & Tube slides",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Wavepool",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Rain dance floors",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Live DJ system",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Waterfall fountain",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Ice Bucket setup for children",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Lazy River",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Crazy River",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Children play area",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Parking facility",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Selfie Point",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Green Garden & Lawns",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Add Other Attraction",
+      "Options (if)": "We can enter details and add anything. If not in the above list."
+    },
+    {
+      "Page Name": "Property Rules",
+      "Title": "Primary guest should be atleast 18 years of age",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "ID proofs accepted",
+      "Options (if)": "Passport"
+    },
+    {
+      "Options (if)": "Driving License"
+    },
+    {
+      "Options (if)": "PAN card"
+    },
+    {
+      "Options (if)": "Aadhar Card"
+    },
+    {
+      "Title": "Pets allowed",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Outside food allowed",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Non veg food is allowed",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Extra charges may apply and vary depending on property policy",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Government-issued photo identification and a credit card, debit card, or cash deposit may be required at check-in for incidental charges.",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Special requests are subject to availability upon check-in and may incur additional charges; special requests cannot be guaranteed",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Safety features at this property include a fire extinguisher, a security system, a first aid kit, and window guards",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "No show no refund",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Offers cannot be combined: You cannot use multiple offers simultaneously",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Child Criteria"
+    },
+    {
+      "Title": "Below Feet",
+      "Options (if)": "Mention FT"
+    },
+    {
+      "Title": " or "
+    },
+    {
+      "Title": " Age will be consider as kids and will be free.",
+      "Options (if)": "Mention Age"
+    },
+    {
+      "Title": "Below  feet height ",
+      "Options (if)": "Mention FT"
+    },
+    {
+      "Title": "or Age from ",
+      "Options (if)": "Mention Age"
+    },
+    {
+      "Title": " to ",
+      "Options (if)": "Mention Age"
+    },
+    {
+      "Title": " would be charged as per Child Rates only."
+    },
+    {
+      "Title": "Smoking within the premises is allowed",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Alcohol consumption is allowed within the property premises.",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Ticket Included"
+    },
+    {
+      "Title": "Waterpark Entry",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "All Slides & Swimming Pool",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Unlimited Morning Breakfast",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Unlimited Afternoon Lunch",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Evening Tea & Coffee",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Free Parking",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Private Room",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Locker",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Free Pickup and drop",
+      "Options (if)": "Yes or No"
+    },
+    {
+      "Title": "Add Other Rules. If any.",
+      "Options (if)": "We can enter details and add anything. If not in the above list."
+    },
+    {
+      "Page Name": "Pricing",
+      "Title": "Child"
+    },
+    {
+      "Title": "From age ",
+      "Options (if)": "Enter Age"
+    },
+    {
+      "Title": "To age",
+      "Options (if)": "Enter Age"
+    },
+    {
+      "Title": "From ",
+      "Options (if)": "Enter Ft"
+    },
+    {
+      "Title": "to ",
+      "Options (if)": "Enter Ft"
+    },
+    {
+      "Title": "Current Price"
+    },
+    {
+      "Title": "Monday-Friday",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": " Saturday & Sunday",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Adult"
+    },
+    {
+      "Title": "Monday-Friday",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": " Saturday & Sunday",
+      "Options (if)": "Enter details"
+    },
+    {
+      "Title": "Food Included"
+    },
+    {
+      "Title": "Breakfast"
+    },
+    {
+      "Title": "Veg"
+    },
+    {
+      "Title": "Non Veg"
+    },
+    {
+      "Title": "Not Included"
+    },
+    {
+      "Title": "Lunch"
+    },
+    {
+      "Title": "Veg"
+    },
+    {
+      "Title": "Non Veg"
+    },
+    {
+      "Title": "Not Included"
+    },
+    {
+      "Title": "Hi Tea"
+    },
+    {
+      "Title": "Tea"
+    },
+    {
+      "Title": "Coffee"
+    },
+    {
+      "Title": "Not Included"
+    },
+    {
+      "Page Name": "Images",
+      "Title": "Video URL",
+      "Options (if)": "Upload URL"
+    },
+    {
+      "Title": "Images",
+      "Options (if)": "Upload Images"
+    },
+    {
+      "Page Name": "Admin"
+    },
+    {
+      "Page Name": "After Submitting, details go to Admin. Admin can, view, edit, delete, update price. Once every thing is done then change the status to active and confirm property changes done."
+    },
+    {
+      "Page Name": "Pricing",
+      "Title": "Child"
+    },
+    {
+      "Title": "Current Price",
+      "Options (if)": "This will be already fiiled the same figure of vendor."
+    },
+    {
+      "Title": "Final Website Price for client (Monday-Friday)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Resortwala Negotiated Price with Vendor: (Monday-Friday)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Current Price",
+      "Options (if)": "This will be already fiiled the same figure of vendor."
+    },
+    {
+      "Title": "Final Website Price for client (Saturday & Sunday)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Resortwala Negotiated Price with Vendor (Saturday & Sunday)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Adult"
+    },
+    {
+      "Title": "Current Price",
+      "Options (if)": "This will be already fiiled the same figure of vendor."
+    },
+    {
+      "Title": "Final Website Price for client (Monday-Friday)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Resortwala Negotiated Price with Vendor (Monday-Friday)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Current Price",
+      "Options (if)": "This will be already fiiled the same figure of vendor."
+    },
+    {
+      "Title": "Final Website Price for client (Saturday & Sunday)",
+      "Options (if)": "Enter amount"
+    },
+    {
+      "Title": "Resortwala Negotiated Price with Vendor (Saturday & Sunday)",
+      "Options (if)": "Enter amount"
+    }
+  ]
+}

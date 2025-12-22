@@ -13,7 +13,8 @@ class PropertyImageController extends Controller
     public function upload(Request $request, $propertyId)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB max
+            'images' => 'required|array',
+            'images.*' => 'image|mimes:jpeg,png,jpg|max:5120', // 5MB max each
         ]);
 
         // Verify property belongs to vendor
@@ -21,37 +22,42 @@ class PropertyImageController extends Controller
             ->where('vendor_id', $request->user()->id)
             ->firstOrFail();
 
-        // Handle file upload
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $filename = Str::random(40) . '.' . $image->getClientOriginalExtension();
-            
-            // Store in storage/app/public/properties
-            $path = $image->storeAs('properties', $filename, 'public');
+        $uploadedImages = [];
 
-            // Get current max display_order
-            $maxOrder = PropertyImage::where('property_id', $propertyId)->max('display_order') ?? -1;
+        // Handle file uploads
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $filename = Str::random(40) . '.' . $image->getClientOriginalExtension();
+                
+                // Store in storage/app/public/properties/{id}
+                $path = $image->storeAs('properties/' . $propertyId, $filename, 'public');
 
-            // Create image record
-            $propertyImage = PropertyImage::create([
-                'property_id' => $propertyId,
-                'image_path' => $filename,
-                'is_primary' => PropertyImage::where('property_id', $propertyId)->count() === 0, // First image is primary
-                'display_order' => $maxOrder + 1
-            ]);
+                // Get current max display_order
+                $maxOrder = PropertyImage::where('property_id', $propertyId)->max('display_order') ?? -1;
 
-            return response()->json([
-                'message' => 'Image uploaded successfully',
-                'image' => [
+                // Create image record
+                $propertyImage = PropertyImage::create([
+                    'property_id' => $propertyId,
+                    'image_path' => $propertyId . '/' . $filename,
+                    'is_primary' => PropertyImage::where('property_id', $propertyId)->count() === 0, // First image is primary
+                    'display_order' => $maxOrder + 1
+                ]);
+
+                $uploadedImages[] = [
                     'id' => $propertyImage->id,
                     'url' => asset('storage/properties/' . $filename),
                     'is_primary' => $propertyImage->is_primary,
                     'display_order' => $propertyImage->display_order
-                ]
+                ];
+            }
+
+            return response()->json([
+                'message' => count($uploadedImages) . ' images uploaded successfully',
+                'images' => $uploadedImages
             ], 201);
         }
 
-        return response()->json(['message' => 'No image provided'], 400);
+        return response()->json(['message' => 'No images provided'], 400);
     }
 
     public function delete(Request $request, $propertyId, $imageId)

@@ -5,7 +5,7 @@ const getApiBaseUrl = () => {
         if (hostname === '72.61.242.42') {
             return '/api';
         }
-        // Strict staging check as requested by user
+        // Strict staging check
         if (hostname.includes('staging')) {
             return 'http://stagingapi.resortwala.com/api';
         }
@@ -14,7 +14,6 @@ const getApiBaseUrl = () => {
     }
 
     // 2. Local / Development Environment
-    // If .env has a value (e.g. for proxy), use it
     if (import.meta.env.VITE_API_BASE_URL) {
         return import.meta.env.VITE_API_BASE_URL;
     }

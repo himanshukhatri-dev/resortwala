@@ -38,9 +38,9 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
         { path: '/dashboard', icon: '📊', label: 'Dashboard', roles: ['vendor', 'admin'] },
         { path: '/vendors', icon: '🏢', label: 'Vendor', roles: ['admin'] },
         { path: '/customers', icon: '👥', label: 'Customer', roles: ['admin'] },
-        { path: '/calendar', icon: '🗓️', label: 'Calendar', roles: ['vendor', 'admin'] },
+        { path: '/calendar', icon: '🗓️', label: 'Booking Calendar', roles: ['vendor', 'admin'] },
         { path: '/properties', icon: '🏠', label: 'Property', roles: ['vendor', 'admin'] },
-        { path: '/bookings', icon: '📅', label: 'Booking', roles: ['vendor', 'admin'] },
+        { path: '/bookings', icon: '📅', label: 'Booking Reports', roles: ['vendor', 'admin'] },
         { path: '/holiday-management', icon: '🌴', label: 'Holiday', roles: ['vendor', 'admin'] },
         { path: '/reviews', icon: '⭐', label: 'Review', roles: ['vendor', 'admin'] },
     ];
@@ -102,7 +102,7 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
                     position: 'relative'
                 }}>
                     <img
-                        src="/loader-logo.png"
+                        src="/vendor/loader-logo.png"
                         alt="ResortWala"
                         style={{
                             height: isHovered ? '40px' : '28px',

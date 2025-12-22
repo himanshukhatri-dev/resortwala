@@ -55,9 +55,24 @@ export default function VendorLayout({ children, title }) {
                 overflowY: 'auto'
             }} className="content-area">
                 <div style={{ padding: '30px' }} className="page-content">
-                    <div style={{ padding: '30px' }} className="page-content">
-                        {/* Approval Guard */}
-                        {isApproved ? children : <AccountPending />}
+                    {/* Approval Guard */}
+                    {isApproved ? children : <AccountPending />}
+                </div>
+                {/* Footer */}
+                <div className="mt-auto border-t border-gray-100 bg-white/50 backdrop-blur-sm p-6 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-gray-400 uppercase tracking-widest">
+                            <span>Resortwala Registered Vendor</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600 font-semibold">
+                            <span>{user?.business_name || 'Business Partner'}</span>
+                            <span className="text-gray-300">•</span>
+                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">ID: {user?.id}</span>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                            Authorized Partner • Terms of Service Apply
+                        </div>
                     </div>
                 </div>
             </div>

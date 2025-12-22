@@ -101,8 +101,14 @@ export default function Home() {
                 const name = (p.Name || p.name || "").toLowerCase();
                 const desc = (p.LongDescription || p.long_description || "").toLowerCase();
 
-                if (activeCategory === 'villas') return type.includes('villa') || name.includes('villa');
-                if (activeCategory === 'waterpark') return name.includes('water') || desc.includes('pool') || desc.includes('slide');
+                if (activeCategory === 'villas') {
+                    return type === 'villa' || name.includes('villa');
+                }
+                if (activeCategory === 'waterpark') {
+                    // Strict check: Must be type 'Waterpark' or have 'waterpark' in name
+                    // Removed 'pool'/'slide' check to avoid matching Villas with pools
+                    return type === 'waterpark' || name.includes('water park') || name.includes('waterpark');
+                }
                 return true;
             });
         }
@@ -157,6 +163,22 @@ export default function Home() {
 
         setFilteredProperties([...result]); // Spread to trigger re-render
     }, [properties, activeCategory, searchParams, advancedFilters]);
+
+    // AUTO SCROLL: When filters change (category, price, amenities), scroll to top of results
+    useEffect(() => {
+        // Skip on initial load to avoid annoying jumps
+        if (!hasSearched && activeCategory === 'all' && !advancedFilters.minPrice && !advancedFilters.maxPrice && advancedFilters.amenities.length === 0) return;
+
+        if (resultsRef.current) {
+            // Small timeout to allow DOM layout updates if needed
+            setTimeout(() => {
+                const yOffset = -120; // Offset for sticky header
+                const element = resultsRef.current;
+                const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }, 100);
+        }
+    }, [activeCategory, advancedFilters]);
 
 
     const handleSearch = (filters) => {
@@ -276,7 +298,12 @@ export default function Home() {
                     <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8 relative items-start">
 
                         {/* LEFT COLUMN: Map (Sticky) */}
-                        <div className={`w-full lg:block ${viewMode === 'list' ? 'hidden' : 'block'} sticky top-[100px] h-[calc(100vh-140px)]`}>
+                        <div className={`w-full lg:block ${viewMode === 'list' ? 'hidden' : 'block'} sticky top-[100px] h-[calc(100vh-140px)] overflow-y-auto pr-2 custom-scrollbar`}>
+                            {/* FILTER BAR - Moved to Sidebar */}
+                            <div className="mb-4 relative z-50">
+                                <FilterBar onFilterChange={setAdvancedFilters} compact={true} />
+                            </div>
+
                             <div className="w-full h-full rounded-2xl overflow-hidden shadow-2xl border border-gray-100 relative group">
                                 <MapView properties={filteredProperties} />
                                 <div className="absolute top-4 left-4 z-[1000] opacity-0 group-hover:opacity-100 transition-opacity">
@@ -291,10 +318,7 @@ export default function Home() {
                         {/* RIGHT COLUMN: Property List */}
                         <div className={`w-full ${viewMode === 'map' ? 'hidden lg:block' : 'block'}`}>
 
-                            {/* HORIZONTAL FILTERS */}
-                            <div className="mb-6">
-                                <FilterBar onFilterChange={setAdvancedFilters} />
-                            </div>
+
 
                             {filteredProperties.length > 0 ? (
                                 <div className="flex flex-col gap-8">

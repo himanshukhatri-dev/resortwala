@@ -60,11 +60,14 @@ class VendorPropertyController extends Controller
             'price_fri_sun' => 'nullable|numeric|min:0',
             'price_sat' => 'nullable|numeric|min:0',
             'video_url' => 'nullable|url',
-            'onboarding_data' => 'nullable' // Can be JSON string
+            'onboarding_data' => 'nullable', // Can be JSON string
+            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120'
         ]);
 
         // Decode JSON string if present (FormData sends strings)
         $data = $validated;
+        unset($data['images']); // Remove images from mass assignment data
+
         if ($request->has('onboarding_data') && is_string($request->onboarding_data)) {
             $data['onboarding_data'] = json_decode($request->onboarding_data, true);
         }
@@ -77,6 +80,21 @@ class VendorPropertyController extends Controller
             'PropertyStatus' => true,
         ]);
 
+        // Handle Image Uploads
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $index => $image) {
+                $filename = \Illuminate\Support\Str::random(40) . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('properties/' . $property->PropertyId, $filename, 'public');
+                
+                \App\Models\PropertyImage::create([
+                    'property_id' => $property->PropertyId,
+                    'image_path' => $property->PropertyId . '/' . $filename,
+                    'is_primary' => $index === 0,
+                    'display_order' => $index
+                ]);
+            }
+        }
+
         return response()->json([
             'message' => 'Property created successfully. Awaiting admin approval.',
             'property' => $property
@@ -87,6 +105,7 @@ class VendorPropertyController extends Controller
     {
         $property = PropertyMaster::where('vendor_id', $request->user()->id)
             ->where('PropertyId', $id)
+            ->with(['images'])
             ->firstOrFail();
 
         return response()->json($property);
@@ -121,7 +140,8 @@ class VendorPropertyController extends Controller
             'price_fri_sun' => 'nullable|numeric|min:0',
             'price_sat' => 'nullable|numeric|min:0',
             'video_url' => 'nullable|url',
-            'onboarding_data' => 'nullable'
+            'onboarding_data' => 'nullable',
+            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120'
         ]);
 
         $data = $validated;
@@ -130,6 +150,24 @@ class VendorPropertyController extends Controller
         }
 
         $property->update($data);
+
+        // Handle Image Uploads (Appending new images)
+        if ($request->hasFile('images')) {
+            // Get current max display order
+            $currentMaxOrder = \App\Models\PropertyImage::where('property_id', $property->PropertyId)->max('display_order') ?? -1;
+
+            foreach ($request->file('images') as $index => $image) {
+                $filename = \Illuminate\Support\Str::random(40) . '.' . $image->getClientOriginalExtension();
+                $path = $image->storeAs('properties/' . $property->PropertyId, $filename, 'public');
+                
+                \App\Models\PropertyImage::create([
+                    'property_id' => $property->PropertyId,
+                    'image_path' => $property->PropertyId . '/' . $filename,
+                    'is_primary' => false, // New images attached on update are not primary by default
+                    'display_order' => $currentMaxOrder + 1 + $index
+                ]);
+            }
+        }
 
         return response()->json([
             'message' => 'Property updated successfully',

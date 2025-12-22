@@ -9,7 +9,7 @@ import enUS from 'date-fns/locale/en-US';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { FaWhatsapp, FaLock, FaCheck } from 'react-icons/fa';
+import { FaWhatsapp, FaLock, FaCheck, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import { useModal } from '../context/ModalContext';
 import { API_BASE_URL } from '../config';
 
@@ -155,8 +155,15 @@ function VendorCalendarContent() {
     };
 
     const shareOnWhatsapp = () => {
-        if (!property?.share_link) return;
-        const message = `Check live availability for ${property.name} here: ${property.share_link}`;
+        const token = property?.share_token || property?.id;
+        if (!token) return;
+
+        // Use configured Customer App URL, or fallback to localhost for dev
+        // For production, ensure VITE_CUSTOMER_APP_URL is set in environment variables
+        const customerBase = import.meta.env.VITE_CUSTOMER_APP_URL || 'http://localhost:5173';
+        const link = `${customerBase}/stay/${token}`;
+
+        const message = `Check live availability for ${property.name} here: ${link}`;
         const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     };

@@ -2,14 +2,36 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useModal } from '../context/ModalContext'; // Import Modal Hook
 import {
     FaHome, FaWater, FaCheck, FaTimes, FaCamera, FaBed, FaUtensils,
     FaSwimmingPool, FaChild, FaBan, FaMoneyBillWave, FaArrowRight, FaArrowLeft, FaSave,
-    FaParking, FaWifi, FaMusic, FaTree, FaGlassMartiniAlt, FaSnowflake
+    FaParking, FaWifi, FaMusic, FaTree, FaGlassMartiniAlt, FaSnowflake, FaCouch, FaRestroom, FaDoorOpen, FaUsers,
+    FaTshirt, FaVideo, FaWheelchair, FaMedkit, FaUmbrellaBeach, FaChair, FaUserShield, FaConciergeBell, FaHotTub
 } from 'react-icons/fa';
-import { MdPool, MdWater, MdOutlineDeck, MdChildCare, MdWaterfallChart, MdMusicNote } from 'react-icons/md';
+import { MdPool, MdWater, MdOutlineDeck, MdChildCare, MdWaterfallChart, MdMusicNote, MdBalcony, MdSportsEsports, MdRestaurant, MdOutlineOutdoorGrill } from 'react-icons/md';
+import { STEPS_VILLA, STEPS_WATERPARK, AMENITY_TYPES } from '../constants/propertyConstants';
 
-// ICON MAPPING FOR AMENITIES
+const INCLUSIONS = [
+    "Waterpark Entry", "All Slides & Pool", "Breakfast",
+    "Lunch", "Hi-Tea", "Parking",
+    "Private Room", "Locker", "Pickup/Drop"
+];
+
+const PROPERTY_RULES = [
+    "Primary guest must be 18+",
+    "Valid ID proof required",
+    "Pets allowed",
+    "Outside food allowed",
+    "No show no refund",
+    "Offers cannot be combined",
+    "Smoking within the premises is allowed",
+    "Alcohol consumption is allowed within the property premises",
+    "Non-veg food allowed",
+    "Allows private parties or events",
+    "Property is not accessible to guests who use a wheelchair"
+];
+
 const getAmenityIcon = (key) => {
     switch (key) {
         case 'big_pools': return <FaSwimmingPool className="text-blue-500" />;
@@ -22,78 +44,149 @@ const getAmenityIcon = (key) => {
         case 'waterfall': return <MdWater className="text-cyan-500" />;
         case 'ice_bucket': return <FaSnowflake className="text-sky-300" />;
         case 'lazy_river': return <FaWater className="text-blue-400" />;
-        case 'crazy_river': return <FaWater className="text-indigo-500" />;
+        case 'crazy_river': return <FaWater className="text-red-500" />;
         case 'kids_area': return <MdChildCare className="text-green-500" />;
         case 'parking': return <FaParking className="text-gray-600" />;
         case 'selfie_point': return <FaCamera className="text-red-500" />;
         case 'garden': return <FaTree className="text-green-600" />;
+        case 'laundry': return <FaTshirt className="text-blue-400" />;
+        case 'dining': return <MdRestaurant className="text-orange-500" />;
+        case 'cctv': return <FaVideo className="text-gray-700" />;
+        case 'wheelchair': return <FaWheelchair className="text-blue-600" />;
+        case 'first_aid': return <FaMedkit className="text-red-500" />;
+        case 'pool_towels': return <FaUmbrellaBeach className="text-yellow-500" />;
+        case 'seating_area': return <FaChair className="text-brown-500" />;
+        case 'security': return <FaUserShield className="text-blue-900" />;
+        case 'restaurant': return <FaUtensils className="text-red-600" />;
+        case 'steam_sauna': return <FaHotTub className="text-teal-600" />;
+        case 'barbeque': return <MdOutlineOutdoorGrill className="text-orange-700" />;
+        case 'multilingual': return <FaConciergeBell className="text-purple-600" />;
+        case 'game_room': return <MdSportsEsports className="text-indigo-500" />;
         default: return <FaCheck />;
     }
 };
 
-const AMENITY_TYPES = [
-    { key: 'big_pools', label: 'Big Pools', type: 'number', subtitle: 'Large swimming pools' },
-    { key: 'small_pools', label: 'Small Pools', type: 'number', subtitle: 'Kids/Small pools' },
-    { key: 'big_slides', label: 'Big Slides', type: 'number', subtitle: 'Water & Tube slides' },
-    { key: 'small_slides', label: 'Small Slides', type: 'number', subtitle: 'Smaller slides' },
-    { key: 'wavepool', label: 'Wavepool', type: 'bool' },
-    { key: 'rain_dance', label: 'Rain Dance', type: 'bool' },
-    { key: 'dj_system', label: 'DJ System', type: 'bool' },
-    { key: 'waterfall', label: 'Waterfall', type: 'bool' },
-    { key: 'ice_bucket', label: 'Ice Bucket', type: 'bool' },
-    { key: 'lazy_river', label: 'Lazy River', type: 'bool' },
-    { key: 'crazy_river', label: 'Crazy River', type: 'bool' },
-    { key: 'kids_area', label: 'Kids Area', type: 'bool' },
-    { key: 'parking', label: 'Parking', type: 'bool' },
-    { key: 'selfie_point', label: 'Selfie Point', type: 'bool' },
-    { key: 'garden', label: 'Garden', type: 'bool' },
-];
+// --- REUSABLE COMPONENTS ---
+const InputField = ({ label, name, type = "text", placeholder, className, value, onChange }) => (
+    <div className={`space-y-1 ${className}`}>
+        <label className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">{label}</label>
+        <input
+            type={type}
+            name={name}
+            value={value !== undefined ? value : ''}
+            onChange={onChange}
+            min={type === 'number' ? 0 : undefined}
+            onKeyDown={type === 'number' ? (e) => ["-", "e", "E"].includes(e.key) && e.preventDefault() : undefined}
+            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-3 text-sm md:text-base text-gray-800 font-medium focus:bg-white focus:border-black focus:ring-1 focus:ring-black outline-none transition-all"
+            placeholder={placeholder}
+        />
+    </div>
+);
 
-const PROPERTY_RULES = [
-    "Primary guest must be 18+",
-    "Valid ID proof required",
-    "Pets allowed",
-    "Outside food allowed",
-    "Extra charges may apply",
-    "Deposit required at check-in",
-    "Special requests subject to availability",
-    "Safety features available",
-    "No show no refund",
-    "Offers cannot be combined",
-    "Smoking allowed",
-    "Alcohol allowed"
-];
+const Counter = ({ value = 0, onChange }) => (
+    <div className="flex items-center gap-3 bg-gray-100 rounded-lg p-1">
+        <button
+            type="button"
+            onClick={() => onChange(Math.max(0, parseInt(value || 0) - 1))}
+            className="w-8 h-8 flex items-center justify-center bg-white rounded shadow-sm text-gray-600 hover:text-black font-bold disabled:opacity-50"
+            disabled={value <= 0}
+        >
+            -
+        </button>
+        <span className="w-6 text-center font-bold text-lg">{value || 0}</span>
+        <button
+            type="button"
+            onClick={() => onChange(parseInt(value || 0) + 1)}
+            className="w-8 h-8 flex items-center justify-center bg-white rounded shadow-sm text-gray-600 hover:text-black font-bold"
+        >
+            +
+        </button>
+    </div>
+);
 
-const INCLUSIONS = [
-    "Waterpark Entry", "All Slides & Pool", "Breakfast",
-    "Lunch", "Hi-Tea", "Parking",
-    "Private Room", "Locker", "Pickup/Drop"
-];
-
-const STEPS = ["Basic Info", "Amenities", "Rules", "Pricing", "Images"];
+const Toggle = ({ active, onChange }) => (
+    <button
+        type="button"
+        onClick={() => onChange(!active)}
+        className={`w-12 h-7 rounded-full p-1 transition-all duration-300 ${active ? 'bg-green-500' : 'bg-gray-300'}`}
+    >
+        <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${active ? 'translate-x-5' : 'translate-x-0'}`} />
+    </button>
+);
 
 export default function AddProperty() {
     const { token } = useAuth();
     const navigate = useNavigate();
+    const { showSuccess, showError, showConfirm } = useModal(); // Use Modal Hooks
+    const fileInputRef = useRef(null);
     const [currentStep, setCurrentStep] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+
+    // Scroll to top when step changes
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [currentStep]);
 
     const [formData, setFormData] = useState({
         name: '', displayName: '', propertyType: 'Villa',
         location: '', cityName: '', address: '',
         contactPerson: '', mobileNo: '', email: '', website: '',
         description: '', shortDescription: '',
+        maxCapacity: '', noofRooms: '', occupancy: '',
         amenities: {}, rules: {}, paymentMethods: { cash: false, upi: false, debit: false, credit: false },
-        childCriteria: { freeAge: 5, freeHeight: 3, chargeAgeFrom: 6, chargeAgeTo: 12, chargeHeightFrom: 3, chargeHeightTo: 5 },
+        roomConfig: {
+            livingRoom: { bedType: 'Sofa', ac: false, bathroom: false, toiletType: '', balcony: false },
+            bedrooms: []
+        },
+        childCriteria: {
+            freeAge: 5, freeHeight: 3,
+            chargeAgeFrom: 6, chargeAgeTo: 12, chargeHeightFrom: 3, chargeHeightTo: 5,
+            price: ''
+        },
+        waterparkPrices: {
+            adult: { week: '', weekend: '' },
+            child: { week: '', weekend: '' }
+        },
         inclusions: {},
-        priceMonFri: '', priceSatSun: '', childPriceMonFri: '', childPriceSatSun: '',
-        foodOptions: { breakfast: 'Not Included', lunch: 'Not Included', hiTea: 'Not Included' },
+        priceMonThu: '', priceFriSun: '', priceSaturday: '',
+        checkInTime: '12:00', checkOutTime: '11:00',
+        idProofs: [],
+        foodRates: { veg: false, nonVeg: false, jain: false },
+        mealPlans: {
+            breakfast: { available: false, vegRate: '', nonVegRate: '', includes: [] },
+            lunch: { available: false, vegRate: '', nonVegRate: '', includes: [] },
+            dinner: { available: false, vegRate: '', nonVegRate: '', includes: [] },
+            hiTea: { available: false, rate: '', includes: [] },
+        },
+        extraGuestLimit: '15', extraGuestCharge: '1000',
+        otherAttractions: '', otherRules: '',
         videoUrl: '', images: []
     });
 
     const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     const handleNestedChange = (section, key, value) => setFormData(prev => ({ ...prev, [section]: { ...prev[section], [key]: value } }));
+
+    // Sync Bedrooms
+    useEffect(() => {
+        if (formData.propertyType !== 'Villa') return;
+        const count = parseInt(formData.noofRooms || 0);
+        setFormData(prev => {
+            if (prev.roomConfig.bedrooms.length === count) return prev; // No change
+
+            const newRooms = [...prev.roomConfig.bedrooms];
+            // If growing
+            for (let i = newRooms.length; i < count; i++) {
+                newRooms.push({ id: i + 1, bedType: 'Queen', ac: false, bathroom: true, toiletType: 'Western', balcony: false });
+            }
+            // If shrinking
+            if (newRooms.length > count) {
+                newRooms.length = count;
+            }
+            return { ...prev, roomConfig: { ...prev.roomConfig, bedrooms: newRooms } };
+        });
+    }, [formData.noofRooms, formData.propertyType]);
+
+
 
     const handleAmenityChange = (key, type, value) => {
         setFormData(prev => ({
@@ -104,16 +197,48 @@ export default function AddProperty() {
 
     const handleImageUpload = (e) => {
         const files = Array.from(e.target.files);
+        if (files.length === 0) return;
         setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }));
+        e.target.value = null; // Reset input to allow re-selection
+    };
+
+    const handleDeleteImage = async (idx) => {
+        const isConfirmed = await showConfirm('Delete Photo', 'Remove this photo from the list?', 'Remove', 'Cancel');
+        if (isConfirmed) {
+            setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }));
+        }
     };
 
     const handleSubmit = async () => {
         setLoading(true);
-        setError(null);
+
+        if (!formData.name || !formData.location || !formData.priceMonThu || !formData.mobileNo) {
+            showError('Missing Details', 'Please fill in all required fields (Name, Location, Price, Mobile).');
+            setLoading(false);
+            return;
+        }
+
+        // Validate Mobile Number
+        if (!/^\d{10}$/.test(formData.mobileNo)) {
+            showError('Invalid Mobile', 'Please enter a valid 10-digit mobile number.');
+            setLoading(false);
+            return;
+        }
+
+        // Validate Minimum Photos
+        if (formData.images.length < 5) {
+            showError('Photos Required', 'Please upload at least 5 photos to publish your property.');
+            setLoading(false);
+            return;
+        }
+
+        // --- VALIDATION ---
+        if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+            // Skip strict validation for quick testing if needed, or keep it. Let's keep it.
+        }
+
         try {
             const apiData = new FormData();
-            // ... (keeping same submission logic)
-            // Mapping fields as before
             apiData.append('Name', formData.name);
             apiData.append('ShortName', formData.displayName);
             apiData.append('PropertyType', formData.propertyType);
@@ -124,11 +249,15 @@ export default function AddProperty() {
             apiData.append('MobileNo', formData.mobileNo);
             apiData.append('Email', formData.email);
             apiData.append('Website', formData.website);
+            apiData.append('ShortDescription', formData.shortDescription);
             apiData.append('LongDescription', formData.description);
-            // ... pricing ...
-            apiData.append('price_mon_thu', formData.priceMonFri);
-            apiData.append('price_fri_sun', formData.priceSatSun);
-            apiData.append('Price', formData.priceMonFri);
+            apiData.append('Price', formData.priceMonThu || 0);
+            apiData.append('price_mon_thu', formData.priceMonThu);
+            apiData.append('price_fri_sun', formData.priceFriSun);
+            apiData.append('price_sat', formData.priceSaturday);
+            apiData.append('MaxCapacity', formData.maxCapacity);
+            apiData.append('NoofRooms', formData.noofRooms);
+            apiData.append('Occupancy', formData.occupancy);
 
             const onboardingData = {
                 amenities: formData.amenities,
@@ -136,73 +265,45 @@ export default function AddProperty() {
                 paymentMethods: formData.paymentMethods,
                 childCriteria: formData.childCriteria,
                 inclusions: formData.inclusions,
-                childPricing: { monFri: formData.childPriceMonFri, satSun: formData.childPriceSatSun },
-                foodOptions: formData.foodOptions
+                checkInTime: formData.checkInTime, // New
+                checkOutTime: formData.checkOutTime, // New
+                idProofs: formData.idProofs, // New
+                mealPlans: formData.mealPlans, // New
+                foodOptions: formData.foodOptions,
+                roomConfig: formData.roomConfig,
+                foodRates: formData.foodRates,
+                ticketPrices: formData.ticketPrices,
+                pricing: {
+                    weekday: formData.priceMonThu,
+                    weekend: formData.priceFriSun,
+                    saturday: formData.priceSaturday,
+                    extraGuestLimit: formData.extraGuestLimit,
+                    extraGuestCharge: formData.extraGuestCharge,
+                    extraMattressCharge: formData.extraMattressCharge
+                }
             };
             apiData.append('onboarding_data', JSON.stringify(onboardingData));
             apiData.append('video_url', formData.videoUrl);
-            formData.images.forEach((file, index) => apiData.append(`images[${index}]`, file));
+            // Fix Image Upload: Use 'images[]' for array handling in PHP
+            formData.images.forEach((file) => apiData.append('images[]', file));
 
             const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
             await axios.post(`${baseURL}/api/vendor/properties`, apiData, {
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
             });
 
-            alert('Property Created Successfully!');
+            await showSuccess('Success', 'Property Created Successfully!');
             navigate('/properties');
         } catch (err) {
             console.error(err);
-            setError(err.response?.data?.message || "Failed to create property");
+            const msg = err.response?.data?.message || "Failed to create property";
+            showError('Submission Failed', msg);
         } finally {
             setLoading(false);
         }
     };
 
-    // --- REUSABLE COMPONENTS ---
-    const InputField = ({ label, name, type = "text", placeholder, className }) => (
-        <div className={`space-y-1 ${className}`}>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{label}</label>
-            <input
-                type={type}
-                name={name}
-                value={formData[name] || ''}
-                onChange={handleInputChange}
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 font-medium focus:bg-white focus:border-black focus:ring-1 focus:ring-black outline-none transition-all"
-                placeholder={placeholder}
-            />
-        </div>
-    );
 
-    const Counter = ({ value = 0, onChange }) => (
-        <div className="flex items-center gap-3 bg-gray-100 rounded-lg p-1">
-            <button
-                type="button"
-                onClick={() => onChange(Math.max(0, parseInt(value || 0) - 1))}
-                className="w-8 h-8 flex items-center justify-center bg-white rounded shadow-sm text-gray-600 hover:text-black font-bold disabled:opacity-50"
-                disabled={value <= 0}
-            >
-                -
-            </button>
-            <span className="w-6 text-center font-bold text-lg">{value || 0}</span>
-            <button
-                type="button"
-                onClick={() => onChange(parseInt(value || 0) + 1)}
-                className="w-8 h-8 flex items-center justify-center bg-white rounded shadow-sm text-gray-600 hover:text-black font-bold"
-            >
-                +
-            </button>
-        </div>
-    );
-
-    const Toggle = ({ active, onChange }) => (
-        <button
-            type="button"
-            onClick={() => onChange(!active)}
-            className={`w-12 h-7 rounded-full p-1 transition-all duration-300 ${active ? 'bg-green-500' : 'bg-gray-300'}`}
-        >
-            <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${active ? 'translate-x-5' : 'translate-x-0'}`} />
-        </button>
-    );
 
     // --- STEPS ---
     const renderStep0 = () => (
@@ -211,7 +312,7 @@ export default function AddProperty() {
                 <button
                     type="button"
                     onClick={() => setFormData({ ...formData, propertyType: 'Villa' })}
-                    className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${formData.propertyType === 'Villa' ? 'border-black bg-black text-white shadow-lg scale-105' : 'border-gray-100 hover:border-gray-300 bg-white text-gray-500'}`}
+                    className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${formData.propertyType === 'Villa' ? 'bg-purple-600 border-purple-600 text-white shadow-xl scale-105 ring-2 ring-purple-200' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
                 >
                     <FaHome size={32} />
                     <span className="font-bold text-lg">Villa / Resort</span>
@@ -219,7 +320,7 @@ export default function AddProperty() {
                 <button
                     type="button"
                     onClick={() => setFormData({ ...formData, propertyType: 'Waterpark' })}
-                    className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${formData.propertyType === 'Waterpark' ? 'border-primary bg-[#0096C7] text-white shadow-lg scale-105' : 'border-gray-100 hover:border-gray-300 bg-white text-gray-500'}`}
+                    className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${formData.propertyType === 'Waterpark' ? 'bg-blue-600 border-blue-600 text-white shadow-xl scale-105 ring-2 ring-blue-200' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
                 >
                     <FaWater size={32} />
                     <span className="font-bold text-lg">Waterpark</span>
@@ -227,10 +328,10 @@ export default function AddProperty() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InputField label="Property Name" name="name" placeholder="Ex: Royal Palms" />
-                <InputField label="Short Name" name="displayName" placeholder="Ex: Royal Palms" />
-                <InputField label="City" name="cityName" placeholder="Ex: Lonavala" />
-                <InputField label="Nearest Station" name="location" placeholder="Ex: Lonavala Station" />
+                <InputField label="Property Name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Ex: Royal Palms" />
+                <InputField label="Display Name" name="displayName" value={formData.displayName} onChange={handleInputChange} placeholder="Ex: Royal Palms" />
+                <InputField label="City" name="cityName" value={formData.cityName} onChange={handleInputChange} placeholder="Ex: Lonavala" />
+                <InputField label="Nearest Station" name="location" value={formData.location} onChange={handleInputChange} placeholder="Ex: Lonavala Station" />
             </div>
 
             <div className="space-y-1">
@@ -245,10 +346,21 @@ export default function AddProperty() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InputField label="Contact Person" name="contactPerson" />
-                <InputField label="Mobile Number" name="mobileNo" />
-                <InputField label="Email Address" name="email" type="email" />
-                <InputField label="Website URL" name="website" />
+                <InputField label="Contact Person" name="contactPerson" value={formData.contactPerson} onChange={handleInputChange} />
+                <InputField label="Mobile Number" name="mobileNo" value={formData.mobileNo} onChange={handleInputChange} />
+                <InputField label="Email Address" name="email" value={formData.email} onChange={handleInputChange} type="email" />
+                <InputField label="Website URL" name="website" value={formData.website} onChange={handleInputChange} />
+            </div>
+
+            <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Short Description</label>
+                <textarea
+                    name="shortDescription"
+                    value={formData.shortDescription || ''}
+                    onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 font-medium focus:bg-white focus:border-black outline-none transition-all h-20 resize-none"
+                    placeholder="Brief summary for listings..."
+                />
             </div>
 
             <div className="space-y-1">
@@ -267,9 +379,16 @@ export default function AddProperty() {
     const renderStep1 = () => (
         <div className="space-y-8 animate-fade-in-up">
             <div>
-                <h3 className="text-xl font-bold mb-4">Features & Amenities</h3>
+                <h3 className="text-xl font-bold mb-4">{formData.propertyType === 'Waterpark' ? 'Waterpark Attractions' : 'Features & Amenities'}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {AMENITY_TYPES.map(item => (
+                    {AMENITY_TYPES.filter(item => {
+                        if (formData.propertyType === 'Waterpark') {
+                            // Expanded list for Waterpark
+                            return ['big_pools', 'small_pools', 'big_slides', 'small_slides', 'wavepool', 'rain_dance', 'lazy_river', 'crazy_river', 'kids_area', 'waterfall', 'ice_bucket', 'parking', 'selfie_point', 'dj_system', 'garden', 'dining', 'laundry', 'cctv', 'wheelchair', 'first_aid', 'security', 'restaurant', 'game_room'].includes(item.key);
+                        }
+                        // Hide Waterpark specific items for Villas if needed, or keep them if they might have a pool
+                        return !['big_slides', 'small_slides', 'wavepool', 'lazy_river', 'crazy_river', 'waterfall'].includes(item.key);
+                    }).map(item => (
                         <div key={item.key} className={`bg-white border rounded-xl p-4 flex items-center justify-between transition-all ${formData.amenities[item.key] ? 'border-primary ring-1 ring-primary shadow-md' : 'border-gray-100 hover:border-gray-200'}`}>
                             <div className="flex items-center gap-3">
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${formData.amenities[item.key] ? 'bg-primary/10' : 'bg-gray-100'}`}>
@@ -280,36 +399,22 @@ export default function AddProperty() {
                                     {item.subtitle && <p className="text-[10px] text-gray-400">{item.subtitle}</p>}
                                 </div>
                             </div>
-
-                            {item.type === 'number' ? (
-                                <Counter
-                                    value={formData.amenities[item.key]}
-                                    onChange={(val) => handleAmenityChange(item.key, 'number', val)}
-                                />
-                            ) : (
-                                <Toggle
-                                    active={!!formData.amenities[item.key]}
-                                    onChange={(val) => handleAmenityChange(item.key, 'bool', val)}
-                                />
-                            )}
+                            {item.type === 'number' ? <Counter value={formData.amenities[item.key]} onChange={(val) => handleAmenityChange(item.key, 'number', val)} /> : <Toggle active={!!formData.amenities[item.key]} onChange={(val) => handleAmenityChange(item.key, 'bool', val)} />}
                         </div>
                     ))}
                 </div>
-            </div>
 
-            <div>
-                <h3 className="text-xl font-bold mb-4">Payment Methods Accepted</h3>
-                <div className="flex gap-4 flex-wrap">
-                    {['Cash', 'UPI', 'Debit', 'Credit'].map(method => (
-                        <button
-                            key={method}
-                            type="button"
-                            onClick={() => handleNestedChange('paymentMethods', method.toLowerCase(), !formData.paymentMethods[method.toLowerCase()])}
-                            className={`px-6 py-3 rounded-lg font-bold border-2 transition-all ${formData.paymentMethods[method.toLowerCase()] ? 'border-black bg-black text-white' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                        >
-                            {method}
-                        </button>
-                    ))}
+                {/* Other Attraction Input */}
+                <div className="mt-6">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Add Other Attraction (Optional)</label>
+                    <input
+                        type="text"
+                        value={formData.otherAttractions}
+                        onChange={(e) => setFormData(prev => ({ ...prev, otherAttractions: e.target.value }))}
+                        placeholder="Enter any other attractions not listed above..."
+                        className="w-full p-4 rounded-xl border border-gray-200 focus:border-black outline-none"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-2 italic">* Extra charges may apply and vary depending on property policy.</p>
                 </div>
             </div>
         </div>
@@ -318,119 +423,451 @@ export default function AddProperty() {
     const renderStep2 = () => (
         <div className="space-y-6 animate-fade-in-up">
             <h3 className="text-xl font-bold">House Rules & Policies</h3>
-            <div className="bg-gray-50 rounded-2xl p-6 space-y-4">
-                {PROPERTY_RULES.map((rule, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
-                        <span className="font-medium text-gray-700">{rule}</span>
-                        <div className="flex items-center gap-3">
-                            <span className={`text-xs font-bold ${formData.rules[idx] ? 'text-green-600' : 'text-gray-400'}`}>
-                                {formData.rules[idx] ? 'ALLOWED' : 'OFF'}
-                            </span>
-                            <Toggle
-                                active={!!formData.rules[idx]}
-                                onChange={(val) => handleNestedChange('rules', idx, val)}
-                            />
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
 
-    const renderStep3 = () => (
-        <div className="space-y-8 animate-fade-in-up">
-            {/* Adult Pricing */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100">
-                    <h4 className="font-bold text-orange-800 mb-4 flex items-center gap-2">
-                        <FaMoneyBillWave /> Adult Pricing
-                    </h4>
-                    <div className="space-y-4">
-                        <InputField label="Mon - Fri (Capacity)" name="priceMonFri" placeholder="₹ Price per night" className="bg-white" />
-                        <InputField label="Sat - Sun (Weekend)" name="priceSatSun" placeholder="₹ Price per night" className="bg-white" />
-                    </div>
+            {/* Check-in / Out */}
+            <div className="grid grid-cols-2 gap-6 bg-gray-50 p-6 rounded-2xl">
+                <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">Check-in Time</label>
+                    <input type="time" value={formData.checkInTime} onChange={(e) => setFormData({ ...formData, checkInTime: e.target.value })} className="w-full p-3 rounded-lg border mt-1" />
                 </div>
-
-                <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                    <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2">
-                        <FaChild /> Child Pricing
-                    </h4>
-                    <div className="space-y-4">
-                        <InputField label="Child (Mon-Fri)" name="childPriceMonFri" placeholder="₹ Price" className="bg-white" />
-                        <InputField label="Child (Sat-Sun)" name="childPriceSatSun" placeholder="₹ Price" className="bg-white" />
-                    </div>
+                <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase">Check-out Time</label>
+                    <input type="time" value={formData.checkOutTime} onChange={(e) => setFormData({ ...formData, checkOutTime: e.target.value })} className="w-full p-3 rounded-lg border mt-1" />
                 </div>
             </div>
 
-            {/* Inclusions */}
-            <div>
-                <h4 className="font-bold mb-4">What's Included?</h4>
+            {/* ID Proofs */}
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase">Accepted ID Proofs</label>
                 <div className="flex flex-wrap gap-3">
-                    {INCLUSIONS.map(inc => (
+                    {['Passport', 'Driving License', 'PAN Card', 'Aadhar Card'].map(id => (
                         <button
-                            key={inc}
+                            key={id}
                             type="button"
-                            onClick={() => handleNestedChange('inclusions', inc, !formData.inclusions[inc])}
-                            className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${formData.inclusions[inc] ? 'bg-green-100 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                            onClick={() => {
+                                const newIds = formData.idProofs.includes(id) ? formData.idProofs.filter(i => i !== id) : [...formData.idProofs, id];
+                                setFormData({ ...formData, idProofs: newIds });
+                            }}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${formData.idProofs.includes(id) ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200'}`}
                         >
-                            {formData.inclusions[inc] && <FaCheck className="inline mr-2 text-xs" />}
-                            {inc}
+                            {formData.idProofs.includes(id) && <FaCheck className="inline mr-2" />} {id}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* Food */}
-            <div className="bg-gray-50 p-6 rounded-2xl">
-                <h4 className="font-bold mb-4 flex items-center gap-2"><FaUtensils /> Meal Plans</h4>
-                <div className="space-y-3">
-                    {Object.keys(formData.foodOptions).map(meal => (
-                        <div key={meal} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200">
-                            <span className="capitalize font-bold text-gray-700 w-32">{meal.replace(/([A-Z])/g, ' $1').trim()}</span>
-                            <select
-                                value={formData.foodOptions[meal]}
-                                onChange={(e) => handleNestedChange('foodOptions', meal, e.target.value)}
-                                className="bg-transparent font-medium text-right outline-none cursor-pointer"
-                            >
-                                <option value="Not Included">Not Included</option>
-                                <option value="Veg">Veg Included</option>
-                                <option value="Non Veg">Non Veg Included</option>
-                                <option value="Veg & Non Veg">Veg & Non Veg</option>
-                                {meal === 'hiTea' && <option value="Tea/Coffee">Tea/Coffee Only</option>}
-                            </select>
+            {/* Grouped Rules */}
+            <div className="space-y-6">
+
+                {/* Food Policy */}
+                <div className="bg-white border rounded-xl p-6 shadow-sm">
+                    <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><FaUtensils className="text-orange-500" /> Food & Dietary Policies</h4>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-700">Outside food allowed?</span>
+                            <Toggle active={!!formData.rules[3]} onChange={(val) => {
+                                const newRules = { ...formData.rules, [3]: val };
+                                if (!val) newRules[8] = false; // Disable non-veg if outside food blocked
+                                setFormData({ ...formData, rules: newRules });
+                            }} />
                         </div>
-                    ))}
+                        {formData.rules[3] && (
+                            <div className="ml-6 pl-4 border-l-2 border-gray-100 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                                <span className="font-medium text-gray-700 text-sm">Non-veg food allowed?</span>
+                                <Toggle active={!!formData.rules[8]} onChange={(val) => setFormData({ ...formData, rules: { ...formData.rules, [8]: val } })} />
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Habits */}
+                <div className="bg-white border rounded-xl p-6 shadow-sm">
+                    <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><FaGlassMartiniAlt className="text-purple-500" /> Smoking & Alcohol</h4>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <span className="font-medium text-gray-700">Smoking allowed within premises?</span>
+                            <Toggle active={!!formData.rules[6]} onChange={(val) => setFormData({ ...formData, rules: { ...formData.rules, [6]: val } })} />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-700">Alcohol consumption allowed?</span>
+                            <Toggle active={!!formData.rules[7]} onChange={(val) => setFormData({ ...formData, rules: { ...formData.rules, [7]: val } })} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* General Rules */}
+                <div className="bg-white border rounded-xl p-6 shadow-sm">
+                    <h4 className="font-bold text-gray-800 mb-4">General House Rules</h4>
+                    <div className="space-y-3">
+                        {PROPERTY_RULES.map((rule, idx) => {
+                            if ([3, 8, 6, 7].includes(idx)) return null; // Skip extracted rules
+                            return (
+                                <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                                    <span className="font-medium text-gray-600 text-sm">{rule}</span>
+                                    <Toggle active={!!formData.rules[idx]} onChange={(val) => setFormData({ ...formData, rules: { ...formData.rules, [idx]: val } })} />
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Safety Features */}
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-6">
+                    <h4 className="font-bold text-blue-900 mb-4 flex items-center gap-2"><FaUserShield /> Safety & Security</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {['Fire Extinguisher', 'Security System', 'First Aid Kit', 'Window Guards'].map(safety => (
+                            <label key={safety} className="flex items-center gap-2 bg-white p-3 rounded-lg border border-blue-100 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.amenities[safety] || false} // Store in amenities
+                                    onChange={(e) => handleAmenityChange(safety, 'bool', e.target.checked)}
+                                    className="w-5 h-5 accent-blue-600"
+                                />
+                                <span className="text-sm font-bold text-gray-700">{safety}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Other Rules */}
+                <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Add Other Rules</label>
+                    <textarea
+                        value={formData.otherRules}
+                        onChange={(e) => setFormData(prev => ({ ...prev, otherRules: e.target.value }))}
+                        placeholder="Enter any additional rules or policies..."
+                        className="w-full p-4 rounded-xl border border-gray-200 focus:border-black outline-none h-24 resize-none"
+                    />
                 </div>
             </div>
         </div>
     );
 
+    const renderStepRoomConfig = () => {
+        const updateRoom = (index, field, value) => {
+            const newRooms = [...formData.roomConfig.bedrooms];
+            if (!newRooms[index]) newRooms[index] = { id: index + 1 };
+            newRooms[index][field] = value;
+            setFormData(prev => ({ ...prev, roomConfig: { ...prev.roomConfig, bedrooms: newRooms } }));
+        };
+
+        const updateLiving = (field, value) => {
+            setFormData(prev => ({ ...prev, roomConfig: { ...prev.roomConfig, livingRoom: { ...prev.roomConfig.livingRoom, [field]: value } } }));
+        };
+
+        return (
+            <div className="space-y-8 animate-fade-in-up">
+                <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                    <h3 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2"><FaUsers /> Capacity & Configuration</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <InputField label="Occupancy (Base)" name="occupancy" value={formData.occupancy} onChange={handleInputChange} placeholder="Ex: 10" type="number" className="bg-white" />
+                        <InputField label="Max Capacity" name="maxCapacity" value={formData.maxCapacity} onChange={handleInputChange} placeholder="Ex: 20" type="number" className="bg-white" />
+                        {formData.propertyType === 'Villa' && (
+                            <InputField label="No. of Rooms" name="noofRooms" value={formData.noofRooms} onChange={handleInputChange} placeholder="Ex: 3" type="number" className="bg-white" />
+                        )}
+                    </div>
+                </div>
+
+                <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100">
+                    <h3 className="text-xl font-bold flex items-center gap-2 mb-4 text-amber-900"><FaCouch /> Living Room</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Bed Type</label>
+                            <select className="w-full p-2 rounded border" value={formData.roomConfig.livingRoom.bedType} onChange={(e) => updateLiving('bedType', e.target.value)}>
+                                <option value="Sofa">Sofa</option>
+                                <option value="Sofa cum Bed">Sofa cum Bed</option>
+                                <option value="None">None</option>
+                            </select>
+                        </div>
+                        <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                            <span className="font-bold text-sm">AC</span>
+                            <Toggle active={formData.roomConfig.livingRoom.ac} onChange={(v) => updateLiving('ac', v)} />
+                        </div>
+                        <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                            <span className="font-bold text-sm">Bathroom</span>
+                            <Toggle active={formData.roomConfig.livingRoom.bathroom} onChange={(v) => updateLiving('bathroom', v)} />
+                        </div>
+                        <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                            <span className="font-bold text-sm">Balcony</span>
+                            <Toggle active={formData.roomConfig.livingRoom.balcony} onChange={(v) => updateLiving('balcony', v)} />
+                        </div>
+                        {formData.roomConfig.livingRoom.bathroom && (
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Toilet Style</label>
+                                <select className="w-full p-2 rounded border" value={formData.roomConfig.livingRoom.toiletType} onChange={(e) => updateLiving('toiletType', e.target.value)}>
+                                    <option value="">Select</option>
+                                    <option value="Western">Western (English)</option>
+                                    <option value="Indian">Indian</option>
+                                </select>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="text-xl font-bold flex items-center gap-2"><FaBed /> Bedrooms ({formData.noofRooms || 0})</h3>
+                    {formData.roomConfig.bedrooms.map((room, idx) => (
+                        <div key={idx} className="bg-gray-50 rounded-2xl p-6 border border-gray-200 relative">
+                            <div className="absolute top-4 left-4 bg-black text-white w-6 h-6 flex items-center justify-center rounded-full font-bold text-xs">{idx + 1}</div>
+                            <div className="ml-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Bed Type</label>
+                                    <select className="w-full p-2 rounded border text-sm" value={room.bedType} onChange={(e) => updateRoom(idx, 'bedType', e.target.value)}>
+                                        <option value="King">King Size</option>
+                                        <option value="Queen">Queen Size</option>
+                                        <option value="Double">Double Bed</option>
+                                        <option value="Single">Single Bed</option>
+                                    </select>
+                                </div>
+                                <div className="flex flex-col justify-center">
+                                    <label className="flex items-center justify-between cursor-pointer">
+                                        <span className="font-bold text-sm">AC</span>
+                                        <Toggle active={room.ac} onChange={(v) => updateRoom(idx, 'ac', v)} />
+                                    </label>
+                                </div>
+                                <div className="flex flex-col justify-center">
+                                    <label className="flex items-center justify-between cursor-pointer">
+                                        <span className="font-bold text-sm">Private Bathroom</span>
+                                        <Toggle active={room.bathroom} onChange={(v) => updateRoom(idx, 'bathroom', v)} />
+                                    </label>
+                                    {room.bathroom && (
+                                        <select className="mt-2 w-full p-1 text-xs rounded border" value={room.toiletType} onChange={(e) => updateRoom(idx, 'toiletType', e.target.value)}>
+                                            <option value="Western">Western</option>
+                                            <option value="Indian">Indian</option>
+                                        </select>
+                                    )}
+                                </div>
+                                <div className="flex flex-col justify-center">
+                                    <label className="flex items-center justify-between cursor-pointer">
+                                        <span className="font-bold text-sm">Balcony</span>
+                                        <Toggle active={room.balcony} onChange={(v) => updateRoom(idx, 'balcony', v)} />
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    const renderStep3 = () => (
+        <div className="space-y-8 animate-fade-in-up">
+
+            {/* PAYMENT METHODS (Common) */}
+            <div className="border border-gray-200 p-6 rounded-2xl bg-white">
+                <h4 className="font-bold mb-4 flex items-center gap-2"><FaMoneyBillWave /> Accepted Payment Methods</h4>
+                <div className="flex gap-4 flex-wrap">
+                    {['Cash', 'UPI', 'Debit', 'Credit'].map(method => (
+                        <button
+                            key={method}
+                            type="button"
+                            onClick={() => handleNestedChange('paymentMethods', method.toLowerCase(), !formData.paymentMethods[method.toLowerCase()])}
+                            className={`px-6 py-3 rounded-lg font-bold border-2 transition-all ${formData.paymentMethods[method.toLowerCase()] ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                        >
+                            {formData.paymentMethods[method.toLowerCase()] && <FaCheck className="inline mr-2" />}
+                            {method}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* VILLA PRICING */}
+            {formData.propertyType === 'Villa' && (
+                <>
+                    <div className="border border-orange-100 p-6 rounded-2xl bg-orange-50">
+                        <h4 className="flex items-center gap-2 mb-4 font-bold text-orange-800"><FaMoneyBillWave /> Base Pricing (Room/Villa)</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <InputField label="Mon-Thu (1 Night)" name="priceMonThu" value={formData.priceMonThu} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
+                            <InputField label="Fri & Sun (1 Night)" name="priceFriSun" value={formData.priceFriSun} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
+                            <InputField label="Saturday (1 Night)" name="priceSaturday" value={formData.priceSaturday} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
+                        </div>
+                    </div>
+
+                    <div className="border border-green-100 p-6 rounded-2xl bg-green-50/50">
+                        <h4 className="flex items-center gap-2 mb-4 font-bold text-green-800"><FaUtensils /> Meal Configuration</h4>
+                        <div className="flex flex-wrap gap-4 mb-6">
+                            {[{ k: 'veg', l: 'Veg' }, { k: 'nonVeg', l: 'Non-Veg' }, { k: 'jain', l: 'Jain Food' }].map(c => (
+                                <div key={c.k} className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border">
+                                    <span className="font-bold text-sm">{c.l} Available?</span>
+                                    <Toggle active={formData.foodRates[c.k]} onChange={(v) => handleNestedChange('foodRates', c.k, v)} />
+                                </div>
+                            ))}
+                        </div>
+                        {/* Simple Meal Inputs for Villa */}
+                        <div className="space-y-4">
+                            {['Breakfast', 'Lunch', 'Dinner'].map(meal => (
+                                <div key={meal} className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-xl border">
+                                    <span className="font-bold w-24">{meal}</span>
+                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        <input type="text" placeholder="Veg Rate" className="p-2 border rounded" value={formData.mealPlans?.[meal.toLowerCase()]?.vegRate || ''}
+                                            onChange={(e) => setFormData(p => ({ ...p, mealPlans: { ...p.mealPlans, [meal.toLowerCase()]: { ...p.mealPlans[meal.toLowerCase()], vegRate: e.target.value } } }))} />
+                                        <input type="text" placeholder="Non-Veg Rate" className="p-2 border rounded" value={formData.mealPlans?.[meal.toLowerCase()]?.nonVegRate || ''}
+                                            onChange={(e) => setFormData(p => ({ ...p, mealPlans: { ...p.mealPlans, [meal.toLowerCase()]: { ...p.mealPlans[meal.toLowerCase()], nonVegRate: e.target.value } } }))} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* WATERPARK PRICING */}
+            {formData.propertyType === 'Waterpark' && (
+                <>
+                    <div className="border border-blue-100 p-6 rounded-2xl bg-blue-50">
+                        <h4 className="flex items-center gap-2 mb-4 font-bold text-blue-800"><FaMoneyBillWave /> Ticket Pricing Structure</h4>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h5 className="font-bold text-gray-700 mb-2 border-b pb-1">Adult Rates</h5>
+                                <div className="space-y-3">
+                                    <InputField label="Monday - Friday" name="adultMonFri" value={formData.waterparkPrices?.adult?.week || ''}
+                                        onChange={(e) => handleNestedChange('waterparkPrices', 'adult', { ...formData.waterparkPrices.adult, week: e.target.value })} placeholder="₹" className="bg-white" />
+                                    <InputField label="Saturday & Sunday" name="adultSatSun" value={formData.waterparkPrices?.adult?.weekend || ''}
+                                        onChange={(e) => handleNestedChange('waterparkPrices', 'adult', { ...formData.waterparkPrices.adult, weekend: e.target.value })} placeholder="₹" className="bg-white" />
+                                </div>
+                            </div>
+                            <div>
+                                <h5 className="font-bold text-gray-700 mb-2 border-b pb-1">Child Rates</h5>
+                                <div className="space-y-3">
+                                    <InputField label="Monday - Friday" name="childMonFri" value={formData.waterparkPrices?.child?.week || ''}
+                                        onChange={(e) => handleNestedChange('waterparkPrices', 'child', { ...formData.waterparkPrices.child, week: e.target.value })} placeholder="₹" className="bg-white" />
+                                    <InputField label="Saturday & Sunday" name="childSatSun" value={formData.waterparkPrices?.child?.weekend || ''}
+                                        onChange={(e) => handleNestedChange('waterparkPrices', 'child', { ...formData.waterparkPrices.child, weekend: e.target.value })} placeholder="₹" className="bg-white" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-yellow-50 p-6 rounded-2xl border border-yellow-100">
+                        <h4 className="font-bold text-yellow-800 mb-4 flex items-center gap-2"><FaChild /> Child Criteria & Policy</h4>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div className="bg-white p-4 rounded-xl">
+                                <h5 className="font-bold text-green-600 mb-2 text-sm">FREE TIER (If Child is...)</h5>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <InputField label="Below Height (FT)" name="freeHeight" value={formData.childCriteria.freeHeight} onChange={(e) => handleNestedChange('childCriteria', 'freeHeight', e.target.value)} type="number" />
+                                    <div className="flex items-center justify-center font-bold text-gray-400">OR</div>
+                                    <InputField label="Below Age (Yrs)" name="freeAge" value={formData.childCriteria.freeAge} onChange={(e) => handleNestedChange('childCriteria', 'freeAge', e.target.value)} type="number" />
+                                </div>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl">
+                                <h5 className="font-bold text-orange-600 mb-2 text-sm">CHILD RATE APPLIES (If Child is...)</h5>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold w-12">Height:</span>
+                                        <input className="p-2 border rounded w-16" placeholder="From" value={formData.childCriteria.chargeHeightFrom} onChange={(e) => handleNestedChange('childCriteria', 'chargeHeightFrom', e.target.value)} />
+                                        <span>to</span>
+                                        <input className="p-2 border rounded w-16" placeholder="To" value={formData.childCriteria.chargeHeightTo} onChange={(e) => handleNestedChange('childCriteria', 'chargeHeightTo', e.target.value)} />
+                                        <span className="text-xs font-bold">FT</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold w-12">Age:</span>
+                                        <input className="p-2 border rounded w-16" placeholder="From" value={formData.childCriteria.chargeAgeFrom} onChange={(e) => handleNestedChange('childCriteria', 'chargeAgeFrom', e.target.value)} />
+                                        <span>to</span>
+                                        <input className="p-2 border rounded w-16" placeholder="To" value={formData.childCriteria.chargeAgeTo} onChange={(e) => handleNestedChange('childCriteria', 'chargeAgeTo', e.target.value)} />
+                                        <span className="text-xs font-bold">Yrs</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="border border-green-100 p-6 rounded-2xl bg-green-50/50">
+                        <h4 className="flex items-center gap-2 mb-4 font-bold text-green-800"><FaUtensils /> Food Inclusions (in Ticket)</h4>
+                        <div className="space-y-4">
+                            {['Breakfast', 'Lunch', 'HiTea'].map(meal => (
+                                <div key={meal} className="bg-white p-4 rounded-xl border border-gray-200 flex flex-col md:flex-row gap-4 items-center justify-between">
+                                    <span className="font-bold text-gray-800 w-32">{meal}</span>
+                                    <div className="flex gap-2">
+                                        {['Not Included', 'Veg', 'Non-Veg', 'Both'].map(opt => (
+                                            <button
+                                                key={opt}
+                                                type="button"
+                                                onClick={() => setFormData(p => ({ ...p, inclusions: { ...p.inclusions, [meal]: opt } }))}
+                                                className={`px-3 py-1 text-xs rounded-lg border ${formData.inclusions?.[meal] === opt ? 'bg-green-600 text-white border-green-600' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                                            >
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* SHARED EXTRA GUEST (Merged) */}
+            {formData.propertyType === 'Villa' && (
+                <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100">
+                    <h4 className="font-bold text-purple-800 mb-4 flex items-center gap-2"><FaChild /> Extra Person Policy</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <InputField label="Extra Guest Charge" name="extraGuestCharge" value={formData.extraGuestCharge} onChange={handleInputChange} placeholder="₹ 1000" type="number" className="bg-white" />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2 font-medium">
+                        * Charge includes extra mattress if required.
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+
     const renderStep4 = () => (
         <div className="space-y-6 animate-fade-in-up">
-            <InputField label="Property Video URL (YouTube)" name="videoUrl" placeholder="https://..." />
+            <div>
+                <InputField
+                    label="Property Video URL (YouTube)"
+                    name="videoUrl"
+                    value={formData.videoUrl}
+                    onChange={handleInputChange}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                />
+                {formData.videoUrl && !/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/.test(formData.videoUrl) && (
+                    <p className="text-red-500 text-xs mt-1">Please enter a valid YouTube URL (including Shorts).</p>
+                )}
+            </div>
 
-            <div className="border-3 border-dashed border-gray-200 rounded-3xl p-12 text-center hover:bg-gray-50 transition-colors cursor-pointer relative group">
-                <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                <div className="flex flex-col items-center gap-4 transition-transform group-hover:scale-110 duration-300">
-                    <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center text-3xl mb-2">
-                        <FaCamera />
-                    </div>
-                    <div>
-                        <p className="font-bold text-xl text-gray-800">Drop photos here</p>
-                        <p className="text-gray-400">or click to browse</p>
+            <div>
+                <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    style={{ display: 'none' }} // Double insurance
+                />
+
+                <div
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                    }}
+                    className="border-3 border-dashed border-gray-200 rounded-3xl p-12 text-center hover:bg-gray-50 transition-colors cursor-pointer relative group"
+                >
+                    <div className="flex flex-col items-center gap-4 transition-transform group-hover:scale-110 duration-300">
+                        <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center text-3xl mb-2">
+                            <FaCamera />
+                        </div>
+                        <div>
+                            <p className="font-bold text-xl text-gray-800">Drop photos here</p>
+                            <p className="text-gray-400">or click to browse</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {formData.images.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                     {formData.images.map((file, idx) => (
                         <div key={idx} className="relative group rounded-xl overflow-hidden aspect-square shadow-md">
                             <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <button
-                                    onClick={() => setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))}
-                                    className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition"
+                                    type="button"
+                                    onClick={() => handleDeleteImage(idx)}
+                                    className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
                                 >
                                     <FaTimes />
                                 </button>
@@ -441,72 +878,94 @@ export default function AddProperty() {
             )}
         </div>
     );
+    const renderNavigation = (isTop = false) => (
+        <div className={`flex justify-between items-center ${isTop ? 'mb-4 border-b pb-4 border-gray-100' : 'fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 p-3 md:p-4 z-50 md:static md:bg-transparent md:border-0 md:p-0'}`}>
+            <button
+                onClick={() => {
+                    setCurrentStep(prev => prev - 1);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                disabled={currentStep === 0}
+                className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-bold text-sm md:text-base text-gray-500 hover:bg-gray-100 transition disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+                <FaArrowLeft /> Back
+            </button>
+
+            {currentStep < (formData.propertyType === 'Villa' ? STEPS_VILLA.length : STEPS_WATERPARK.length) - 1 ? (
+                <button
+                    onClick={() => {
+                        setCurrentStep(prev => prev + 1);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="flex items-center gap-2 bg-black text-white px-5 py-2 md:px-8 md:py-2.5 rounded-xl font-bold text-sm md:text-base hover:bg-gray-800 transition shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                >
+                    Next <FaArrowRight />
+                </button>
+            ) : (
+                <button
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="flex items-center gap-2 bg-[#FF385C] text-white px-5 py-2 md:px-8 md:py-2.5 rounded-xl font-bold text-sm md:text-base hover:bg-[#D90B3E] transition shadow-lg hover:shadow-red-200 hover:-translate-y-0.5 disabled:opacity-70"
+                >
+                    {loading ? 'Publishing...' : 'Publish'} <FaSave />
+                </button>
+            )}
+        </div>
+    );
 
     return (
-        <div className="max-w-4xl mx-auto pb-32 pt-10 px-4">
+        <div className="max-w-4xl mx-auto pb-24 pt-4 px-2 md:pb-12 md:pt-8 md:px-4">
             {/* Header */}
-            <div className="text-center mb-12">
-                <h1 className="text-4xl font-extrabold mb-2 tracking-tight">Create Listing</h1>
-                <p className="text-gray-500 font-medium">Step {currentStep + 1}: {STEPS[currentStep]}</p>
-                <div className="flex justify-center mt-4 gap-2">
-                    {STEPS.map((_, i) => (
-                        <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i <= currentStep ? 'w-8 bg-black' : 'w-2 bg-gray-200'}`} />
+            <div className="text-center mb-4 md:mb-8">
+                <h1 className="text-xl md:text-3xl font-extrabold mb-1 tracking-tight text-gray-900">Create Listing</h1>
+                <p className="text-gray-500 font-medium text-xs md:text-sm">Step {currentStep + 1}: {formData.propertyType === 'Villa' ? STEPS_VILLA[currentStep] : STEPS_WATERPARK[currentStep]}</p>
+                <div className="flex justify-center mt-2 gap-1.5">
+                    {(formData.propertyType === 'Villa' ? STEPS_VILLA : STEPS_WATERPARK).map((_, i) => (
+                        <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i <= currentStep ? 'w-5 md:w-8 bg-black' : 'w-1.5 bg-gray-200'}`} />
                     ))}
                 </div>
             </div>
 
-            {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 font-medium text-center">{error}</div>}
+
+            {/* Top Navigation */}
+            <div className="md:hidden block">
+                {renderNavigation(true)}
+            </div>
+            <div className="hidden md:block mb-4">
+                {renderNavigation(true)}
+            </div>
 
             {/* Form Container */}
-            <div className="bg-white mb-8 min-h-[500px]">
-                {currentStep === 0 && renderStep0()}
-                {currentStep === 1 && renderStep1()}
-                {currentStep === 2 && renderStep2()}
-                {currentStep === 3 && renderStep3()}
-                {currentStep === 4 && renderStep4()}
+            <div className="bg-white mb-6 min-h-[350px] md:min-h-[450px] p-3 md:p-6 rounded-xl shadow-sm border border-gray-100">
+                {(() => {
+                    if (currentStep === 0) return renderStep0();
+                    if (currentStep === 1) return renderStep1();
+                    if (currentStep === 2) {
+                        return formData.propertyType === 'Villa' ? renderStepRoomConfig() : renderStep2();
+                    }
+                    if (currentStep === 3) {
+                        return formData.propertyType === 'Villa' ? renderStep2() : renderStep3();
+                    }
+                    if (currentStep === 4) {
+                        return formData.propertyType === 'Villa' ? renderStep3() : renderStep4();
+                    }
+                    if (currentStep === 5 && formData.propertyType === 'Villa') return renderStep4();
+                    return null;
+                })()}
             </div>
 
             {/* Footer Navigation */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 p-6 flex justify-between items-center z-50 md:static md:bg-transparent md:border-0 md:p-0">
-                <button
-                    onClick={() => setCurrentStep(prev => prev - 1)}
-                    disabled={currentStep === 0}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition disabled:opacity-30 disabled:hover:bg-transparent"
-                >
-                    <FaArrowLeft /> Back
-                </button>
+            {renderNavigation(false)}
 
-                {currentStep < STEPS.length - 1 ? (
-                    <button
-                        onClick={() => setCurrentStep(prev => prev + 1)}
-                        className="flex items-center gap-2 bg-black text-white px-8 py-4 rounded-xl font-bold hover:bg-gray-800 transition shadow-xl hover:shadow-2xl hover:-translate-y-1"
-                    >
-                        Next Step <FaArrowRight />
-                    </button>
-                ) : (
-                    <button
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="flex items-center gap-2 bg-[#FF385C] text-white px-10 py-4 rounded-xl font-bold hover:bg-[#D90B3E] transition shadow-xl hover:shadow-red-200 hover:-translate-y-1 disabled:opacity-70"
-                    >
-                        {loading ? 'Publishing...' : 'Publish Listing'} <FaSave />
-                    </button>
-                )}
-            </div>
+            <style>{`
+            @keyframes fade-in-up {
+                from {opacity: 0; transform: translateY(20px); }
+                to {opacity: 1; transform: translateY(0); }
+            }
+            .animate-fade-in-up {
+                animation: fade-in-up 0.5s ease-out forwards;
+            }
+            `}</style>
         </div>
     );
 }
-
-// Add Tailwind Animation Utility manually if needed or align with existing CSS
-const style = document.createElement('style');
-style.innerHTML = `
-  @keyframes fade-in-up {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .animate-fade-in-up {
-    animation: fade-in-up 0.5s ease-out forwards;
-  }
-`;
-document.head.appendChild(style);
-

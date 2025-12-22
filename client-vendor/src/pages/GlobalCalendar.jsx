@@ -8,6 +8,7 @@ import getDay from 'date-fns/getDay';
 import enUS from 'date-fns/locale/en-US';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { FaArrowLeft, FaArrowRight, FaFilter, FaShareAlt, FaWhatsapp, FaFacebook, FaInstagram, FaCopy } from 'react-icons/fa';
 import { useModal } from '../context/ModalContext';
@@ -34,6 +35,10 @@ export default function GlobalCalendar() {
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
 
+    const handleNavigate = (newDate) => {
+        setCurrentDate(newDate);
+    };
+
     useEffect(() => {
         if (token) {
             fetchData();
@@ -51,8 +56,10 @@ export default function GlobalCalendar() {
             setProperties(propsRes.data);
             setAllBookings(bookingsRes.data);
         } catch (error) {
-            console.error("Failed to load data", error);
-            showError("Error", "Failed to load calendar data.");
+            console.error("Failed to load calendar data", error);
+            const msg = error.response?.data?.message || error.message;
+            console.error("API Response:", error.response);
+            showError("Calendar Error", `Failed to load data: ${msg}`);
         } finally {
             setLoading(false);
         }
@@ -133,136 +140,210 @@ export default function GlobalCalendar() {
         );
     };
 
+    // Custom Styles for RBC
+    const styles = `
+        .rbc-calendar { font-family: 'Inter', sans-serif; background: #fff; border: none; }
+        .rbc-month-view { border: 1px solid #eee; border-radius: 16px; overflow: hidden; }
+        .rbc-header { padding: 12px; font-weight: 700; color: #6b7280; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #eee; background: #f9fafb; }
+        .rbc-day-bg { border-left: 1px solid #f3f4f6; }
+        .rbc-off-range-bg { background: #fcfcfc; }
+        .rbc-date-cell { padding: 8px; font-size: 12px; font-weight: 600; color: #374151; }
+        .rbc-event { border-radius: 6px; padding: 2px 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.05); }
+        .rbc-today { background-color: #f0fdf4; }
+        .rbc-current-time-indicator { display: none; }
+        .rbc-toolbar-label { font-size: 1.25rem; font-weight: 800; color: #111827; }
+        .rbc-btn-group button { border: none; background: #f3f4f6; color: #4b5563; font-weight: 600; padding: 6px 12px; border-radius: 8px; margin: 0 2px; }
+        .rbc-btn-group button.rbc-active { background: #000; color: #fff; shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .rbc-btn-group button:hover { background: #e5e7eb; }
+    `;
+
+    // Event Styler
     const eventStyleGetter = (event) => {
-        let backgroundColor = '#3174ad';
+        let backgroundColor = '#3b82f6'; // Default Blue
+        let color = '#fff';
+        let borderLeft = '4px solid #1d4ed8';
+
         const st = (event.status || '').toLowerCase();
 
-        if (st === 'locked' || st === 'blocked') backgroundColor = '#e74c3c';
-        else if (st === 'confirmed') backgroundColor = '#2ecc71';
-        else if (st === 'pending') backgroundColor = '#f39c12';
-        else if (st === 'cancelled' || st === 'rejected') backgroundColor = '#95a5a6';
+        if (st === 'locked' || st === 'blocked') {
+            backgroundColor = '#fee2e2'; // Light Red
+            color = '#991b1b'; // Dark Red
+            borderLeft = '4px solid #ef4444';
+        }
+        else if (st === 'confirmed') {
+            backgroundColor = '#dcfce7'; // Light Green
+            color = '#166534'; // Dark Green
+            borderLeft = '4px solid #22c55e';
+        }
+        else if (st === 'pending') {
+            backgroundColor = '#fef3c7'; // Light Yellow
+            color = '#92400e'; // Dark Yellow
+            borderLeft = '4px solid #f59e0b';
+        }
+        else if (st === 'cancelled' || st === 'rejected') {
+            backgroundColor = '#f3f4f6'; // Gray
+            color = '#6b7280';
+            borderLeft = '4px solid #9ca3af';
+        }
 
-        return { style: { backgroundColor, fontSize: '11px', borderRadius: '4px', border: 'none' } };
+        return {
+            style: {
+                backgroundColor,
+                color,
+                fontSize: '11px',
+                borderRadius: '6px',
+                border: 'none',
+                borderLeft,
+                padding: '4px 6px',
+                fontWeight: '600',
+                marginBottom: '2px'
+            }
+        };
     };
 
-    const handleNavigate = (newDate) => setCurrentDate(newDate);
-
-    // Custom Toolbar
     const CustomToolbar = (toolbar) => {
-        const goToBack = () => toolbar.onNavigate('PREV');
-        const goToNext = () => toolbar.onNavigate('NEXT');
-        const label = () => (
-            <span className="text-xl md:text-2xl font-bold text-gray-800 capitalize min-w-[200px] text-center">
-                {format(toolbar.date, 'MMMM yyyy')}
-            </span>
-        );
+        const goToBack = () => { toolbar.onNavigate('PREV'); };
+        const goToNext = () => { toolbar.onNavigate('NEXT'); };
+        const label = () => {
+            const date = toolbar.date;
+            return (
+                <span className="text-lg font-bold text-gray-800 capitalize">
+                    {format(date, 'MMMM yyyy')}
+                </span>
+            );
+        };
 
         return (
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                {/* Navigation */}
-                <div className="flex items-center gap-4 bg-white shadow-sm px-4 py-2 rounded-full border border-gray-100">
-                    <button onClick={goToBack} className="p-2 hover:bg-gray-100 rounded-full transition"><FaArrowLeft /></button>
+            <div className="flex justify-between items-center mb-4 px-2">
+                <div className="flex items-center gap-4">
+                    <button onClick={goToBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 hover:text-black">
+                        <FaArrowLeft />
+                    </button>
                     {label()}
-                    <button onClick={goToNext} className="p-2 hover:bg-gray-100 rounded-full transition"><FaArrowRight /></button>
-                </div>
-
-                {/* Filter */}
-                <div className="flex items-center gap-2 bg-white shadow-sm px-4 py-2 rounded-full border border-gray-100">
-                    <FaFilter className="text-gray-400" />
-                    <select
-                        value={selectedPropertyId}
-                        onChange={(e) => setSelectedPropertyId(e.target.value)}
-                        className="bg-transparent outline-none font-medium text-gray-700 min-w-[150px] cursor-pointer"
-                    >
-                        <option value="all">All Properties</option>
-                        {properties.map(p => (
-                            <option key={p.id || p.PropertyId} value={p.id || p.PropertyId}>{p.Name || p.ShortName}</option>
-                        ))}
-                    </select>
+                    <button onClick={goToNext} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 hover:text-black">
+                        <FaArrowRight />
+                    </button>
                 </div>
             </div>
         );
     };
 
-    if (loading && events.length === 0) return <div className="min-h-screen flex items-center justify-center">Loading Calendar...</div>;
-
     return (
-        <div className="container mx-auto p-4 min-h-screen pt-4 pb-20 max-w-7xl">
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                <div className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                        <div>
-                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Master Property Calendar</h1>
-                            <p className="text-gray-500 mt-1">Easily track availability and bookings across <span className="font-bold text-blue-600">ALL</span> your managed properties in one unified view.</p>
+        <div className="container mx-auto p-4 md:p-8 min-h-screen max-w-7xl animate-fade-in-up">
+            <style>{styles}</style>
+
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
+                <div>
+                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">Availability Calendar</h1>
+                    <p className="text-gray-500 max-w-2xl text-sm md:text-base leading-relaxed">
+                        Manage your property availability, view bookings, and freeze dates instantly.
+                        Select a property below to filter the view.
+                    </p>
+                </div>
+
+                {/* Share Button Dynamic */}
+                <button
+                    onClick={() => {
+                        let url = '';
+                        let msg = '';
+
+                        if (selectedPropertyId === 'all') {
+                            url = `${window.location.origin}/vendor/s/m/${user?.id}`;
+                            msg = 'Portfolio Link copied!';
+                        } else {
+                            // Find property to get token
+                            const prop = properties.find(p => (p.id || p.PropertyId) == selectedPropertyId);
+                            const token = prop?.share_token || prop?.id || prop?.PropertyId;
+                            // Use Customer App URL or fallback
+                            const customerBase = import.meta.env.VITE_CUSTOMER_APP_URL || 'http://localhost:5173';
+                            url = `${customerBase}/stay/${token}`;
+                            msg = 'Property Link copied!';
+                        }
+
+                        if (navigator.clipboard) {
+                            navigator.clipboard.writeText(url).then(() => showSuccess('Copied', msg));
+                        } else {
+                            prompt("Copy Link:", url);
+                        }
+                    }}
+                    className="flex items-center gap-2 bg-black text-white px-5 py-3 rounded-xl font-bold hover:bg-gray-800 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                    <FaShareAlt /> {selectedPropertyId === 'all' ? 'Share Portfolio' : 'Share Property'}
+                </button>
+            </div>
+
+            {/* Main Calendar Card */}
+            <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+                <div className="p-4 md:p-8">
+
+                    {/* Controls Row */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                        {/* Property Filter */}
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400">
+                                <FaFilter />
+                            </div>
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Viewing availability for</label>
+                                <select
+                                    value={selectedPropertyId}
+                                    onChange={(e) => setSelectedPropertyId(e.target.value)}
+                                    className="bg-transparent font-bold text-gray-900 outline-none cursor-pointer border-b border-dashed border-gray-400 pb-0.5 hover:border-black transition"
+                                >
+                                    <option value="all">All Properties</option>
+                                    {properties.map(p => (
+                                        <option key={p.id || p.PropertyId} value={p.id || p.PropertyId}>{p.Name || p.ShortName}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-gray-500 mr-2 uppercase tracking-wider hidden md:inline">Share Portfolio:</span>
 
-                            <button onClick={() => {
-                                const url = `${window.location.origin}/s/m/${user?.id}`;
-                                window.open(`https://wa.me/?text=${encodeURIComponent(url)}`, '_blank');
-                            }} className="w-10 h-10 rounded-full bg-[#25D366] text-white flex items-center justify-center hover:scale-110 transition shadow-md" title="Share on WhatsApp">
-                                <FaWhatsapp size={20} />
-                            </button>
-
-                            <button onClick={() => {
-                                const url = `${window.location.origin}/s/m/${user?.id}`;
-                                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
-                            }} className="w-10 h-10 rounded-full bg-[#1877F2] text-white flex items-center justify-center hover:scale-110 transition shadow-md" title="Share on Facebook">
-                                <FaFacebook size={20} />
-                            </button>
-
-                            <button onClick={() => {
-                                const url = `${window.location.origin}/s/m/${user?.id}`;
-                                navigator.clipboard.writeText(url);
-                                alert("Link copied! Share this link on your Instagram Story/Bio.");
-                            }} className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center hover:scale-110 transition shadow-md" title="Share on Instagram">
-                                <FaInstagram size={20} />
-                            </button>
-
-                            <button onClick={() => {
-                                const url = `${window.location.origin}/s/m/${user?.id}`;
-                                navigator.clipboard.writeText(url);
-                                showSuccess('Link Copied', 'Portfolio link copied to clipboard!');
-                            }} className="w-10 h-10 rounded-full bg-gray-800 text-white flex items-center justify-center hover:scale-110 transition shadow-md" title="Copy Link">
-                                <FaCopy size={18} />
-                            </button>
+                        {/* Legend */}
+                        <div className="flex flex-wrap gap-3 text-xs font-bold text-gray-600">
+                            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm"><span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]"></span> Confirmed</div>
+                            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm"><span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span> Pending</div>
+                            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm"><span className="w-2.5 h-2.5 rounded-full bg-[#ef4444]"></span> Frozen</div>
                         </div>
                     </div>
 
-                    <div className="h-[700px] mt-6">
-                        <Calendar
-                            localizer={localizer}
-                            events={events}
-                            startAccessor="start"
-                            endAccessor="end"
-                            style={{ height: '100%' }}
-                            eventPropGetter={eventStyleGetter}
-                            date={currentDate}
-                            onNavigate={handleNavigate}
-                            onSelectEvent={handleSelectEvent}
-                            selectable
-                            onSelectSlot={handleSelectSlot}
-                            components={{
-                                toolbar: CustomToolbar,
-                                event: ({ event }) => (
-                                    <div className="flex items-center gap-1 overflow-hidden" title={`${event.title}`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 bg-white/50`}></span>
-                                        <span className="truncate text-[10px] md:text-xs font-medium">{event.title}</span>
-                                    </div>
-                                )
-                            }}
-                        />
-                    </div>
-
-                    {/* Legend */}
-                    <div className="flex flex-wrap gap-4 mt-6 justify-center text-sm text-gray-600">
-                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-[#2ecc71]"></span> Confirmed</div>
-                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-[#f39c12]"></span> Pending</div>
-                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-[#e74c3c]"></span> Locked</div>
-                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-[#95a5a6]"></span> Cancelled</div>
+                    {/* Calendar Component */}
+                    <div className="h-[650px] md:h-[750px] booking-calendar-wrapper">
+                        {loading && events.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-gray-400 pb-20">
+                                <div className="w-12 h-12 border-4 border-gray-200 border-t-black rounded-full animate-spin mb-4"></div>
+                                <p className="text-sm font-medium">Loading Schedule...</p>
+                            </div>
+                        ) : (
+                            <Calendar
+                                localizer={localizer}
+                                events={events}
+                                startAccessor="start"
+                                endAccessor="end"
+                                style={{ height: '100%' }}
+                                eventPropGetter={eventStyleGetter}
+                                date={currentDate}
+                                onNavigate={handleNavigate}
+                                onSelectEvent={handleSelectEvent}
+                                selectable
+                                onSelectSlot={handleSelectSlot}
+                                components={{
+                                    toolbar: CustomToolbar,
+                                    event: ({ event }) => (
+                                        <div className="flex items-center gap-1.5 overflow-hidden leading-tight" title={event.title}>
+                                            <span className="truncate">{event.title}</span>
+                                        </div>
+                                    )
+                                }}
+                                tooltipAccessor="title"
+                            />
+                        )}
                     </div>
                 </div>
+            </div>
+
+            <div className="mt-8 text-center text-gray-400 text-xs">
+                <p>Click on any date range to <span className="font-bold text-gray-600">Freeze Availability</span>. Click on a booking to view details.</p>
             </div>
         </div>
     );

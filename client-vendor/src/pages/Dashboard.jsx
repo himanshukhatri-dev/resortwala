@@ -5,8 +5,8 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useModal } from '../context/ModalContext';
 import CalendarSelectorModal from '../components/CalendarSelectorModal';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { FaHome, FaCheckCircle, FaCalendarCheck, FaRupeeSign, FaEye, FaMousePointer } from 'react-icons/fa';
+
 
 // Mock data removed in favor of real API data
 
@@ -119,45 +119,97 @@ export default function Dashboard() {
                 />
             </div>
 
-            {/* Analytics Section */}
+            {/* Operational Control & Quick Links Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Graph */}
-                <div className="lg:col-span-2 bg-white rounded-3xl p-8 border border-gray-100 shadow-xl shadow-gray-100/50">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-extrabold text-gray-800">Booking Conversion</h3>
-                        <select className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1 text-sm font-medium outline-none">
-                            <option>Last 7 Days</option>
-                            <option>Last 30 Days</option>
-                        </select>
+                {/* Operational Control Center */}
+                <div className="lg:col-span-2 space-y-8">
+                    {/* Control Panel */}
+                    <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-xl shadow-gray-100/50">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-xl font-extrabold text-gray-800">Operational Control</h3>
+                                <p className="text-sm text-gray-500 mt-1">Manage your day-to-day operations efficiently</p>
+                            </div>
+                            <span className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-sm font-bold">Action Center</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Pending Actions */}
+                            <div className="bg-orange-50 rounded-2xl p-5 border border-orange-100 hover:shadow-md transition-shadow cursor-pointer group" onClick={() => navigate('/bookings')}>
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="p-2 bg-orange-100 rounded-lg text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                                        <FaCalendarCheck />
+                                    </div>
+                                    <span className="text-2xl font-bold text-gray-800">{stats?.pending_bookings || 0}</span>
+                                </div>
+                                <h4 className="font-bold text-gray-700">Pending Requests</h4>
+                                <p className="text-xs text-gray-500 mt-1">Bookings waiting for your approval</p>
+                            </div>
+
+                            {/* Today's Arrivals */}
+                            <div className="bg-green-50 rounded-2xl p-5 border border-green-100 hover:shadow-md transition-shadow cursor-pointer group" onClick={() => navigate('/bookings')}>
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="p-2 bg-green-100 rounded-lg text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
+                                        <FaCheckCircle />
+                                    </div>
+                                    <span className="text-2xl font-bold text-gray-800">{stats?.todays_arrivals || 0}</span>
+                                </div>
+                                <h4 className="font-bold text-gray-700">Expected Arrivals</h4>
+                                <p className="text-xs text-gray-500 mt-1">Guests checking in today</p>
+                            </div>
+
+                            {/* Property Health */}
+                            <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100 hover:shadow-md transition-shadow cursor-pointer group" onClick={() => navigate('/properties')}>
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        <FaHome />
+                                    </div>
+                                    <span className="text-lg font-bold text-gray-800">{stats?.active_properties || 0}/{stats?.total_properties || 0}</span>
+                                </div>
+                                <h4 className="font-bold text-gray-700">Property Status</h4>
+                                <p className="text-xs text-gray-500 mt-1">Active properties currently listed</p>
+                            </div>
+
+                            {/* Reviews Action */}
+                            <div className="bg-purple-50 rounded-2xl p-5 border border-purple-100 hover:shadow-md transition-shadow cursor-pointer group" onClick={() => navigate('/reviews')}>
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="p-2 bg-purple-100 rounded-lg text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                        <FaEye />
+                                    </div>
+                                    <span className="text-lg font-bold text-gray-800">New</span>
+                                </div>
+                                <h4 className="font-bold text-gray-700">Guest Reviews</h4>
+                                <p className="text-xs text-gray-500 mt-1">Check recent feedback</p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={stats?.chart_data || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.1} />
-                                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                />
-                                <Area type="monotone" dataKey="views" stroke="#0ea5e9" strokeWidth={3} fillOpacity={1} fill="url(#colorViews)" />
-                                <Area type="monotone" dataKey="bookings" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorBookings)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
+
+                    {/* Quick Access Links */}
+                    <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-xl shadow-gray-100/50">
+                        <h3 className="text-xl font-extrabold text-gray-800 mb-6">Quick Access</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <button onClick={() => navigate('/properties/add')} className="flex flex-col items-center justify-center p-4 rounded-xl border border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition-all group">
+                                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">➕</span>
+                                <span className="font-bold text-gray-600 text-sm group-hover:text-blue-600">Add Property</span>
+                            </button>
+                            <button onClick={() => navigate('/calendar')} className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all group">
+                                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">🗓️</span>
+                                <span className="font-bold text-gray-600 text-sm">Calendar</span>
+                            </button>
+                            <button onClick={() => navigate('/holiday-management')} className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all group">
+                                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">🌴</span>
+                                <span className="font-bold text-gray-600 text-sm">Holidays</span>
+                            </button>
+                            <button onClick={() => setShowCalendarModal(true)} className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all group">
+                                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">⚡</span>
+                                <span className="font-bold text-gray-600 text-sm">Quick Block</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {/* Insights / Tips */}
-                <div className="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-3xl p-8 text-white flex flex-col justify-between shadow-2xl">
+                <div className="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-3xl p-8 text-white flex flex-col justify-between shadow-2xl h-full">
                     <div>
                         <h3 className="text-2xl font-bold mb-4 text-white">Boost Your Reach 🚀</h3>
                         <p className="text-indigo-200 mb-6 leading-relaxed text-white/90">
