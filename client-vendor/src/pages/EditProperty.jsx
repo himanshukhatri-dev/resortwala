@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useModal } from '../context/ModalContext';
 import {
     FaHome, FaWater, FaCheck, FaTimes, FaCamera, FaBed, FaUtensils,
-    FaSwimmingPool, FaChild, FaBan, FaMoneyBillWave, FaArrowRight, FaArrowLeft, FaSave,
+    FaSwimmingPool, FaChild, FaBan, FaMoneyBillWave, FaArrowRight, FaArrowLeft, FaSave, FaStar,
     FaParking, FaWifi, FaMusic, FaTree, FaGlassMartiniAlt, FaSnowflake, FaCouch, FaRestroom, FaDoorOpen, FaUsers,
     FaTshirt, FaVideo, FaWheelchair, FaMedkit, FaUmbrellaBeach, FaChair, FaUserShield, FaConciergeBell, FaHotTub
 } from 'react-icons/fa';
@@ -159,7 +159,10 @@ export default function EditProperty() {
 
         // Extra Charges
         extraGuestLimit: '15',
-        extraGuestCharge: '1000',
+        extraGuestLimit: '15',
+        extraGuestPriceMonThu: '', // New structure
+        extraGuestPriceFriSun: '',
+        extraGuestPriceSaturday: '',
         extraMattressCharge: '',
 
         // Waterpark Pricing
@@ -244,7 +247,12 @@ export default function EditProperty() {
                     ticketPrices,
 
                     extraGuestLimit: pricing.extraGuestLimit || '15',
-                    extraGuestCharge: pricing.extraGuestCharge || '1000',
+                    extraGuestLimit: pricing.extraGuestLimit || '15',
+
+                    // Logic to handle both old (single value) and new (object) structure
+                    extraGuestPriceMonThu: (typeof pricing.extraGuestCharge === 'object') ? (pricing.extraGuestCharge.week || '') : (pricing.extraGuestCharge || '1000'),
+                    extraGuestPriceFriSun: (typeof pricing.extraGuestCharge === 'object') ? (pricing.extraGuestCharge.weekend || '') : (pricing.extraGuestCharge || '1000'),
+                    extraGuestPriceSaturday: (typeof pricing.extraGuestCharge === 'object') ? (pricing.extraGuestCharge.saturday || '') : (pricing.extraGuestCharge || '1000'),
                     extraMattressCharge: pricing.extraMattressCharge || '',
 
                     foodOptions,
@@ -372,7 +380,11 @@ export default function EditProperty() {
                     weekend: formData.priceFriSun,
                     saturday: formData.priceSaturday,
                     extraGuestLimit: formData.extraGuestLimit,
-                    extraGuestCharge: formData.extraGuestCharge,
+                    extraGuestCharge: {
+                        week: formData.extraGuestPriceMonThu,
+                        weekend: formData.extraGuestPriceFriSun,
+                        saturday: formData.extraGuestPriceSaturday
+                    },
                     extraMattressCharge: formData.extraMattressCharge
                 }
             };
@@ -385,11 +397,13 @@ export default function EditProperty() {
                 formData.images.forEach((file) => apiData.append('images[]', file));
             }
 
-            apiData.append('_method', 'PUT'); // Needed for Laravel Update
+            // Append existing image URLs (for deletion tracking or just to confirm they exist)
+            // The backend should handle which images to keep/delete based on what's sent vs what's stored.
+            // For simplicity, we'll send a list of existing image URLs that are still present.
+            existingImages.forEach(img => apiData.append('existing_images[]', img.image_url));
 
-            formData.images.forEach((file) => {
-                apiData.append('images[]', file);
-            });
+
+            apiData.append('_method', 'PUT'); // Needed for Laravel Update
 
             const baseURL = import.meta.env.VITE_API_BASE_URL || '';
             await axios.post(`${baseURL}/api/vendor/properties/${id}`, apiData, {
@@ -488,7 +502,7 @@ export default function EditProperty() {
                             return ['big_pools', 'small_pools', 'big_slides', 'small_slides', 'wavepool', 'rain_dance', 'lazy_river', 'crazy_river', 'kids_area', 'waterfall', 'ice_bucket', 'parking', 'selfie_point', 'dj_system', 'garden', 'dining', 'laundry', 'cctv', 'wheelchair', 'first_aid', 'security', 'restaurant', 'game_room'].includes(item.key);
                         }
                         // Hide Waterpark specific items for Villas if needed, or keep them if they might have a pool
-                        return !['big_slides', 'small_slides', 'wavepool', 'lazy_river', 'crazy_river', 'waterfall'].includes(item.key);
+                        return !['big_slides', 'small_slides', 'wavepool', 'lazy_river', 'crazy_river', 'waterfall', 'ice_bucket'].includes(item.key);
                     }).map(item => (
                         <div key={item.key} className={`bg-white border rounded-xl p-4 flex items-center justify-between transition-all ${formData.amenities[item.key] ? 'border-primary ring-1 ring-primary shadow-md' : 'border-gray-100 hover:border-gray-200'}`}>
                             <div className="flex items-center gap-3">
@@ -525,7 +539,7 @@ export default function EditProperty() {
 
     const renderStep2 = () => (
         <div className="space-y-6 animate-fade-in-up">
-            <h3 className="text-xl font-bold">House Rules & Policies</h3>
+            <h3 className="text-xl font-bold">Rules and Policies</h3>
 
             {/* Check-in / Out */}
             <div className="grid grid-cols-2 gap-6 bg-gray-50 p-6 rounded-2xl">
@@ -539,25 +553,7 @@ export default function EditProperty() {
                 </div>
             </div>
 
-            {/* ID Proofs */}
-            <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">Accepted ID Proofs</label>
-                <div className="flex flex-wrap gap-3">
-                    {['Passport', 'Driving License', 'PAN Card', 'Aadhar Card'].map(id => (
-                        <button
-                            key={id}
-                            type="button"
-                            onClick={() => {
-                                const newIds = formData.idProofs.includes(id) ? formData.idProofs.filter(i => i !== id) : [...formData.idProofs, id];
-                                setFormData({ ...formData, idProofs: newIds });
-                            }}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${formData.idProofs.includes(id) ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200'}`}
-                        >
-                            {formData.idProofs.includes(id) && <FaCheck className="inline mr-2" />} {id}
-                        </button>
-                    ))}
-                </div>
-            </div>
+
 
             {/* Grouped Rules */}
             <div className="space-y-6">
@@ -612,6 +608,26 @@ export default function EditProperty() {
                             );
                         })}
                     </div>
+
+                    {/* ID Proofs (Moved Here) */}
+                    <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Accepted ID Proofs</label>
+                        <div className="flex flex-wrap gap-3">
+                            {['Passport', 'Driving License', 'PAN Card', 'Aadhar Card'].map(id => (
+                                <button
+                                    key={id}
+                                    type="button"
+                                    onClick={() => {
+                                        const newIds = formData.idProofs.includes(id) ? formData.idProofs.filter(i => i !== id) : [...formData.idProofs, id];
+                                        setFormData({ ...formData, idProofs: newIds });
+                                    }}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${formData.idProofs.includes(id) ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200'}`}
+                                >
+                                    {formData.idProofs.includes(id) && <FaCheck className="inline mr-2" />} {id}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Safety Features */}
@@ -665,15 +681,15 @@ export default function EditProperty() {
 
         return (
             <div className="space-y-8 animate-fade-in-up">
-                {/* MOVED INPUTS HERE */}
                 <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                    <h3 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2"><FaUsers /> Capacity & Configuration</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <InputField label="Occupancy (Base)" name="occupancy" value={formData.occupancy} onChange={handleInputChange} placeholder="Ex: 10" type="number" className="bg-white" />
-                        <InputField label="Max Capacity" name="maxCapacity" value={formData.maxCapacity} onChange={handleInputChange} placeholder="Ex: 20" type="number" className="bg-white" />
+                    <h3 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2"><FaBed /> Room Configuration</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {formData.propertyType === 'Villa' && (
                             <InputField label="No. of Rooms" name="noofRooms" value={formData.noofRooms} onChange={handleInputChange} placeholder="Ex: 3" type="number" className="bg-white" />
                         )}
+                        <div className="flex items-center text-sm text-blue-800 bg-blue-100/50 p-2 rounded-lg">
+                            Please set the number of rooms to configure bedroom details below.
+                        </div>
                     </div>
                 </div>
 
@@ -766,60 +782,55 @@ export default function EditProperty() {
     const renderStep3 = () => (
         <div className="space-y-8 animate-fade-in-up">
 
-            <div className="border border-gray-200 p-6 rounded-2xl bg-white">
-                <h4 className="font-bold mb-4 flex items-center gap-2"><FaMoneyBillWave /> Accepted Payment Methods</h4>
-                <div className="flex gap-4 flex-wrap">
-                    {['Cash', 'UPI', 'Debit', 'Credit'].map(method => (
-                        <button
-                            key={method}
-                            type="button"
-                            onClick={() => handleNestedChange('paymentMethods', method.toLowerCase(), !formData.paymentMethods?.[method.toLowerCase()])}
-                            className={`px-6 py-3 rounded-lg font-bold border-2 transition-all ${formData.paymentMethods?.[method.toLowerCase()] ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                        >
-                            {formData.paymentMethods?.[method.toLowerCase()] && <FaCheck className="inline mr-2" />}
-                            {method}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
             {formData.propertyType === 'Villa' && (
                 <>
-                    <div className="border border-orange-100 p-6 rounded-2xl bg-orange-50">
-                        <h4 className="flex items-center gap-2 mb-4 font-bold text-orange-800">
-                            <FaMoneyBillWave /> Base Pricing (Room/Villa)
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <InputField label="Mon-Thu (1 Night)" name="priceMonThu" value={formData.priceMonThu} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
-                            <InputField label="Fri & Sun (1 Night)" name="priceFriSun" value={formData.priceFriSun} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
-                            <InputField label="Saturday (1 Night)" name="priceSaturday" value={formData.priceSaturday} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
+                    {/* Capacity Section Moved Here */}
+                    <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                        <h3 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2"><FaUsers /> Capacity & Usage</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <InputField label="Standard Occupancy (Base)" name="occupancy" value={formData.occupancy} onChange={handleInputChange} placeholder="Ex: 10" type="number" className="bg-white" />
+                            <InputField label="Max Capacity (Total)" name="maxCapacity" value={formData.maxCapacity} onChange={handleInputChange} placeholder="Ex: 20" type="number" className="bg-white" />
                         </div>
                     </div>
 
+                    <div className="border border-orange-100 p-6 rounded-2xl bg-orange-50">
+                        <h4 className="flex items-center gap-2 mb-4 font-bold text-orange-800">
+                            <FaMoneyBillWave /> Base Pricing (Whole Villa/Unit)
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <InputField label="Mon-Thu (Per Night)" name="priceMonThu" value={formData.priceMonThu} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
+                            <InputField label="Fri & Sun (Per Night)" name="priceFriSun" value={formData.priceFriSun} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
+                            <InputField label="Saturday (Per Night)" name="priceSaturday" value={formData.priceSaturday} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
+                        </div>
+                    </div>
+
+                    {/* Extra Person Policy */}
+                    <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100">
+                        <h4 className="font-bold text-purple-800 mb-4 flex items-center gap-2"><FaChild /> Extra Person Policy</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <InputField label="Mon-Thu (Per Person)" name="extraGuestPriceMonThu" value={formData.extraGuestPriceMonThu} onChange={handleInputChange} placeholder="₹ Rate" type="number" className="bg-white" />
+                            <InputField label="Fri & Sun (Per Person)" name="extraGuestPriceFriSun" value={formData.extraGuestPriceFriSun} onChange={handleInputChange} placeholder="₹ Rate" type="number" className="bg-white" />
+                            <InputField label="Saturday (Per Person)" name="extraGuestPriceSaturday" value={formData.extraGuestPriceSaturday} onChange={handleInputChange} placeholder="₹ Rate" type="number" className="bg-white" />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2 font-medium">
+                            * Charge applicable for guests exceeding Standard Occupancy (includes extra mattress).
+                        </p>
+                    </div>
+
+                    {/* Meal Configuration - Simplified Package Style */}
                     <div className="border border-green-100 p-6 rounded-2xl bg-green-50/50">
                         <h4 className="flex items-center gap-2 mb-4 font-bold text-green-800"><FaUtensils /> Meal Configuration</h4>
+
+                        <div className="bg-white p-4 rounded-xl border border-green-100 mb-4">
+                            <p className="text-sm text-gray-700 font-medium leading-relaxed">
+                                Veg, Non veg, Jain food. Meal Includes lunch, evening snacks, dinner and Next morning break fast. Meal Price Per person
+                            </p>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
-                                <h5 className="font-bold text-sm mb-2">Breakfast</h5>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="text" placeholder="Veg Rate" value={formData.mealPlans?.breakfast?.vegRate || ''} onChange={(e) => handleNestedChange('mealPlans', 'breakfast', { ...formData.mealPlans.breakfast, vegRate: e.target.value })} className="p-2 border rounded text-sm" />
-                                    <input type="text" placeholder="Non-Veg Rate" value={formData.mealPlans?.breakfast?.nonVegRate || ''} onChange={(e) => handleNestedChange('mealPlans', 'breakfast', { ...formData.mealPlans.breakfast, nonVegRate: e.target.value })} className="p-2 border rounded text-sm" />
-                                </div>
-                            </div>
-                            <div>
-                                <h5 className="font-bold text-sm mb-2">Lunch</h5>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="text" placeholder="Veg Rate" value={formData.mealPlans?.lunch?.vegRate || ''} onChange={(e) => handleNestedChange('mealPlans', 'lunch', { ...formData.mealPlans.lunch, vegRate: e.target.value })} className="p-2 border rounded text-sm" />
-                                    <input type="text" placeholder="Non-Veg Rate" value={formData.mealPlans?.lunch?.nonVegRate || ''} onChange={(e) => handleNestedChange('mealPlans', 'lunch', { ...formData.mealPlans.lunch, nonVegRate: e.target.value })} className="p-2 border rounded text-sm" />
-                                </div>
-                            </div>
-                            <div>
-                                <h5 className="font-bold text-sm mb-2">Dinner</h5>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="text" placeholder="Veg Rate" value={formData.mealPlans?.dinner?.vegRate || ''} onChange={(e) => handleNestedChange('mealPlans', 'dinner', { ...formData.mealPlans.dinner, vegRate: e.target.value })} className="p-2 border rounded text-sm" />
-                                    <input type="text" placeholder="Non-Veg Rate" value={formData.mealPlans?.dinner?.nonVegRate || ''} onChange={(e) => handleNestedChange('mealPlans', 'dinner', { ...formData.mealPlans.dinner, nonVegRate: e.target.value })} className="p-2 border rounded text-sm" />
-                                </div>
-                            </div>
+                            <InputField label="Veg Package (Per Person)" name="foodRateVeg" value={formData.foodRates?.veg || ''} onChange={(e) => handleNestedChange('foodRates', 'veg', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
+                            <InputField label="Non-Veg Package (Per Person)" name="foodRateNonVeg" value={formData.foodRates?.nonVeg || ''} onChange={(e) => handleNestedChange('foodRates', 'nonVeg', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
+                            <InputField label="Jain Package (Per Person)" name="foodRateJain" value={formData.foodRates?.jain || ''} onChange={(e) => handleNestedChange('foodRates', 'jain', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
                         </div>
                     </div>
                 </>
@@ -913,37 +924,49 @@ export default function EditProperty() {
                         </div>
                     </div>
                 </>
-            )}
+            )
+            }
 
-            {formData.propertyType === 'Villa' && (
-                <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100">
-                    <h4 className="font-bold text-purple-800 mb-4 flex items-center gap-2"><FaChild /> Extra Person Policy</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <InputField label="Extra Guest Charge" name="extraGuestCharge" value={formData.extraGuestCharge} onChange={handleInputChange} placeholder="₹ 1000" type="number" className="bg-white" />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2 font-medium">
-                        * Charge includes extra mattress if required.
-                    </p>
-                </div>
-            )}
-
-            <div>
-                <h4 className="font-bold mb-4">What's Included? (Amenities/Facilities)</h4>
-                <div className="flex flex-wrap gap-3">
-                    {INCLUSIONS.map(inc => (
+            {/* Payment Methods - Moved to Bottom */}
+            <div className="border border-gray-200 p-6 rounded-2xl bg-white mt-8">
+                <h4 className="font-bold mb-4 flex items-center gap-2"><FaMoneyBillWave /> Accepted Payment Methods</h4>
+                <div className="flex gap-4 flex-wrap">
+                    {['Cash', 'UPI', 'Debit', 'Credit'].map(method => (
                         <button
-                            key={inc}
+                            key={method}
                             type="button"
-                            onClick={() => handleNestedChange('inclusions', inc, !formData.inclusions?.[inc])}
-                            className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${formData.inclusions?.[inc] ? 'bg-green-100 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                            onClick={() => handleNestedChange('paymentMethods', method.toLowerCase(), !formData.paymentMethods?.[method.toLowerCase()])}
+                            className={`px-6 py-3 rounded-lg font-bold border-2 transition-all ${formData.paymentMethods?.[method.toLowerCase()] ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
                         >
-                            {formData.inclusions?.[inc] && <FaCheck className="inline mr-2 text-xs" />}
-                            {inc}
+                            {formData.paymentMethods?.[method.toLowerCase()] && <FaCheck className="inline mr-2" />}
+                            {method}
                         </button>
                     ))}
                 </div>
             </div>
-        </div>
+
+            {/* What's Included? - HIDDEN for Villa per user request, only for Waterpark */}
+            {
+                formData.propertyType === 'Waterpark' && (
+                    <div className="mt-8">
+                        <h4 className="font-bold mb-4">What's Included? (Facilities)</h4>
+                        <div className="flex flex-wrap gap-3">
+                            {INCLUSIONS.map(inc => (
+                                <button
+                                    key={inc}
+                                    type="button"
+                                    onClick={() => handleNestedChange('inclusions', inc, !formData.inclusions?.[inc])}
+                                    className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${formData.inclusions?.[inc] ? 'bg-green-100 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                                >
+                                    {formData.inclusions?.[inc] && <FaCheck className="inline mr-2 text-xs" />}
+                                    {inc}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 
     const renderStep4 = () => {
@@ -954,7 +977,7 @@ export default function EditProperty() {
             if (!isConfirmed) return;
 
             try {
-                const baseURL = import.meta.env.VITE_API_BASE_URL || ''; // Fix: Use relative path if env var missing
+                const baseURL = import.meta.env.VITE_API_BASE_URL || '';
                 await axios.delete(`${baseURL}/api/vendor/properties/${id}/images/${imageId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -963,6 +986,21 @@ export default function EditProperty() {
             } catch (err) {
                 console.error(err);
                 showError('Error', 'Failed to delete image.');
+            }
+        };
+
+        const handleSetPrimary = async (imageId, e) => {
+            e.stopPropagation();
+            try {
+                const baseURL = import.meta.env.VITE_API_BASE_URL || '';
+                await axios.put(`${baseURL}/api/vendor/properties/${id}/images/${imageId}/primary`, {}, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                setExistingImages(prev => prev.map(img => ({ ...img, is_primary: img.id === imageId })));
+                showSuccess('Success', 'Main photo updated.');
+            } catch (err) {
+                console.error(err);
+                showError('Error', 'Failed to update main photo.');
             }
         };
 
@@ -1024,9 +1062,19 @@ export default function EditProperty() {
                         <h4 className="font-bold text-sm text-gray-500">Current Photos</h4>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {existingImages.map((img) => (
-                                <div key={img.id} className="relative group rounded-xl overflow-hidden aspect-square shadow-md">
+                                <div key={img.id} className={`relative group rounded-xl overflow-hidden aspect-square shadow-md ${img.is_primary ? 'ring-2 ring-yellow-400' : ''}`}>
                                     <img src={img.image_url} alt="Existing" className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+
+                                    {/* Overlay */}
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <button
+                                            type="button"
+                                            title="Set as Main Photo"
+                                            onClick={(e) => handleSetPrimary(img.id, e)}
+                                            className={`p-2 rounded-full shadow-lg transition-all ${img.is_primary ? 'bg-yellow-400 text-white' : 'bg-white text-gray-400 hover:text-yellow-400'}`}
+                                        >
+                                            <FaStar />
+                                        </button>
                                         <button
                                             type="button"
                                             onClick={(e) => handleDeleteExisting(img.id, e)}
@@ -1035,6 +1083,11 @@ export default function EditProperty() {
                                             <FaTimes />
                                         </button>
                                     </div>
+                                    {img.is_primary && (
+                                        <div className="absolute top-2 left-2 bg-yellow-400 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                                            MAIN
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

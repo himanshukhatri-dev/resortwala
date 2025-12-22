@@ -2,13 +2,12 @@ export const STEPS_VILLA = ["Basic Info", "Features", "Room Config", "Policies",
 export const STEPS_WATERPARK = ["Basic Info", "Attractions", "Policies", "Ticket Pricing", "Gallery"];
 
 export const AMENITY_TYPES = [
-    { key: 'big_pools', label: 'Big Pools', type: 'number', subtitle: 'Large swimming pools' },
-    { key: 'small_pools', label: 'Small Pools', type: 'number', subtitle: 'Kids/Small pools' },
+    { key: 'big_pools', label: 'Swimming Pool', type: 'number', subtitle: 'Swimming pools' },
     { key: 'big_slides', label: 'Big Water & Tube slides', type: 'number', subtitle: 'Water & Tube slides' },
     { key: 'small_slides', label: 'Small Water & Tube slides', type: 'number', subtitle: 'Smaller slides' },
     { key: 'wavepool', label: 'Wavepool', type: 'bool' },
     { key: 'rain_dance', label: 'Rain Dance', type: 'bool' },
-    { key: 'dj_system', label: 'Live DJ System', type: 'bool' },
+    { key: 'dj_system', label: 'Music System', type: 'bool' },
     { key: 'lazy_river', label: 'Lazy River', type: 'bool' },
     { key: 'crazy_river', label: 'Crazy River', type: 'bool' },
     { key: 'kids_area', label: 'Kids Area', type: 'bool' },
@@ -26,7 +25,7 @@ export const AMENITY_TYPES = [
     { key: 'dining', label: 'Dining Area', type: 'bool' },
     { key: 'cctv', label: 'CCTV', type: 'bool' },
     { key: 'wheelchair', label: 'Wheelchair Accessible', type: 'bool' },
-    { key: 'first_aid', label: 'First Aid Services', type: 'bool' },
+
     { key: 'pool_towels', label: 'Pool/Beach Towels', type: 'bool' },
     { key: 'seating_area', label: 'Seating Area', type: 'bool' },
     { key: 'security', label: 'Security Guard', type: 'bool' },

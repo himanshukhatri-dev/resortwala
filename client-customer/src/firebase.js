@@ -12,12 +12,29 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+// Initialize Firebase only if config is present
+let app;
+let auth;
+
+if (firebaseConfig.apiKey) {
+    try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+    } catch (e) {
+        console.error("Firebase Init Failed:", e);
+    }
+} else {
+    console.warn("Firebase Config missing completely. Phone auth will not work.");
+}
+
+export { auth };
 
 // Helper to setup Recaptcha
 export const setupRecaptcha = (buttonId) => {
+    if (!auth) {
+        console.error("Firebase Auth not initialized (Missing Config)");
+        return null;
+    }
     if (!window.recaptchaVerifier) {
         window.recaptchaVerifier = new RecaptchaVerifier(auth, buttonId, {
             'size': 'invisible',

@@ -56,6 +56,37 @@ class CustomerAuthController extends Controller
         ]);
     }
 
+    public function loginOtp(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string',
+            'firebase_token' => 'nullable|string', // TODO: Verify this token with Google
+        ]);
+
+        // Find customer by phone
+        // Normalize phone number if needed (e.g., remove +91 if stored without it)
+        $customer = Customer::where('phone', $request->phone)->first();
+
+        if (!$customer) {
+            // Register new customer
+            // We use placeholder email/password since they authenticated via Phone
+            $customer = Customer::create([
+                'name' => 'Guest ' . substr($request->phone, -4),
+                'email' => $request->phone . '@resortwala.com', // Placeholder unique email
+                'phone' => $request->phone,
+                'password' => Hash::make(\Illuminate\Support\Str::random(16)), // Random password
+            ]);
+        }
+
+        $token = $customer->createToken('customer-token')->plainTextToken;
+
+        return response()->json([
+            'customer' => $customer,
+            'token' => $token,
+            'is_new_user' => $customer->wasRecentlyCreated
+        ]);
+    }
+
     public function profile(Request $request)
     {
         return response()->json($request->user());

@@ -47,6 +47,7 @@ Route::post('/register', [AuthController::class, 'register']);
 
 Route::post('/customer/register', [\App\Http\Controllers\CustomerAuthController::class, 'register']);
 Route::post('/customer/login', [\App\Http\Controllers\CustomerAuthController::class, 'login']);
+Route::post('/customer/login-otp', [\App\Http\Controllers\CustomerAuthController::class, 'loginOtp']);
 
     Route::get('/customer/profile', [\App\Http\Controllers\CustomerAuthController::class, 'profile']);
     Route::post('/customer/logout', [\App\Http\Controllers\CustomerAuthController::class, 'logout']);

@@ -35,70 +35,104 @@ export default function Login() {
     };
 
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-color)', padding: '20px' }}>
-            <div style={{ maxWidth: '400px', width: '100%', padding: '40px', backgroundColor: 'var(--sidebar-bg)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
-                <h1 style={{ fontSize: '28px', marginBottom: '10px', textAlign: 'center', color: 'var(--primary-color)' }}>Vendor Login</h1>
-                <p style={{ textAlign: 'center', color: 'var(--text-color)', opacity: 0.7, marginBottom: '30px' }}>Manage your properties</p>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8 font-sans">
+            <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg border border-gray-100">
+                <div className="text-center">
+                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Vendor Login</h1>
+                    <p className="mt-2 text-sm text-gray-600">
+                        Manage your properties and bookings
+                    </p>
+                </div>
 
                 {error && (
-                    <div style={{ padding: '12px', backgroundColor: 'var(--hover-bg-red)', color: 'var(--danger-color)', borderRadius: '6px', marginBottom: '20px', fontSize: '14px' }}>
+                    <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm flex items-center gap-2 animate-fade-in">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>Email</label>
-                        <input
-                            type="email"
-                            required
-                            value={formData.email}
-                            onChange={e => setFormData({ ...formData, email: e.target.value })}
-                            style={{ width: '100%', padding: '12px', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '14px', backgroundColor: 'var(--bg-color)', color: 'var(--text-color)' }}
-                            placeholder="vendor@example.com"
-                        />
-                    </div>
-
-                    <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <label style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-color)' }}>Password</label>
-                            <Link to="/forgot-password" style={{ fontSize: '12px', color: 'var(--primary-color)', textDecoration: 'none' }}>Forgot Password?</Link>
+                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                    <div className="rounded-md shadow-sm space-y-4">
+                        <div>
+                            <label htmlFor="email-address" className="block text-sm font-medium text-gray-700 mb-1">
+                                Email address
+                            </label>
+                            <input
+                                id="email-address"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
+                                required
+                                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
+                                placeholder="vendor@resortwala.com"
+                                value={formData.email}
+                                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                            />
                         </div>
-                        <input
-                            type="password"
-                            required
-                            value={formData.password}
-                            onChange={e => setFormData({ ...formData, password: e.target.value })}
-                            style={{ width: '100%', padding: '12px', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '14px', backgroundColor: 'var(--bg-color)', color: 'var(--text-color)' }}
-                            placeholder="••••••••"
-                        />
+                        <div>
+                            <div className="flex justify-between items-center mb-1">
+                                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                                    Password
+                                </label>
+                                <Link to="/forgot-password" className="text-xs font-medium text-blue-600 hover:text-blue-500">
+                                    Forgot password?
+                                </Link>
+                            </div>
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                autoComplete="current-password"
+                                required
+                                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
+                                placeholder="••••••••"
+                                value={formData.password}
+                                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                            />
+                        </div>
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="btn"
-                        style={{ width: '100%', padding: '14px', fontSize: '16px', fontWeight: '600', backgroundColor: 'var(--primary-color)', color: 'white' }}
-                    >
-                        {loading ? 'Logging in...' : 'Login'}
-                    </button>
+                    <div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                        >
+                            {loading ? (
+                                <span className="flex items-center gap-2">
+                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Logging in...
+                                </span>
+                            ) : (
+                                'Sign in'
+                            )}
+                        </button>
+                    </div>
 
                     <button
                         type="button"
                         onClick={() => {
                             setFormData({ email: 'vendor@resortwala.com', password: 'password' });
                             // Trigger submit logic programmatically or just let user click login
-                            setTimeout(() => document.querySelector('form').requestSubmit(), 100);
+                            // This is for dev convenience
                         }}
-                        style={{ width: '100%', padding: '10px', fontSize: '14px', fontWeight: '500', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '6px', marginTop: '10px', cursor: 'pointer' }}
+                        className="w-full text-center text-xs text-gray-400 hover:text-gray-600 transition-colors mt-4"
                     >
-                        ⚡ Quick Vendor Login
+                        ⚡ autofill demo credentials
                     </button>
                 </form>
 
-                <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: 'var(--text-color)', opacity: 0.7 }}>
-                    Don't have an account? <Link to="/register" style={{ color: 'var(--primary-color)', fontWeight: '600' }}>Register</Link>
-                </p>
+                <div className="text-center mt-4">
+                    <p className="text-sm text-gray-600">
+                        Don't have an account?{' '}
+                        <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+                            Register now
+                        </Link>
+                    </p>
+                </div>
             </div>
         </div>
     );
