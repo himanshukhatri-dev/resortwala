@@ -159,7 +159,6 @@ export default function EditProperty() {
 
         // Extra Charges
         extraGuestLimit: '15',
-        extraGuestLimit: '15',
         extraGuestPriceMonThu: '', // New structure
         extraGuestPriceFriSun: '',
         extraGuestPriceSaturday: '',
@@ -247,7 +246,6 @@ export default function EditProperty() {
                     ticketPrices,
 
                     extraGuestLimit: pricing.extraGuestLimit || '15',
-                    extraGuestLimit: pricing.extraGuestLimit || '15',
 
                     // Logic to handle both old (single value) and new (object) structure
                     extraGuestPriceMonThu: (typeof pricing.extraGuestCharge === 'object') ? (pricing.extraGuestCharge.week || '') : (pricing.extraGuestCharge || '1000'),
@@ -325,10 +323,9 @@ export default function EditProperty() {
             return;
         }
 
-        // Validate Minimum Photos
         const totalImages = (existingImages?.length || 0) + (formData.images?.length || 0);
         if (totalImages < 5) {
-            showError('Photos Required', 'Please ensure at least 5 photos are currently uploaded.');
+            showError('Photos Required', 'Please maintain at least 5 photos for your property.');
             setSaving(false);
             return;
         }
@@ -1092,31 +1089,34 @@ export default function EditProperty() {
                             ))}
                         </div>
                     </div>
-                )}
+                )
+                }
 
                 {/* New Images */}
-                {formData.images.length > 0 && (
-                    <div className="space-y-2 mt-4">
-                        <h4 className="font-bold text-sm text-gray-500">New Photos (Pending Save)</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {formData.images.map((file, idx) => (
-                                <div key={idx} className="relative group rounded-xl overflow-hidden aspect-square shadow-md">
-                                    <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteNewImage(idx)}
-                                            className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
-                                        >
-                                            <FaTimes />
-                                        </button>
+                {
+                    formData.images.length > 0 && (
+                        <div className="space-y-2 mt-4">
+                            <h4 className="font-bold text-sm text-gray-500">New Photos (Pending Save)</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {formData.images.map((file, idx) => (
+                                    <div key={idx} className="relative group rounded-xl overflow-hidden aspect-square shadow-md">
+                                        <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteNewImage(idx)}
+                                                className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
+                                            >
+                                                <FaTimes />
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )
+                }
+            </div >
         );
     };
 

@@ -22,7 +22,8 @@ class VendorPropertyController extends Controller
         // Ensure Image property is set for frontend compatibility if primaryImage exists
         $properties->transform(function ($property) {
             if ($property->primaryImage) {
-                $property->Image = $property->primaryImage->image_path; // Verify image_path or correct column name in PropertyImage
+                // Use Full URL (accessor) instead of relative path
+                $property->Image = $property->primaryImage->image_url; 
             }
             return $property;
         });
@@ -158,16 +159,18 @@ class VendorPropertyController extends Controller
 
             foreach ($request->file('images') as $index => $image) {
                 $filename = \Illuminate\Support\Str::random(40) . '.' . $image->getClientOriginalExtension();
-                $path = $image->storeAs('properties/' . $property->PropertyId, $filename, 'public');
+                $path = $image->storeAs('properties/' . $id, $filename, 'public');
                 
                 \App\Models\PropertyImage::create([
-                    'property_id' => $property->PropertyId,
-                    'image_path' => $property->PropertyId . '/' . $filename,
+                    'property_id' => $id,
+                    'image_path' => $id . '/' . $filename,
                     'is_primary' => false, // New images attached on update are not primary by default
                     'display_order' => $currentMaxOrder + 1 + $index
                 ]);
             }
         }
+        
+        $property->load('images'); // Force reload of images for response
 
         return response()->json([
             'message' => 'Property updated successfully',
