@@ -12,12 +12,14 @@ export default function Sidebar({ userType = 'admin' }) {
     const [isHovered, setIsHovered] = useState(false);
 
     // Filter menu items for Admin
+    // Filter menu items for Admin
     const menuItems = [
         { path: '/dashboard', icon: '👤', label: 'Dashboard' },
         { path: '/users', icon: '👥', label: 'Users' },
         { path: '/vendors', icon: '🏢', label: 'Vendors' },
         { path: '/customers', icon: '🙂', label: 'Customers' },
         { path: '/properties', icon: '🏠', label: 'Properties' },
+        { path: '/property-changes', icon: '📝', label: 'Prop. Updates' },
         { path: '/bookings', icon: '📅', label: 'Bookings' },
         { path: '/day-wise-booking', icon: '📊', label: 'Availability' },
         { path: '/holidays', icon: '🌴', label: 'Holidays' },

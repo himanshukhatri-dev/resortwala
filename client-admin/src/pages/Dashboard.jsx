@@ -108,15 +108,12 @@ export default function Dashboard() {
         }
     };
 
-    const handleApprove = async (type, id) => {
-        setActionLoading(true);
-        try {
-            const endpoint = type === 'vendor' ? `${API_BASE_URL}/admin/vendors/${id}/approve` : `${API_BASE_URL}/admin/properties/${id}/approve`;
-            await axios.post(endpoint, {}, { headers: { Authorization: `Bearer ${token}` } });
-            fetchDashboardData(); // Refresh
-        } catch (err) {
-            alert("Action Failed: " + err.message);
-        } finally { setActionLoading(false); }
+    const handleApprove = (type, id) => {
+        if (type === 'vendor') {
+            navigate(`/vendors/${id}`);
+        } else {
+            navigate(`/properties/${id}/approve`);
+        }
     };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500 font-medium">Initializing Command Center...</div>;

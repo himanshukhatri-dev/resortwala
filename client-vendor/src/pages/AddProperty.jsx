@@ -306,7 +306,7 @@ export default function AddProperty() {
             sortedImages.forEach((file) => apiData.append('images[]', file));
 
             const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-            await axios.post(`${baseURL}/api/vendor/properties`, apiData, {
+            await axios.post(`${baseURL}/vendor/properties`, apiData, {
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
             });
 
@@ -956,6 +956,66 @@ export default function AddProperty() {
                 </div>
             )}    </div>
     );
+    // --- VALIDATION AND NAVIGATION ---
+    const validateStep = (step) => {
+        // Step 0: Basic Info
+        if (step === 0) {
+            if (!formData.name) return { valid: false, msg: 'Property Name is required.' };
+            if (!formData.propertyType) return { valid: false, msg: 'Property Type is required.' };
+            if (!formData.location) return { valid: false, msg: 'Location (Nearest Station) is required.' };
+            if (!formData.cityName) return { valid: false, msg: 'City Name is required.' };
+            if (!formData.address) return { valid: false, msg: 'Full Address is required.' };
+            if (!formData.mobileNo) return { valid: false, msg: 'Mobile Number is required.' };
+            if (!/^\d{10}$/.test(formData.mobileNo)) return { valid: false, msg: 'Invalid Mobile Number (10 digits required).' };
+        }
+
+        // Step 1: Amenities (Optional, but good to have one)
+        // if (step === 1) { ... }
+
+        // Step 2 (Villa: Rooms / Waterpark: Rules) & Step 3 (Villa: Rules / Waterpark: Prices)
+        // This mapping depends on Property Type. Let's trace the 'next' step logic.
+        // If Villa: Step 2 is RoomConfig. Step 3 is Rules. Step 4 is Pricing. Step 5 is Images.
+        // If Waterpark: Step 2 is Rules. Step 3 is Pricing. Step 4 is Images.
+
+        const isVilla = formData.propertyType === 'Villa';
+
+        // Villa Room Config Check (Step 2)
+        if (isVilla && step === 2) {
+            const rooms = parseInt(formData.noofRooms || 0);
+            if (rooms < 1) return { valid: false, msg: 'Please enter number of rooms.' };
+        }
+
+        // Pricing Check (Villa: Step 4 / Waterpark: Step 3)
+        const pricingStep = isVilla ? 4 : 3;
+        if (step === pricingStep) {
+            if (isVilla) {
+                if (!formData.priceMonThu) return { valid: false, msg: 'Mon-Thu Price is required.' };
+                if (!formData.priceFriSun) return { valid: false, msg: 'Fri-Sun Price is required.' };
+                if (!formData.priceSaturday) return { valid: false, msg: 'Saturday Price is required.' };
+            } else {
+                // Waterpark logic if needed
+            }
+        }
+
+        // Final Image Check handled before Submit usually, but if there is a 'Next' from images?
+        // NO, the last step is Submit. We validate images in handleSubmit.
+        // Wait, renderNavigation checks "if currentStep < MAX - 1".
+        // If we are at Image Step (Max-1), the button is "Publish".
+        // Implementation for "Publish" calls handleSubmit, which validates images.
+
+        return { valid: true };
+    };
+
+    const handleNext = () => {
+        const { valid, msg } = validateStep(currentStep);
+        if (!valid) {
+            showError('Missing Details', msg);
+            return;
+        }
+        setCurrentStep(prev => prev + 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const renderNavigation = (isTop = false) => (
         <div className={`flex justify-between items-center ${isTop ? 'mb-4 border-b pb-4 border-gray-100' : 'fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 p-3 md:p-4 z-50 md:static md:bg-transparent md:border-0 md:p-0'}`}>
             <button
@@ -971,10 +1031,7 @@ export default function AddProperty() {
 
             {currentStep < (formData.propertyType === 'Villa' ? STEPS_VILLA.length : STEPS_WATERPARK.length) - 1 ? (
                 <button
-                    onClick={() => {
-                        setCurrentStep(prev => prev + 1);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
+                    onClick={handleNext}
                     className="flex items-center gap-2 bg-black text-white px-5 py-2 md:px-8 md:py-2.5 rounded-xl font-bold text-sm md:text-base hover:bg-gray-800 transition shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                 >
                     Next <FaArrowRight />
@@ -1005,10 +1062,7 @@ export default function AddProperty() {
             </div>
 
 
-            {/* Top Navigation */}
-            <div className="md:hidden block">
-                {renderNavigation(true)}
-            </div>
+            {/* Top Navigation - Desktop Only */}
             <div className="hidden md:block mb-4">
                 {renderNavigation(true)}
             </div>

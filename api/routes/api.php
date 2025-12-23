@@ -43,7 +43,7 @@ Route::post('/coupons/check', [\App\Http\Controllers\CouponController::class, 'c
 Route::get('/public/properties/{id}/calendar', [App\Http\Controllers\PublicController::class, 'getPropertyCalendar']);
 Route::get('/public/vendors/{id}/calendar', [App\Http\Controllers\PublicController::class, 'getVendorMasterCalendar']);
 
-Route::post('/register', [AuthController::class, 'register']);
+// Route::post('/register', [AuthController::class, 'register']);
 
 Route::post('/customer/register', [\App\Http\Controllers\CustomerAuthController::class, 'register']);
 Route::post('/customer/login', [\App\Http\Controllers\CustomerAuthController::class, 'login']);
@@ -117,14 +117,24 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/stats', [\App\Http\Controllers\AdminController::class, 'getStats']);
     Route::get('/admin/vendors', [\App\Http\Controllers\AdminController::class, 'getAllVendors']);
     Route::get('/admin/vendors/pending', [\App\Http\Controllers\AdminController::class, 'getPendingVendors']);
+    Route::get('/admin/vendors/{id}', [\App\Http\Controllers\AdminController::class, 'getVendor']);
     Route::post('/admin/vendors/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveVendor']);
     Route::delete('/admin/vendors/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectVendor']);
     
     // Admin Property Management
     Route::get('/admin/properties', [\App\Http\Controllers\AdminController::class, 'getAllProperties']);
     Route::get('/admin/properties/pending', [\App\Http\Controllers\AdminController::class, 'getPendingProperties']);
+    Route::put('/admin/properties/{id}/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approve']);
+    Route::put('/admin/properties/{id}/pricing', [\App\Http\Controllers\AdminPropertyController::class, 'updatePricing']);
+    Route::get('/admin/properties/{id}', [\App\Http\Controllers\AdminPropertyController::class, 'show']);
     Route::post('/admin/properties/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveProperty']);
     Route::delete('/admin/properties/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectProperty']);
+    
+    // Change Requests
+    Route::get('/admin/property-changes', [\App\Http\Controllers\AdminPropertyController::class, 'getChangeRequests']);
+    Route::get('/admin/property-changes/{id}', [\App\Http\Controllers\AdminPropertyController::class, 'getChangeRequest']);
+    Route::post('/admin/properties/{id}/changes/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approveChanges']);
+    Route::post('/admin/properties/{id}/changes/reject', [\App\Http\Controllers\AdminPropertyController::class, 'rejectChanges']);
     
     // Admin Booking Management
     Route::get('/admin/bookings', [\App\Http\Controllers\AdminController::class, 'getAllBookings']);

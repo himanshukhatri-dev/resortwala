@@ -19,13 +19,14 @@ class PropertyMaster extends Model
         'IsDeleted', 'PerCost', 'ResortWalaRate', 'PropertyStatus',
         'IsVendorPropAvailable', 'IsPropertyUpdate', 'NoofRooms',
         'CheckinDate', 'CheckoutDate', 'Breakfast', 'Lunch', 'Dinner', 'HiTea',
-        'MaxCapacity', 'vendor_id', 'is_approved', 'share_token',
+        'checkInTime', 'checkOutTime', 'vendor_id', 'is_approved', 'share_token',
         'price_mon_thu', 'price_fri_sun', 'price_sat',
-        'onboarding_data', 'video_url'
+        'onboarding_data', 'video_url', 'admin_pricing'
     ];
 
     protected $casts = [
         'onboarding_data' => 'array',
+        'admin_pricing' => 'array',
         'IsActive' => 'boolean',
         'PropertyStatus' => 'boolean'
     ];

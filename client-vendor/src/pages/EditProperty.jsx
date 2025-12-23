@@ -177,7 +177,7 @@ export default function EditProperty() {
         const fetchProperty = async () => {
             try {
                 const baseURL = import.meta.env.VITE_API_BASE_URL || '';
-                const res = await axios.get(`${baseURL}/api/vendor/properties/${id}`, {
+                const res = await axios.get(`${baseURL}/vendor/properties/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
 
@@ -403,11 +403,15 @@ export default function EditProperty() {
             apiData.append('_method', 'PUT'); // Needed for Laravel Update
 
             const baseURL = import.meta.env.VITE_API_BASE_URL || '';
-            await axios.post(`${baseURL}/api/vendor/properties/${id}`, apiData, {
+            const res = await axios.post(`${baseURL}/api/vendor/properties/${id}`, apiData, {
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
             });
 
-            showSuccess('Property Updated', 'Your property details have been successfully updated.');
+            if (res.status === 202 && res.data.status === 'pending_approval') {
+                showSuccess('Changes Submitted', 'Your changes have been submitted for admin approval based on property policy.');
+            } else {
+                showSuccess('Property Updated', 'Your property details have been successfully updated.');
+            }
             navigate('/properties');
         } catch (err) {
             setError(err.response?.data?.message || "Failed to update property");
@@ -1120,6 +1124,49 @@ export default function EditProperty() {
         );
     };
 
+    // --- VALIDATION AND NAVIGATION ---
+    const validateStep = (step) => {
+        // Step 0: Basic Info
+        if (step === 0) {
+            if (!formData.name) return { valid: false, msg: 'Property Name is required.' };
+            if (!formData.propertyType) return { valid: false, msg: 'Property Type is required.' };
+            if (!formData.location) return { valid: false, msg: 'Location (Nearest Station) is required.' };
+            if (!formData.cityName) return { valid: false, msg: 'City Name is required.' };
+            if (!formData.address) return { valid: false, msg: 'Full Address is required.' };
+            if (!formData.mobileNo) return { valid: false, msg: 'Mobile Number is required.' };
+            if (!/^\d{10}$/.test(formData.mobileNo)) return { valid: false, msg: 'Invalid Mobile Number (10 digits required).' };
+        }
+
+        const isVilla = formData.propertyType === 'Villa';
+
+        // Step 2 Villa: Room Config
+        if (isVilla && step === 2) {
+            const rooms = parseInt(formData.noofRooms || 0);
+            if (rooms < 1) return { valid: false, msg: 'Please enter number of rooms.' };
+        }
+
+        // Pricing Check (Villa: Step 4 / Waterpark: Step 3)
+        const pricingStep = isVilla ? 4 : 3;
+        if (step === pricingStep) {
+            if (isVilla) {
+                if (!formData.priceMonThu) return { valid: false, msg: 'Mon-Thu Price is required.' };
+                if (!formData.priceFriSun) return { valid: false, msg: 'Fri-Sun Price is required.' };
+                if (!formData.priceSaturday) return { valid: false, msg: 'Saturday Price is required.' };
+            }
+        }
+        return { valid: true };
+    };
+
+    const handleNext = () => {
+        const { valid, msg } = validateStep(currentStep);
+        if (!valid) {
+            showError('Missing Details', msg);
+            return;
+        }
+        setCurrentStep(prev => prev + 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const renderNavigation = (isTop = false) => (
         <div className={`flex justify-between items-center ${isTop ? 'mb-4 border-b pb-4 border-gray-100' : 'fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 p-3 md:p-4 z-50 md:static md:bg-transparent md:border-0 md:p-0'}`}>
             <button
@@ -1135,10 +1182,7 @@ export default function EditProperty() {
 
             {currentStep < (formData.propertyType === 'Villa' ? STEPS_VILLA.length : STEPS_WATERPARK.length) - 1 ? (
                 <button
-                    onClick={() => {
-                        setCurrentStep(prev => prev + 1);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
+                    onClick={handleNext}
                     className="flex items-center gap-2 bg-black text-white px-5 py-2 md:px-8 md:py-2.5 rounded-xl font-bold text-sm md:text-base hover:bg-gray-800 transition shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                 >
                     Next <FaArrowRight />
@@ -1172,10 +1216,7 @@ export default function EditProperty() {
 
             {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 font-medium text-center text-sm">{error}</div>}
 
-            {/* Top Navigation */}
-            <div className="md:hidden block">
-                {renderNavigation(true)}
-            </div>
+            {/* Top Navigation - Desktop Only */}
             <div className="hidden md:block mb-4">
                 {renderNavigation(true)}
             </div>

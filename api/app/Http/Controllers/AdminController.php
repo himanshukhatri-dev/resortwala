@@ -111,6 +111,18 @@ class AdminController extends Controller
         return response()->json($vendors);
     }
 
+    public function getVendor(Request $request, $id)
+    {
+        $vendor = User::where('role', 'vendor')
+            ->where('id', $id)
+            ->firstOrFail();
+
+        // Include any related data if needed, e.g., properties
+        // $vendor->load('properties'); 
+
+        return response()->json($vendor);
+    }
+
     public function getAllProperties(Request $request)
     {
         $properties = PropertyMaster::with('vendor:id,name,business_name,email')

@@ -7,8 +7,13 @@ import Bookings from './pages/Bookings';
 import Layout from './Layout';
 import Vendors from './pages/Vendors';
 import Properties from './pages/Properties';
+import Settings from './pages/Settings';
 
 import Customers from './pages/Customers';
+import PropertyApproval from './pages/PropertyApproval';
+import VendorDetails from './pages/VendorDetails';
+import PropertyChangeRequests from './pages/PropertyChangeRequests';
+import ReviewPropertyChange from './pages/ReviewPropertyChange';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -46,8 +51,12 @@ function App() {
               <Route path="/users" element={<Users />} />
               <Route path="/vendors" element={<Vendors />} />
               <Route path="/customers" element={<Customers />} />
+              <Route path="/vendors/:id" element={<VendorDetails />} />
               <Route path="/bookings" element={<Bookings />} />
               <Route path="/properties" element={<Properties />} />
+              <Route path="/properties/:id/approve" element={<PropertyApproval />} />
+              <Route path="/property-changes" element={<PropertyChangeRequests />} />
+              <Route path="/properties/:id/changes/:requestId" element={<ReviewPropertyChange />} />
               <Route path="/day-wise-booking" element={<div style={{ padding: 20 }}>Day Wise Booking (Placeholder)</div>} />
               <Route path="/holidays" element={<div style={{ padding: 20 }}>Holidays (Placeholder)</div>} />
               <Route path="/reviews" element={<div style={{ padding: 20 }}>Reviews (Placeholder)</div>} />
