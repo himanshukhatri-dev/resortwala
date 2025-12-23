@@ -403,7 +403,7 @@ export default function EditProperty() {
             apiData.append('_method', 'PUT'); // Needed for Laravel Update
 
             const baseURL = import.meta.env.VITE_API_BASE_URL || '';
-            const res = await axios.post(`${baseURL}/api/vendor/properties/${id}`, apiData, {
+            const res = await axios.post(`${baseURL}/vendor/properties/${id}`, apiData, {
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
             });
 
@@ -979,7 +979,7 @@ export default function EditProperty() {
 
             try {
                 const baseURL = import.meta.env.VITE_API_BASE_URL || '';
-                await axios.delete(`${baseURL}/api/vendor/properties/${id}/images/${imageId}`, {
+                await axios.delete(`${baseURL}/vendor/properties/${id}/images/${imageId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 setExistingImages(prev => prev.filter(img => img.id !== imageId));
@@ -994,7 +994,7 @@ export default function EditProperty() {
             e.stopPropagation();
             try {
                 const baseURL = import.meta.env.VITE_API_BASE_URL || '';
-                await axios.put(`${baseURL}/api/vendor/properties/${id}/images/${imageId}/primary`, {}, {
+                await axios.put(`${baseURL}/vendor/properties/${id}/images/${imageId}/primary`, {}, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 setExistingImages(prev => prev.map(img => ({ ...img, is_primary: img.id === imageId })));
@@ -1145,13 +1145,28 @@ export default function EditProperty() {
             if (rooms < 1) return { valid: false, msg: 'Please enter number of rooms.' };
         }
 
-        // Pricing Check (Villa: Step 4 / Waterpark: Step 3)
+        // Pricing & Capacity Check (Villa: Step 4 / Waterpark: Step 3)
         const pricingStep = isVilla ? 4 : 3;
         if (step === pricingStep) {
             if (isVilla) {
                 if (!formData.priceMonThu) return { valid: false, msg: 'Mon-Thu Price is required.' };
                 if (!formData.priceFriSun) return { valid: false, msg: 'Fri-Sun Price is required.' };
                 if (!formData.priceSaturday) return { valid: false, msg: 'Saturday Price is required.' };
+
+                // Capacity Validation
+                if (!formData.occupancy) return { valid: false, msg: 'Standard Occupancy is required.' };
+                if (!Number.isInteger(Number(formData.occupancy))) return { valid: false, msg: 'Standard Occupancy must be a whole number.' };
+
+                if (!formData.maxCapacity) return { valid: false, msg: 'Max Capacity is required.' };
+                if (!Number.isInteger(Number(formData.maxCapacity))) return { valid: false, msg: 'Max Capacity must be a whole number.' };
+
+                if (Number(formData.maxCapacity) < Number(formData.occupancy)) return { valid: false, msg: 'Max Capacity cannot be less than Standard Occupancy.' };
+
+            } else {
+                // Waterpark Validation
+                if (!formData.priceMonThu) return { valid: false, msg: 'Adult Mon-Fri Price is required.' };
+                if (!formData.priceFriSun) return { valid: false, msg: 'Adult Sat-Sun Price is required.' };
+                if (!formData.childCriteria?.monFriPrice) return { valid: false, msg: 'Child Mon-Fri Price is required.' };
             }
         }
         return { valid: true };

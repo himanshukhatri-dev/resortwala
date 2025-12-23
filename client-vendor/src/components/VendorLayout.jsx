@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import AccountPending from './AccountPending';
+import NotificationBell from './NotificationBell';
 
 
 export default function VendorLayout({ children, title }) {
@@ -44,6 +45,13 @@ export default function VendorLayout({ children, title }) {
                 isOpen={isMobileMenuOpen}
                 onClose={() => setIsMobileMenuOpen(false)}
             />
+
+            {/* Notification Bell - Fixed Top Right */}
+            {isApproved && (
+                <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 999 }}>
+                    <NotificationBell />
+                </div>
+            )}
 
             <div style={{
                 flex: 1,

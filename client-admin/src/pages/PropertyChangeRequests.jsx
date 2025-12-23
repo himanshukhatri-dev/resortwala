@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 import {
-    FaClipboardList, FaSearch, FaCheck, FaTimes, FaEye, FaArrowLeft, FaBuilding, FaUser
+    FaClipboardList, FaSearch, FaCheck, FaTimes, FaEye, FaArrowLeft, FaBuilding, FaUser, FaClock, FaCalendarAlt
 } from 'react-icons/fa';
 
 export default function PropertyChangeRequests() {
@@ -19,8 +20,7 @@ export default function PropertyChangeRequests() {
 
     const fetchRequests = async () => {
         try {
-            const baseURL = import.meta.env.VITE_API_BASE_URL || '';
-            const res = await axios.get(`${baseURL}/admin/property-changes`, {
+            const res = await axios.get(`${API_BASE_URL}/admin/property-changes`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setRequests(res.data);
@@ -69,8 +69,8 @@ export default function PropertyChangeRequests() {
                     />
                 </div>
 
-                {/* List */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                {/* Desktop View */}
+                <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <table className="w-full text-left">
                         <thead className="bg-gray-50 border-b border-gray-100">
                             <tr>
@@ -112,16 +112,16 @@ export default function PropertyChangeRequests() {
                                             </div>
                                         </td>
                                         <td className="p-4 text-sm text-gray-600">
-                                            {new Date(req.created_at).toLocaleDateString()} {new Date(req.created_at).toLocaleTimeString()}
+                                            {new Date(req.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="p-4">
-                                            <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold">
+                                            <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold uppercase">
                                                 {req.status}
                                             </span>
                                         </td>
                                         <td className="p-4 text-right">
                                             <button
-                                                onClick={() => navigate(`/admin/properties/${req.property_id}/changes/${req.id}`)}
+                                                onClick={() => navigate(`/properties/${req.property_id}/changes/${req.id}`)}
                                                 className="bg-black text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-800 transition shadow-sm hover:shadow flex items-center gap-2 ml-auto"
                                             >
                                                 <FaEye /> Review
@@ -132,6 +132,56 @@ export default function PropertyChangeRequests() {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile View */}
+                <div className="md:hidden space-y-4">
+                    {filteredRequests.length === 0 ? (
+                        <div className="bg-white p-8 text-center text-gray-400 rounded-xl border border-dashed">
+                            No pending change requests.
+                        </div>
+                    ) : (
+                        filteredRequests.map(req => (
+                            <div key={req.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
+                                            <FaBuilding />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-black text-gray-900 leading-tight">{req.property?.Name || 'Unknown'}</h3>
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">ID: {req.property_id}</p>
+                                        </div>
+                                    </div>
+                                    <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter">
+                                        {req.status}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-50">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                            <FaUser className="text-[8px]" /> Vendor
+                                        </p>
+                                        <p className="text-xs font-bold text-gray-700 truncate">{req.vendor?.business_name || req.vendor?.name}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                            <FaCalendarAlt className="text-[8px]" /> Date
+                                        </p>
+                                        <p className="text-xs font-bold text-gray-700">{new Date(req.created_at).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => navigate(`/properties/${req.property_id}/changes/${req.id}`)}
+                                    className="w-full bg-blue-600 text-white p-3 rounded-xl font-black text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-lg shadow-blue-100"
+                                >
+                                    <FaEye /> Review Request
+                                </button>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
         </div>

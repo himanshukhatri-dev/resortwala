@@ -97,101 +97,130 @@ export default function Bookings() {
 
     return (
         <div style={{ padding: '30px', maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#1a237e' }}>Booking Management</h1>
-                <input
-                    type="text"
-                    placeholder="Search by ID, Customer, or Property..."
-                    value={searchTerm}
-                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                    style={{
-                        padding: '12px 20px',
-                        width: '300px',
-                        borderRadius: '30px',
-                        border: '1px solid #e0e0e0',
-                        fontSize: '14px',
-                        outline: 'none',
-                        boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
-                    }}
-                />
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+                <h1 className="text-2xl md:text-3xl font-extrabold text-indigo-900 tracking-tight">Booking Management</h1>
+                <div className="w-full md:w-auto">
+                    <input
+                        type="text"
+                        placeholder="Search IDs, Customers, or Properties..."
+                        value={searchTerm}
+                        onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                        className="w-full md:w-80 px-5 py-3 rounded-2xl border border-gray-200 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none shadow-sm transition-all"
+                    />
+                </div>
             </div>
 
             {loading ? <p>Loading...</p> : (
                 <>
-                    <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                            <thead>
-                                <tr style={{ backgroundColor: '#f9f9f9', borderBottom: '2px solid #eee' }}>
-                                    <th style={{ padding: '15px 20px', fontWeight: '600', color: '#555' }}>ID</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: '600', color: '#555' }}>Property</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: '600', color: '#555' }}>Customer</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: '600', color: '#555' }}>Check-in</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: '600', color: '#555' }}>Check-out</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: '600', color: '#555' }}>Total</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: '600', color: '#555' }}>Status</th>
-                                    <th style={{ padding: '15px 20px', fontWeight: '600', color: '#555' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {displayedBookings.map(booking => (
-                                    <tr key={booking.BookingId} style={{ borderBottom: '1px solid #eee', transition: 'background-color 0.2s' }}>
-                                        <td style={{ padding: '15px 20px', fontWeight: '600', color: '#666' }}>#{booking.BookingId}</td>
-                                        <td style={{ padding: '15px 20px' }}>
-                                            <div style={{ fontWeight: '600', color: '#333' }}>{booking.property?.Name || 'Unknown'}</div>
-                                            <div style={{ fontSize: '12px', color: '#888' }}>{booking.property?.Location}</div>
-                                        </td>
-                                        <td style={{ padding: '15px 20px' }}>{booking.CustomerName}</td>
-                                        <td style={{ padding: '15px 20px' }}>{new Date(booking.CheckInDate).toLocaleDateString()}</td>
-                                        <td style={{ padding: '15px 20px' }}>{new Date(booking.CheckOutDate).toLocaleDateString()}</td>
-                                        <td style={{ padding: '15px 20px', fontWeight: '600' }}>₹{booking.TotalAmount}</td>
-                                        <td style={{ padding: '15px 20px' }}>{getStatusBadge(booking.Status)}</td>
-                                        <td style={{ padding: '15px 20px' }}>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <button
-                                                    onClick={() => handleStatusUpdate(booking.BookingId, 'confirmed')}
-                                                    disabled={booking.Status === 'confirmed'}
-                                                    style={{
-                                                        padding: '6px 12px',
-                                                        backgroundColor: booking.Status === 'confirmed' ? '#f5f5f5' : '#e8f5e9',
-                                                        color: booking.Status === 'confirmed' ? '#aaa' : '#2e7d32',
-                                                        border: 'none',
-                                                        borderRadius: '6px',
-                                                        cursor: booking.Status === 'confirmed' ? 'default' : 'pointer',
-                                                        fontSize: '12px',
-                                                        fontWeight: '600',
-                                                        opacity: booking.Status === 'confirmed' ? 0.6 : 1
-                                                    }}
-                                                >
-                                                    Approve
-                                                </button>
-                                                <button
-                                                    onClick={() => handleStatusUpdate(booking.BookingId, 'rejected')}
-                                                    disabled={booking.Status === 'rejected'}
-                                                    style={{
-                                                        padding: '6px 12px',
-                                                        backgroundColor: booking.Status === 'rejected' ? '#f5f5f5' : '#ffebee',
-                                                        color: booking.Status === 'rejected' ? '#aaa' : '#c62828',
-                                                        border: 'none',
-                                                        borderRadius: '6px',
-                                                        cursor: booking.Status === 'rejected' ? 'default' : 'pointer',
-                                                        fontSize: '12px',
-                                                        fontWeight: '600',
-                                                        opacity: booking.Status === 'rejected' ? 0.6 : 1
-                                                    }}
-                                                >
-                                                    Reject
-                                                </button>
-                                            </div>
-                                        </td>
+                    <div className="bg-white rounded-2xl shadow-xl shadow-indigo-100/20 border border-gray-100 overflow-hidden">
+                        {/* Desktop Table */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50/50 border-bottom-2 border-gray-100">
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">ID</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Property</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Customer</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Dates</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Total</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Status</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {filteredBookings.length === 0 && (
-                            <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
-                                <p style={{ fontSize: '18px' }}>No bookings found.</p>
-                            </div>
-                        )}
+                                </thead>
+                                <tbody>
+                                    {displayedBookings.map(booking => (
+                                        <tr key={booking.BookingId} className="border-b border-gray-50 hover:bg-indigo-50/10 transition">
+                                            <td className="px-6 py-5 font-mono text-sm text-gray-400">#{booking.BookingId}</td>
+                                            <td className="px-6 py-5">
+                                                <div className="font-bold text-gray-900">{booking.property?.Name || 'Unknown'}</div>
+                                                <div className="text-xs text-gray-400">{booking.property?.Location}</div>
+                                            </td>
+                                            <td className="px-6 py-5 font-medium text-gray-700">{booking.CustomerName}</td>
+                                            <td className="px-6 py-5 text-center">
+                                                <div className="text-sm font-semibold text-gray-900">{new Date(booking.CheckInDate).toLocaleDateString()}</div>
+                                                <div className="text-[10px] text-gray-400 font-bold uppercase">To {new Date(booking.CheckOutDate).toLocaleDateString()}</div>
+                                            </td>
+                                            <td className="px-6 py-5 font-extrabold text-indigo-600">₹{booking.TotalAmount}</td>
+                                            <td className="px-6 py-5 text-center">{getStatusBadge(booking.Status)}</td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex justify-center gap-2">
+                                                    <button
+                                                        onClick={() => handleStatusUpdate(booking.BookingId, 'confirmed')}
+                                                        disabled={booking.Status === 'confirmed'}
+                                                        className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all ${booking.Status === 'confirmed' ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : 'bg-green-50 text-green-700 hover:bg-green-100 hover:scale-105 active:scale-95'}`}
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStatusUpdate(booking.BookingId, 'rejected')}
+                                                        disabled={booking.Status === 'rejected'}
+                                                        className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all ${booking.Status === 'rejected' ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : 'bg-red-50 text-red-700 hover:bg-red-100 hover:scale-105 active:scale-95'}`}
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile view (Cards) */}
+                        <div className="md:hidden divide-y divide-gray-100">
+                            {displayedBookings.length === 0 ? (
+                                <div className="p-10 text-center text-gray-400">No bookings found.</div>
+                            ) : (
+                                displayedBookings.map(booking => (
+                                    <div key={booking.BookingId} className="p-5 space-y-4">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <div className="text-xs font-mono text-gray-400 mb-1">#{booking.BookingId}</div>
+                                                <div className="font-bold text-gray-900 text-lg">{booking.property?.Name || 'Unknown'}</div>
+                                                <div className="text-xs text-gray-500">{booking.property?.Location}</div>
+                                            </div>
+                                            {getStatusBadge(booking.Status)}
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                            <div>
+                                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Customer</div>
+                                                <div className="font-semibold text-gray-800 text-sm">{booking.CustomerName}</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Amount</div>
+                                                <div className="font-extrabold text-indigo-600">₹{booking.TotalAmount}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Check-In</div>
+                                                <div className="font-semibold text-gray-800 text-sm">{new Date(booking.CheckInDate).toLocaleDateString()}</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Check-Out</div>
+                                                <div className="font-semibold text-gray-800 text-sm">{new Date(booking.CheckOutDate).toLocaleDateString()}</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleStatusUpdate(booking.BookingId, 'confirmed')}
+                                                disabled={booking.Status === 'confirmed'}
+                                                className={`flex-1 py-3 rounded-xl text-sm font-bold shadow-sm transition-all ${booking.Status === 'confirmed' ? 'bg-gray-50 text-gray-300' : 'bg-green-500 text-white active:scale-95'}`}
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                onClick={() => handleStatusUpdate(booking.BookingId, 'rejected')}
+                                                disabled={booking.Status === 'rejected'}
+                                                className={`flex-1 py-3 rounded-xl text-sm font-bold shadow-sm transition-all ${booking.Status === 'rejected' ? 'bg-gray-50 text-gray-300' : 'bg-red-500 text-white active:scale-95'}`}
+                                            >
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
 
                     {/* Pagination */}

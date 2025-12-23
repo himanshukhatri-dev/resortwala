@@ -166,6 +166,16 @@ class AdminUserController extends Controller
             return response()->json(['message' => 'Cannot delete yourself'], 403);
         }
 
+        // Check for existing properties (if vendor)
+        if ($user->role === 'vendor' && $user->properties()->exists()) {
+             return response()->json(['message' => 'Cannot delete vendor. They have existing properties. Please delete properties first.'], 422);
+        }
+        
+        // Cascade delete onboarding tokens
+        \App\Models\OnboardingToken::where('user_id', $id)
+            ->where('user_type', 'user')
+            ->delete();
+
         $user->delete();
         return response()->json(['message' => 'User deleted successfully']);
     }
@@ -175,5 +185,24 @@ class AdminUserController extends Controller
         $customer = Customer::findOrFail($id);
         $customer->delete();
         return response()->json(['message' => 'Customer deleted successfully']);
+    }
+
+    public function updateRole(Request $request, $id)
+    {
+        $request->validate([
+            'role' => 'required|in:admin,vendor,customer',
+        ]);
+
+        $user = User::findOrFail($id);
+        
+        // Prevent changing own role if last admin (safety check)
+        if ($user->id === auth()->id() && $request->role !== 'admin') {
+             return response()->json(['message' => 'Cannot change your own role to non-admin.'], 403);
+        }
+
+        $user->role = $request->role;
+        $user->save();
+
+        return response()->json(['message' => 'User role updated successfully', 'user' => $user]);
     }
 }

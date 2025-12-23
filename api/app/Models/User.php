@@ -58,4 +58,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function properties()
+    {
+        return $this->hasMany(\App\Models\PropertyMaster::class, 'vendor_id');
+    }
 }

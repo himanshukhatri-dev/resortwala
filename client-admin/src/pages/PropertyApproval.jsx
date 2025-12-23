@@ -11,6 +11,11 @@ export default function PropertyApproval() {
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'pricing' | 'media' | 'rules'
+
+    // Editable state for the property details
+    const [formData, setFormData] = useState({});
+
     const [pricing, setPricing] = useState({
         mon_thu: {
             villa: { current: 0, discounted: 0, final: 0 },
@@ -37,6 +42,17 @@ export default function PropertyApproval() {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setProperty(res.data);
+                setFormData({
+                    Name: res.data.Name || '',
+                    Location: res.data.Location || '',
+                    LongDescription: res.data.LongDescription || '',
+                    Occupancy: res.data.Occupancy || 0,
+                    NoofRooms: res.data.NoofRooms || 0,
+                    checkInTime: res.data.checkInTime || '',
+                    checkOutTime: res.data.checkOutTime || '',
+                    PropertyRules: res.data.PropertyRules || '',
+                    BookingSpecailMessage: res.data.BookingSpecailMessage || '',
+                });
                 initializePricing(res.data);
             } catch (err) {
                 console.error(err);
@@ -175,11 +191,12 @@ export default function PropertyApproval() {
         setSaving(true);
         try {
             await axios.put(`${API_BASE_URL}/admin/properties/${id}/approve`, {
+                ...formData, // Send updated fields
                 admin_pricing: pricing
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            alert('Property Approved and Pricing Saved!');
+            alert('Property Approved and Saved!');
             navigate('/admin/properties');
         } catch (err) {
             console.error(err);
@@ -216,90 +233,241 @@ export default function PropertyApproval() {
     );
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
-            <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
-                <div className="p-6 border-b flex justify-between items-center">
-                    <h1 className="text-2xl font-bold">{property.Name} - Approval & Pricing</h1>
-                    <button
-                        onClick={handleApprove}
-                        disabled={saving}
-                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                    >
-                        {saving ? 'Approving...' : 'Approve & Save'}
-                    </button>
+        <div className="p-4 md:p-8 bg-gray-50 min-h-screen pb-20">
+            <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                {/* Header */}
+                <div className="p-6 bg-white border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-2xl font-black text-gray-900 leading-tight">Review: {property.Name}</h1>
+                        <p className="text-gray-500 text-sm mt-1">Vendor: <span className="font-bold text-blue-600">{property.vendor?.business_name || property.vendor?.name}</span></p>
+                    </div>
+                    <div className="flex gap-3 w-full md:w-auto">
+                        <button
+                            onClick={() => navigate('/admin/properties')}
+                            className="flex-1 md:flex-none px-6 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleApprove}
+                            disabled={saving}
+                            className="flex-1 md:flex-none bg-green-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-200 transition disabled:opacity-50"
+                        >
+                            {saving ? 'Processing...' : 'Approve & Go Live'}
+                        </button>
+                    </div>
                 </div>
 
-                <div className="p-6 space-y-8">
-                    {/* Responsive Pricing Section Component */}
-                    {['mon_thu', 'fri_sun', 'sat'].map((day) => {
-                        const titles = { mon_thu: 'Monday to Thursday Pricing', fri_sun: 'Friday & Sunday Pricing', sat: 'Saturday Pricing' };
-                        const colors = { mon_thu: 'blue', fri_sun: 'purple', sat: 'orange' };
-                        const color = colors[day];
+                {/* Tabs */}
+                <div className="flex overflow-x-auto bg-gray-50 px-4 border-b">
+                    {[
+                        { id: 'basic', label: 'Basic Info', icon: '📝' },
+                        { id: 'pricing', label: 'Pricing Matrix', icon: '💰' },
+                        { id: 'media', label: 'Photos & Media', icon: '🖼️' },
+                        { id: 'rules', label: 'Rules & Policy', icon: '📜' }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`px-6 py-4 text-sm font-bold whitespace-nowrap transition-all border-b-2 flex items-center gap-2 ${activeTab === tab.id ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <span>{tab.icon}</span> {tab.label}
+                        </button>
+                    ))}
+                </div>
 
-                        return (
-                            <div key={day} className="border rounded-xl overflow-hidden">
-                                <div className={`bg-${color}-50 p-4 font-bold text-${color}-800`}>{titles[day]}</div>
-
-                                {/* DESKTOP TABLE */}
-                                <div className="hidden md:block">
-                                    <table className="w-full text-left">
-                                        <thead className="text-sm text-gray-500 bg-gray-50">
-                                            <tr>
-                                                <th className="p-3">Type</th>
-                                                <th className="p-3">Current (Vendor)</th>
-                                                <th className="p-3">Discounted (ResortWala)</th>
-                                                <th className="p-3">Final (Client)</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {renderPriceRow('Villa Price', day, 'villa')}
-                                            {renderPriceRow('Extra Person', day, 'extra_person')}
-                                            {renderPriceRow('Meal per Person', day, 'meal_person')}
-                                        </tbody>
-                                    </table>
+                <div className="p-6 md:p-8">
+                    {/* Basic Info Tab */}
+                    {activeTab === 'basic' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Property Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none transition font-medium"
+                                        value={formData.Name}
+                                        onChange={(e) => setFormData({ ...formData, Name: e.target.value })}
+                                    />
                                 </div>
-
-                                {/* MOBILE BLOCKS */}
-                                <div className="md:hidden p-4 space-y-4">
-                                    {['villa', 'extra_person', 'meal_person'].map((type) => (
-                                        <div key={type} className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                                            <div className="font-bold text-gray-900 mb-2 border-b pb-2">
-                                                {type === 'villa' ? 'Villa Price' : type === 'extra_person' ? 'Extra Person' : 'Meal per Person'}
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-y-3 text-sm">
-                                                <div className="text-gray-500">Vendor Price:</div>
-                                                <div className="font-medium">₹{pricing[day][type].current}</div>
-
-                                                <div className="text-gray-500 self-center">Discounted:</div>
-                                                <div>
-                                                    <input
-                                                        type="number"
-                                                        className="border p-2 rounded w-full bg-white"
-                                                        value={pricing[day][type].discounted}
-                                                        onChange={(e) => handlePriceChange(day, type, 'discounted', e.target.value)}
-                                                        placeholder="0"
-                                                    />
-                                                </div>
-
-                                                <div className="text-gray-500 self-center">Final Client:</div>
-                                                <div>
-                                                    <input
-                                                        type="number"
-                                                        className="border p-2 rounded w-full bg-white font-bold text-green-700"
-                                                        value={pricing[day][type].final}
-                                                        onChange={(e) => handlePriceChange(day, type, 'final', e.target.value)}
-                                                        placeholder="0"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Location / City</label>
+                                    <input
+                                        type="text"
+                                        className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none transition font-medium"
+                                        value={formData.Location}
+                                        onChange={(e) => setFormData({ ...formData, Location: e.target.value })}
+                                    />
                                 </div>
                             </div>
-                        );
-                    })}
+
+                            <div>
+                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Description</label>
+                                <textarea
+                                    className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none transition min-h-[150px]"
+                                    value={formData.LongDescription}
+                                    onChange={(e) => setFormData({ ...formData, LongDescription: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Occupancy</label>
+                                    <input
+                                        type="number"
+                                        className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none transition"
+                                        value={formData.Occupancy}
+                                        onChange={(e) => setFormData({ ...formData, Occupancy: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Rooms</label>
+                                    <input
+                                        type="number"
+                                        className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none transition"
+                                        value={formData.NoofRooms}
+                                        onChange={(e) => setFormData({ ...formData, NoofRooms: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Check-In</label>
+                                    <input
+                                        type="text"
+                                        className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none transition"
+                                        value={formData.checkInTime}
+                                        onChange={(e) => setFormData({ ...formData, checkInTime: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Check-Out</label>
+                                    <input
+                                        type="text"
+                                        className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none transition"
+                                        value={formData.checkOutTime}
+                                        onChange={(e) => setFormData({ ...formData, checkOutTime: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Pricing Tab */}
+                    {activeTab === 'pricing' && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            {['mon_thu', 'fri_sun', 'sat'].map((day) => {
+                                const titles = { mon_thu: 'Monday to Thursday', fri_sun: 'Friday & Sunday', sat: 'Saturday' };
+                                const colors = { mon_thu: 'blue', fri_sun: 'purple', sat: 'orange' };
+                                const color = colors[day];
+
+                                return (
+                                    <div key={day} className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                                        <div className={`bg-${color}-50 px-6 py-4 border-b border-${color}-100 flex items-center gap-3`}>
+                                            <span className={`w-3 h-3 rounded-full bg-${color}-500 animate-pulse`}></span>
+                                            <h3 className={`font-black text-sm uppercase tracking-widest text-${color}-800`}>{titles[day]}</h3>
+                                        </div>
+
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
+                                                    <tr>
+                                                        <th className="px-6 py-3">Service Type</th>
+                                                        <th className="px-6 py-3">Vendor Ask</th>
+                                                        <th className="px-6 py-3">Our Discounted</th>
+                                                        <th className="px-6 py-3 text-right">Final Customer Price</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-50">
+                                                    {[
+                                                        { label: 'Villa Base Price', type: 'villa' },
+                                                        { label: 'Extra Person', type: 'extra_person' },
+                                                        { label: 'Meal per Person', type: 'meal_person' }
+                                                    ].map((item) => (
+                                                        <tr key={item.type} className="hover:bg-gray-50/50 transition">
+                                                            <td className="px-6 py-4 font-bold text-gray-700">{item.label}</td>
+                                                            <td className="px-6 py-4 text-gray-400 font-medium">₹{pricing[day][item.type].current}</td>
+                                                            <td className="px-6 py-4">
+                                                                <input
+                                                                    type="number"
+                                                                    className="w-28 p-2 bg-gray-50 border border-gray-100 rounded-lg outline-none focus:border-blue-300 transition text-sm"
+                                                                    value={pricing[day][item.type].discounted}
+                                                                    onChange={(e) => handlePriceChange(day, item.type, 'discounted', e.target.value)}
+                                                                />
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <input
+                                                                    type="number"
+                                                                    className="w-28 p-2 bg-blue-50 border border-blue-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 transition text-sm font-black text-blue-700 text-right"
+                                                                    value={pricing[day][item.type].final}
+                                                                    onChange={(e) => handlePriceChange(day, item.type, 'final', e.target.value)}
+                                                                />
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Media Tab */}
+                    {activeTab === 'media' && (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            {property.images?.length > 0 ? (
+                                property.images.map(img => (
+                                    <div key={img.id} className="relative group aspect-square rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                                        <img
+                                            src={img.image_url}
+                                            alt="Property"
+                                            className="w-full h-full object-cover transition duration-500 group-hover:scale-110"
+                                        />
+                                        {img.is_primary && (
+                                            <div className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">Cover Photo</div>
+                                        )}
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="col-span-4 p-20 text-center border-2 border-dashed border-gray-100 rounded-3xl text-gray-400">
+                                    No images uploaded yet
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Rules Tab */}
+                    {activeTab === 'rules' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div>
+                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Property Rules & Policy</label>
+                                <textarea
+                                    className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none transition min-h-[250px]"
+                                    value={formData.PropertyRules}
+                                    onChange={(e) => setFormData({ ...formData, PropertyRules: e.target.value })}
+                                    placeholder="Enter basic house rules, cancellation policy, etc."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Booking Special Message</label>
+                                <textarea
+                                    className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none transition min-h-[100px]"
+                                    value={formData.BookingSpecailMessage}
+                                    onChange={(e) => setFormData({ ...formData, BookingSpecailMessage: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* Floating Warning for unapproved */}
+            {!property.is_approved && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-amber-500 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
+                    <span className="text-xl">⚠️</span>
+                    <span className="font-bold text-sm">Property is currently Hidden (Pending Approval)</span>
+                </div>
+            )}
         </div>
     );
 }

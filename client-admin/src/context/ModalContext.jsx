@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useRef } from 'react';
 import Modal from '../components/Modal';
 
 const ModalContext = createContext();
@@ -17,27 +17,33 @@ export const ModalProvider = ({ children }) => {
         onConfirm: () => { }
     });
 
-    const [resolvePromise, setResolvePromise] = useState(null);
+    const resolverRef = useRef(null);
 
     const closeModal = useCallback(() => {
         setModalState(prev => ({ ...prev, isOpen: false }));
-        if (resolvePromise) {
-            resolvePromise(false); // Resolve false if closed/cancelled without confirm
-            setResolvePromise(null);
+        if (resolverRef.current) {
+            resolverRef.current(false);
+            resolverRef.current = null;
         }
-    }, [resolvePromise]);
+    }, []);
 
     const confirmModal = useCallback(() => {
         setModalState(prev => ({ ...prev, isOpen: false }));
-        if (resolvePromise) {
-            resolvePromise(true);
-            setResolvePromise(null);
+        if (resolverRef.current) {
+            resolverRef.current(true);
+            resolverRef.current = null;
         }
-    }, [resolvePromise]);
+    }, []);
 
     const showModal = useCallback((title, message, type = 'info', confirmText = 'OK', cancelText = 'Cancel', showCancel = false) => {
         return new Promise((resolve) => {
-            setResolvePromise(() => resolve);
+            // If a modal is already open/pending, resolve it as false (cancelled) before opening new one
+            if (resolverRef.current) {
+                resolverRef.current(false);
+            }
+
+            resolverRef.current = resolve;
+
             setModalState({
                 isOpen: true,
                 title,

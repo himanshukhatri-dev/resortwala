@@ -4,83 +4,86 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart, Pie, Cell, Legend
-} from 'recharts';
-import {
-    FaUsers, FaHome, FaCalendarCheck, FaTags, FaCheckCircle,
-    FaTimesCircle, FaClock, FaRupeeSign, FaBell, FaSearch
+    FaUsers, FaHome, FaCalendarCheck, FaCheckCircle,
+    FaTimesCircle, FaRupeeSign, FaSearch, FaArrowRight, FaEdit, FaExclamationCircle
 } from 'react-icons/fa';
-import Modal from '../components/Modal';
 import Loader from '../components/Loader';
 
 // --- COMPONENTS ---
 
-const StatCard = ({ label, value, icon, color, trend }) => (
-    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-lg shadow-gray-100/50 hover:-translate-y-1 transition-transform duration-300">
-        <div className="flex justify-between items-start">
-            <div>
-                <p className="text-gray-500 font-medium text-sm mb-1">{label}</p>
-                <h3 className="text-3xl font-extrabold text-gray-900">{value}</h3>
-            </div>
-            <div className={`p-3 rounded-xl ${color} text-white shadow-md`}>
+const StatCard = ({ label, value, icon, color }) => (
+    <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+        <div className="flex justify-between items-center">
+            <div className={`w-12 h-12 rounded-2xl ${color} text-white flex items-center justify-center shadow-lg`}>
                 {icon}
             </div>
-        </div>
-        {trend && (
-            <div className={`mt-4 text-xs font-bold ${trend > 0 ? 'text-green-600' : 'text-red-600'} flex items-center gap-1`}>
-                <span>{trend > 0 ? '↗' : '↘'} {Math.abs(trend)}%</span>
-                <span className="text-gray-400 font-normal">vs last month</span>
+            <div className="text-right">
+                <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.2em] mb-1">{label}</p>
+                <h3 className="text-2xl font-black text-gray-900 tracking-tight">{value}</h3>
             </div>
-        )}
+        </div>
     </div>
 );
 
-const SectionHeader = ({ title, subtitle }) => (
-    <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-        {subtitle && <p className="text-gray-500 text-sm">{subtitle}</p>}
+const ActionBox = ({ title, count, data, renderItem, icon: Icon, colorClass, onViewAll }) => (
+    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm flex flex-col h-full">
+        <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${colorClass} bg-opacity-10 text-xl`}>
+                    <Icon className={colorClass.replace('bg-', 'text-')} />
+                </div>
+                <div>
+                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">{title}</h3>
+                    <p className="text-[10px] font-bold text-gray-400">{count} Items Pending</p>
+                </div>
+            </div>
+            {onViewAll && count > 0 && (
+                <button onClick={onViewAll} className="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest flex items-center gap-1">
+                    View All <FaArrowRight />
+                </button>
+            )}
+        </div>
+
+        <div className="space-y-3 flex-1">
+            {data.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-gray-300 opacity-60">
+                    <FaCheckCircle className="text-3xl mb-2" />
+                    <p className="text-xs font-bold uppercase tracking-widest">All Caught Up</p>
+                </div>
+            ) : (
+                data.slice(0, 4).map(renderItem)
+            )}
+        </div>
     </div>
 );
 
 const StatusBadge = ({ status }) => {
     let styles = "bg-gray-100 text-gray-600";
-    if (status === 'confirmed' || status === 'approved') styles = "bg-green-100 text-green-700 border border-green-200";
-    if (status === 'pending') styles = "bg-amber-100 text-amber-700 border border-amber-200";
-    if (status === 'cancelled' || status === 'rejected') styles = "bg-red-50 text-red-600 border border-red-100";
-    return <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${styles}`}>{status || 'Pending'}</span>;
+    const s = status?.toLowerCase();
+    if (s === 'confirmed' || s === 'approved' || s === 'completed') styles = "bg-emerald-50 text-emerald-600 border border-emerald-100";
+    if (s === 'pending') styles = "bg-amber-50 text-amber-600 border border-amber-100";
+    if (s === 'cancelled' || s === 'rejected' || s === 'failed') styles = "bg-red-50 text-red-600 border border-red-100";
+    return <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${styles}`}>{status || 'Pending'}</span>;
 };
 
 // --- MAIN COMPONENT ---
 
 export default function Dashboard() {
-    const { user, token, logout } = useAuth();
+    const { token } = useAuth();
     const navigate = useNavigate();
 
     // State
     const [stats, setStats] = useState(null);
     const [pendingVendors, setPendingVendors] = useState([]);
     const [pendingProperties, setPendingProperties] = useState([]);
+    const [changeRequests, setChangeRequests] = useState([]);
     const [recentBookings, setRecentBookings] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [actionLoading, setActionLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
 
-    // Derived Charts Data (Mocked for now until API supports granularity)
-    const revenueData = [
-        { name: 'Week 1', value: 45000 },
-        { name: 'Week 2', value: 72000 },
-        { name: 'Week 3', value: 58000 },
-        { name: 'Week 4', value: 95000 },
-    ];
-
-    const statusData = [
-        { name: 'Confirmed', value: stats?.total_bookings || 12, color: '#10B981' },
-        { name: 'Pending', value: 5, color: '#F59E0B' }, // specific count if avail
-        { name: 'Cancelled', value: 2, color: '#EF4444' },
-    ];
-
-    // Helpers
-    const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
+    const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
 
     useEffect(() => {
         fetchDashboardData();
@@ -89,17 +92,18 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
         try {
             const headers = { Authorization: `Bearer ${token}` };
-
-            const [statsRes, vendorsRes, propsRes, bookingsRes] = await Promise.all([
+            const [statsRes, vendorsRes, propsRes, changesRes, bookingsRes] = await Promise.all([
                 axios.get(`${API_BASE_URL}/admin/stats`, { headers }),
                 axios.get(`${API_BASE_URL}/admin/vendors/pending`, { headers }),
                 axios.get(`${API_BASE_URL}/admin/properties/pending`, { headers }),
-                axios.get(`${API_BASE_URL}/admin/bookings`, { headers }) // Assuming this returns all, we slice top 5
+                axios.get(`${API_BASE_URL}/admin/property-changes`, { headers }),
+                axios.get(`${API_BASE_URL}/admin/bookings`, { headers })
             ]);
 
             setStats(statsRes.data);
             setPendingVendors(vendorsRes.data);
             setPendingProperties(propsRes.data);
+            setChangeRequests(changesRes.data || []);
             setRecentBookings(bookingsRes.data.slice(0, 5));
         } catch (error) {
             console.error("Dashboard Fetch Error:", error);
@@ -108,222 +112,244 @@ export default function Dashboard() {
         }
     };
 
-    const handleApprove = (type, id) => {
-        if (type === 'vendor') {
-            navigate(`/vendors/${id}`);
-        } else {
-            navigate(`/properties/${id}/approve`);
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            if (searchTerm.length > 2) {
+                handleGlobalSearch();
+            } else {
+                setSearchResults([]);
+            }
+        }, 300);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm]);
+
+    const handleGlobalSearch = async () => {
+        setIsSearching(true);
+        try {
+            const res = await axios.get(`${API_BASE_URL}/admin/search?query=${searchTerm}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSearchResults(res.data);
+        } catch (error) {
+            console.error("Search Error:", error);
+        } finally {
+            setIsSearching(false);
         }
     };
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500 font-medium">Initializing Command Center...</div>;
+    const navigateToResult = (result) => {
+        setSearchTerm('');
+        setSearchResults([]);
+        if (result.type === 'user') navigate('/users');
+        if (result.type === 'customer') navigate('/customers');
+        if (result.type === 'property') navigate(`/properties/${result.id}/approve`);
+        if (result.type === 'booking') navigate('/bookings');
+    };
+
+    if (loading) return <Loader message="Accessing Console..." />;
 
     return (
-        <div className="max-w-[1600px] mx-auto p-6 space-y-8 pb-24 font-inter text-gray-900">
+        <div className="min-h-screen bg-gray-50/50 p-6 md:p-8 space-y-8 pb-24 font-inter text-left">
 
-            {/* 1. TOP HEADER */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Dashboard</h1>
-                    <p className="text-gray-500 mt-1">Welcome back, Super Admin. Here's what's happening today.</p>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Admin Console</h1>
+                    <p className="text-gray-500 font-medium font-outfit mt-1">Operational status of ResortWala ecosystem</p>
                 </div>
-                <div className="flex gap-3">
-                    {/* Search Bar Placeholer */}
-                    <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <FaSearch className="text-gray-400 group-focus-within:text-blue-500 transition" />
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Global Search..."
-                            className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none w-64 bg-white shadow-sm transition-all"
-                        />
-                    </div>
-                </div>
-            </div>
+                <div className="relative group w-full md:w-80">
+                    <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                    <input
+                        type="text"
+                        placeholder="Search IDs, Phones, Names..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl text-sm focus:ring-4 focus:ring-blue-50 outline-none font-bold text-gray-700 transition-all shadow-sm"
+                    />
 
-            {/* 2. KPI GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                    label="Total Revenue"
-                    value={formatCurrency(stats?.total_revenue || 452000)} // Mock data fallback if API missing
-                    icon={<FaRupeeSign />}
-                    color="bg-indigo-600"
-                    trend={12.5}
-                />
-                <StatCard
-                    label="Total Bookings"
-                    value={stats?.total_bookings || 0}
-                    icon={<FaCalendarCheck />}
-                    color="bg-blue-500"
-                    trend={8.2}
-                />
-                <StatCard
-                    label="Active Vendors"
-                    value={stats?.approved_vendors || 0}
-                    icon={<FaUsers />}
-                    color="bg-emerald-500"
-                    trend={2.1}
-                />
-                <StatCard
-                    label="Total Properties"
-                    value={stats?.total_properties || 0}
-                    icon={<FaHome />}
-                    color="bg-violet-500"
-                />
-            </div>
-
-            {/* 3. ANALYTICS & PENDING SPLIT */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                {/* LEFT: Revenue Chart (2 cols) */}
-                <div className="lg:col-span-2 bg-white rounded-3xl p-8 border border-gray-100 shadow-xl shadow-gray-100/50">
-                    <SectionHeader title="Revenue Overview" subtitle="Gross earnings over the last 30 days" />
-                    <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={revenueData}>
-                                <defs>
-                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.2} />
-                                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} tickFormatter={(val) => `₹${val / 1000}k`} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                    formatter={(value) => formatCurrency(value)}
-                                />
-                                <Area type="monotone" dataKey="value" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* RIGHT: Booking Status (1 col) */}
-                <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-xl shadow-gray-100/50 flex flex-col items-center justify-center relative">
-                    <div className="w-full mb-4">
-                        <SectionHeader title="Booking Segments" subtitle="Distribution by status" />
-                    </div>
-                    <div className="h-[250px] w-full relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={statusData}
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {statusData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                    {/* Search Results Dropdown */}
+                    {(searchResults.length > 0 || isSearching) && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 text-left">
+                            {isSearching ? (
+                                <div className="p-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">Searching Platform...</div>
+                            ) : (
+                                <div className="divide-y divide-gray-50">
+                                    {searchResults.map((res, idx) => (
+                                        <div
+                                            key={`${res.type}-${res.id}-${idx}`}
+                                            onClick={() => navigateToResult(res)}
+                                            className="p-4 hover:bg-blue-50 cursor-pointer transition-colors flex items-center justify-between"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black uppercase ${res.type === 'user' ? 'bg-indigo-100 text-indigo-600' :
+                                                    res.type === 'customer' ? 'bg-emerald-100 text-emerald-600' :
+                                                        res.type === 'property' ? 'bg-blue-100 text-blue-600' : 'bg-violet-100 text-violet-600'
+                                                    }`}>{res.type.charAt(0)}</div>
+                                                <div>
+                                                    <div className="text-xs font-black text-gray-900">{res.name}</div>
+                                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">
+                                                        {res.type === 'user' ? `${res.role} • ${res.email}` :
+                                                            res.type === 'customer' ? `Guest • ${res.phone || res.email}` :
+                                                                res.type === 'property' ? `Property • ${res.Location}` : `Booking • ${res.Status}`}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <FaArrowRight className="text-gray-200 text-[10px]" />
+                                        </div>
                                     ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend verticalAlign="bottom" height={36} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        {/* Center Text */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-10">
-                            <span className="text-3xl font-bold text-gray-800">{stats?.total_bookings}</span>
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
-            {/* 4. ACTION CENTER: PENDING ITEMS */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-                {/* PENDING VENDORS */}
-                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-lg">
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-8 bg-amber-400 rounded-full"></div>
-                            <h3 className="text-lg font-bold">Pending Vendors</h3>
-                            <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded-full">{pendingVendors.length}</span>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {pendingVendors.length === 0 ? <div className="text-gray-400 italic text-sm">No pending approvals.</div> :
-                            pendingVendors.slice(0, 3).map(vendor => (
-                                <div key={vendor.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-white hover:shadow-md transition border border-transparent hover:border-gray-100 group">
-                                    <div>
-                                        <h4 className="font-bold text-gray-900">{vendor.name}</h4>
-                                        <p className="text-xs text-gray-500">{vendor.business_name || 'Individual'}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2 opacity-50 group-hover:opacity-100 transition">
-                                        <button onClick={() => handleApprove('vendor', vendor.id)} className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"><FaCheckCircle /></button>
-                                        <button className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"><FaTimesCircle /></button>
-                                    </div>
-                                </div>
-                            ))
-                        }
-                    </div>
-                    {pendingVendors.length > 3 && <button className="w-full mt-4 text-center text-sm text-indigo-600 font-bold hover:underline">View All</button>}
-                </div>
-
-                {/* PENDING PROPERTIES */}
-                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-lg">
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-8 bg-blue-500 rounded-full"></div>
-                            <h3 className="text-lg font-bold">Pending Properties</h3>
-                            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">{pendingProperties.length}</span>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {pendingProperties.length === 0 ? <div className="text-gray-400 italic text-sm">All properties active.</div> :
-                            pendingProperties.slice(0, 3).map(prop => (
-                                <div key={prop.PropertyId} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-white hover:shadow-md transition border border-transparent hover:border-gray-100 group">
-                                    <div>
-                                        <h4 className="font-bold text-gray-900">{prop.Name}</h4>
-                                        <p className="text-xs text-gray-500">{prop.Location} • ₹{prop.Price}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2 opacity-50 group-hover:opacity-100 transition">
-                                        <button onClick={() => handleApprove('property', prop.PropertyId)} className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"><FaCheckCircle /></button>
-                                        <button className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"><FaTimesCircle /></button>
-                                    </div>
-                                </div>
-                            ))
-                        }
-                    </div>
-                </div>
+            {/* KPI GRID */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <StatCard label="Platform Revenue" value={formatCurrency(stats?.total_revenue)} icon={<FaRupeeSign />} color="bg-blue-600" />
+                <StatCard label="Total Volume" value={stats?.total_bookings || '0'} icon={<FaCalendarCheck />} color="bg-indigo-600" />
+                <StatCard label="Retail Partners" value={stats?.approved_vendors || '0'} icon={<FaUsers />} color="bg-emerald-600" />
+                <StatCard label="Active Inventory" value={stats?.total_properties || '0'} icon={<FaHome />} color="bg-violet-600" />
             </div>
 
-            {/* 5. RECENT ACTIVITY TABLE */}
-            <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-xl shadow-gray-100/50">
-                <SectionHeader title="Recent Bookings" subtitle="Latest transactions across the platform" />
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+            {/* ACTION CENTER */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+
+                {/* Pending Vendors */}
+                <ActionBox
+                    title="Vendor Access"
+                    count={pendingVendors.length}
+                    data={pendingVendors}
+                    icon={FaUsers}
+                    colorClass="bg-amber-600"
+                    onViewAll={() => navigate('/vendors')}
+                    renderItem={(vendor) => (
+                        <div key={vendor.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-amber-50/50 border border-transparent transition group cursor-pointer" onClick={() => navigate(`/vendors/${vendor.id}`)}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-amber-600 shadow-sm border border-amber-50">
+                                    {vendor.name?.charAt(0)}
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-black text-gray-900">{vendor.name}</h4>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">{vendor.business_name || 'Individual'}</p>
+                                </div>
+                            </div>
+                            <FaArrowRight className="text-amber-200 group-hover:text-amber-600 transition-colors" />
+                        </div>
+                    )}
+                />
+
+                {/* Pending Properties */}
+                <ActionBox
+                    title="Property Approval"
+                    count={pendingProperties.length}
+                    data={pendingProperties}
+                    icon={FaHome}
+                    colorClass="bg-blue-600"
+                    onViewAll={() => navigate('/properties')}
+                    renderItem={(prop) => (
+                        <div key={prop.PropertyId} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-blue-50/50 border border-transparent transition group cursor-pointer" onClick={() => navigate(`/properties/${prop.PropertyId}/approve`)}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-blue-600 shadow-sm border border-blue-50">
+                                    P
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-black text-gray-900">{prop.Name}</h4>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">{prop.Location} • ₹{prop.Price}</p>
+                                </div>
+                            </div>
+                            <FaArrowRight className="text-blue-200 group-hover:text-blue-600 transition-colors" />
+                        </div>
+                    )}
+                />
+
+                {/* Change Requests */}
+                <ActionBox
+                    title="Change Requests"
+                    count={changeRequests.length}
+                    data={changeRequests}
+                    icon={FaEdit}
+                    colorClass="bg-violet-600"
+                    onViewAll={() => navigate('/property-changes')}
+                    renderItem={(req) => (
+                        <div key={req.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-violet-50/50 border border-transparent transition group cursor-pointer" onClick={() => navigate(`/properties/${req.property_id}/changes/${req.id}`)}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-violet-600 shadow-sm border border-violet-50">
+                                    <FaExclamationCircle className="text-xs" />
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-black text-gray-900">{req.property_name}</h4>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Vendor: {req.vendor_name || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <FaArrowRight className="text-violet-200 group-hover:text-violet-600 transition-colors" />
+                        </div>
+                    )}
+                />
+            </div>
+
+            {/* RECENT BOOKINGS */}
+            <div className="bg-white rounded-[2.5rem] p-6 md:p-10 border border-gray-100 shadow-sm">
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h3 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                            Internal Transaction Flow
+                        </h3>
+                        <p className="text-gray-400 text-xs font-bold font-outfit mt-1">Real-time booking data across all categories</p>
+                    </div>
+                    <button onClick={() => navigate('/bookings')} className="px-6 py-2.5 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-gray-200">
+                        Full Ledger
+                    </button>
+                </div>
+
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left">
                         <thead>
-                            <tr className="text-gray-400 text-xs uppercase tracking-wider border-b border-gray-100">
-                                <th className="pb-4 font-semibold pl-4">Booking ID</th>
-                                <th className="pb-4 font-semibold">Customer</th>
-                                <th className="pb-4 font-semibold">Date</th>
-                                <th className="pb-4 font-semibold">Amount</th>
-                                <th className="pb-4 font-semibold">Status</th>
+                            <tr className="border-b border-gray-50">
+                                <th className="pb-5 text-[10px] font-black text-gray-300 uppercase tracking-widest">Transaction ID</th>
+                                <th className="pb-5 text-[10px] font-black text-gray-300 uppercase tracking-widest">Primary Client</th>
+                                <th className="pb-5 text-[10px] font-black text-gray-300 uppercase tracking-widest text-center">Engagement Date</th>
+                                <th className="pb-5 text-[10px] font-black text-gray-300 uppercase tracking-widest text-center">Financials</th>
+                                <th className="pb-5 text-[10px] font-black text-gray-300 uppercase tracking-widest text-right">Verification</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-gray-50">
                             {recentBookings.map(b => (
-                                <tr key={b.BookingId} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
-                                    <td className="py-4 pl-4 font-mono text-xs text-gray-500">#{b.BookingId}</td>
-                                    <td className="py-4 font-bold text-gray-700">{b.CustomerName}</td>
-                                    <td className="py-4 text-sm text-gray-500">{new Date(b.CheckInDate).toLocaleDateString()}</td>
-                                    <td className="py-4 font-bold">₹{b.TotalAmount}</td>
-                                    <td className="py-4"><StatusBadge status={b.Status} /></td>
+                                <tr key={b.BookingId} className="hover:bg-blue-50/20 transition-colors">
+                                    <td className="py-6 font-mono text-[10px] text-gray-400">#RES-{b.BookingId}</td>
+                                    <td className="py-6 font-black text-gray-900 text-sm">{b.CustomerName}</td>
+                                    <td className="py-6 text-xs font-bold text-gray-400 text-center">{new Date(b.CheckInDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                                    <td className="py-6 font-black text-gray-900 text-sm text-center">₹{(b.TotalAmount || 0).toLocaleString('en-IN')}</td>
+                                    <td className="py-6 text-right"><StatusBadge status={b.Status} /></td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            {/* DEBUGGER */}
-            {actionLoading && <Loader message="Processing..." />}
+                {/* Mobile View */}
+                <div className="md:hidden space-y-4">
+                    {recentBookings.map(b => (
+                        <div key={b.BookingId} className="p-5 bg-gray-50 rounded-2xl border border-gray-100 flex justify-between items-center">
+                            <div>
+                                <div className="text-[10px] font-black text-gray-300 uppercase mb-1">ID: #RES-{b.BookingId}</div>
+                                <div className="font-black text-gray-900 text-sm">{b.CustomerName}</div>
+                                <div className="text-xs font-bold text-gray-400 mt-1">{new Date(b.CheckInDate).toLocaleDateString()}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className="font-black text-blue-600 text-lg">₹{(b.TotalAmount || 0).toLocaleString('en-IN')}</div>
+                                <div className="mt-2"><StatusBadge status={b.Status} /></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {recentBookings.length === 0 && (
+                    <div className="py-20 text-center text-gray-300 font-black uppercase tracking-[0.2em] text-xs">No Recent Transactions</div>
+                )}
+            </div>
         </div>
     );
 }

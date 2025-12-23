@@ -56,6 +56,43 @@ class CustomerAuthController extends Controller
         ]);
     }
 
+    public function loginWithEmailOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'code' => 'required|string|size:6',
+        ]);
+
+        // Verify OTP using OtpService (manual check here for simplicity if service is not injected)
+        $otpService = app(\App\Services\OtpService::class);
+        $isValid = $otpService->verify($request->email, $request->code, 'login');
+
+        if (!$isValid) {
+            return response()->json(['message' => 'Invalid or expired OTP'], 400);
+        }
+
+        // Find or create customer
+        $customer = Customer::where('email', $request->email)->first();
+
+        if (!$customer) {
+            // Optional: for Login flow, we might want to check if they should signup first.
+            // But if we want "Easy to use", we just create them if they don't exist?
+            // User usually wants "Login or Signup" in one flow.
+            $customer = Customer::create([
+                'name' => 'Guest ' . explode('@', $request->email)[0],
+                'email' => $request->email,
+                'password' => Hash::make(\Illuminate\Support\Str::random(16)),
+            ]);
+        }
+
+        $token = $customer->createToken('customer-token')->plainTextToken;
+
+        return response()->json([
+            'customer' => $customer,
+            'token' => $token,
+        ]);
+    }
+
     public function loginOtp(Request $request)
     {
         $request->validate([

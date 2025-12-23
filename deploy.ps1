@@ -136,13 +136,13 @@ function Deploy-Component {
     # Ensure remote directory exists
     ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "mkdir -p $($Config.RemotePath)"
 
-    # Clean contents (preserve .env)
-    $RemoteCleanCmd = "find $($Config.RemotePath)/ -mindepth 1 ! -name '.env' -delete"
+    # Clean contents (preserve .env and storage directory)
+    $RemoteCleanCmd = "find $($Config.RemotePath)/ -mindepth 1 ! -name '.env' ! -path '*/storage*' -delete"
     ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "$RemoteCleanCmd"
     
     # 2. Compress (Tar Gzip for Linux Compatibility)
     # Use localized filename to avoid 'tar' interpreting "C:" as a remote host in MinGW
-    $TarFileName = "deploy_package.tar.gz"
+    $TarFileName = "deploy_package_${Name}.tar.gz"
     # Create in current directory to ensure relative path usage
     $TarPath = ".\$TarFileName"
     

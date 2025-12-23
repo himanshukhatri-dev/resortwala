@@ -93,7 +93,16 @@ class AdminController extends Controller
     {
         $vendor = User::where('role', 'vendor')->findOrFail($id);
         
-        // Option 1: Delete the vendor
+        // Check for existing properties
+        if ($vendor->properties()->exists()) {
+             return response()->json(['message' => 'Cannot delete vendor. They have existing properties. Please delete properties first.'], 422);
+        }
+        
+        // Cascade delete onboarding tokens
+        \App\Models\OnboardingToken::where('user_id', $id)
+            ->where('user_type', 'user')
+            ->delete();
+
         $vendor->delete();
 
         return response()->json([
@@ -194,5 +203,68 @@ class AdminController extends Controller
             'message' => 'Booking status updated successfully',
             'booking' => $booking
         ]);
+    }
+
+    public function globalSearch(Request $request)
+    {
+        $query = $request->query('query');
+        if (!$query) {
+            return response()->json([]);
+        }
+
+        $results = [];
+
+        // 1. Search Users (Admin/Vendors)
+        $users = User::where('name', 'LIKE', "%{$query}%")
+            ->orWhere('email', 'LIKE', "%{$query}%")
+            ->orWhere('phone', 'LIKE', "%{$query}%")
+            ->orWhere('business_name', 'LIKE', "%{$query}%")
+            ->select('id', 'name', 'email', 'phone', 'role', 'business_name')
+            ->limit(5)
+            ->get()
+            ->map(function($u) {
+                $u->type = 'user';
+                return $u;
+            });
+        $results = array_merge($results, $users->toArray());
+
+        // 2. Search Customers
+        $customers = \App\Models\Customer::where('name', 'LIKE', "%{$query}%")
+            ->orWhere('email', 'LIKE', "%{$query}%")
+            ->orWhere('phone', 'LIKE', "%{$query}%")
+            ->select('id', 'name', 'email', 'phone')
+            ->limit(5)
+            ->get()
+            ->map(function($c) {
+                $c->type = 'customer';
+                return $c;
+            });
+        $results = array_merge($results, $customers->toArray());
+
+        // 3. Search Properties
+        $properties = PropertyMaster::where('Name', 'LIKE', "%{$query}%")
+            ->orWhere('Location', 'LIKE', "%{$query}%")
+            ->select('PropertyId as id', 'Name as name', 'Location')
+            ->limit(5)
+            ->get()
+            ->map(function($p) {
+                $p->type = 'property';
+                return $p;
+            });
+        $results = array_merge($results, $properties->toArray());
+
+        // 4. Search Bookings
+        $bookings = Booking::where('BookingId', 'LIKE', "%{$query}%")
+            ->orWhere('CustomerName', 'LIKE', "%{$query}%")
+            ->select('BookingId as id', 'CustomerName as name', 'Status')
+            ->limit(5)
+            ->get()
+            ->map(function($b) {
+                $b->type = 'booking';
+                return $b;
+            });
+        $results = array_merge($results, $bookings->toArray());
+
+        return response()->json($results);
     }
 }

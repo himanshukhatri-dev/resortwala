@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 import { FaArrowLeft, FaCheck, FaTimes, FaBuilding, FaExclamationTriangle } from 'react-icons/fa';
 
 export default function ReviewPropertyChange() {
@@ -18,8 +19,7 @@ export default function ReviewPropertyChange() {
 
     const fetchRequest = async () => {
         try {
-            const baseURL = import.meta.env.VITE_API_BASE_URL || '';
-            const res = await axios.get(`${baseURL}/admin/property-changes/${requestId}`, {
+            const res = await axios.get(`${API_BASE_URL}/admin/property-changes/${requestId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setRequest(res.data);
@@ -34,8 +34,7 @@ export default function ReviewPropertyChange() {
         if (!window.confirm('Are you sure you want to approve and apply these changes?')) return;
         setProcessing(true);
         try {
-            const baseURL = import.meta.env.VITE_API_BASE_URL || '';
-            await axios.post(`${baseURL}/admin/properties/${request.property_id}/changes/approve`, {}, {
+            await axios.post(`${API_BASE_URL}/admin/properties/${request.property_id}/changes/approve`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert('Changes approved successfully!');
@@ -51,8 +50,7 @@ export default function ReviewPropertyChange() {
         if (!window.confirm('Are you sure you want to REJECT these changes?')) return;
         setProcessing(true);
         try {
-            const baseURL = import.meta.env.VITE_API_BASE_URL || '';
-            await axios.post(`${baseURL}/admin/properties/${request.property_id}/changes/reject`, {}, {
+            await axios.post(`${API_BASE_URL}/admin/properties/${request.property_id}/changes/reject`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             alert('Changes rejected.');
@@ -108,7 +106,9 @@ export default function ReviewPropertyChange() {
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                             Proposed Changes
                         </h3>
-                        <div className="border border-gray-200 rounded-xl overflow-hidden">
+
+                        {/* Desktop Table */}
+                        <div className="hidden md:block border border-gray-200 rounded-xl overflow-hidden">
                             <table className="w-full text-left">
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
@@ -119,10 +119,6 @@ export default function ReviewPropertyChange() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {Object.keys(changes).map((key) => {
-                                        // Handle nested 'onboarding_data' difference if specific keys changed
-                                        // For now, if key is 'onboarding_data', simply show JSON dump.
-                                        // Ideally we should flatten it or show diff.
-
                                         return (
                                             <tr key={key} className="hover:bg-yellow-50/30 transition-colors">
                                                 <td className="p-4 font-mono text-sm text-purple-600 font-bold">{key}</td>
@@ -137,6 +133,31 @@ export default function ReviewPropertyChange() {
                                     })}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Mobile List View */}
+                        <div className="md:hidden space-y-4">
+                            {Object.keys(changes).map((key) => (
+                                <div key={key} className="border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="bg-gray-50 p-3 font-mono text-xs font-black text-purple-700 uppercase tracking-widest border-b border-gray-100">
+                                        Field: {key}
+                                    </div>
+                                    <div className="p-4 space-y-3">
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Current Value</p>
+                                            <div className="text-xs text-gray-500 italic">
+                                                {renderValue(property[key]) || <span className="text-gray-300">Empty</span>}
+                                            </div>
+                                        </div>
+                                        <div className="bg-yellow-50 -mx-4 -mb-4 p-4 mt-2 border-t border-yellow-100">
+                                            <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Proposed Value</p>
+                                            <div className="text-sm font-bold text-gray-900">
+                                                {renderValue(changes[key])}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
 

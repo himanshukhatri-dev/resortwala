@@ -1,125 +1,126 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FaArrowLeft } from 'react-icons/fa';
+import axios from 'axios';
+import AuthCard from '../components/auth/AuthCard';
 
 export default function Signup() {
     const navigate = useNavigate();
-    const { register } = useAuth();
-    const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '' });
-    const [error, setError] = useState('');
+    const { loginWithToken } = useAuth();
+
+    // States
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        password: ''
+    });
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const API_URL = import.meta.env.VITE_API_BASE_URL;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         try {
-            await register(formData.name, formData.email, formData.phone, formData.password);
+            const res = await axios.post(`${API_URL}/api/customer/register`, formData);
+
+            // Login immediately
+            loginWithToken(res.data.token);
             navigate('/');
         } catch (err) {
-            setError(err.response?.data?.message || 'Registration failed.');
+            setError(err.response?.data?.message || 'Registration failed. Please check your details.');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleBackdropClick = () => {
-        if (location.key !== 'default') {
-            navigate(-1);
-        } else {
-            navigate('/');
-        }
-    };
-
     return (
-        <div
-            onClick={handleBackdropClick}
-            className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 cursor-pointer"
+        <AuthCard
+            title="Create account"
+            subtitle="Join ResortWala to find your perfect getaway"
         >
-            <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute top-4 left-4 z-10"
-            >
-                <Link to="/" className="flex items-center text-gray-600 hover:text-black transition p-2 bg-white/50 rounded-full hover:bg-white">
-                    <FaArrowLeft className="mr-2" /> Back to Home
-                </Link>
-            </div>
-
-            <div
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100 animate-fade-up cursor-default"
-            >
-
-                <div className="flex justify-center mb-6">
-                    <img src="/resortwala-logo.png" alt="ResortWala" className="h-12 w-auto" />
+            {error && (
+                <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl mb-4 text-sm font-bold text-center border border-rose-100 animate-in fade-in zoom-in duration-300">
+                    {error}
                 </div>
+            )}
 
-                <h2 className="text-2xl font-bold text-center mb-8">Create an account</h2>
-
-                {error && (
-                    <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm text-center border border-red-100">
-                        {error}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
+            <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
                         <input
                             type="text"
-                            placeholder="Full Name"
-                            className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-black transition"
+                            placeholder="Rahul Sharma"
+                            className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all placeholder-gray-300"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             required
                         />
                     </div>
-                    <div>
-                        <input
-                            type="email"
-                            placeholder="Email address"
-                            className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-black transition"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            required
-                        />
-                    </div>
-                    <div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone (Optional)</label>
                         <input
                             type="tel"
-                            placeholder="Phone Number"
-                            className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-black transition"
+                            placeholder="+91..."
+                            className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all placeholder-gray-300"
                             value={formData.phone}
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         />
                     </div>
-                    <div>
-                        <input
-                            type="password"
-                            placeholder="Password"
-                            className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-black transition"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            required
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className={`w-full bg-[#FF385C] hover:bg-[#D90B3E] text-white font-bold py-3.5 rounded-lg transition ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                    >
-                        {loading ? 'Creating account...' : 'Sign up'}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center text-sm text-gray-600">
-                    Already have an account?{' '}
-                    <Link to="/login" className="font-bold underline hover:text-black">
-                        Log in
-                    </Link>
                 </div>
+
+                <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
+                    <input
+                        type="email"
+                        placeholder="rahul@example.com"
+                        className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all placeholder-gray-300"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        required
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Choose Password</label>
+                    <input
+                        type="password"
+                        placeholder="••••••••"
+                        className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all placeholder-gray-300"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        required
+                    />
+                </div>
+
+                <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100 flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5">!</div>
+                    <p className="text-[11px] font-bold text-blue-800 leading-relaxed">
+                        By creating an account, you agree to our Terms of Service and Privacy Policy.
+                    </p>
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className={`w-full bg-[#1e1e1e] hover:bg-black text-white font-black py-4.5 rounded-[1.5rem] transition-all active:scale-[0.98] shadow-xl shadow-gray-200 uppercase text-xs tracking-widest mt-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                    {loading ? 'Creating Account...' : 'Create My Account'}
+                </button>
+            </form>
+
+            <div className="pt-6 border-t border-gray-100 mt-6 text-center">
+                <p className="text-sm font-bold text-gray-400">
+                    Already have an account? {' '}
+                    <Link to="/login" className="text-black hover:underline underline-offset-4">
+                        Login here
+                    </Link>
+                </p>
             </div>
-        </div>
+        </AuthCard>
     );
 }

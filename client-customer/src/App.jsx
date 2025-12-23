@@ -11,6 +11,7 @@ import { CompareProvider } from './context/CompareContext';
 
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
 import PropertyDetails from './pages/PropertyDetails';
 import BookingPage from './pages/BookingPage';
 import UserBookings from './pages/UserBookings';
@@ -18,6 +19,7 @@ import Profile from './pages/Profile';
 import Wishlist from './pages/Wishlist';
 import PublicPropertyCalendar from './pages/PublicPropertyCalendar';
 import Contact from './pages/Contact';
+import SetPassword from './pages/SetPassword';
 
 import ErrorBoundary from './components/common/ErrorBoundary';
 import CompareFloatingBar from './components/features/CompareFloatingBar';
@@ -49,6 +51,8 @@ function App() {
 
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/set-password" element={<SetPassword />} />
               </Routes>
 
               {/* Global Floating Bar & Modal */}

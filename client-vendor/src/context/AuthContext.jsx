@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
         };
 
         initAuth();
-    }, []); // Only run once on mount
+    }, [token]); // Run when token changes (e.g. during impersonation)
 
     const login = (newToken, userData) => {
         localStorage.setItem('vendor_token', newToken);

@@ -1,4 +1,4 @@
-export default function Modal({ isOpen, onClose, title, message, children, type = 'info', onConfirm, showCancel = false }) {
+export default function Modal({ isOpen = true, onClose, title, message, children, type = 'info', onConfirm, showCancel = false, showFooter = true }) {
     if (!isOpen) return null;
 
     const colors = {
@@ -98,69 +98,74 @@ export default function Modal({ isOpen, onClose, title, message, children, type 
                     )}
 
                     {/* Buttons */}
-                    <div style={{
-                        display: 'flex',
-                        gap: '12px',
-                        justifyContent: 'flex-end'
-                    }}>
-                        {showCancel && (
+                    {showFooter && (
+                        <div style={{
+                            display: 'flex',
+                            gap: '12px',
+                            justifyContent: 'flex-end'
+                        }}>
+                            {showCancel && (
+                                <button
+                                    onClick={onClose}
+                                    style={{
+                                        padding: '12px 28px',
+                                        backgroundColor: '#f0f0f0',
+                                        color: '#666',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        cursor: 'pointer',
+                                        fontSize: '15px',
+                                        fontWeight: '600',
+                                        transition: 'all 0.2s',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                    }}
+                                    onMouseOver={e => {
+                                        e.target.style.backgroundColor = '#e0e0e0';
+                                        e.target.style.transform = 'translateY(-2px)';
+                                        e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                                    }}
+                                    onMouseOut={e => {
+                                        e.target.style.backgroundColor = '#f0f0f0';
+                                        e.target.style.transform = 'translateY(0)';
+                                        e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            )}
                             <button
-                                onClick={onClose}
+                                onClick={() => {
+                                    if (onConfirm) {
+                                        onConfirm();
+                                    } else {
+                                        onClose();
+                                    }
+                                }}
                                 style={{
                                     padding: '12px 28px',
-                                    backgroundColor: '#f0f0f0',
-                                    color: '#666',
+                                    background: color.bg,
+                                    color: 'white',
                                     border: 'none',
                                     borderRadius: '10px',
                                     cursor: 'pointer',
                                     fontSize: '15px',
                                     fontWeight: '600',
                                     transition: 'all 0.2s',
-                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
                                 }}
                                 onMouseOver={e => {
-                                    e.target.style.backgroundColor = '#e0e0e0';
                                     e.target.style.transform = 'translateY(-2px)';
-                                    e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                                    e.target.style.boxShadow = '0 6px 20px rgba(0,0,0,0.3)';
                                 }}
                                 onMouseOut={e => {
-                                    e.target.style.backgroundColor = '#f0f0f0';
                                     e.target.style.transform = 'translateY(0)';
-                                    e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                                    e.target.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
                                 }}
                             >
-                                Cancel
+                                {showCancel ? 'Confirm' : 'OK'}
                             </button>
-                        )}
-                        <button
-                            onClick={() => {
-                                if (onConfirm) onConfirm();
-                                onClose();
-                            }}
-                            style={{
-                                padding: '12px 28px',
-                                background: color.bg,
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '10px',
-                                cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '600',
-                                transition: 'all 0.2s',
-                                boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
-                            }}
-                            onMouseOver={e => {
-                                e.target.style.transform = 'translateY(-2px)';
-                                e.target.style.boxShadow = '0 6px 20px rgba(0,0,0,0.3)';
-                            }}
-                            onMouseOut={e => {
-                                e.target.style.transform = 'translateY(0)';
-                                e.target.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
-                            }}
-                        >
-                            {showCancel ? 'Confirm' : 'OK'}
-                        </button>
-                    </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

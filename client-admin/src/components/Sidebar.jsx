@@ -1,23 +1,41 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import { useModal } from '../context/ModalContext'; // Use confirm modal if needed, or simple window.confirm
+import { useModal } from '../context/ModalContext';
+import { API_BASE_URL } from '../config';
 
 export default function Sidebar({ userType = 'admin' }) {
     const location = useLocation();
     const navigate = useNavigate();
     const { token, logout } = useAuth();
     const { showConfirm } = useModal();
+    const [expandedMenu, setExpandedMenu] = useState(null);
     const [isHovered, setIsHovered] = useState(false);
 
-    // Filter menu items for Admin
-    // Filter menu items for Admin
+    // Update Layout margin via CSS Variable
+    useEffect(() => {
+        const root = document.documentElement;
+        if (isHovered) {
+            root.style.setProperty('--sidebar-width', '240px');
+        } else {
+            root.style.setProperty('--sidebar-width', window.innerWidth <= 768 ? '60px' : '70px');
+            setExpandedMenu(null); // Collapse when sidebar shrinks
+        }
+    }, [isHovered]);
+
     const menuItems = [
-        { path: '/dashboard', icon: '👤', label: 'Dashboard' },
-        { path: '/users', icon: '👥', label: 'Users' },
-        { path: '/vendors', icon: '🏢', label: 'Vendors' },
-        { path: '/customers', icon: '🙂', label: 'Customers' },
+        { path: '/dashboard', icon: '📊', label: 'Overview' },
+        {
+            id: 'authority',
+            label: 'Authorities',
+            icon: '🛡️',
+            subItems: [
+                { path: '/users', icon: '👥', label: 'Administrators' },
+                { path: '/vendors', icon: '🏢', label: 'Partner Vendors' },
+                { path: '/customers', icon: '🙂', label: 'Customer Base' },
+            ]
+        },
         { path: '/properties', icon: '🏠', label: 'Properties' },
         { path: '/property-changes', icon: '📝', label: 'Prop. Updates' },
         { path: '/bookings', icon: '📅', label: 'Bookings' },
@@ -31,7 +49,7 @@ export default function Sidebar({ userType = 'admin' }) {
         if (!confirmed) return;
 
         try {
-            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/admin/logout`, {}, {
+            await axios.post(`${API_BASE_URL}/admin/logout`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         } catch (error) {
@@ -42,14 +60,26 @@ export default function Sidebar({ userType = 'admin' }) {
         }
     };
 
+    const toggleMenu = (id) => {
+        if (!isHovered) {
+            setIsHovered(true);
+            setExpandedMenu(id);
+            return;
+        }
+        setExpandedMenu(expandedMenu === id ? null : id);
+    };
+
     return (
         <div
             onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            onMouseLeave={() => {
+                setIsHovered(false);
+                setExpandedMenu(null);
+            }}
             style={{
                 width: isHovered ? '240px' : '70px',
                 backgroundColor: '#ffffff',
-                borderRight: '1px solid #e0e0e0',
+                borderRight: '1px solid #f1f5f9',
                 height: '100vh',
                 position: 'fixed',
                 left: 0,
@@ -57,10 +87,10 @@ export default function Sidebar({ userType = 'admin' }) {
                 display: 'flex',
                 flexDirection: 'column',
                 zIndex: 1000,
-                transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: isHovered ? '4px 0 20px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: isHovered ? '20px 0 50px rgba(0,0,0,0.03)' : 'none',
                 overflow: 'hidden',
-                color: '#333'
+                color: '#334155'
             }}
         >
             {/* Logo Area */}
@@ -68,40 +98,114 @@ export default function Sidebar({ userType = 'admin' }) {
                 height: '70px',
                 display: 'flex',
                 alignItems: 'center',
-                padding: isHovered ? '0 20px' : '0',
-                justifyContent: isHovered ? 'flex-start' : 'center',
-                borderBottom: '1px solid #e0e0e0',
+                padding: isHovered ? '0 24px' : '0',
+                justifyContent: 'center',
+                borderBottom: '1px solid #f1f5f9',
                 backgroundColor: '#ffffff',
                 flexShrink: 0,
                 transition: 'all 0.3s ease'
             }}>
                 <Link to="/dashboard" style={{
-                    fontSize: '22px',
-                    fontWeight: '800',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    textDecoration: 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px'
+                    justifyContent: 'center',
+                    width: '100%',
+                    textDecoration: 'none'
                 }}>
-                    <span style={{ fontSize: '24px' }}>🏖️</span>
-                    <span style={{
-                        opacity: isHovered ? 1 : 0,
-                        display: isHovered ? 'block' : 'none',
-                        transition: 'opacity 0.2s ease',
-                        whiteSpace: 'nowrap'
-                    }}>
-                        ResortWala
-                    </span>
+                    <img
+                        src="/admin/loader-logo.png"
+                        alt="ResortWala"
+                        style={{
+                            height: isHovered ? '32px' : '24px',
+                            width: 'auto',
+                            transition: 'all 0.3s ease',
+                            objectFit: 'contain'
+                        }}
+                    />
                 </Link>
             </div>
 
             {/* Menu Items */}
-            <nav style={{ padding: '10px 0', flex: 1, overflowY: 'auto' }}>
+            <nav style={{ padding: '16px 0', flex: 1, overflowY: 'auto', overflowX: 'hidden' }} className="custom-scrollbar">
                 {menuItems.map((item) => {
-                    const isActive = location.pathname === item.path;
+                    const hasSubItems = !!item.subItems;
+                    const isExpanded = expandedMenu === item.id;
+                    const isActive = location.pathname === item.path || (hasSubItems && item.subItems.some(s => s.path === location.pathname));
+
+                    if (hasSubItems) {
+                        return (
+                            <div key={item.id} className="mb-1">
+                                <button
+                                    onClick={() => toggleMenu(item.id)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        padding: '12px 24px',
+                                        width: '100%',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: isActive ? '#0f172a' : '#64748b',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        fontWeight: '700',
+                                        transition: 'all 0.2s ease',
+                                        justifyContent: isHovered ? 'flex-start' : 'center',
+                                        position: 'relative'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '18px', minWidth: '24px' }}>{item.icon}</span>
+                                    {isHovered && (
+                                        <>
+                                            <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
+                                            <span style={{
+                                                fontSize: '10px',
+                                                transition: 'transform 0.3s',
+                                                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                                            }}>▼</span>
+                                        </>
+                                    )}
+                                    {isActive && !isExpanded && (
+                                        <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: '4px', backgroundColor: '#3b82f6', borderRadius: '0 4px 4px 0' }} />
+                                    )}
+                                </button>
+
+                                {isHovered && isExpanded && (
+                                    <div style={{
+                                        backgroundColor: '#f8fafc',
+                                        margin: '4px 12px',
+                                        borderRadius: '16px',
+                                        padding: '4px 0'
+                                    }}>
+                                        {item.subItems.map(sub => (
+                                            <Link
+                                                key={sub.path}
+                                                to={sub.path}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '12px',
+                                                    padding: '10px 16px',
+                                                    color: location.pathname === sub.path ? '#3b82f6' : '#64748b',
+                                                    textDecoration: 'none',
+                                                    fontSize: '13px',
+                                                    fontWeight: location.pathname === sub.path ? '800' : '600',
+                                                    transition: 'all 0.2s ease',
+                                                    borderRadius: '12px',
+                                                    margin: '2px 8px',
+                                                    backgroundColor: location.pathname === sub.path ? '#eff6ff' : 'transparent'
+                                                }}
+                                            >
+                                                <span style={{ fontSize: '16px' }}>{sub.icon}</span>
+                                                <span>{sub.label}</span>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+
                     return (
                         <Link
                             key={item.path}
@@ -109,30 +213,25 @@ export default function Sidebar({ userType = 'admin' }) {
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '15px',
-                                padding: '12px 20px',
-                                height: '50px',
-                                color: isActive ? '#667eea' : '#666',
-                                backgroundColor: isActive ? '#f0f4ff' : 'transparent',
+                                gap: '12px',
+                                padding: '12px 24px',
+                                color: isActive ? '#0f172a' : '#64748b',
+                                backgroundColor: isActive ? '#f8fafc' : 'transparent',
                                 textDecoration: 'none',
-                                fontSize: '15px',
-                                fontWeight: isActive ? '600' : '500',
-                                borderLeft: isActive ? '3px solid #667eea' : '3px solid transparent',
+                                fontSize: '14px',
+                                fontWeight: isActive ? '700' : '600',
                                 transition: 'all 0.2s ease',
-                                justifyContent: isHovered ? 'flex-start' : 'center'
+                                justifyContent: isHovered ? 'flex-start' : 'center',
+                                position: 'relative',
+                                marginBottom: '4px'
                             }}
                             title={!isHovered ? item.label : ''}
-                            className="sidebar-item"
                         >
-                            <span style={{ fontSize: '20px', minWidth: '24px', textAlign: 'center' }}>{item.icon}</span>
-                            <span style={{
-                                opacity: isHovered ? 1 : 0,
-                                display: isHovered ? 'block' : 'none',
-                                whiteSpace: 'nowrap',
-                                transition: 'opacity 0.2s'
-                            }}>
-                                {item.label}
-                            </span>
+                            <span style={{ fontSize: '18px', minWidth: '24px' }}>{item.icon}</span>
+                            {isHovered && <span>{item.label}</span>}
+                            {isActive && (
+                                <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: '4px', backgroundColor: '#3b82f6', borderRadius: '0 4px 4px 0' }} />
+                            )}
                         </Link>
                     );
                 })}

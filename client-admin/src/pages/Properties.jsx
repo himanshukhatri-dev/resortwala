@@ -151,113 +151,168 @@ export default function Properties() {
                             <p>No properties found matching your criteria.</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                        <th className="px-6 py-4">Property Details</th>
-                                        <th className="px-6 py-4">Vendor Info</th>
-                                        <th className="px-6 py-4 text-center">Price / Night</th>
-                                        <th className="px-6 py-4 text-center">Status</th>
-                                        <th className="px-6 py-4 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {filteredProperties.map(property => (
-                                        <tr key={property.PropertyId} className="hover:bg-blue-50/30 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-16 h-16 rounded-lg bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-100 relative">
-                                                        {property.primary_image ? (
-                                                            <img
-                                                                src={property.primary_image.image_path} // Ensure this path is full logic handled in Controller
-                                                                alt={property.Name}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                                <FaBuilding />
+                        <>
+                            {/* DESKTOP TABLE */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                            <th className="px-6 py-4">Property Details</th>
+                                            <th className="px-6 py-4">Vendor Info</th>
+                                            <th className="px-6 py-4 text-center">Price / Night</th>
+                                            <th className="px-6 py-4 text-center">Status</th>
+                                            <th className="px-6 py-4 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {filteredProperties.map(property => (
+                                            <tr key={property.PropertyId} className="hover:bg-blue-50/30 transition-colors group">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-16 h-16 rounded-lg bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-100 relative">
+                                                            {property.primary_image ? (
+                                                                <img
+                                                                    src={property.primary_image.image_path}
+                                                                    alt={property.Name}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                                    <FaBuilding />
+                                                                </div>
+                                                            )}
+                                                            <div className="absolute top-0 right-0 bg-black/50 text-white text-[10px] px-1 rounded-bl">
+                                                                ID: {property.PropertyId}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-bold text-gray-800 text-base">{property.Name}</h3>
+                                                            <div className="flex items-center text-gray-500 text-sm mt-1 gap-1">
+                                                                <FaMapMarkerAlt className="text-xs text-red-400" />
+                                                                {property.Location || 'Unknown Location'}
+                                                            </div>
+                                                            <div className="text-xs text-gray-400 mt-1 capitalize">
+                                                                {property.PropertyType || 'Villa'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="space-y-1">
+                                                        <div className="font-medium text-gray-800 flex items-center gap-2">
+                                                            <FaUser className="text-gray-300 text-xs" />
+                                                            {property.vendor?.business_name || property.vendor?.name || 'Unassigned'}
+                                                        </div>
+                                                        <div className="text-sm text-gray-500">{property.vendor?.email}</div>
+                                                        {property.vendor?.phone && (
+                                                            <div className="text-xs text-gray-400 flex items-center gap-1">
+                                                                <FaPhone className="text-[10px]" /> {property.vendor.phone}
                                                             </div>
                                                         )}
-                                                        <div className="absolute top-0 right-0 bg-black/50 text-white text-[10px] px-1 rounded-bl">
-                                                            ID: {property.PropertyId}
-                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <h3 className="font-bold text-gray-800 text-base">{property.Name}</h3>
-                                                        <div className="flex items-center text-gray-500 text-sm mt-1 gap-1">
-                                                            <FaMapMarkerAlt className="text-xs text-red-400" />
-                                                            {property.Location || 'Unknown Location'}
-                                                        </div>
-                                                        <div className="text-xs text-gray-400 mt-1 capitalize">
-                                                            {property.PropertyType || 'Villa'}
-                                                        </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <div className="font-bold text-gray-800">
+                                                        ₹{parseInt(property.Price).toLocaleString()}
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="space-y-1">
-                                                    <div className="font-medium text-gray-800 flex items-center gap-2">
-                                                        <FaUser className="text-gray-300 text-xs" />
-                                                        {property.vendor?.business_name || property.vendor?.name || 'Unassigned'}
+                                                    <div className="text-xs text-gray-400">Base Rate</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${property.is_approved
+                                                        ? 'bg-green-50 text-green-700 border-green-100'
+                                                        : 'bg-amber-50 text-amber-700 border-amber-100'
+                                                        }`}>
+                                                        {property.is_approved ? <FaCheck className="text-[10px]" /> : <FaFilter className="text-[10px]" />}
+                                                        {property.is_approved ? 'Approved' : 'Pending'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => navigate(`/properties/${property.PropertyId}/approve`)}
+                                                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${property.is_approved
+                                                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                                                : 'bg-green-100 text-green-700 hover:bg-green-200 shadow-sm ring-1 ring-green-200'
+                                                                }`}
+                                                        >
+                                                            {property.is_approved ? <><FaEdit /> Pricing</> : <><FaCheck /> Approve</>}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleReject(property.PropertyId)}
+                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                                            title="Delete Property"
+                                                        >
+                                                            <FaTrash />
+                                                        </button>
                                                     </div>
-                                                    <div className="text-sm text-gray-500">{property.vendor?.email}</div>
-                                                    {property.vendor?.phone && (
-                                                        <div className="text-xs text-gray-400 flex items-center gap-1">
-                                                            <FaPhone className="text-[10px]" /> {property.vendor.phone}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="font-bold text-gray-800">
-                                                    ₹{parseInt(property.Price).toLocaleString()}
-                                                </div>
-                                                <div className="text-xs text-gray-400">Base Rate</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${property.is_approved
-                                                    ? 'bg-green-50 text-green-700 border-green-100'
-                                                    : 'bg-amber-50 text-amber-700 border-amber-100'
-                                                    }`}>
-                                                    {property.is_approved ? <FaCheck className="text-[10px]" /> : <FaFilter className="text-[10px]" />}
-                                                    {property.is_approved ? 'Approved' : 'Pending'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                        onClick={() => navigate(`/properties/${property.PropertyId}/approve`)}
-                                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${property.is_approved
-                                                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                                            : 'bg-green-100 text-green-700 hover:bg-green-200 shadow-sm ring-1 ring-green-200'
-                                                            }`}
-                                                    >
-                                                        {property.is_approved ? (
-                                                            <>
-                                                                <FaEdit /> Pricing
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <FaCheck /> Approve
-                                                            </>
-                                                        )}
-                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
 
-                                                    <button
-                                                        onClick={() => handleReject(property.PropertyId)}
-                                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                                                        title="Delete Property"
-                                                    >
-                                                        <FaTrash />
-                                                    </button>
+                            {/* MOBILE CARDS */}
+                            <div className="md:hidden divide-y divide-gray-100">
+                                {filteredProperties.map(property => (
+                                    <div key={property.PropertyId} className="p-4 space-y-4">
+                                        <div className="flex items-start gap-4">
+                                            <div className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 relative border border-gray-100">
+                                                {property.primary_image ? (
+                                                    <img src={property.primary_image.image_path} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl"><FaBuilding /></div>
+                                                )}
+                                                <div className="absolute top-0 right-0 bg-black/60 text-white text-[9px] px-1 font-bold rounded-bl">ID: {property.PropertyId}</div>
+                                            </div>
+                                            <div className="flex-1 space-y-1">
+                                                <div className="flex justify-between items-start">
+                                                    <h3 className="font-black text-gray-900 leading-tight">{property.Name}</h3>
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${property.is_approved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                        {property.is_approved ? 'Approved' : 'Pending'}
+                                                    </span>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                                <div className="flex items-center text-gray-500 text-xs gap-1 font-medium">
+                                                    <FaMapMarkerAlt className="text-red-400" /> {property.Location || 'N/A'}
+                                                </div>
+                                                <div className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">
+                                                    {property.PropertyType || 'Villa'} • ₹{parseInt(property.Price).toLocaleString()}/night
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-gray-50 rounded-xl p-3 grid grid-cols-2 gap-3 border border-gray-100">
+                                            <div>
+                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Vendor</p>
+                                                <p className="text-xs font-bold text-gray-700 truncate">{property.vendor?.business_name || property.vendor?.name || 'Unassigned'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Contact</p>
+                                                <p className="text-xs font-bold text-gray-700">{property.vendor?.phone || 'N/A'}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => navigate(`/properties/${property.PropertyId}/approve`)}
+                                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm transition-all ${property.is_approved
+                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-100'
+                                                    : 'bg-green-600 text-white shadow-lg shadow-green-100'
+                                                    }`}
+                                            >
+                                                {property.is_approved ? <><FaEdit /> Edit Pricing</> : <><FaCheck /> Review & Approve</>}
+                                            </button>
+                                            <button
+                                                onClick={() => handleReject(property.PropertyId)}
+                                                className="w-12 flex items-center justify-center bg-red-50 text-red-600 rounded-xl border border-red-100 hover:bg-red-100 transition-colors"
+                                            >
+                                                <FaTrash />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
                     )}
                 </div>
             </div>

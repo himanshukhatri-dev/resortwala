@@ -14,6 +14,7 @@ import PropertyApproval from './pages/PropertyApproval';
 import VendorDetails from './pages/VendorDetails';
 import PropertyChangeRequests from './pages/PropertyChangeRequests';
 import ReviewPropertyChange from './pages/ReviewPropertyChange';
+import SetPassword from './pages/SetPassword';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -40,6 +41,7 @@ function App() {
           <TokenHandler />
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/set-password" element={<SetPassword />} />
 
             {/* Protected Routes with Layout */}
             <Route element={

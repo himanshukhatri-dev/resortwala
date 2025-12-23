@@ -19,6 +19,10 @@ Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
 Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword']);
 
+// New Generic OTP System
+Route::post('/otp/send', [\App\Http\Controllers\OtpController::class, 'send']);
+Route::post('/otp/verify', [\App\Http\Controllers\OtpController::class, 'verify']);
+
 // Fallback login route for Sanctum unauthenticated redirection
 Route::get('/login', function () {
     return response()->json(['message' => 'Unauthenticated.'], 401);
@@ -48,6 +52,7 @@ Route::get('/public/vendors/{id}/calendar', [App\Http\Controllers\PublicControll
 Route::post('/customer/register', [\App\Http\Controllers\CustomerAuthController::class, 'register']);
 Route::post('/customer/login', [\App\Http\Controllers\CustomerAuthController::class, 'login']);
 Route::post('/customer/login-otp', [\App\Http\Controllers\CustomerAuthController::class, 'loginOtp']);
+Route::post('/customer/login-email-otp', [\App\Http\Controllers\CustomerAuthController::class, 'loginWithEmailOtp']);
 
     Route::get('/customer/profile', [\App\Http\Controllers\CustomerAuthController::class, 'profile']);
     Route::post('/customer/logout', [\App\Http\Controllers\CustomerAuthController::class, 'logout']);
@@ -115,6 +120,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/profile', [\App\Http\Controllers\AdminController::class, 'profile']);
     Route::post('/admin/logout', [\App\Http\Controllers\AdminController::class, 'logout']);
     Route::get('/admin/stats', [\App\Http\Controllers\AdminController::class, 'getStats']);
+    Route::get('/admin/search', [\App\Http\Controllers\AdminController::class, 'globalSearch']);
     Route::get('/admin/vendors', [\App\Http\Controllers\AdminController::class, 'getAllVendors']);
     Route::get('/admin/vendors/pending', [\App\Http\Controllers\AdminController::class, 'getPendingVendors']);
     Route::get('/admin/vendors/{id}', [\App\Http\Controllers\AdminController::class, 'getVendor']);
@@ -149,6 +155,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Generic User Update (Admin & Vendor) & Delete
     Route::put('/admin/users/{id}', [\App\Http\Controllers\AdminUserController::class, 'updateUser']);
+    Route::put('/admin/users/{id}/role', [\App\Http\Controllers\AdminUserController::class, 'updateRole']);
     Route::delete('/admin/users/{id}', [\App\Http\Controllers\AdminUserController::class, 'deleteUser']);
 
     Route::get('/admin/users/customers', [\App\Http\Controllers\AdminUserController::class, 'getCustomers']);
@@ -165,7 +172,12 @@ Route::prefix('public')->group(function () {
 
 
 
-// Admin Impersonation Route
+// Onboarding Routes (Public for setting password)
+Route::get('/onboard/verify/{token}', [\App\Http\Controllers\OnboardingController::class, 'verifyToken']);
+Route::post('/onboard/set-password', [\App\Http\Controllers\OnboardingController::class, 'setPassword']);
+
+// Admin Onboarding Initialization
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/admin/impersonate/{userId}', [\App\Http\Controllers\ImpersonationController::class, 'impersonate']);
+    Route::post('/admin/onboard', [\App\Http\Controllers\OnboardingController::class, 'onboard']);
 });

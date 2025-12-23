@@ -7,7 +7,7 @@ import {
     FaStar, FaMapMarkerAlt, FaWifi, FaSwimmingPool, FaCar, FaUtensils,
     FaArrowLeft, FaArrowRight, FaHeart, FaShare, FaMinus, FaPlus, FaTimes, FaCheck,
     FaWater, FaUser, FaBed, FaBath, FaDoorOpen, FaShieldAlt, FaMedal,
-    FaWhatsapp, FaFacebook, FaTwitter, FaEnvelope, FaLink, FaCopy,
+    FaWhatsapp, FaFacebook, FaTwitter, FaEnvelope, FaLink, FaCopy, FaPhone, FaGlobe,
     FaSnowflake, FaTv, FaCouch, FaRestroom, FaMoneyBillWave, FaChild, FaTicketAlt,
     FaClock, FaBan, FaDog, FaSmoking, FaWineGlass, FaInfoCircle, FaCamera,
     FaCloudRain, FaMusic, FaTree, FaFire, FaBolt, FaTshirt, FaVideo, FaWheelchair, FaMedkit, FaUmbrellaBeach, FaChair, FaUserShield, FaHotTub, FaLanguage, FaGamepad
@@ -314,7 +314,10 @@ export default function PropertyDetails() {
                             <div className="flex items-center justify-between pb-6 border-b border-gray-100">
                                 <div>
                                     <h2 className="text-2xl font-bold text-gray-900 mb-1">{property.display_name || property.Name}</h2>
-                                    <p className="text-gray-500 text-sm">Hosted by {property.ContactPerson || "ResortWala Host"} · {property.MaxCapacity} guests · {property.NoofRooms} bedrooms</p>
+                                    <p className="text-gray-500 text-sm">
+                                        Hosted by {property.ContactPerson || "ResortWala Host"} · {property.PropertyType} · {property.MaxCapacity} guests · {property.NoofRooms} bedrooms
+                                    </p>
+
                                 </div>
                                 <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center text-xl font-bold border border-gray-200 uppercase">{(property.ContactPerson || "H").charAt(0)}</div>
                             </div>
@@ -326,6 +329,18 @@ export default function PropertyDetails() {
                                 </div>
                             )}
 
+                            {/* ABOUT */}
+                            <div className="py-8 border-b border-gray-100">
+                                <h3 className="text-xl font-bold text-gray-900 mb-4 font-serif">About this property</h3>
+                                {property.LongDescription ? (
+                                    <p className="text-gray-700 leading-relaxed whitespace-pre-line text-lg">{property.LongDescription}</p>
+                                ) : (
+                                    <div className="p-8 border-2 border-dashed border-gray-200 rounded-xl text-center text-gray-400">
+                                        Description not provided.
+                                    </div>
+                                )}
+                            </div>
+
                             {/* INCLUSIONS & HIGHLIGHTS */}
                             <div className="py-8 border-b border-gray-100">
                                 <h3 className="text-xl font-bold text-gray-900 mb-6 font-serif flex items-center gap-2">
@@ -333,15 +348,12 @@ export default function PropertyDetails() {
                                 </h3>
                                 {ob.inclusions && Object.keys(ob.inclusions).length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {/* General Inclusions (Boolean) */}
                                         {Object.entries(ob.inclusions).map(([key, val]) => (val === true) && (
                                             <div key={key} className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
                                                 <div className="bg-white p-2 rounded-full text-green-600"><FaCheck size={12} /></div>
                                                 <span className="font-semibold text-gray-900 uppercase text-sm mt-0.5">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
                                             </div>
                                         ))}
-
-                                        {/* Ticket Food Inclusions (String options for Waterpark) */}
                                         {Object.entries(ob.inclusions).map(([key, val]) => (typeof val === 'string' && val !== 'Not Included') && (
                                             <div key={key} className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
                                                 <div className="bg-white p-2 rounded-full text-blue-600"><FaUtensils size={12} /></div>
@@ -356,64 +368,107 @@ export default function PropertyDetails() {
                                     <div className="text-gray-400 italic">No specific inclusions listed.</div>
                                 )}
                             </div>
-
-                            <div className="py-8 border-b border-gray-100">
-                                <h3 className="text-xl font-bold text-gray-900 mb-4 font-serif">About this property</h3>
-                                {property.LongDescription ? (
-                                    <p className="text-gray-700 leading-relaxed whitespace-pre-line text-lg">{property.LongDescription}</p>
-                                ) : (
-                                    <div className="p-8 border-2 border-dashed border-gray-200 rounded-xl text-center text-gray-400">
-                                        Description not provided.
-                                    </div>
-                                )}
-                            </div>
                         </section>
 
-                        {/* MEAL CONFIGURATION */}
-                        {ob.mealPlans && Object.values(ob.mealPlans).some(m => m.available) && (
-                            <section className="py-8 border-t border-gray-100">
-                                <h3 className="text-xl font-bold text-gray-900 mb-6 font-serif flex items-center gap-2">
-                                    <FaUtensils className="text-orange-500" /> Food & Dining
-                                </h3>
-
-                                <div className="grid grid-cols-1 gap-6">
-                                    {/* Cuisines */}
-                                    <div className="flex gap-4 mb-2">
-                                        {ob.foodRates?.veg && <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold border border-green-200">Pure Veg Available</span>}
-                                        {ob.foodRates?.nonVeg && <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold border border-red-200">Non-Veg Available</span>}
-                                        {ob.foodRates?.jain && <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold border border-yellow-200">Jain Food Available</span>}
-                                    </div>
-
-                                    {/* Meal Grid */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {['Breakfast', 'Lunch', 'Dinner', 'HiTea'].map(meal => {
-                                            const mKey = meal.toLowerCase().replace('-', '');
-                                            const mData = ob.mealPlans?.[mKey];
-                                            if (!mData?.available) return null;
-
-                                            return (
-                                                <div key={meal} className="bg-white border rounded-xl p-4 shadow-sm">
-                                                    <h4 className="font-bold text-gray-800 mb-2 border-b pb-2">{meal}</h4>
-                                                    <div className="text-sm space-y-1 mb-3">
-                                                        {mData.vegRate && <div className="flex justify-between"><span>Veg:</span> <span className="font-bold">₹{mData.vegRate}</span></div>}
-                                                        {mData.nonVegRate && <div className="flex justify-between"><span>Non-Veg:</span> <span className="font-bold">₹{mData.nonVegRate}</span></div>}
-                                                    </div>
-                                                    {mData.includes && (
-                                                        <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded italic">
-                                                            {mData.includes}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
+                        {/* AMENITIES - MOVED UP */}
+                        <section ref={sections.amenities} className="scroll-mt-32 pb-8 border-b border-gray-100">
+                            <h2 className="text-xl font-bold text-gray-900 mb-6 font-serif">What this place offers</h2>
+                            {ob.amenities && Object.keys(ob.amenities).length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8">
+                                    {Object.entries(ob.amenities).map(([key, val]) => {
+                                        if (!val) return null;
+                                        const meta = AMENITY_METADATA[key];
+                                        const displayLabel = meta ? meta.label : key.replace(/_/g, ' ');
+                                        const displayIcon = meta ? meta.icon : <FaCheck className="text-gray-400" />;
+                                        return (
+                                            <div key={key} className="flex items-center gap-3 text-gray-700 capitalize group">
+                                                <div className="text-xl group-hover:scale-110 transition">{displayIcon}</div>
+                                                <span className="group-hover:font-medium transition">
+                                                    {displayLabel} {Number.isInteger(val) && val > 1 ? `(${val})` : ''}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
+                            ) : null}
+                            {ob.otherAttractions && (
+                                <div className="mt-6 p-4 bg-yellow-50 rounded-xl border border-yellow-100">
+                                    <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2"><FaStar /> Special Attractions</h4>
+                                    <p className="text-gray-800 whitespace-pre-line">{ob.otherAttractions}</p>
+                                </div>
+                            )}
+                        </section>
+
+                        {/* ROOM DETAILS - MOVED UP */}
+                        {!isWaterpark && (
+                            <section ref={sections.rooms} className="scroll-mt-32 pb-8 border-b border-gray-100">
+                                <h2 className="text-xl font-bold text-gray-900 mb-6 font-serif">Room Details</h2>
+                                {roomConfig.bedrooms && roomConfig.bedrooms.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <RoomCard name="Living Room" details={roomConfig.livingRoom} icon={<FaCouch />} />
+                                        {roomConfig.bedrooms?.map((room, idx) => <RoomCard key={idx} name={`Bedroom ${idx + 1}`} details={room} icon={<FaBed />} />)}
+                                    </div>
+                                ) : (
+                                    <div className="p-8 border-2 border-dashed border-gray-200 rounded-xl text-center text-gray-400">
+                                        Room configuration not specified.
+                                    </div>
+                                )}
                             </section>
                         )}
 
+                        {/* FOOD & DINING */}
+                        <section className="scroll-mt-32 space-y-8 pb-8 border-b border-gray-100">
+                            <h3 className="text-xl font-bold text-gray-900 mb-6 font-serif flex items-center gap-2">
+                                <FaUtensils className="text-orange-500" /> Food & Dining
+                            </h3>
+
+                            {/* Meal Plans */}
+                            {ob.mealPlans && Object.values(ob.mealPlans).some(m => m.available) && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    {['Breakfast', 'Lunch', 'Dinner', 'HiTea'].map(meal => {
+                                        const mKey = meal.toLowerCase().replace('-', '');
+                                        const mData = ob.mealPlans?.[mKey];
+                                        if (!mData?.available) return null;
+                                        return (
+                                            <div key={meal} className="bg-white border rounded-xl p-4 shadow-sm">
+                                                <h4 className="font-bold text-gray-800 mb-2 border-b pb-2">{meal}</h4>
+                                                <div className="text-sm space-y-1 mb-3">
+                                                    {mData.vegRate && <div className="flex justify-between"><span>Veg:</span> <span className="font-bold">₹{mData.vegRate}</span></div>}
+                                                    {mData.nonVegRate && <div className="flex justify-between"><span>Non-Veg:</span> <span className="font-bold">₹{mData.nonVegRate}</span></div>}
+                                                </div>
+                                                {mData.includes && <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded italic">{mData.includes}</p>}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Food Rates Packages */}
+                            {ob.foodRates ? (
+                                <div className="bg-gradient-to-br from-orange-50 to-white rounded-3xl p-8 border border-orange-100 shadow-sm">
+                                    <h4 className="font-bold text-gray-800 mb-4">Package Rates</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        {[
+                                            { k: 'perPerson', label: 'All Meals', icon: '🍽️', desc: 'B/L/HT/D' },
+                                            { k: 'veg', label: 'Veg Thali', icon: '🥗', desc: 'Per Plate' },
+                                            { k: 'nonVeg', label: 'Non-Veg Thali', icon: '🍗', desc: 'Per Plate' },
+                                            { k: 'jain', label: 'Jain Thali', icon: '🥕', desc: 'Per Plate' },
+                                        ].map(({ k, label, icon, desc }) => ob.foodRates[k] ? (
+                                            <div key={k} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:shadow-md transition">
+                                                <div className="text-2xl mb-2">{icon}</div>
+                                                <div className="font-bold text-gray-900 mb-1">{label}</div>
+                                                <div className="text-xs text-gray-500 mb-3 h-8 flex items-center justify-center">{desc}</div>
+                                                <div className="font-extrabold text-xl text-[#FF385C]">₹{ob.foodRates[k]}</div>
+                                            </div>
+                                        ) : null)}
+                                    </div>
+                                    <p className="text-center text-xs text-gray-400 mt-4">* rates per person/item</p>
+                                </div>
+                            ) : null}
+                        </section>
 
                         {/* POLICIES */}
-                        <section ref={sections.policies} className="scroll-mt-32 py-8 border-t border-gray-100">
+                        <section ref={sections.policies} className="scroll-mt-32 pb-8 border-b border-gray-100">
                             <h2 className="text-xl font-bold text-gray-900 mb-6 font-serif">House Rules & Policies</h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
@@ -445,8 +500,6 @@ export default function PropertyDetails() {
                                         </div>
                                     );
                                 })}
-
-                                {/* Other/Custom Rules */}
                                 {ob.otherRules && (
                                     <div className="mt-4 p-4 bg-gray-50 rounded-xl text-sm text-gray-700 leading-relaxed border-l-4 border-gray-300">
                                         <span className="font-bold block text-gray-900 mb-1">Additional Rules:</span>
@@ -454,6 +507,39 @@ export default function PropertyDetails() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Child Policy */}
+                            <div className="mt-8 bg-blue-50/50 rounded-3xl p-8 border border-blue-100">
+                                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3 font-serif">
+                                    <div className="bg-white p-2 rounded-full shadow-sm text-blue-500"><FaChild /></div>
+                                    Child & Extra Guest Policy
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-white p-4 rounded-xl border border-blue-100 flex items-center justify-between">
+                                        <div><span className="font-bold text-gray-900 block text-lg">Free Stay</span><span className="text-sm text-gray-500">Age below</span></div>
+                                        <div className="text-2xl font-bold text-blue-600">{ob.childCriteria?.freeAge || 5} <span className="text-sm text-gray-400">yrs</span></div>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-xl border border-blue-100 flex items-center justify-between">
+                                        <div><span className="font-bold text-gray-900 block text-lg">Chargeable</span><span className="text-sm text-gray-500">Age range</span></div>
+                                        <div className="text-2xl font-bold text-blue-600">{ob.childCriteria?.chargeAgeFrom || 6}-{ob.childCriteria?.chargeAgeTo || 12} <span className="text-sm text-gray-400">yrs</span></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* PAYMENT METHODS */}
+                            {ob.paymentMethods && (
+                                <div className="mt-8 bg-green-50 rounded-3xl p-8 border border-green-100">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3 font-serif">
+                                        <div className="bg-white p-2 rounded-full shadow-sm text-green-500"><FaMoneyBillWave /></div>
+                                        Accepted Payment Methods
+                                    </h3>
+                                    <div className="flex gap-4 flex-wrap">
+                                        {Object.entries(ob.paymentMethods).map(([method, allowed]) => allowed && (
+                                            <span key={method} className="bg-white border border-green-200 text-green-800 px-6 py-2 rounded-full font-bold uppercase text-sm shadow-sm">{method}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {ob.idProofs?.length > 0 && (
                                 <div className="mt-6 pt-6 border-t border-gray-200">
@@ -467,170 +553,20 @@ export default function PropertyDetails() {
                             )}
                         </section>
 
-                        {/* AMENITIES */}
-                        <section ref={sections.amenities} className="scroll-mt-32 pb-8 border-b border-gray-100">
-                            <h2 className="text-xl font-bold text-gray-900 mb-6 font-serif">What this place offers</h2>
-
-                            {/* Standard Amenities */}
-                            {ob.amenities && Object.keys(ob.amenities).length > 0 ? (
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8">
-                                    {Object.entries(ob.amenities).map(([key, val]) => {
-                                        if (!val) return null;
-                                        const meta = AMENITY_METADATA[key];
-                                        const displayLabel = meta ? meta.label : key.replace(/_/g, ' ');
-                                        const displayIcon = meta ? meta.icon : <FaCheck className="text-gray-400" />;
-
-                                        return (
-                                            <div key={key} className="flex items-center gap-3 text-gray-700 capitalize group">
-                                                <div className="text-xl group-hover:scale-110 transition">{displayIcon}</div>
-                                                <span className="group-hover:font-medium transition">
-                                                    {displayLabel} {Number.isInteger(val) && val > 1 ? `(${val})` : ''}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : null}
-
-                            {/* Other Attractions (Custom Text) */}
-                            {ob.otherAttractions && (
-                                <div className="mt-6 p-4 bg-yellow-50 rounded-xl border border-yellow-100">
-                                    <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2"><FaStar /> Special Attractions</h4>
-                                    <p className="text-gray-800 whitespace-pre-line">{ob.otherAttractions}</p>
-                                </div>
-                            )}
-
-                            {(!ob.amenities && !ob.otherAttractions) && (
-                                <div className="p-8 border-2 border-dashed border-gray-200 rounded-xl text-center text-gray-400">
-                                    Amenities details not available.
-                                </div>
-                            )}
-                        </section>
-
-                        {/* ROOM CONFIG - VILLA ONLY */}
-                        {!isWaterpark && (
-                            <section ref={sections.rooms} className="scroll-mt-32 pb-8 border-b border-gray-100">
-                                <h2 className="text-xl font-bold text-gray-900 mb-6 font-serif">Room Details</h2>
-                                {roomConfig.bedrooms && roomConfig.bedrooms.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <RoomCard name="Living Room" details={roomConfig.livingRoom} icon={<FaCouch />} />
-                                        {roomConfig.bedrooms?.map((room, idx) => <RoomCard key={idx} name={`Bedroom ${idx + 1}`} details={room} icon={<FaBed />} />)}
-                                    </div>
-                                ) : (
-                                    <div className="p-8 border-2 border-dashed border-gray-200 rounded-xl text-center text-gray-400">
-                                        Room configuration not specified.
-                                    </div>
-                                )}
-                            </section>
-                        )}
-
-                        {/* POLICIES / RULES / FOOD */}
-                        <section ref={sections.policies} className="scroll-mt-32 space-y-8">
-
-                            {/* FOOD & DINING */}
-                            {ob.foodRates ? (
-                                <div className="bg-gradient-to-br from-orange-50 to-white rounded-3xl p-8 border border-orange-100 shadow-sm">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3 font-serif">
-                                        <div className="bg-white p-2 rounded-full shadow-sm text-orange-500"><FaUtensils /></div>
-                                        Food & Dining Packages
-                                    </h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        {[
-                                            { k: 'perPerson', label: 'All Meals Package', icon: '🍽️', desc: 'Breakfast, Lunch, Hi-Tea, Dinner' },
-                                            { k: 'veg', label: 'Veg Thali', icon: '🥗', desc: 'Per Plate' },
-                                            { k: 'nonVeg', label: 'Non-Veg Thali', icon: '🍗', desc: 'Per Plate' },
-                                            { k: 'jain', label: 'Jain Thali', icon: '🥕', desc: 'Per Plate' },
-                                        ].map(({ k, label, icon, desc }) => ob.foodRates[k] ? (
-                                            <div key={k} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:shadow-md transition">
-                                                <div className="text-2xl mb-2">{icon}</div>
-                                                <div className="font-bold text-gray-900 mb-1">{label}</div>
-                                                <div className="text-xs text-gray-500 mb-3 h-8 flex items-center justify-center">{desc}</div>
-                                                <div className="font-extrabold text-xl text-[#FF385C]">₹{ob.foodRates[k]}</div>
-                                                {k === 'perPerson' && <div className="mt-2 text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">RECOMMENDED</div>}
-                                            </div>
-                                        ) : null)}
-                                    </div>
-                                    <p className="text-center text-xs text-gray-400 mt-4">* All rates are per person / per item unless specified.</p>
-                                </div>
-                            ) : (
-                                <div className="p-8 border-2 border-dashed border-gray-200 rounded-3xl text-center text-gray-400 bg-gray-50">
-                                    Food package rates not available.
-                                </div>
-                            )}
-
-                            {/* CHILD POLICY */}
-                            <div className="bg-blue-50/50 rounded-3xl p-8 border border-blue-100">
-                                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3 font-serif">
-                                    <div className="bg-white p-2 rounded-full shadow-sm text-blue-500"><FaChild /></div>
-                                    Child & Extra Guest Policy
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-white p-4 rounded-xl border border-blue-100 flex items-center justify-between">
-                                        <div>
-                                            <span className="font-bold text-gray-900 block text-lg">Free Stay</span>
-                                            <span className="text-sm text-gray-500">For children aged</span>
-                                        </div>
-                                        <div className="text-2xl font-bold text-blue-600">0 - {ob.childCriteria?.freeAge || 5} <span className="text-sm text-gray-400">yrs</span></div>
-                                    </div>
-                                    <div className="bg-white p-4 rounded-xl border border-blue-100 flex items-center justify-between">
-                                        <div>
-                                            <span className="font-bold text-gray-900 block text-lg">Chargeable</span>
-                                            <span className="text-sm text-gray-500">For children aged</span>
-                                        </div>
-                                        <div className="text-2xl font-bold text-blue-600">{ob.childCriteria?.chargeAgeFrom || 6} - {ob.childCriteria?.chargeAgeTo || 12} <span className="text-sm text-gray-400">yrs</span></div>
-                                    </div>
-                                </div>
-                                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="p-3 bg-white/60 rounded-lg flex justify-between items-center px-4">
-                                        <span className="text-sm font-medium text-gray-700">Extra Guest (&gt; {ob.childCriteria?.chargeAgeTo || 12} yrs)</span>
-                                        <span className="font-bold text-blue-700">₹{Math.round(pricing.extraGuestCharge || '1000').toLocaleString()}</span>
-                                    </div>
-                                    <div className="p-3 bg-white/60 rounded-lg flex justify-between items-center px-4">
-                                        <span className="text-sm font-medium text-gray-700">Extra Mattress</span>
-                                        <span className="font-bold text-blue-700">₹{Math.round(pricing.extraMattressCharge || '500').toLocaleString()}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* PAYMENT METHODS - NEW */}
-                            {ob.paymentMethods ? (
-                                <div className="bg-green-50 rounded-3xl p-8 border border-green-100">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3 font-serif">
-                                        <div className="bg-white p-2 rounded-full shadow-sm text-green-500"><FaMoneyBillWave /></div>
-                                        Accepted Payment Methods
-                                    </h3>
-                                    <div className="flex gap-4 flex-wrap">
-                                        {Object.entries(ob.paymentMethods).map(([method, allowed]) => allowed && (
-                                            <span key={method} className="bg-white border border-green-200 text-green-800 px-6 py-2 rounded-full font-bold uppercase text-sm shadow-sm">{method}</span>
-                                        ))}
-                                        {!Object.values(ob.paymentMethods).some(Boolean) && <span className="text-gray-500 italic">No specific payment methods listed. Cash is usually accepted.</span>}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="p-8 border-2 border-dashed border-gray-200 rounded-3xl text-center text-gray-400 bg-gray-50">
-                                    Payment methods not specified.
-                                </div>
-                            )}
-
-                            {/* RULES */}
-                            <div className="bg-gray-50 rounded-3xl p-8 border border-gray-100">
-                                <h3 className="text-xl font-bold text-gray-900 mb-6 font-serif">House Rules</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-                                    <RuleItem icon={FaClock} label="Check-in: 12:00 PM" />
-                                    <RuleItem icon={FaClock} label="Check-out: 11:00 AM" />
-                                    {ob.rules?.['2'] ? <RuleItem icon={FaDog} label="Pets Allowed" /> : <RuleItem icon={FaBan} label="No Pets Allowed" hasError />}
-                                    {ob.rules?.['6'] ? <RuleItem icon={FaSmoking} label="Smoking Allowed" /> : <RuleItem icon={FaBan} label="No Smoking" hasError />}
-                                    {ob.rules?.['7'] ? <RuleItem icon={FaWineGlass} label="Alcohol Allowed" /> : <RuleItem icon={FaBan} label="No Alcohol" hasError />}
-                                </div>
-                            </div>
-                        </section>
-
                         {/* LOCATION */}
                         <section ref={sections.location} className="scroll-mt-32 pb-8">
                             <h2 className="text-xl font-bold text-gray-900 mb-6 font-serif">Location</h2>
+                            {/* Address Display */}
+                            <div className="mb-4 bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-start gap-4">
+                                <FaMapMarkerAlt className="text-red-500 mt-1" />
+                                <div>
+                                    <p className="font-bold text-gray-900">{property.Address}</p>
+                                    <p className="text-sm text-gray-500">{property.CityName}, {property.Location}</p>
+                                </div>
+                            </div>
+
                             {googleMapSrc ? <iframe src={googleMapSrc} className="w-full h-[400px] rounded-2xl bg-gray-100 shadow-inner" style={{ border: 0 }} loading="lazy"></iframe> : <div className="h-[300px] bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400">Map unavailable</div>}
                         </section>
-
                     </div>
 
                     {/* RIGHT COLUMN: BOOKING CARD */}

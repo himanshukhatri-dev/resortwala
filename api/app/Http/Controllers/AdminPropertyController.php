@@ -14,25 +14,36 @@ class AdminPropertyController extends Controller
     {
         $property = PropertyMaster::findOrFail($id);
 
+        // Update basic fields if provided
+        $data = $request->except(['id', 'vendor_id', 'is_approved', 'PropertyId']);
+        
         if ($request->has('admin_pricing')) {
             $property->admin_pricing = $request->admin_pricing;
             
-            // Sync Final Prices to columns for easier querying
-            // Default to 'mon_thu' or average? Best to keep columns as base reference.
-            // Let's rely on columns for "Display Price" and JSON for calculation.
-            // Or update columns based on 'mon_thu' final price?
-            
-            // For now, just save the JSON.
+            // Sync Final Prices to columns for display/search consistency
+            if (isset($request->admin_pricing['mon_thu']['villa']['final'])) {
+                $property->Price = $request->admin_pricing['mon_thu']['villa']['final'];
+                $property->price_mon_thu = $request->admin_pricing['mon_thu']['villa']['final'];
+            }
+            if (isset($request->admin_pricing['fri_sun']['villa']['final'])) {
+                $property->price_fri_sun = $request->admin_pricing['fri_sun']['villa']['final'];
+            }
+            if (isset($request->admin_pricing['sat']['villa']['final'])) {
+                $property->price_sat = $request->admin_pricing['sat']['villa']['final'];
+            }
         }
 
+        // Apply other manual edits made by admin
+        $property->fill($data);
+
         $property->is_approved = true;
-        // Also ensure it is active
+        // Also ensure it is active and status is true
         $property->IsActive = true;
         $property->PropertyStatus = true;
         $property->save();
 
         return response()->json([
-            'message' => 'Property approved successfully',
+            'message' => 'Property approved and details updated successfully',
             'property' => $property
         ]);
     }

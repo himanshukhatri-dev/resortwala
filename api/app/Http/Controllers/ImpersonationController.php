@@ -14,29 +14,40 @@ class ImpersonationController extends Controller
             return response()->json(['message' => 'Unauthorized. Only admins can impersonate.'], 403);
         }
 
+        $type = $request->query('type', 'user'); // 'user' (admin/vendor) or 'customer'
+
         // 2. Find Target User
-        $targetUser = User::find($userId);
+        $targetUser = null;
+        if ($type === 'customer') {
+            $targetUser = \App\Models\Customer::find($userId);
+            if (!$targetUser) {
+                // Fallback: Check if customer exists in generic User table (sometimes added via admin panel as User model)
+                $targetUser = User::where('id', $userId)->where('role', 'customer')->first();
+            }
+        } else {
+            $targetUser = User::find($userId);
+        }
+
         if (!$targetUser) {
             return response()->json(['message' => 'User not found.'], 404);
         }
 
         // 3. Generate New Token for Target User
-        // Note: Creating a token does not log out the admin. 
-        // Admin gets a token belonging to the target user.
         $token = $targetUser->createToken('ImpersonationToken: ' . $request->user()->id)->plainTextToken;
 
         return response()->json([
             'token' => $token,
             'user' => $targetUser,
-            'redirect_url' => $this->getRedirectUrlForUser($targetUser)
+            'redirect_url' => $this->getRedirectUrlForUser($targetUser, $type)
         ]);
     }
 
-    private function getRedirectUrlForUser($user)
+    private function getRedirectUrlForUser($user, $type = 'user')
     {
-        // Robust environment-based redirection
-        // Falls back to localhost defaults if env vars are missing
-        
+        if ($type === 'customer') {
+            return env('FRONTEND_CUSTOMER_URL', 'http://localhost:3003');
+        }
+
         if ($user->role === 'admin') {
             return env('FRONTEND_ADMIN_URL', 'http://localhost:3004');
         }
@@ -45,7 +56,7 @@ class ImpersonationController extends Controller
             return env('FRONTEND_VENDOR_URL', 'http://localhost:3002');
         }
 
-        // Default to Customer
+        // Default to Customer if role is somehow undefined but it's a User model
         return env('FRONTEND_CUSTOMER_URL', 'http://localhost:3003');
     }
 }

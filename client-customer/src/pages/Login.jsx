@@ -1,23 +1,21 @@
 import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FaArrowLeft } from 'react-icons/fa';
-import { auth, setupRecaptcha } from '../firebase';
-import { signInWithPhoneNumber } from "firebase/auth";
 import axios from 'axios';
+import AuthCard from '../components/auth/AuthCard';
+import OtpInput from '../components/auth/OtpInput';
 
 export default function Login() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login, loginWithToken } = useAuth();
-    const [formData, setFormData] = useState({ email: '', password: '' });
-    const [phone, setPhone] = useState('');
+    const { loginWithToken } = useAuth();
+
+    // States
+    const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
-    const [mode, setMode] = useState('email'); // 'email' or 'phone'
-    const [step, setStep] = useState('phone'); // 'phone' or 'otp'
-    const [confirmObj, setConfirmObj] = useState(null);
-    const [error, setError] = useState('');
+    const [step, setStep] = useState('identifier'); // 'identifier' or 'otp'
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     const API_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -26,65 +24,30 @@ export default function Login() {
         setError('');
         setLoading(true);
         try {
-            const verifier = setupRecaptcha('recaptcha-container');
-            const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`; // Default to India +91 if missing
-            const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, verifier);
-            setConfirmObj(confirmationResult);
+            await axios.post(`${API_URL}/api/otp/send`, {
+                email,
+                type: 'login'
+            });
             setStep('otp');
-            setLoading(false);
         } catch (err) {
-            console.error(err);
-            setError(err.message || 'Failed to send OTP. Try again.');
+            setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
+        } finally {
             setLoading(false);
-            if (window.recaptchaVerifier) {
-                window.recaptchaVerifier.clear();
-                window.recaptchaVerifier = null;
-            }
         }
     };
 
-    const handleVerifyOtp = async (e) => {
-        e.preventDefault();
+    const handleVerifyOtp = async (code) => {
         setError('');
         setLoading(true);
         try {
-            const result = await confirmObj.confirm(otp);
-            const firebaseUser = result.user;
-            const idToken = await firebaseUser.getIdToken();
-
-            // Send to Backend
-            const backendRes = await axios.post(`${API_URL}/api/customer/login-otp`, {
-                phone: firebaseUser.phoneNumber,
-                firebase_token: idToken
+            const res = await axios.post(`${API_URL}/api/customer/login-email-otp`, {
+                email,
+                code: code || otp
             });
 
-            loginWithToken(backendRes.data.token);
+            loginWithToken(res.data.token);
 
-            // Redirect
-            const state = location.state;
-            if (state?.returnTo) {
-                navigate(state.returnTo, { state: state.bookingState });
-            } else {
-                navigate('/');
-            }
-
-        } catch (err) {
-            console.error(err);
-            setError('Invalid OTP or Login Failed.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        try {
-            await login(formData.email, formData.password);
-            await login(formData.email, formData.password);
-
-            // Check for redirect target
+            // Redirect logic
             const state = location.state;
             if (state?.returnTo) {
                 navigate(state.returnTo, { state: state.bookingState });
@@ -92,148 +55,81 @@ export default function Login() {
                 navigate('/');
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+            setError(err.response?.data?.message || 'Verification failed. Invalid OTP.');
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleBackdropClick = () => {
-        if (location.key !== 'default') {
-            navigate(-1);
-        } else {
-            navigate('/');
         }
     };
 
     return (
-        <div
-            onClick={handleBackdropClick}
-            className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 cursor-pointer"
+        <AuthCard
+            title={step === 'identifier' ? "Welcome back" : "Check your email"}
+            subtitle={step === 'identifier' ? "Enter your email to receive a secure login code" : `We sent a 6-digit code to ${email}`}
         >
-            <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute top-4 left-4 z-10"
-            >
-                <Link to="/" className="flex items-center text-gray-600 hover:text-black transition p-2 bg-white/50 rounded-full hover:bg-white">
-                    <FaArrowLeft className="mr-2" /> Back to Home
-                </Link>
-            </div>
-
-            <div
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100 animate-fade-up cursor-default"
-            >
-
-                <div className="flex justify-center mb-6">
-                    <img src="/resortwala-logo.png" alt="ResortWala" className="h-12 w-auto" />
+            {error && (
+                <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl mb-4 text-sm font-bold text-center border border-rose-100 animate-in fade-in zoom-in duration-300">
+                    {error}
                 </div>
+            )}
 
-                <h2 className="text-2xl font-bold text-center mb-4">Welcome back</h2>
-
-                <div className="flex justify-center mb-6 border-b">
-                    <button
-                        onClick={() => setMode('email')}
-                        className={`pb-2 px-4 font-medium ${mode === 'email' ? 'border-b-2 border-black text-black' : 'text-gray-400'}`}
-                    >
-                        Email
-                    </button>
-                    <button
-                        onClick={() => setMode('phone')}
-                        className={`pb-2 px-4 font-medium ${mode === 'phone' ? 'border-b-2 border-black text-black' : 'text-gray-400'}`}
-                    >
-                        Phone
-                    </button>
-                </div>
-
-                {error && (
-                    <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm text-center border border-red-100">
-                        {error}
+            {step === 'identifier' ? (
+                <form onSubmit={handleSendOtp} className="space-y-6">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
+                        <input
+                            type="email"
+                            placeholder="e.g. rahul@example.com"
+                            className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-[1.5rem] focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all placeholder-gray-300"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
                     </div>
-                )}
 
-                {mode === 'email' ? (
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <input
-                                type="email"
-                                placeholder="Email address"
-                                className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-black transition"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <input
-                                type="password"
-                                placeholder="Password"
-                                className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-black transition"
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                required
-                            />
-                        </div>
-
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className={`w-full bg-[#1e1e1e] hover:bg-black text-white font-black py-4.5 rounded-[1.5rem] transition-all active:scale-[0.98] shadow-xl shadow-gray-200 uppercase text-xs tracking-widest ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    >
+                        {loading ? 'Sending Code...' : 'Get Login Code'}
+                    </button>
+                </form>
+            ) : (
+                <div className="space-y-8">
+                    <div className="flex flex-col items-center gap-6">
+                        <OtpInput length={6} onComplete={handleVerifyOtp} />
                         <button
-                            type="submit"
+                            onClick={() => setStep('identifier')}
+                            className="text-xs font-black text-blue-600 uppercase tracking-widest hover:underline"
+                        >
+                            Change Email
+                        </button>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        <button
+                            onClick={() => handleVerifyOtp()}
                             disabled={loading}
-                            className={`w-full bg-[#FF385C] hover:bg-[#D90B3E] text-white font-bold py-3.5 rounded-lg transition ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4.5 rounded-[1.5rem] transition-all active:scale-[0.98] shadow-xl shadow-blue-100 uppercase text-xs tracking-widest ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                            {loading ? 'Logging in...' : 'Log in'}
+                            {loading ? 'Verifying...' : 'Verify & Login'}
                         </button>
-                    </form>
-                ) : (
-                    <form onSubmit={step === 'phone' ? handleSendOtp : handleVerifyOtp} className="space-y-4">
-                        {step === 'phone' ? (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
-                                <div className="flex">
-                                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
-                                        +91
-                                    </span>
-                                    <input
-                                        type="tel"
-                                        placeholder="9876543210"
-                                        className="w-full p-3 border border-gray-300 rounded-r-lg outline-none focus:border-black transition"
-                                        value={phone}
-                                        onChange={(e) => setPhone(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                                <div id="recaptcha-container" className="mt-4"></div>
-                            </div>
-                        ) : (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Enter OTP</label>
-                                <input
-                                    type="text"
-                                    placeholder="123456"
-                                    className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-black transition text-center tracking-widest text-xl"
-                                    value={otp}
-                                    onChange={(e) => setOtp(e.target.value)}
-                                    required
-                                />
-                            </div>
-                        )}
 
-                        <button
-                            type="submit"
-                            disabled={loading || (step === 'phone' && phone.length < 10)}
-                            className={`w-full bg-[#FF385C] hover:bg-[#D90B3E] text-white font-bold py-3.5 rounded-lg transition ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
-                            {loading ? 'Processing...' : (step === 'phone' ? 'Send OTP' : 'Verify & Login')}
-                        </button>
-                    </form>
-                )}
-
-                <div className="mt-6 text-center text-sm text-gray-600">
-                    Don't have an account?{' '}
-                    <Link to="/signup" className="font-bold underline hover:text-black">
-                        Sign up
-                    </Link>
+                        <p className="text-center text-gray-400 text-xs font-bold leading-relaxed">
+                            Didn't receive the email? <button onClick={handleSendOtp} className="text-blue-600 hover:underline">Resend Code</button>
+                        </p>
+                    </div>
                 </div>
+            )}
+
+            <div className="pt-6 border-t border-gray-100 mt-6 text-center">
+                <p className="text-sm font-bold text-gray-400">
+                    New to ResortWala? {' '}
+                    <Link to="/signup" className="text-black hover:underline underline-offset-4">
+                        Create an account
+                    </Link>
+                </p>
             </div>
-        </div>
+        </AuthCard>
     );
 }
