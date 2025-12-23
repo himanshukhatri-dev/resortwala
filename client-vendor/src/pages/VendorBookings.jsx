@@ -6,7 +6,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import Sidebar from '../components/Sidebar';
 import { useModal } from '../context/ModalContext';
-import { FaSearch, FaCalendarAlt, FaFilter, FaCheck, FaTimes, FaBan, FaBars } from 'react-icons/fa';
+import { FaSearch, FaCalendarAlt, FaFilter, FaCheck, FaTimes, FaBan, FaBars, FaBuilding, FaLink } from 'react-icons/fa';
 
 export default function VendorBookings() {
     const { user, token } = useAuth();
@@ -245,6 +245,8 @@ export default function VendorBookings() {
                                                         <div>
                                                             <div className="font-semibold text-gray-900 text-sm">{booking.CustomerName || 'Guest'}</div>
                                                             <div className="text-xs text-gray-400">{booking.CustomerMobile}</div>
+                                                            {booking.CustomerEmail && <div className="text-xs text-gray-400">{booking.CustomerEmail}</div>}
+                                                            <BookingSourceBadge source={booking.booking_source} />
                                                         </div>
                                                     </div>
                                                 </td>
@@ -324,6 +326,24 @@ export default function VendorBookings() {
                 </div>
             </div>
         </div>
+    );
+}
+
+// Booking Source Badge Component
+function BookingSourceBadge({ source }) {
+    const badges = {
+        'customer_app': { label: 'ResortWala', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: <FaBuilding className="text-[8px]" /> },
+        'public_calendar': { label: 'Public Link', color: 'bg-purple-50 text-purple-700 border-purple-200', icon: <FaLink className="text-[8px]" /> },
+        'vendor_manual': { label: 'Manual', color: 'bg-gray-50 text-gray-700 border-gray-200', icon: null },
+        'admin_manual': { label: 'Admin', color: 'bg-amber-50 text-amber-700 border-amber-200', icon: null },
+    };
+
+    const badge = badges[source] || badges['customer_app'];
+
+    return (
+        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold border mt-1 ${badge.color}`}>
+            {badge.icon} {badge.label}
+        </span>
     );
 }
 

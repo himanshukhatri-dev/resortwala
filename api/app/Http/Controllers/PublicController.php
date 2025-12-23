@@ -22,19 +22,24 @@ class PublicController extends Controller
         // Using PascalCase column names as per Booking model
         $bookings = Booking::where('PropertyId', $id)
             ->where('CheckOutDate', '>=', Carbon::today())
-            ->whereIn('Status', ['Confirmed', 'confirmed', 'CheckedIn', 'checked_in', 'CheckedOut', 'checked_out', 'Blocked', 'blocked'])
+            ->whereIn('Status', ['Confirmed', 'confirmed', 'pending', 'CheckedIn', 'checked_in', 'CheckedOut', 'checked_out', 'Blocked', 'blocked'])
             ->get(['CheckInDate', 'CheckOutDate', 'Status']);
 
         // Format events for calendar
         $events = [];
-        foreach ($bookings as $booking) {
-            $events[] = [
-                'start' => $booking->CheckInDate,
-                'end' => $booking->CheckOutDate,
-                'title' => 'Booked',
-                'status' => 'booked',
-                'allDay' => true,
-            ];
+        
+        // For villas, show all bookings to block dates
+        // For waterparks, don't show bookings (allow multiple)
+        if ($property->property_type !== 'waterpark') {
+            foreach ($bookings as $booking) {
+                $events[] = [
+                    'start' => $booking->CheckInDate,
+                    'end' => $booking->CheckOutDate,
+                    'title' => 'Booked',
+                    'status' => 'booked',
+                    'allDay' => true,
+                ];
+            }
         }
 
         return response()->json([
@@ -49,9 +54,11 @@ class PublicController extends Controller
                 'vendor_id' => $property->vendor_id,
                 'vendor_phone' => $property->MobileNo, // Exposing Property Contact Number
                 'video_url' => $property->video_url,
-                'onboarding_data' => $property->onboarding_data
+                'onboarding_data' => $property->onboarding_data,
+                'property_type' => $property->property_type ?? 'villa'
             ],
-            'events' => $events
+            'events' => $events,
+            'allows_multiple_bookings' => $property->property_type === 'waterpark'
         ]);
     }
 

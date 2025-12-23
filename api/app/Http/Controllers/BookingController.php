@@ -32,10 +32,47 @@ class BookingController extends Controller
             'base_amount' => 'nullable|numeric',
             'TotalAmount' => 'required|numeric',
             'payment_method' => 'required|string|in:hotel,card,upi',
-            'SpecialRequest' => 'nullable|string'
+            'SpecialRequest' => 'nullable|string',
+            'booking_source' => 'nullable|string|in:customer_app,public_calendar,vendor_manual,admin_manual'
         ]);
 
-        $validated['Status'] = 'Confirmed'; // Auto-confirm for now as per "Mock" flow
+        // Default booking source to customer_app if not provided
+        $bookingSource = $validated['booking_source'] ?? 'customer_app';
+        
+        // Get property to check type
+        $property = \App\Models\Property::find($validated['PropertyId']);
+        
+        // Check availability based on property type
+        if ($property && $property->property_type === 'villa') {
+            // For villas, check if dates are already booked
+            $existingBooking = Booking::where('PropertyId', $validated['PropertyId'])
+                ->whereIn('Status', ['Confirmed', 'pending'])
+                ->where(function($q) use ($validated) {
+                    $q->whereBetween('CheckInDate', [$validated['CheckInDate'], $validated['CheckOutDate']])
+                      ->orWhereBetween('CheckOutDate', [$validated['CheckInDate'], $validated['CheckOutDate']])
+                      ->orWhere(function($q2) use ($validated) {
+                          $q2->where('CheckInDate', '<=', $validated['CheckInDate'])
+                             ->where('CheckOutDate', '>=', $validated['CheckOutDate']);
+                      });
+                })
+                ->exists();
+                
+            if ($existingBooking) {
+                return response()->json([
+                    'message' => 'Property already booked for selected dates'
+                ], 422);
+            }
+        }
+        // For waterparks and other types, allow multiple bookings (no check needed)
+
+        // Set status based on booking source
+        if ($bookingSource === 'customer_app') {
+            $validated['Status'] = 'Confirmed'; // Auto-confirm for customer app
+        } else {
+            $validated['Status'] = 'pending'; // Require vendor confirmation for public calendar
+        }
+        
+        $validated['booking_source'] = $bookingSource;
         $validated['payment_status'] = ($validated['payment_method'] === 'hotel') ? 'pending' : 'paid';
 
         $booking = Booking::create($validated);
@@ -45,7 +82,8 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Booking created successfully',
-            'booking' => $booking
+            'booking' => $booking,
+            'requires_confirmation' => $bookingSource !== 'customer_app'
         ], 201);
     }
     public function search(Request $request)

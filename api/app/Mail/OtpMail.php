@@ -48,13 +48,17 @@ class OtpMail extends Mailable
                     ->html("
                         <div style='font-family: Arial, sans-serif; padding: 20px; text-align: center; background: #f4f4f4;'>
                             <div style='background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto;'>
-                                <h2 style='color: #008080;'>ResortWala</h2>
+                                <img src='https://resortwala.com/assets/logo.png' alt='ResortWala' style='max-width: 180px; height: auto; margin-bottom: 20px;' />
+                                <h2 style='color: #2563eb; margin-top: 10px;'>ResortWala</h2>
                                 <h3 style='color: #333;'>{$this->title}</h3>
                                 <p style='color: #666; font-size: 16px;'>{$this->messageText}</p>
-                                <div style='font-size: 32px; font-weight: bold; color: #008080; margin: 20px 0; letter-spacing: 5px;'>
+                                <div style='font-size: 32px; font-weight: bold; color: #2563eb; margin: 20px 0; letter-spacing: 5px; background: #eff6ff; padding: 20px; border-radius: 8px;'>
                                     {$this->otp}
                                 </div>
                                 <p style='color: #888; font-size: 12px;'>If you did not request this, please ignore this email.</p>
+                                <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #999; font-size: 11px;'>
+                                    &copy; " . date('Y') . " ResortWala. All rights reserved.
+                                </div>
                             </div>
                         </div>
                     ");

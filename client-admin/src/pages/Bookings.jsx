@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useModal } from '../context/ModalContext';
 import { API_BASE_URL } from '../config';
+import { FaBuilding, FaLink } from 'react-icons/fa';
 
 export default function Bookings() {
     const { token } = useAuth();
@@ -135,7 +136,12 @@ export default function Bookings() {
                                                 <div className="font-bold text-gray-900">{booking.property?.Name || 'Unknown'}</div>
                                                 <div className="text-xs text-gray-400">{booking.property?.Location}</div>
                                             </td>
-                                            <td className="px-6 py-5 font-medium text-gray-700">{booking.CustomerName}</td>
+                                            <td className="px-6 py-5">
+                                                <div className="font-semibold text-gray-900">{booking.CustomerName}</div>
+                                                <div className="text-xs text-gray-400">{booking.CustomerMobile}</div>
+                                                {booking.CustomerEmail && <div className="text-xs text-gray-400">{booking.CustomerEmail}</div>}
+                                                <BookingSourceBadge source={booking.booking_source} />
+                                            </td>
                                             <td className="px-6 py-5 text-center">
                                                 <div className="text-sm font-semibold text-gray-900">{new Date(booking.CheckInDate).toLocaleDateString()}</div>
                                                 <div className="text-[10px] text-gray-400 font-bold uppercase">To {new Date(booking.CheckOutDate).toLocaleDateString()}</div>
@@ -262,5 +268,23 @@ export default function Bookings() {
                 </>
             )}
         </div>
+    );
+}
+
+// Booking Source Badge Component
+function BookingSourceBadge({ source }) {
+    const badges = {
+        'customer_app': { label: 'ResortWala', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: <FaBuilding className="text-[8px]" /> },
+        'public_calendar': { label: 'Public Link', color: 'bg-purple-50 text-purple-700 border-purple-200', icon: <FaLink className="text-[8px]" /> },
+        'vendor_manual': { label: 'Manual', color: 'bg-gray-50 text-gray-700 border-gray-200', icon: null },
+        'admin_manual': { label: 'Admin', color: 'bg-amber-50 text-amber-700 border-amber-200', icon: null },
+    };
+
+    const badge = badges[source] || badges['customer_app'];
+
+    return (
+        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold border mt-1 ${badge.color}`}>
+            {badge.icon} {badge.label}
+        </span>
     );
 }

@@ -153,6 +153,25 @@ export default function BookingPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setBookingStatus('submitting');
+
+        const payload = {
+            PropertyId: id,
+            CustomerName: form.CustomerName,
+            CustomerMobile: form.CustomerMobile,
+            CustomerEmail: form.CustomerEmail,
+            CheckInDate: format(checkIn, 'yyyy-MM-dd'),
+            CheckOutDate: format(checkOut, 'yyyy-MM-dd'),
+            Guests: guests,
+            TotalAmount: total,
+            base_amount: basePrice,
+            tax_amount: taxes,
+            discount_amount: discount,
+            coupon_code: appliedCoupon?.code || null,
+            payment_method: form.payment_method,
+            SpecialRequest: form.SpecialRequest,
+            booking_source: 'customer_app' // Auto-confirmed bookings from ResortWala app
+        };
+
         try {
             const res = await axios.post(`${API_BASE_URL}/bookings`, payload);
 
