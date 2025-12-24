@@ -44,6 +44,7 @@ function App() {
                     {/* Added Route for Property Details */}
                     <Route path="/property/:id" element={<PropertyDetails />} />
                     <Route path="/book/:id" element={<BookingPage />} />
+                    <Route path="/checkout/:id" element={<BookingPage />} />
                     <Route path="/bookings" element={<UserBookings />} />
                     <Route path="/wishlist" element={<Wishlist />} />
                     <Route path="/profile" element={<Profile />} />

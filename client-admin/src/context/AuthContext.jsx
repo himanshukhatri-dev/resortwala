@@ -1,6 +1,7 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import adminAnalytics from '../utils/analytics';
 
 const AuthContext = createContext();
 
@@ -20,6 +21,10 @@ export function AuthProvider({ children }) {
                     });
                     setUser(res.data.user);
                     setToken(storedToken);
+                    // Set user context for analytics
+                    if (res.data.user && res.data.user.id) {
+                        adminAnalytics.setUser(res.data.user.id);
+                    }
                 } catch (err) {
                     // Token invalid, clear it
                     localStorage.removeItem('admin_token');
@@ -38,6 +43,10 @@ export function AuthProvider({ children }) {
         setToken(newToken);
         setUser(userData);
         setLoading(false);
+        // Set user context for analytics
+        if (userData && userData.id) {
+            adminAnalytics.setUser(userData.id);
+        }
     };
 
     const logout = () => {

@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ModalProvider } from './context/ModalContext';
+import TokenHandler from './components/TokenHandler';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
@@ -8,7 +10,6 @@ import Layout from './Layout';
 import Vendors from './pages/Vendors';
 import Properties from './pages/Properties';
 import Settings from './pages/Settings';
-
 import Customers from './pages/Customers';
 import PropertyApproval from './pages/PropertyApproval';
 import VendorDetails from './pages/VendorDetails';
@@ -16,6 +17,8 @@ import PropertyChangeRequests from './pages/PropertyChangeRequests';
 import ReviewPropertyChange from './pages/ReviewPropertyChange';
 import SetPassword from './pages/SetPassword';
 import AdminCalendar from './pages/AdminCalendar';
+import AdminEventLogs from './pages/AdminEventLogs';
+import adminAnalytics from './utils/analytics';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -27,12 +30,6 @@ function ProtectedRoute({ children }) {
 
   return user ? children : <Navigate to="/login" />;
 }
-
-
-
-
-import { ModalProvider } from './context/ModalContext';
-import TokenHandler from './components/TokenHandler';
 
 function App() {
   return (
@@ -57,6 +54,7 @@ function App() {
               <Route path="/vendors/:id" element={<VendorDetails />} />
               <Route path="/bookings" element={<Bookings />} />
               <Route path="/calendar" element={<AdminCalendar />} />
+              <Route path="/analytics" element={<AdminEventLogs />} />
               <Route path="/properties" element={<Properties />} />
               <Route path="/properties/:id/approve" element={<PropertyApproval />} />
               <Route path="/property-changes" element={<PropertyChangeRequests />} />

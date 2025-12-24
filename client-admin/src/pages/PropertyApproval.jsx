@@ -10,7 +10,8 @@ export default function PropertyApproval() {
     const { token } = useAuth();
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [adminPricing, setAdminPricing] = useState(null);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'pricing' | 'media' | 'rules'
 
     // Editable state for the property details
@@ -191,16 +192,18 @@ export default function PropertyApproval() {
         setSaving(true);
         try {
             await axios.put(`${API_BASE_URL}/admin/properties/${id}/approve`, {
-                ...formData, // Send updated fields
-                admin_pricing: pricing
+                admin_pricing: pricing,
+                ...Object.fromEntries(Object.entries(property).filter(([_, v]) => v != null))
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            alert('Property Approved and Saved!');
-            navigate('/admin/properties');
+            setShowSuccessModal(true);
+            setTimeout(() => {
+                navigate('/properties');
+            }, 2000);
         } catch (err) {
             console.error(err);
-            alert('Failed to approve property');
+            alert('Failed to approve property: ' + (err.response?.data?.error || err.message));
         } finally {
             setSaving(false);
         }
@@ -243,7 +246,7 @@ export default function PropertyApproval() {
                     </div>
                     <div className="flex gap-3 w-full md:w-auto">
                         <button
-                            onClick={() => navigate('/admin/properties')}
+                            onClick={() => navigate('/properties')}
                             className="flex-1 md:flex-none px-6 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition"
                         >
                             Cancel

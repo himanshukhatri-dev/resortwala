@@ -40,7 +40,8 @@ export default function Sidebar({ userType = 'admin' }) {
         { path: '/property-changes', icon: '📝', label: 'Prop. Updates' },
         { path: '/bookings', icon: '📅', label: 'Bookings' },
         { path: '/calendar', icon: '📆', label: 'Master Calendar' },
-        { path: '/day-wise-booking', icon: '📊', label: 'Availability' },
+        { path: '/analytics', icon: '📊', label: 'Analytics' },
+        { path: '/day-wise-booking', icon: '📈', label: 'Availability' },
         { path: '/holidays', icon: '🌴', label: 'Holidays' },
         { path: '/reviews', icon: '⭐', label: 'Reviews' },
     ];

@@ -9,7 +9,8 @@ import { useAuth } from '../context/AuthContext';
 export default function BookingPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const locationState = useLocation().state || {};
+    const location = useLocation();
+    const locationState = location.state || {};
     const { user } = useAuth(); // Auth Context
 
     const [form, setForm] = useState({
@@ -53,7 +54,11 @@ export default function BookingPage() {
         }
     }, [checkIn, checkOut]);
 
-    const guests = locationState.guests || 2;
+    // Handle guests - can be number or object
+    const guestsFromState = locationState.guests || 2;
+    const guests = typeof guestsFromState === 'object'
+        ? (guestsFromState.adults || 0) + (guestsFromState.children || 0) + (guestsFromState.infants || 0)
+        : guestsFromState;
     const nights = Math.max(1, Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
 
     useEffect(() => {

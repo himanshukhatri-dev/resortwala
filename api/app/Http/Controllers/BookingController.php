@@ -40,7 +40,7 @@ class BookingController extends Controller
         $bookingSource = $validated['booking_source'] ?? 'customer_app';
         
         // Get property to check type
-        $property = \App\Models\Property::find($validated['PropertyId']);
+        $property = \App\Models\PropertyMaster::find($validated['PropertyId']);
         
         // Check availability based on property type
         if ($property && $property->property_type === 'villa') {

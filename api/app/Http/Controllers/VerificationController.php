@@ -30,11 +30,21 @@ class VerificationController extends Controller
         // Send email
         try {
             Mail::to($user->email)->send(new OtpMail($otp, 'verification'));
+            \Log::info("Email OTP sent to {$user->email}: {$otp}");
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to send email'], 500);
+            \Log::error("Failed to send email OTP to {$user->email}: " . $e->getMessage());
+            // Return OTP in response for debugging (remove in production)
+            return response()->json([
+                'message' => 'Failed to send email, but here is your code for testing',
+                'otp' => $otp,
+                'error' => $e->getMessage()
+            ], 500);
         }
         
-        return response()->json(['message' => 'Verification code sent to your email']);
+        return response()->json([
+            'message' => 'Verification code sent to your email',
+            'debug_otp' => $otp // Remove this in production!
+        ]);
     }
 
     /**

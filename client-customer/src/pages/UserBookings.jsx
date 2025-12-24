@@ -16,7 +16,8 @@ export default function UserBookings() {
     const { user } = useAuth(); // Get auth user
 
     const [showSuccessBanner, setShowSuccessBanner] = useState(false);
-    const successState = useLocation().state;
+    const location = useLocation();
+    const successState = location.state;
 
     useEffect(() => {
         if (successState?.bookingSuccess) {

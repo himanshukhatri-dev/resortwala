@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import adminAnalytics from '../utils/analytics';
 import {
     FaUsers, FaHome, FaCalendarCheck, FaCheckCircle,
     FaTimesCircle, FaRupeeSign, FaSearch, FaArrowRight, FaEdit, FaExclamationCircle
@@ -86,6 +87,7 @@ export default function Dashboard() {
     const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
 
     useEffect(() => {
+        adminAnalytics.pageView('Dashboard', { section: 'main' });
         fetchDashboardData();
     }, []);
 

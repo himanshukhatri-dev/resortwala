@@ -42,6 +42,10 @@ Route::post('/bookings/{id}/cancel', [\App\Http\Controllers\BookingController::c
 Route::get('/properties/{id}/booked-dates', [PropertyMasterController::class, 'getBookedDates']);
 Route::post('/coupons/check', [\App\Http\Controllers\CouponController::class, 'check']);
 
+// Event Tracking (Analytics)
+Route::post('/events/track', [\App\Http\Controllers\EventController::class, 'track']);
+Route::post('/events/batch', [\App\Http\Controllers\EventController::class, 'batchTrack']);
+
 // Customer Authentication Routes
 // Public Routes
 Route::get('/public/properties/{id}/calendar', [App\Http\Controllers\PublicController::class, 'getPropertyCalendar']);
@@ -140,6 +144,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admin Property Management
     Route::get('/admin/properties', [\App\Http\Controllers\AdminController::class, 'getAllProperties']);
     Route::get('/admin/properties/pending', [\App\Http\Controllers\AdminController::class, 'getPendingProperties']);
+    Route::get('/admin/properties/{id}/calendar', [\App\Http\Controllers\Admin\AdminPropertyController::class, 'getCalendar']);
+    
+    // Analytics routes (Admin)
+    Route::get('/admin/analytics/events', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventLogs']);
+    Route::get('/admin/analytics/stats', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventStats']);
+    Route::get('/admin/analytics/filters', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventFilters']);
     Route::put('/admin/properties/{id}/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approve']);
     Route::put('/admin/properties/{id}/pricing', [\App\Http\Controllers\AdminPropertyController::class, 'updatePricing']);
     Route::get('/admin/properties/{id}', [\App\Http\Controllers\AdminPropertyController::class, 'show']);

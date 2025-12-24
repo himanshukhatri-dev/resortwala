@@ -11,13 +11,10 @@ export default function TokenHandler() {
         const params = new URLSearchParams(location.search);
         const token = params.get('impersonate_token');
 
-        if (token) {
-            console.log("Impersonation Token Found:", token);
-            if (loginWithToken) {
-                loginWithToken(token);
-                // Remove token from URL
-                navigate(location.pathname, { replace: true });
-            }
+        if (token && loginWithToken) {
+            loginWithToken(token);
+            // Remove token from URL
+            navigate(location.pathname, { replace: true });
         }
     }, [location, loginWithToken, navigate]);
 

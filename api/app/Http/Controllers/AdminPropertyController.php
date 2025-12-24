@@ -12,40 +12,67 @@ class AdminPropertyController extends Controller
      */
     public function approve(Request $request, $id)
     {
-        $property = PropertyMaster::findOrFail($id);
+        try {
+            $property = PropertyMaster::findOrFail($id);
 
-        // Update basic fields if provided
-        $data = $request->except(['id', 'vendor_id', 'is_approved', 'PropertyId']);
-        
-        if ($request->has('admin_pricing')) {
-            $property->admin_pricing = $request->admin_pricing;
+            // Update basic fields if provided
+            $data = $request->except(['id', 'vendor_id', 'is_approved', 'PropertyId']);
             
-            // Sync Final Prices to columns for display/search consistency
-            if (isset($request->admin_pricing['mon_thu']['villa']['final'])) {
-                $property->Price = $request->admin_pricing['mon_thu']['villa']['final'];
-                $property->price_mon_thu = $request->admin_pricing['mon_thu']['villa']['final'];
+            if ($request->has('admin_pricing')) {
+                $adminPricing = $request->admin_pricing;
+                
+                // Ensure it's an array (not string)
+                if (is_string($adminPricing)) {
+                    $adminPricing = json_decode($adminPricing, true);
+                }
+                
+                $property->admin_pricing = $adminPricing;
+                
+                // Sync Final Prices to columns for display/search consistency
+                if (isset($adminPricing['mon_thu']['villa']['final'])) {
+                    $property->Price = $adminPricing['mon_thu']['villa']['final'];
+                    $property->price_mon_thu = $adminPricing['mon_thu']['villa']['final'];
+                }
+                if (isset($adminPricing['fri_sun']['villa']['final'])) {
+                    $property->price_fri_sun = $adminPricing['fri_sun']['villa']['final'];
+                }
+                if (isset($adminPricing['sat']['villa']['final'])) {
+                    $property->price_sat = $adminPricing['sat']['villa']['final'];
+                }
             }
-            if (isset($request->admin_pricing['fri_sun']['villa']['final'])) {
-                $property->price_fri_sun = $request->admin_pricing['fri_sun']['villa']['final'];
+
+            // Apply other manual edits made by admin (filter out null values)
+            foreach ($data as $key => $value) {
+                if ($value !== null && !empty($key)) {
+                    $property->$key = $value;
+                }
             }
-            if (isset($request->admin_pricing['sat']['villa']['final'])) {
-                $property->price_sat = $request->admin_pricing['sat']['villa']['final'];
-            }
+
+            $property->is_approved = true;
+            // Also ensure it is active and status is true
+            $property->IsActive = true;
+            $property->PropertyStatus = true;
+            
+            $property->save();
+
+            return response()->json([
+                'message' => 'Property approved and details updated successfully',
+                'property' => $property
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Property approval failed', [
+                'property_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to approve property',
+                'error' => $e->getMessage(),
+                'details' => config('app.debug') ? $e->getTraceAsString() : 'Enable debug mode for details'
+            ], 500);
         }
-
-        // Apply other manual edits made by admin
-        $property->fill($data);
-
-        $property->is_approved = true;
-        // Also ensure it is active and status is true
-        $property->IsActive = true;
-        $property->PropertyStatus = true;
-        $property->save();
-
-        return response()->json([
-            'message' => 'Property approved and details updated successfully',
-            'property' => $property
-        ]);
     }
 
     /**

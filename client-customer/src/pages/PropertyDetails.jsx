@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
+import analytics from '../utils/analytics';
 import {
     FaStar, FaMapMarkerAlt, FaWifi, FaSwimmingPool, FaCar, FaUtensils,
     FaArrowLeft, FaArrowRight, FaHeart, FaShare, FaMinus, FaPlus, FaTimes, FaCheck,
@@ -123,14 +124,24 @@ export default function PropertyDetails() {
             try {
                 const response = await axios.get(`${API_BASE_URL}/properties/${id}`);
                 setProperty(response.data);
-            } catch (err) {
-                console.error("Error fetching data:", err);
+            } catch (error) {
+                console.error('Failed to fetch property:', error);
             } finally {
                 setLoading(false);
             }
         };
         fetchData();
     }, [id]);
+
+    // Track page view when property loads
+    useEffect(() => {
+        if (property) {
+            analytics.propertyView(property.PropertyId, property.Name, {
+                category: property.PropertyType,
+                location: property.City
+            });
+        }
+    }, [property]);
 
     // -- HANDLERS --
     useEffect(() => {
@@ -161,7 +172,16 @@ export default function PropertyDetails() {
     const rawImages = property?.images?.length ? property.images.map(img => img.image_url) : (property?.ImageUrl ? [property.ImageUrl] : []);
     const galleryImages = rawImages; // STRICT: Only show if exists
 
-    const openLightBox = (index) => { if (galleryImages.length > 0) { setPhotoIndex(index); setIsGalleryOpen(true); } };
+    const handleGalleryOpen = (index = 0) => {
+        setPhotoIndex(index);
+        setIsGalleryOpen(true);
+
+        // Track gallery open
+        analytics.track('gallery_open', 'engagement', {
+            property_id: property.PropertyId,
+            initial_image: index
+        });
+    };
     const nextPhoto = (e) => { e?.stopPropagation(); setPhotoIndex((prev) => (prev + 1) % galleryImages.length); };
     const prevPhoto = (e) => { e?.stopPropagation(); setPhotoIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length); };
 
@@ -190,14 +210,6 @@ export default function PropertyDetails() {
 
     const { user } = useAuth();
 
-    const handleReserve = () => {
-        if (!dateRange.from || !dateRange.to) { setIsDatePickerOpen(true); return; }
-        const targetPath = `/book/${id}`;
-        const bookingState = { checkIn: dateRange.from, checkOut: dateRange.to, guests: guests.adults + guests.children };
-        if (!user) { navigate('/login', { state: { returnTo: targetPath, bookingState } }); return; }
-        navigate(targetPath, { state: bookingState });
-    };
-
     if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-16 h-16 border-4 border-gray-200 border-t-black rounded-full animate-spin"></div></div>;
     if (!property) return <div className="pt-32 pb-20 text-center">Property not found</div>;
 
@@ -206,6 +218,11 @@ export default function PropertyDetails() {
     const pricing = ob.pricing || {};
     const roomConfig = ob.roomConfig || { livingRoom: {}, bedrooms: [] };
     const isWaterpark = property.PropertyType === 'Waterpark';
+
+    const handleReserve = () => {
+        if (!dateRange.from || (!isWaterpark && !dateRange.to)) { setIsDatePickerOpen(true); return; }
+        handleCheckout();
+    };
 
     const safeFloat = (val, def = 0) => {
         const n = parseFloat(val);
@@ -303,6 +320,39 @@ export default function PropertyDetails() {
         return (match && match[2].length === 11) ? match[2] : null;
     };
 
+    const handleCheckout = () => {
+        if (!property) return;
+
+        // Track booking attempt
+        analytics.bookingAttempt(property.PropertyId, dateRange, guests);
+
+        if (!user) {
+            // User not logged in
+            navigate('/login', {
+                state: {
+                    redirectTo: `/book/${property.PropertyId}`,
+                    checkoutData: {
+                        propertyId: property.PropertyId,
+                        propertyName: property.Name,
+                        dateRange,
+                        guests,
+                        totalCost: priceBreakdown?.grantTotal
+                    }
+                }
+            });
+            return;
+        }
+
+        navigate(`/book/${property.PropertyId}`, {
+            state: {
+                property,
+                dateRange,
+                guests,
+                breakdown: priceBreakdown
+            }
+        });
+    };
+
     return (
         <div className="bg-white min-h-screen pb-20 pt-[80px]">
             {/* 1. HERO GALLERY */}
@@ -314,28 +364,28 @@ export default function PropertyDetails() {
                         {/* Main Image (Left Half) */}
                         <div
                             className="col-span-1 md:col-span-2 row-span-2 relative cursor-pointer group overflow-hidden"
-                            onClick={() => openLightBox(0)}
+                            onClick={() => handleGalleryOpen(0)}
                         >
                             <img src={galleryImages[0]} alt="Main" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
                         </div>
 
                         {/* Top Side Images */}
-                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden" onClick={() => openLightBox(1)}>
+                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden" onClick={() => handleGalleryOpen(1)}>
                             <img src={galleryImages[1] || galleryImages[0]} alt="Gallery 1" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
                         </div>
-                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden rounded-tr-2xl" onClick={() => openLightBox(2)}>
+                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden rounded-tr-2xl" onClick={() => handleGalleryOpen(2)}>
                             <img src={galleryImages[2] || galleryImages[0]} alt="Gallery 2" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
                         </div>
 
                         {/* Bottom Side Images */}
-                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden" onClick={() => openLightBox(3)}>
+                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden" onClick={() => handleGalleryOpen(3)}>
                             <img src={galleryImages[3] || galleryImages[0]} alt="Gallery 3" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
                         </div>
-                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden rounded-br-2xl" onClick={() => openLightBox(4)}>
+                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden rounded-br-2xl" onClick={() => handleGalleryOpen(4)}>
                             <img src={galleryImages[4] || galleryImages[0]} alt="Gallery 4" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
 
@@ -349,7 +399,7 @@ export default function PropertyDetails() {
 
                         {/* Mobile 'View All' Badge */}
                         <div className="absolute bottom-4 right-4 md:hidden">
-                            <button onClick={() => openLightBox(0)} className="bg-white/90 backdrop-blur-md text-black px-4 py-2 rounded-lg text-xs font-bold shadow-lg border border-gray-200 flex items-center gap-2">
+                            <button onClick={() => handleGalleryOpen(0)} className="bg-white/90 backdrop-blur-md text-black px-4 py-2 rounded-lg text-xs font-bold shadow-lg border border-gray-200 flex items-center gap-2">
                                 <FaCamera /> {galleryImages.length} Photos
                             </button>
                         </div>
@@ -728,6 +778,7 @@ export default function PropertyDetails() {
                                     setGuests={setGuests}
                                     includeFood={includeFood}
                                     setIncludeFood={setIncludeFood}
+                                    isWaterpark={isWaterpark}
                                 />
                             }
                         </div>
@@ -996,7 +1047,7 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
     );
 };
 
-const VillaBooking = ({ price, rating, dateRange, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, handleReserve, priceBreakdown, datePickerRef, property, guests, setGuests, includeFood, setIncludeFood }) => {
+const VillaBooking = ({ price, rating, dateRange, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, handleReserve, priceBreakdown, datePickerRef, property, guests, setGuests, includeFood, setIncludeFood, isWaterpark }) => {
 
     // Helper to get price for a specific date
     const getPriceForDate = (date) => {
