@@ -220,8 +220,17 @@ export default function PropertyDetails() {
     const GST_PERCENTAGE = safeFloat(property.gst_percentage, 18); // Default 18% provided by user
 
     const calculateBreakdown = () => {
-        if (!dateRange.from || !dateRange.to) return null;
-        const nights = differenceInDays(dateRange.to, dateRange.from);
+        if (!dateRange.from) return null;
+
+        // Villa needs both check-in and check-out. Waterpark can be single date.
+        if (!isWaterpark && !dateRange.to) return null;
+
+        const effectiveTo = dateRange.to || dateRange.from;
+        let nights = differenceInDays(effectiveTo, dateRange.from);
+
+        // Waterpark: Single day visit (Start=End) counts as 1 day
+        if (isWaterpark && nights === 0) nights = 1;
+
         if (nights <= 0) return null;
 
         let totalVillaRate = 0;
@@ -612,7 +621,7 @@ export default function PropertyDetails() {
                                 </p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="bg-white p-4 rounded-xl border border-blue-100 flex items-center justify-between">
-                                        <div><span className="font-bold text-gray-900 block text-lg">Free Stay</span><span className="text-sm text-gray-500">Age below 5 yrs</span></div>
+                                        <div><span className="font-bold text-gray-900 block text-lg">Free Entry</span><span className="text-sm text-gray-500">Age below 5 yrs</span></div>
                                         <div className="text-2xl font-bold text-blue-600">Free</div>
                                     </div>
                                     <div className="bg-white p-4 rounded-xl border border-blue-100 flex items-center justify-between">
@@ -845,34 +854,56 @@ const RuleItem = ({ icon: Icon, label, hasError }) => (
 );
 
 const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, dateRange, priceBreakdown, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, datePickerRef }) => {
-    // Determine Base Rates for Display
-    const adultRate = parseFloat(property.price_mon_thu || property.Price || 500);
-    const childRate = parseFloat(ob.childCriteria?.monFriPrice || ob.childCriteria?.price || 400);
-
     // Helper to get price for a specific date (Duplicated for availability in this component)
     const getPriceForDate = (date) => {
         const w = date.getDay();
-        const PRICE_WEEKDAY = parseFloat(property?.price_mon_thu || property?.Price || 0);
-        const PRICE_FRISUN = parseFloat(property?.price_fri_sun || property?.Price || 0);
-        const PRICE_SATURDAY = parseFloat(property?.price_sat || property?.Price || 0);
+        const p = ob?.pricing || {};
+        const PRICE_WEEKDAY = parseFloat(property?.price_mon_thu || p.weekday || property?.Price || 0);
+        const PRICE_FRISUN = parseFloat(property?.price_fri_sun || p.weekend || property?.Price || 0);
+        const PRICE_SATURDAY = parseFloat(property?.price_sat || p.saturday || property?.Price || 0);
 
         if (w === 6) return PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY; // Saturday
         if (w === 0 || w === 5) return PRICE_FRISUN || PRICE_WEEKDAY; // Fri/Sun
         return PRICE_WEEKDAY; // Mon-Thu
     };
 
+    // Determine Base Rates for Display
+    // If a date is selected, use that date's price. Otherwise default to Weekday.
+    const effectiveDate = dateRange?.from ? new Date(dateRange.from) : new Date();
+    const adultRate = getPriceForDate(effectiveDate) || parseFloat(property.price_mon_thu || property.Price || 500);
+
+    // Child Rate logic similar to calculation
+    let childRate = parseFloat(ob.childCriteria?.monFriPrice || ob.childCriteria?.price || 400);
+    const dayOfWeek = effectiveDate.getDay();
+    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6 || dayOfWeek === 5);
+    if (isWeekend && ob.childCriteria?.satSunPrice) {
+        childRate = parseFloat(ob.childCriteria.satSunPrice);
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-end mb-4 border-b pb-4">
-                <div>
-                    <span className="text-2xl font-bold">₹{Math.round(adultRate).toLocaleString()}</span>
-                    <span className="text-xs text-gray-500 ml-1">/ adult</span>
-                    <div className="text-xs text-blue-600 font-bold mt-1">
-                        + ₹{Math.round(childRate).toLocaleString()} / child
+                <div className="flex flex-col gap-2 w-full">
+                    {/* Adult Row */}
+                    <div className="flex justify-between items-center w-full">
+                        <div>
+                            <span className="text-xl font-bold">₹{Math.round(adultRate).toLocaleString()}</span>
+                            <span className="text-xs text-gray-500 ml-1">/ adult</span>
+                        </div>
+                        <div className="text-xs text-gray-400 line-through">₹{Math.round(adultRate * 1.25).toLocaleString()}</div>
                     </div>
-                    <div className="text-xs text-gray-400 line-through mt-0.5">₹{Math.round(adultRate * 1.25).toLocaleString()} (Market Price)</div>
+
+                    {/* Child Row - Only if child rate exists */}
+                    {childRate > 0 && (
+                        <div className="flex justify-between items-center w-full">
+                            <div>
+                                <span className="text-lg font-bold text-blue-600">₹{Math.round(childRate).toLocaleString()}</span>
+                                <span className="text-xs text-gray-500 ml-1">/ child</span>
+                            </div>
+                            <div className="text-xs text-gray-400 line-through">₹{Math.round(childRate * 1.25).toLocaleString()}</div>
+                        </div>
+                    )}
                 </div>
-                <div className="flex items-center gap-1 text-xs font-bold underline bg-blue-50 px-2 py-1 rounded text-blue-800"><FaTicketAlt size={10} /> Day Pass</div>
             </div>
 
             {/* GUEST SELECTOR */}
@@ -899,10 +930,10 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                         <button onClick={() => setGuests({ ...guests, children: guests.children + 1 })} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded transition font-bold">+</button>
                     </div>
                 </div>
-                {/* Free Stay / Infants */}
+                {/* Free Entry / Infants */}
                 <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-100">
                     <div className="flex flex-col">
-                        <span className="text-sm font-bold text-green-600">Free Stay</span>
+                        <span className="text-sm font-bold text-green-600">Free Entry</span>
                         <span className="text-[10px] text-gray-400">Age below 5 yrs</span>
                     </div>
                     <div className="text-xs font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded">
@@ -957,6 +988,7 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                 <div className="space-y-2 mt-4 text-sm text-gray-600 border-t pt-4">
                     <div className="flex justify-between"><span>Adult Tickets ({guests.adults})</span><span>₹{Math.round(priceBreakdown.totalAdultTicket).toLocaleString()}</span></div>
                     {guests.children > 0 && <div className="flex justify-between"><span>Child Tickets ({guests.children})</span><span>₹{Math.round(priceBreakdown.totalChildTicket).toLocaleString()}</span></div>}
+                    {priceBreakdown.gstAmount > 0 && <div className="flex justify-between text-gray-500"><span>GST (18%)</span><span>₹{Math.round(priceBreakdown.gstAmount).toLocaleString()}</span></div>}
                     <div className="flex justify-between font-bold text-lg text-black pt-2 border-t mt-2"><span>Total</span><span>₹{Math.round(priceBreakdown.grantTotal).toLocaleString()}</span></div>
                 </div>
             )}

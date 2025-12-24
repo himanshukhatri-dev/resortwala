@@ -27,34 +27,82 @@ const localizer = dateFnsLocalizer({
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
 function VendorCalendarContent() {
-    const { id } = useParams();
+    const { id: paramId } = useParams();
+    const navigate = useNavigate();
     const { token } = useAuth();
     const { showConfirm, showSuccess, showError, showInfo } = useModal();
-    const [events, setEvents] = useState([]);
-    const [property, setProperty] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
 
+    // State
+    const [properties, setProperties] = useState([]);
+    const [selectedPropertyId, setSelectedPropertyId] = useState(paramId || '');
+    const [events, setEvents] = useState([]);
+    const [currentProperty, setCurrentProperty] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
+
+    // 1. Fetch List of Properties on Mount
     useEffect(() => {
         if (token) {
-            fetchCalendarData();
-            // Auto-refresh every 5 seconds ("Live" updates)
-            const interval = setInterval(fetchCalendarData, 5000);
-            return () => clearInterval(interval);
+            fetchProperties();
         }
-    }, [id, token]);
+    }, [token]);
 
-    const fetchCalendarData = async () => {
+    const fetchProperties = async () => {
         try {
-            const res = await axios.get(`${API_BASE_URL}/vendor/properties/${id}/calendar`, {
+            const res = await axios.get(`${API_BASE_URL}/vendor/properties`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setProperty(res.data.property);
+            const props = res.data.properties || [];
+            setProperties(props);
+
+            // If paramId exists, ensure it's selected. 
+            // If NOT, and list has items, force user to select (don't auto-select to force clarity as requested)
+            // Or maybe auto-select first one if desired? User said "ask property to be compulsory param", implies active choice.
+            // We will let them choose.
+
+            setInitialLoading(false);
+        } catch (error) {
+            console.error("Failed to load properties", error);
+            setInitialLoading(false);
+        }
+    };
+
+    // 2. Fetch Calendar Data whenever selectedPropertyId changes
+    useEffect(() => {
+        if (selectedPropertyId && token) {
+            fetchCalendarData(selectedPropertyId);
+            // Optionally update URL without reload if needed, or just stay on /vendor/calendar
+        } else {
+            setEvents([]);
+            setCurrentProperty(null);
+        }
+    }, [selectedPropertyId, token]);
+
+    // Live Refresh
+    useEffect(() => {
+        if (selectedPropertyId && token) {
+            const interval = setInterval(() => fetchCalendarData(selectedPropertyId), 8000);
+            return () => clearInterval(interval);
+        }
+    }, [selectedPropertyId, token]);
+
+    const fetchCalendarData = async (propId) => {
+        // Don't set global loading on refresh to avoid UI flicker
+        if (!currentProperty) setLoading(true);
+        try {
+            const res = await axios.get(`${API_BASE_URL}/vendor/properties/${propId}/calendar`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setCurrentProperty(res.data.property);
 
             // Transform bookings to calendar events
             const calendarEvents = res.data.bookings.map(b => {
                 const start = new Date(b.CheckInDate);
                 const end = new Date(b.CheckOutDate);
+                // Fix for end date exclusive in some calendars (optional, but standard logic):
+                // If using 'day' precision, end date often needs to be +1 for visual or handled by 'endAccessor'.
+                // Using React-Big-Calendar, end date is exclusive. 
+                // We'll keep raw dates for now.
 
                 return {
                     id: b.BookingId,
@@ -69,14 +117,14 @@ function VendorCalendarContent() {
             setEvents(calendarEvents);
         } catch (error) {
             console.error("Failed to load calendar", error);
-            setError("Failed to load calendar data. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
     const handleSelectSlot = async ({ start, end }) => {
-        // Prevent past dates
+        if (!selectedPropertyId) return showError('Select Property', 'Please select a property first.');
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (start < today) {
@@ -94,14 +142,14 @@ function VendorCalendarContent() {
 
         try {
             await axios.post(`${API_BASE_URL}/vendor/bookings/lock`, {
-                property_id: id,
+                property_id: selectedPropertyId,
                 start_date: format(start, 'yyyy-MM-dd'),
                 end_date: format(end, 'yyyy-MM-dd')
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             await showSuccess('Locked', "Dates Locked Successfully!");
-            fetchCalendarData(); // Refresh
+            fetchCalendarData(selectedPropertyId);
         } catch (error) {
             showError('Error', "Failed to lock dates: " + (error.response?.data?.message || error.message));
         }
@@ -125,7 +173,7 @@ function VendorCalendarContent() {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     await showSuccess('Confirmed', "Booking Confirmed!");
-                    fetchCalendarData();
+                    fetchCalendarData(selectedPropertyId);
                 } catch (error) {
                     showError('Error', "Failed to approve");
                 }
@@ -141,182 +189,134 @@ function VendorCalendarContent() {
     const eventStyleGetter = (event) => {
         let backgroundColor = '#3174ad';
         const st = (event.status || '').toLowerCase();
-        if (st === 'locked') backgroundColor = '#e74c3c'; // Red for locked
-        if (st === 'confirmed') backgroundColor = '#2ecc71'; // Green for confirmed
-        if (st === 'pending') backgroundColor = '#f39c12'; // Orange for pending
+        if (st === 'locked') backgroundColor = '#e74c3c'; // Red
+        if (st === 'confirmed') backgroundColor = '#2ecc71'; // Green
+        if (st === 'pending') backgroundColor = '#f39c12'; // Orange
 
         return { style: { backgroundColor } };
     };
 
     const [currentDate, setCurrentDate] = useState(new Date());
 
-    const handleNavigate = (newDate) => {
-        setCurrentDate(newDate);
-    };
-
     const shareOnWhatsapp = () => {
-        const token = property?.share_token || property?.id;
+        if (!currentProperty) return;
+        const token = currentProperty.share_token || currentProperty.id;
         if (!token) return;
-
-        // Use configured Customer App URL, or fallback to localhost for dev
-        // For production, ensure VITE_CUSTOMER_APP_URL is set in environment variables
         const customerBase = import.meta.env.VITE_CUSTOMER_APP_URL || 'http://localhost:5173';
         const link = `${customerBase}/stay/${token}`;
-
-        const message = `Check live availability for ${property.name} here: ${link}`;
+        const message = `Check live availability for ${currentProperty.name} here: ${link}`;
         const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     };
 
-    // Custom Toolbar from Public Calendar
+    // Toolbar
     const CustomToolbar = (toolbar) => {
-        const goToBack = () => {
-            toolbar.onNavigate('PREV');
-        };
-
-        const goToNext = () => {
-            toolbar.onNavigate('NEXT');
-        };
-
-        const label = () => {
-            const date = toolbar.date;
-            return (
-                <span className="text-2xl font-bold text-gray-800 capitalize" style={{ minWidth: '200px', textAlign: 'center' }}>
-                    {format(date, 'MMMM yyyy')}
-                </span>
-            );
-        };
-
+        const goToBack = () => toolbar.onNavigate('PREV');
+        const goToNext = () => toolbar.onNavigate('NEXT');
         return (
             <div className="flex justify-center items-center mb-4 px-2 relative">
                 <div className="flex items-center justify-between gap-4 bg-white shadow-sm px-6 py-2 rounded-full border border-gray-100 min-w-[300px]">
-                    <button
-                        onClick={goToBack}
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-800 hover:text-black transition-all duration-200"
-                        title="Previous Month"
-                    >
-                        <FaArrowLeft size={16} />
-                    </button>
-
-                    {label()}
-
-                    <button
-                        onClick={goToNext}
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-800 hover:text-black transition-all duration-200"
-                        title="Next Month"
-                    >
-                        <FaArrowRight size={16} />
-                    </button>
+                    <button onClick={goToBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-800"><FaArrowLeft size={16} /></button>
+                    <span className="text-xl font-bold text-gray-800 capitalize" style={{ minWidth: '180px', textAlign: 'center' }}>
+                        {format(toolbar.date, 'MMMM yyyy')}
+                    </span>
+                    <button onClick={goToNext} className="p-2 rounded-full hover:bg-gray-100 text-gray-800"><FaArrowRight size={16} /></button>
                 </div>
             </div>
         );
     };
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center">Loading Calendar...</div>;
-    if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
-    if (!property) return <div className="min-h-screen flex items-center justify-center">Property Not Found</div>;
+    if (initialLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
     return (
-        <div className="container mx-auto p-4 min-h-screen pt-24 pb-20" style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-5xl mx-auto border border-gray-100" style={{ backgroundColor: 'white', borderRadius: '1rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', overflow: 'hidden', border: '1px solid #f3f4f6' }}>
+        <div className="container mx-auto p-4 min-h-screen pt-24 pb-20 max-w-7xl">
 
-                {/* Header Section with Logo */}
-                <div className="p-4 pb-0 text-center relative">
-                    {/* Share Button (Top Right) */}
-                    <button
-                        onClick={shareOnWhatsapp}
-                        style={{
-                            position: 'absolute',
-                            top: '1rem',
-                            right: '1rem',
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            backgroundColor: '#25D366', color: 'white',
-                            padding: '8px 16px', borderRadius: '50px',
-                            border: 'none', cursor: 'pointer',
-                            fontWeight: '600', fontSize: '14px',
-                            boxShadow: '0 4px 6px rgba(37, 211, 102, 0.2)',
-                            zIndex: 10
+            {/* PROPERTY SELECTOR */}
+            <div className="mb-6 flex justify-center">
+                <div className="bg-white p-4 rounded-xl shadow-md border border-gray-100 flex items-center gap-4 w-full max-w-2xl">
+                    <label className="font-bold text-gray-700 whitespace-nowrap">Select Property:</label>
+                    <select
+                        value={selectedPropertyId}
+                        onChange={(e) => {
+                            setSelectedPropertyId(e.target.value);
+                            // Optionally navigate to URL: navigate(`/vendor/calendar/${e.target.value}`)
                         }}
+                        className="flex-1 p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium"
                     >
-                        <FaWhatsapp size={18} /> Share
-                    </button>
-
-                    <div className="flex flex-col items-center justify-center mb-2">
-                        <img
-                            src="/loader-logo.png"
-                            alt="ResortWala"
-                            style={{
-                                height: '60px',
-                                width: 'auto',
-                                objectFit: 'contain',
-                                marginBottom: '0.5rem'
-                            }}
-                        />
-                        <h1 className="text-xl font-bold text-gray-800">{property?.name}</h1>
-                        <p className="text-gray-500 text-xs font-medium">Manage Availability</p>
-                    </div>
-                </div>
-
-                <div className="p-8" style={{ padding: '2rem' }}>
-                    <div className="h-[600px] mb-8" style={{ height: '600px', marginBottom: '2rem' }}>
-                        <Calendar
-                            localizer={localizer}
-                            events={events}
-                            startAccessor="start"
-                            endAccessor="end"
-                            style={{ height: 600 }}
-                            selectable
-                            onSelectSlot={handleSelectSlot}
-                            onSelectEvent={handleSelectEvent}
-                            eventPropGetter={eventStyleGetter}
-                            date={currentDate}
-                            onNavigate={handleNavigate}
-                            components={{
-                                toolbar: CustomToolbar,
-                                event: ({ event }) => (
-                                    <div className="relative h-full w-full flex items-center px-1 text-xs group overflow-visible">
-                                        <div className="font-semibold truncate w-full flex items-center gap-1">
-                                            {/* Status Dot */}
-                                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${event.status === 'confirmed' ? 'bg-white' :
-                                                event.status === 'pending' ? 'bg-yellow-200' : 'bg-red-200'
-                                                }`}></span>
-                                            <span className="truncate">{event.resource.CustomerName}</span>
-                                        </div>
-
-                                        {/* HOVER TOOLTIP - COMPLETELY FLOATING */}
-                                        <div className="absolute z-[9999] hidden group-hover:block bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-xs rounded-xl p-4 shadow-2xl pointer-events-none">
-                                            <div className="text-sm font-bold text-white mb-2 border-b border-gray-700 pb-2">{event.resource.CustomerName}</div>
-                                            <div className="space-y-1.5 text-gray-300">
-                                                <div className="flex justify-between"><span>Status:</span> <span className="capitalize font-medium text-white">{event.resource.Status}</span></div>
-                                                <div className="flex justify-between"><span>Mobile:</span> <span className="text-white">{event.resource.CustomerMobile || 'N/A'}</span></div>
-                                                <div className="flex justify-between"><span>Guests:</span> <span className="text-white">{event.resource.Guests}</span></div>
-                                                <div className="flex justify-between"><span>Amount:</span> <span className="font-bold text-green-400">₹{event.resource.TotalAmount}</span></div>
-                                            </div>
-                                            {/* Arrow */}
-                                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-6 border-r-6 border-t-6 border-l-transparent border-r-transparent border-t-gray-900"></div>
-                                        </div>
-                                    </div>
-                                )
-                            }}
-                        />
-                    </div>
-
-                    <div className="flex gap-4 text-sm justify-center" style={{ display: 'flex', gap: '20px', justifyContent: 'center', fontSize: '0.875rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ width: '16px', height: '16px', backgroundColor: '#e74c3c', borderRadius: '4px' }}></span>
-                            Locked (Owner)
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ width: '16px', height: '16px', backgroundColor: '#2ecc71', borderRadius: '4px' }}></span>
-                            Confirmed
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ width: '16px', height: '16px', backgroundColor: '#f39c12', borderRadius: '4px' }}></span>
-                            Pending Details
-                        </div>
-                    </div>
+                        <option value="">-- Choose a Villa / Hotel --</option>
+                        {properties.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} ({p.Location})</option>
+                        ))}
+                    </select>
                 </div>
             </div>
+
+            {selectedPropertyId && currentProperty ? (
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-5xl mx-auto border border-gray-100">
+                    {/* Header Section with Logo */}
+                    <div className="p-4 pb-0 text-center relative">
+                        <button onClick={shareOnWhatsapp} className="absolute top-4 right-4 flex items-center gap-2 bg-[#25D366] text-white px-4 py-2 rounded-full font-bold text-sm shadow hover:bg-[#20bd5a] transition">
+                            <FaWhatsapp size={18} /> Share
+                        </button>
+
+                        <div className="flex flex-col items-center justify-center mb-2">
+                            {/* Display Logic for Logo/Title */}
+                            <h1 className="text-xl font-bold text-gray-800">{currentProperty.name}</h1>
+                            <p className="text-gray-500 text-xs font-medium">Manage Availability</p>
+                        </div>
+                    </div>
+
+                    <div className="p-8">
+                        <div className="h-[600px] mb-8">
+                            <Calendar
+                                localizer={localizer}
+                                events={events}
+                                startAccessor="start"
+                                endAccessor="end"
+                                style={{ height: 600 }}
+                                selectable
+                                onSelectSlot={handleSelectSlot}
+                                onSelectEvent={handleSelectEvent}
+                                eventPropGetter={eventStyleGetter}
+                                date={currentDate}
+                                onNavigate={(date) => setCurrentDate(date)}
+                                components={{
+                                    toolbar: CustomToolbar,
+                                    event: ({ event }) => (
+                                        <div className="relative h-full w-full flex items-center px-1 text-xs group overflow-visible">
+                                            <div className="font-semibold truncate w-full flex items-center gap-1">
+                                                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${event.status === 'confirmed' ? 'bg-white' : event.status === 'pending' ? 'bg-blue-200' : 'bg-red-200'}`}></span>
+                                                <span className="truncate">{event.resource.CustomerName}</span>
+                                            </div>
+                                            {/* Tooltip */}
+                                            <div className="absolute z-[9999] hidden group-hover:block bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-xs rounded-xl p-4 shadow-2xl pointer-events-none">
+                                                <div className="text-sm font-bold text-white mb-2 border-b border-gray-700 pb-2">{event.resource.CustomerName}</div>
+                                                <div className="space-y-1.5 text-gray-300">
+                                                    <div className="flex justify-between"><span>Status:</span> <span className="capitalize font-medium text-white">{event.resource.Status}</span></div>
+                                                    <div className="flex justify-between"><span>Mobile:</span> <span className="text-white">{event.resource.CustomerMobile || 'N/A'}</span></div>
+                                                    <div className="flex justify-between"><span>Guests:</span> <span className="text-white">{event.resource.Guests}</span></div>
+                                                    <div className="flex justify-between"><span>Amount:</span> <span className="font-bold text-green-400">₹{event.resource.TotalAmount}</span></div>
+                                                </div>
+                                                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-6 border-r-6 border-t-6 border-l-transparent border-r-transparent border-t-gray-900"></div>
+                                            </div>
+                                        </div>
+                                    )
+                                }}
+                            />
+                        </div>
+
+                        <div className="flex gap-4 text-sm justify-center">
+                            <div className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-[#e74c3c]"></span> Locked (Owner)</div>
+                            <div className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-[#2ecc71]"></span> Confirmed</div>
+                            <div className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-[#f39c12]"></span> Pending Approval</div>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="text-center py-20 text-gray-500">
+                    <p className="text-xl font-medium">Please select a property from the dropdown above to view its calendar.</p>
+                </div>
+            )}
         </div>
     );
 }

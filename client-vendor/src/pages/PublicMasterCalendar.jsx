@@ -36,7 +36,7 @@ const PublicMasterCalendar = () => {
     const [submitting, setSubmitting] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
 
-    // State for filtering
+    // Filter State
     const [selectedPropertyId, setSelectedPropertyId] = useState('all');
 
     useEffect(() => {
@@ -46,11 +46,9 @@ const PublicMasterCalendar = () => {
     const fetchData = async () => {
         try {
             const res = await axios.get(`${API_BASE_URL}/public/vendors/${id}/calendar`);
-
             setVendor(res.data.vendor);
             setProperties(res.data.properties);
 
-            // Default property for booking if available
             if (res.data.properties.length > 0) {
                 setBookingForm(prev => ({ ...prev, propertyId: res.data.properties[0].PropertyId }));
             }
@@ -71,21 +69,52 @@ const PublicMasterCalendar = () => {
         }
     };
 
-    // Filter events based on selection
+    // Helper: Generate Color from ID
+    const getColorForProperty = (propId) => {
+        const colors = [
+            '#3B82F6', // Blue
+            '#10B981', // Emerald
+            '#F59E0B', // Amber
+            '#EF4444', // Red
+            '#8B5CF6', // Violet
+            '#EC4899', // Pink
+            '#06B6D4', // Cyan
+            '#84CC16', // Lime
+            '#6366F1', // Indigo
+            '#D946EF'  // Fuchsia
+        ];
+        // Simple hash to pick a consistent color
+        const index = String(propId).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+        return colors[index];
+    };
+
+    // Helper: Get Customer App URL
+    const getCustomerUrl = (shareToken, propId) => {
+        const hostname = window.location.hostname;
+        let baseUrl = 'http://localhost:3002'; // Default Local
+        if (hostname.includes('staging')) {
+            baseUrl = 'http://staging.resortwala.com';
+        } else if (hostname === '72.61.242.42' || hostname === 'resortwala.com' || hostname.includes('resortwala.com')) {
+            baseUrl = 'http://resortwala.com';
+        }
+
+        // Prioritize Share Token if available
+        if (shareToken) return `${baseUrl}/stay/${shareToken}`;
+        return `${baseUrl}/property/${propId}`;
+    };
+
     const filteredEvents = React.useMemo(() => {
         if (selectedPropertyId === 'all') return events;
         return events.filter(evt => String(evt.resourceId) === String(selectedPropertyId));
     }, [events, selectedPropertyId]);
 
     const handleSelectSlot = ({ start, end }) => {
-        // Prevent past dates
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (start < today) {
             alert("Cannot select past dates.");
             return;
         }
-
         setSelectedSlot({ start, end });
         setSubmitSuccess(false);
         setShowModal(true);
@@ -111,7 +140,7 @@ const PublicMasterCalendar = () => {
             setTimeout(() => {
                 setShowModal(false);
                 setBookingForm({ name: '', mobile: '', propertyId: properties[0]?.PropertyId || '' });
-                fetchData(); // Refresh calendar
+                fetchData();
             }, 2000);
         } catch (err) {
             alert(err.response?.data?.message || "Booking Failed");
@@ -128,7 +157,6 @@ const PublicMasterCalendar = () => {
                 url: window.location.href,
             }).catch(console.error);
         } else {
-            // Fallback
             const textArea = document.createElement("textarea");
             textArea.value = window.location.href;
             document.body.appendChild(textArea);
@@ -139,18 +167,17 @@ const PublicMasterCalendar = () => {
         }
     };
 
-    // Custom Toolbar
     const CustomToolbar = (toolbar) => {
         const goToBack = () => { toolbar.onNavigate('PREV'); };
         const goToNext = () => { toolbar.onNavigate('NEXT'); };
 
         return (
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 px-2">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 bg-white p-1 rounded-full shadow-sm border border-gray-100">
                     <button onClick={goToBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition">
                         <FaArrowLeft />
                     </button>
-                    <span className="text-xl font-bold text-gray-800 capitalize min-w-[150px] text-center">
+                    <span className="text-lg font-bold text-gray-800 capitalize min-w-[140px] text-center">
                         {format(toolbar.date, 'MMMM yyyy')}
                     </span>
                     <button onClick={goToNext} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition">
@@ -158,51 +185,93 @@ const PublicMasterCalendar = () => {
                     </button>
                 </div>
 
-                {/* Property Filter */}
-                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-full shadow-sm">
-                    <FaFilter className="text-gray-400" size={12} />
-                    <select
-                        value={selectedPropertyId}
-                        onChange={(e) => setSelectedPropertyId(e.target.value)}
-                        className="bg-transparent outline-none text-sm font-bold text-gray-700 min-w-[150px] cursor-pointer"
-                    >
-                        <option value="all">All Properties</option>
-                        {properties.map(p => (
-                            <option key={p.PropertyId} value={p.PropertyId}>{p.Name}</option>
-                        ))}
-                    </select>
+                {/* Property Filter & Legend */}
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
+                        <select
+                            value={selectedPropertyId}
+                            onChange={(e) => setSelectedPropertyId(e.target.value)}
+                            className="pl-8 pr-4 py-2 bg-white border border-gray-200 rounded-full shadow-sm outline-none text-sm font-bold text-gray-700 min-w-[180px] cursor-pointer appearance-none hover:border-gray-300 transition-colors"
+                        >
+                            <option value="all">All Properties</option>
+                            {properties.map(p => (
+                                <option key={p.PropertyId} value={p.PropertyId}>{p.Name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* View Property Button (Only if one selected) */}
+                    {selectedPropertyId !== 'all' && (
+                        <a
+                            href={getCustomerUrl(properties.find(p => String(p.PropertyId) === selectedPropertyId)?.share_token, selectedPropertyId)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="bg-black text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-gray-800 transition-colors flex items-center gap-2"
+                        >
+                            View Property ↗
+                        </a>
+                    )}
                 </div>
             </div>
         );
     };
 
-    if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-500 font-bold">Loading Portfolio...</div>;
+    if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-500 font-bold animate-pulse">Loading Portfolio...</div>;
     if (error) return <div className="flex items-center justify-center min-h-screen text-red-500 font-bold">{error}</div>;
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20 font-sans">
-            {/* Header */}
-            <div className="bg-white px-4 py-4 shadow-sm border-b sticky top-0 z-40">
-                <div className="max-w-4xl mx-auto flex items-center justify-between">
-                    <div>
-                        <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight leading-tight">{vendor?.name}'s Collection</h1>
-                        <p className="text-gray-500 text-xs md:text-sm flex items-center gap-1"><FaBuilding className="text-indigo-500" /> {properties.length} Properties Managed</p>
+            {/* BRANDED HEADER */}
+            <div className="bg-white px-6 py-4 shadow-sm border-b sticky top-0 z-40">
+                <div className="max-w-6xl mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        {/* ResortWala Branding */}
+                        <div className="flex flex-col">
+                            <h1 className="text-2xl font-black text-gray-900 tracking-tighter leading-none">
+                                Resort<span className="text-indigo-600">Wala</span>
+                            </h1>
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Verified Collection</span>
+                        </div>
+
+                        <div className="h-8 w-px bg-gray-200 hidden md:block"></div>
+
+                        {/* Vendor Name */}
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-800 leading-tight hidden md:block">{vendor?.name}</h2>
+                            <p className="text-gray-500 text-xs hidden md:flex items-center gap-1">
+                                <FaBuilding className="text-gray-400" size={10} /> {properties.length} Properties
+                            </p>
+                        </div>
                     </div>
-                    <button onClick={handleShare} className="p-2 bg-gray-100 rounded-full text-indigo-600 hover:bg-indigo-50 transition">
-                        <FaShareAlt />
-                    </button>
+
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-sm font-bold text-gray-700 md:hidden">{vendor?.name}</h2>
+                        <button onClick={handleShare} className="p-2.5 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200 transition-colors" title="Share Portfolio">
+                            <FaShareAlt />
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto p-4 mt-2">
+            <div className="max-w-6xl mx-auto p-4 sm:p-6">
+
+                {/* PROPERTY LEGEND (Mobile/Desktop) */}
+                {selectedPropertyId === 'all' && (
+                    <div className="mb-4 flex flex-wrap gap-2">
+                        {properties.map(p => (
+                            <div key={p.PropertyId} className="bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm flex items-center gap-2 text-xs font-medium">
+                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: getColorForProperty(p.PropertyId) }}></span>
+                                <span className="text-gray-700 truncate max-w-[150px]">{p.Name}</span>
+                                <a href={getCustomerUrl(p.share_token, p.PropertyId)} target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700 ml-1">↗</a>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {/* Calendar */}
                 <div className="bg-white rounded-3xl shadow-xl overflow-hidden p-4 md:p-6 mb-24 border border-gray-100">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-gray-800 text-base flex items-center gap-2"><FaCalendarAlt className="text-indigo-600" /> Check Availability</h3>
-
-                    </div>
-
-                    <div className="h-[600px] public-calendar">
+                    <div className="h-[650px] public-calendar">
                         <Calendar
                             localizer={localizer}
                             events={filteredEvents}
@@ -212,14 +281,17 @@ const PublicMasterCalendar = () => {
                             defaultView="month"
                             selectable
                             onSelectSlot={handleSelectSlot}
-                            eventPropGetter={(event) => ({
-                                className: 'bg-red-500 text-white border-0 opacity-90 pointer-events-none text-[10px]',
-                                style: { backgroundColor: '#EF4444', color: 'white', fontSize: '10px', padding: '1px 3px' }
-                            })}
+                            eventPropGetter={(event) => {
+                                const color = getColorForProperty(event.resourceId);
+                                return {
+                                    className: 'text-white border-0 opacity-90 pointer-events-none text-[10px] font-medium shadow-sm',
+                                    style: { backgroundColor: color, padding: '1px 4px' }
+                                };
+                            }}
                             components={{
                                 toolbar: CustomToolbar,
                                 event: ({ event }) => (
-                                    <div className="truncate" title={properties.find(p => p.PropertyId === event.resourceId)?.Name}>
+                                    <div className="truncate flex items-center gap-1" title={properties.find(p => p.PropertyId === event.resourceId)?.Name}>
                                         {properties.find(p => p.PropertyId === event.resourceId)?.Name}
                                     </div>
                                 )
@@ -230,7 +302,7 @@ const PublicMasterCalendar = () => {
             </div>
 
             {/* Footer Branding */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-3 z-30 text-center">
+            <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 p-3 z-30 text-center">
                 <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest flex items-center justify-center gap-1">
                     Powered by <span className="font-extrabold text-indigo-900 tracking-tighter text-sm">ResortWala</span>
                 </p>
@@ -244,7 +316,7 @@ const PublicMasterCalendar = () => {
                             <h3 className="font-bold text-lg">Request Booking</h3>
                             <button onClick={() => setShowModal(false)}><FaTimesCircle size={20} className="opacity-80 hover:opacity-100" /></button>
                         </div>
-
+                        {/* Form content remains same */}
                         {submitSuccess ? (
                             <div className="p-8 text-center">
                                 <FaCheckCircle className="text-green-500 text-5xl mx-auto mb-4" />

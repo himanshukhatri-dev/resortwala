@@ -15,21 +15,27 @@ export default function UserBookings() {
 
     const { user } = useAuth(); // Get auth user
 
+    const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+    const successState = useLocation().state;
+
+    useEffect(() => {
+        if (successState?.bookingSuccess) {
+            setShowSuccessBanner(true);
+            // Clear state after 10s or keep it until dismissed? Keeping for visibility.
+        }
+    }, [successState]);
+
     useEffect(() => {
         const fetchBookings = async () => {
             const email = user?.email || localStorage.getItem('user_email');
             const mobile = user?.phone || localStorage.getItem('user_mobile');
 
-
-
             if (!email && !mobile) {
-
                 setLoading(false);
                 return;
             }
 
             try {
-                // Fixed URL spacing
                 const res = await axios.get(`${API_BASE_URL}/bookings/search`, {
                     params: { email, mobile }
                 });
@@ -44,7 +50,24 @@ export default function UserBookings() {
         };
 
         fetchBookings();
-    }, [user]);
+
+        // Polling Logic: Check every 10s if any booking is Pending
+        const interval = setInterval(() => {
+            const hasPending = bookings.some(b => b.Status === 'Pending');
+            if (hasPending) {
+                fetchBookings();
+            }
+        }, 10000);
+
+        return () => clearInterval(interval);
+    }, [user, bookings.length]); // Re-run if bookings length changes to update polling context if needed
+
+    const handleChatWithAdmin = () => {
+        const id = successState?.newBookingId || 'New';
+        const propName = successState?.property_name || 'the property';
+        const msg = `Hi ResortWala, I'm waiting for confirmation on my booking #${id} for ${propName}. Can you please update me?`;
+        window.open(`https://wa.me/919999999999?text=${encodeURIComponent(msg)}`, '_blank'); // Replace with actual Admin/Support Number
+    };
 
     // Sorting Logic
     const sortedBookings = [...bookings].sort((a, b) => {
@@ -200,6 +223,37 @@ export default function UserBookings() {
                         </select>
                     </div>
                 </div>
+
+                {/* SUCCESS BANNER */}
+                <AnimatePresence>
+                    {showSuccessBanner && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20, height: 0 }}
+                            animate={{ opacity: 1, y: 0, height: 'auto' }}
+                            exit={{ opacity: 0, y: -20, height: 0 }}
+                            className="mb-8"
+                        >
+                            <div className="bg-green-50 border border-green-200 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+                                <div className="flex items-start gap-4">
+                                    <div className="bg-green-500 text-white rounded-full p-2 mt-1">
+                                        <FaCheck size={16} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-green-900">Booking Request Sent Successfully!</h3>
+                                        <p className="text-green-700 text-sm mt-1">Your booking is currently <strong>Pending</strong>. You will receive a confirmation once the vendor approves it.</p>
+                                        <p className="text-green-600 text-xs mt-2">Booking ID: <span className="font-mono font-bold">#{successState?.newBookingId || 'N/A'}</span></p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleChatWithAdmin}
+                                    className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20be5c] text-white px-6 py-3 rounded-xl font-bold shadow-md hover:shadow-lg transition-all whitespace-nowrap"
+                                >
+                                    <FaWhatsapp size={20} /> Chat with Admin
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 space-y-4">

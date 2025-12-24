@@ -180,7 +180,8 @@ export default function BookingPage() {
             coupon_code: appliedCoupon?.code || null,
             payment_method: form.payment_method,
             SpecialRequest: form.SpecialRequest,
-            booking_source: 'customer_app' // Auto-confirmed bookings from ResortWala app
+            booking_source: 'customer_app',
+            Status: 'Pending' // Vendor Approval Flow
         };
 
         try {
@@ -190,7 +191,14 @@ export default function BookingPage() {
             if (form.CustomerEmail) localStorage.setItem('user_email', form.CustomerEmail);
             if (form.CustomerMobile) localStorage.setItem('user_mobile', form.CustomerMobile);
 
-            navigate('/bookings', { state: { bookingSuccess: true } });
+            navigate('/bookings', {
+                state: {
+                    bookingSuccess: true,
+                    message: "Booking Request Sent! Waiting for Approval.",
+                    newBookingId: res.data.bookingId || res.data.id || res.data.booking?.BookingId || null, // Ensure ID is passed
+                    property_name: property.Name
+                }
+            });
         } catch (err) {
             console.error(err);
             alert("Booking Failed. Please try again.");

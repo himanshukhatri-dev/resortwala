@@ -15,6 +15,7 @@ import VendorDetails from './pages/VendorDetails';
 import PropertyChangeRequests from './pages/PropertyChangeRequests';
 import ReviewPropertyChange from './pages/ReviewPropertyChange';
 import SetPassword from './pages/SetPassword';
+import AdminCalendar from './pages/AdminCalendar';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -55,6 +56,7 @@ function App() {
               <Route path="/customers" element={<Customers />} />
               <Route path="/vendors/:id" element={<VendorDetails />} />
               <Route path="/bookings" element={<Bookings />} />
+              <Route path="/calendar" element={<AdminCalendar />} />
               <Route path="/properties" element={<Properties />} />
               <Route path="/properties/:id/approve" element={<PropertyApproval />} />
               <Route path="/property-changes" element={<PropertyChangeRequests />} />
