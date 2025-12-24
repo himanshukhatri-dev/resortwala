@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import {
     FaStar, FaMapMarkerAlt, FaWifi, FaSwimmingPool, FaCar, FaUtensils,
     FaArrowLeft, FaArrowRight, FaHeart, FaShare, FaMinus, FaPlus, FaTimes, FaCheck,
-    FaWater, FaUser, FaBed, FaBath, FaDoorOpen, FaShieldAlt, FaMedal,
+    FaWater, FaUser, FaBed, FaBath, FaDoorOpen, FaShieldAlt, FaMedal, FaUsers,
     FaWhatsapp, FaFacebook, FaTwitter, FaEnvelope, FaLink, FaCopy, FaPhone, FaGlobe,
     FaSnowflake, FaTv, FaCouch, FaRestroom, FaMoneyBillWave, FaChild, FaTicketAlt,
     FaClock, FaBan, FaDog, FaSmoking, FaWineGlass, FaInfoCircle, FaCamera,
@@ -95,6 +95,8 @@ export default function PropertyDetails() {
     const [photoIndex, setPhotoIndex] = useState(0);
     const datePickerRef = useRef(null);
     const [isSaved, setIsSaved] = useState(false);
+    const [isGalleryPaused, setIsGalleryPaused] = useState(false);
+    const [includeFood, setIncludeFood] = useState(false);
 
     // -- REFS FOR SCROLLING --
     const sections = {
@@ -205,11 +207,17 @@ export default function PropertyDetails() {
     const roomConfig = ob.roomConfig || { livingRoom: {}, bedrooms: [] };
     const isWaterpark = property.PropertyType === 'Waterpark';
 
-    const PRICE_WEEKDAY = parseFloat(property.price_mon_thu || pricing.weekday || property.Price || 0);
-    const PRICE_FRISUN = parseFloat(property.price_fri_sun || pricing.weekend || property.Price || 0);
-    const PRICE_SATURDAY = parseFloat(property.price_sat || pricing.saturday || property.Price || 0);
-    const EXTRA_GUEST_CHARGE = parseFloat(pricing.extraGuestCharge || 1000);
-    const FOOD_CHARGE = parseFloat(ob.foodRates?.perPerson || pricing.foodPricePerPerson || 1000);
+    const safeFloat = (val, def = 0) => {
+        const n = parseFloat(val);
+        return isNaN(n) ? def : n;
+    };
+
+    const PRICE_WEEKDAY = safeFloat(property.price_mon_thu || pricing.weekday || property.Price, 0);
+    const PRICE_FRISUN = safeFloat(property.price_fri_sun || pricing.weekend || property.Price, 0);
+    const PRICE_SATURDAY = safeFloat(property.price_sat || pricing.saturday || property.Price, 0);
+    const EXTRA_GUEST_CHARGE = safeFloat(pricing.extraGuestCharge, 1000);
+    const FOOD_CHARGE = safeFloat(ob.foodRates?.perPerson || pricing.foodPricePerPerson, 1000);
+    const GST_PERCENTAGE = safeFloat(property.gst_percentage, 18); // Default 18% provided by user
 
     const calculateBreakdown = () => {
         if (!dateRange.from || !dateRange.to) return null;
@@ -250,15 +258,31 @@ export default function PropertyDetails() {
         }
 
         if (isWaterpark) {
-            return { nights, totalAdultTicket, totalChildTicket, grantTotal: totalAdultTicket + totalChildTicket };
+            // Waterpark also needs GST
+            const taxableAmount = totalAdultTicket + totalChildTicket;
+            const gstAmount = (taxableAmount * GST_PERCENTAGE) / 100;
+            return { nights, totalAdultTicket, totalChildTicket, gstAmount, grantTotal: taxableAmount + gstAmount };
         }
 
         const totalGuests = guests.adults + guests.children;
         const extraGuests = Math.max(0, totalGuests - (parseInt(pricing.extraGuestLimit) || 10));
         const totalExtra = extraGuests * EXTRA_GUEST_CHARGE * nights;
-        const totalFood = totalGuests * FOOD_CHARGE * nights;
+        // Food calculation: Only if includeFood is TRUE
+        const totalFood = includeFood ? (totalGuests * FOOD_CHARGE * nights) : 0;
 
-        return { nights, totalVillaRate, extraGuests, totalExtra, totalFood, grantTotal: totalVillaRate + totalExtra + totalFood };
+        // GST Calculation
+        const taxableAmount = totalVillaRate + totalExtra + totalFood;
+        const gstAmount = (taxableAmount * GST_PERCENTAGE) / 100;
+
+        return {
+            nights,
+            totalVillaRate,
+            extraGuests,
+            totalExtra,
+            totalFood,
+            gstAmount,
+            grantTotal: taxableAmount + gstAmount
+        };
     };
     const priceBreakdown = calculateBreakdown();
     const googleMapSrc = property.GoogleMapLink?.match(/src="([^"]+)"/)?.[1] || property.GoogleMapLink;
@@ -274,15 +298,52 @@ export default function PropertyDetails() {
         <div className="bg-white min-h-screen pb-20 pt-[80px]">
             {/* 1. HERO GALLERY */}
             <div className="container mx-auto px-4 lg:px-8 py-6 max-w-7xl">
-                <Header property={property} isSaved={isSaved} setIsSaved={setIsSaved} setIsShareModalOpen={setIsShareModalOpen} />
+                <Header property={property} isSaved={isSaved} setIsSaved={setIsSaved} setIsShareModalOpen={setIsShareModalOpen} user={user} navigate={navigate} location={window.location} />
 
                 {galleryImages.length > 0 ? (
-                    <div className="relative rounded-2xl overflow-hidden shadow-sm grid grid-cols-1 md:grid-cols-4 grid-rows-2 h-[300px] md:h-[450px] gap-2 mb-8">
-                        <div className="col-span-1 md:col-span-2 row-span-2 relative cursor-pointer group" onClick={() => openLightBox(0)}><img src={galleryImages[0]} alt="Main" className="w-full h-full object-cover transition duration-700 hover:scale-105" /></div>
-                        {galleryImages.slice(1, 5).map((img, idx) => (
-                            <div key={idx} className="relative cursor-pointer group hidden md:block overflow-hidden" onClick={() => openLightBox(idx + 1)}><img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover transition duration-700 hover:scale-105" /></div>
-                        ))}
-                        <button onClick={() => openLightBox(0)} className="absolute bottom-6 right-6 bg-white/90 backdrop-blur text-black px-4 py-2 rounded-lg text-sm font-bold shadow-lg hover:bg-white transition flex items-center gap-2"><FaPlus size={12} /> View Photos</button>
+                    <div className="rounded-2xl overflow-hidden shadow-sm h-[350px] md:h-[500px] mb-8 grid grid-cols-1 md:grid-cols-4 grid-rows-2 gap-2 relative">
+                        {/* Main Image (Left Half) */}
+                        <div
+                            className="col-span-1 md:col-span-2 row-span-2 relative cursor-pointer group overflow-hidden"
+                            onClick={() => openLightBox(0)}
+                        >
+                            <img src={galleryImages[0]} alt="Main" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
+                        </div>
+
+                        {/* Top Side Images */}
+                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden" onClick={() => openLightBox(1)}>
+                            <img src={galleryImages[1] || galleryImages[0]} alt="Gallery 1" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
+                        </div>
+                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden rounded-tr-2xl" onClick={() => openLightBox(2)}>
+                            <img src={galleryImages[2] || galleryImages[0]} alt="Gallery 2" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
+                        </div>
+
+                        {/* Bottom Side Images */}
+                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden" onClick={() => openLightBox(3)}>
+                            <img src={galleryImages[3] || galleryImages[0]} alt="Gallery 3" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
+                        </div>
+                        <div className="hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden rounded-br-2xl" onClick={() => openLightBox(4)}>
+                            <img src={galleryImages[4] || galleryImages[0]} alt="Gallery 4" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
+
+                            {/* View All Button (Overlay on last image) */}
+                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center hover:bg-black/40 transition">
+                                <span className="text-white font-bold text-sm border border-white/50 bg-black/20 px-4 py-2 rounded-full backdrop-blur-md flex items-center gap-2">
+                                    <FaCamera /> View Details
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Mobile 'View All' Badge */}
+                        <div className="absolute bottom-4 right-4 md:hidden">
+                            <button onClick={() => openLightBox(0)} className="bg-white/90 backdrop-blur-md text-black px-4 py-2 rounded-lg text-xs font-bold shadow-lg border border-gray-200 flex items-center gap-2">
+                                <FaCamera /> {galleryImages.length} Photos
+                            </button>
+                        </div>
                     </div>
                 ) : (
                     <div className="w-full h-[300px] bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400 mb-8 border-2 border-dashed">
@@ -315,7 +376,7 @@ export default function PropertyDetails() {
                                 <div>
                                     <h2 className="text-2xl font-bold text-gray-900 mb-1">{property.display_name || property.Name}</h2>
                                     <p className="text-gray-500 text-sm">
-                                        Hosted by {property.ContactPerson || "ResortWala Host"} · {property.PropertyType} · {property.MaxCapacity} guests · {property.NoofRooms} bedrooms
+                                        {property.PropertyType} · {property.MaxCapacity} guests · {property.NoofRooms} bedrooms
                                     </p>
 
                                 </div>
@@ -341,37 +402,40 @@ export default function PropertyDetails() {
                                 )}
                             </div>
 
-                            {/* INCLUSIONS & HIGHLIGHTS */}
-                            <div className="py-8 border-b border-gray-100">
-                                <h3 className="text-xl font-bold text-gray-900 mb-6 font-serif flex items-center gap-2">
-                                    <FaMedal className="text-[#FF385C]" /> What's Included
-                                </h3>
-                                {ob.inclusions && Object.keys(ob.inclusions).length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {Object.entries(ob.inclusions).map(([key, val]) => (val === true) && (
-                                            <div key={key} className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
-                                                <div className="bg-white p-2 rounded-full text-green-600"><FaCheck size={12} /></div>
-                                                <span className="font-semibold text-gray-900 uppercase text-sm mt-0.5">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                                            </div>
-                                        ))}
-                                        {Object.entries(ob.inclusions).map(([key, val]) => (typeof val === 'string' && val !== 'Not Included') && (
-                                            <div key={key} className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                                                <div className="bg-white p-2 rounded-full text-blue-600"><FaUtensils size={12} /></div>
-                                                <div>
-                                                    <span className="font-semibold text-blue-900 block capitalize">{key}</span>
-                                                    <span className="text-xs text-blue-600">{val}</span>
+                            {/* INCLUSIONS & HIGHLIGHTS - Only for Waterpark */}
+                            {isWaterpark && (
+                                <div className="py-4 border-b border-gray-100">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-6 font-serif flex items-center gap-2">
+                                        <FaMedal className="text-[#FF385C]" /> What's Included
+                                    </h3>
+                                    {ob.inclusions && Object.keys(ob.inclusions).length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {Object.entries(ob.inclusions).map(([key, val]) => (val === true) && (
+                                                <div key={key} className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
+                                                    <div className="bg-white p-2 rounded-full text-green-600"><FaCheck size={12} /></div>
+                                                    <span className="font-semibold text-gray-900 uppercase text-sm mt-0.5">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-gray-400 italic">No specific inclusions listed.</div>
-                                )}
-                            </div>
+                                            ))}
+                                            {Object.entries(ob.inclusions).map(([key, val]) => (typeof val === 'string' && val !== 'Not Included') && (
+                                                <div key={key} className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                                    <div className="bg-white p-2 rounded-full text-blue-600"><FaUtensils size={12} /></div>
+                                                    <div>
+                                                        <span className="font-semibold text-blue-900 block capitalize">{key}</span>
+                                                        <span className="text-xs text-blue-600">{val}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-gray-400 italic">No specific inclusions listed.</div>
+                                    )}
+                                </div>
+                            )}
                         </section>
 
                         {/* AMENITIES - MOVED UP */}
-                        <section ref={sections.amenities} className="scroll-mt-32 pb-8 border-b border-gray-100">
+                        {/* AMENITIES - MOVED UP */}
+                        <section ref={sections.amenities} className="scroll-mt-32 pb-6 border-b border-gray-100">
                             <h2 className="text-xl font-bold text-gray-900 mb-6 font-serif">What this place offers</h2>
                             {ob.amenities && Object.keys(ob.amenities).length > 0 ? (
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8">
@@ -443,26 +507,49 @@ export default function PropertyDetails() {
                                 </div>
                             )}
 
-                            {/* Food Rates Packages */}
-                            {ob.foodRates ? (
+                            {/* Food Options - Standard Writeup */}
+                            {ob.foodRates && (Object.keys(ob.foodRates).some(k => ob.foodRates[k] && ob.foodRates[k] !== false)) ? (
                                 <div className="bg-gradient-to-br from-orange-50 to-white rounded-3xl p-8 border border-orange-100 shadow-sm">
-                                    <h4 className="font-bold text-gray-800 mb-4">Package Rates</h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        {[
-                                            { k: 'perPerson', label: 'All Meals', icon: '🍽️', desc: 'B/L/HT/D' },
-                                            { k: 'veg', label: 'Veg Thali', icon: '🥗', desc: 'Per Plate' },
-                                            { k: 'nonVeg', label: 'Non-Veg Thali', icon: '🍗', desc: 'Per Plate' },
-                                            { k: 'jain', label: 'Jain Thali', icon: '🥕', desc: 'Per Plate' },
-                                        ].map(({ k, label, icon, desc }) => ob.foodRates[k] ? (
-                                            <div key={k} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:shadow-md transition">
-                                                <div className="text-2xl mb-2">{icon}</div>
-                                                <div className="font-bold text-gray-900 mb-1">{label}</div>
-                                                <div className="text-xs text-gray-500 mb-3 h-8 flex items-center justify-center">{desc}</div>
-                                                <div className="font-extrabold text-xl text-[#FF385C]">₹{ob.foodRates[k]}</div>
+                                    <p className="text-gray-700 leading-relaxed mb-6">
+                                        Delicious meals are available on request. Our kitchen prepares fresh, hygienic food to cater to your preferences.
+                                        The meal package includes Lunch, Evening Snacks, Dinner, and Next Morning Breakfast.
+                                    </p>
+
+                                    <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                        <FaUtensils className="text-orange-500" /> Available Options
+                                    </h4>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        {ob.foodRates.veg && ob.foodRates.veg !== false && (
+                                            <div className="bg-white p-5 rounded-2xl shadow-sm border-2 border-green-100 flex flex-col items-center text-center hover:shadow-md transition">
+                                                <div className="text-3xl mb-2">🥗</div>
+                                                <div className="font-bold text-gray-900 mb-1">Vegetarian</div>
+                                                <div className="text-xs text-gray-500 mb-3">Pure veg meals</div>
+                                                <div className="font-extrabold text-xl text-green-600">₹{ob.foodRates.veg}</div>
+                                                <div className="text-xs text-gray-400 mt-1">per person</div>
                                             </div>
-                                        ) : null)}
+                                        )}
+
+                                        {ob.foodRates.nonVeg && ob.foodRates.nonVeg !== false && (
+                                            <div className="bg-white p-5 rounded-2xl shadow-sm border-2 border-red-100 flex flex-col items-center text-center hover:shadow-md transition">
+                                                <div className="text-3xl mb-2">🍗</div>
+                                                <div className="font-bold text-gray-900 mb-1">Non-Vegetarian</div>
+                                                <div className="text-xs text-gray-500 mb-3">Chicken, fish, etc.</div>
+                                                <div className="font-extrabold text-xl text-red-600">₹{ob.foodRates.nonVeg}</div>
+                                                <div className="text-xs text-gray-400 mt-1">per person</div>
+                                            </div>
+                                        )}
+
+                                        {ob.foodRates.jain && ob.foodRates.jain !== false && (
+                                            <div className="bg-white p-5 rounded-2xl shadow-sm border-2 border-orange-100 flex flex-col items-center text-center hover:shadow-md transition">
+                                                <div className="text-3xl mb-2">🥕</div>
+                                                <div className="font-bold text-gray-900 mb-1">Jain Food</div>
+                                                <div className="text-xs text-gray-500 mb-3">No onion/garlic</div>
+                                                <div className="font-extrabold text-xl text-orange-600">₹{ob.foodRates.jain}</div>
+                                                <div className="text-xs text-gray-400 mt-1">per person</div>
+                                            </div>
+                                        )}
                                     </div>
-                                    <p className="text-center text-xs text-gray-400 mt-4">* rates per person/item</p>
                                 </div>
                             ) : null}
                         </section>
@@ -488,36 +575,45 @@ export default function PropertyDetails() {
                                 </div>
                             </div>
 
-                            <div className="space-y-3">
-                                <h3 className="font-bold text-gray-900 mb-3">General Rules</h3>
-                                {PROPERTY_RULES.map((rule, idx) => {
-                                    const isTrue = ob.rules?.[idx.toString()] || ob.rules?.[idx];
-                                    if (!isTrue) return null;
-                                    return (
-                                        <div key={idx} className="flex items-center gap-3">
-                                            <FaCheck className="text-green-600 flex-shrink-0" />
-                                            <span className="text-gray-700">{rule}</span>
-                                        </div>
-                                    );
-                                })}
+                            <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-200">
+                                <h3 className="font-bold text-gray-900 mb-4 text-lg flex items-center gap-2">
+                                    <FaShieldAlt className="text-blue-600" /> General Rules
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {PROPERTY_RULES.map((rule, idx) => {
+                                        const isTrue = ob.rules?.[idx.toString()] || ob.rules?.[idx];
+                                        if (!isTrue) return null;
+                                        return (
+                                            <div key={idx} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-100 hover:border-green-200 transition">
+                                                <FaCheck className="text-green-600 flex-shrink-0" size={16} />
+                                                <span className="text-gray-700 font-medium text-sm">{rule}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                                 {ob.otherRules && (
-                                    <div className="mt-4 p-4 bg-gray-50 rounded-xl text-sm text-gray-700 leading-relaxed border-l-4 border-gray-300">
-                                        <span className="font-bold block text-gray-900 mb-1">Additional Rules:</span>
+                                    <div className="mt-4 p-4 bg-blue-50 rounded-xl text-sm text-gray-700 leading-relaxed border-l-4 border-blue-400">
+                                        <span className="font-bold block text-gray-900 mb-2 flex items-center gap-2">
+                                            <FaInfoCircle className="text-blue-600" /> Additional Rules:
+                                        </span>
                                         {ob.otherRules}
                                     </div>
                                 )}
                             </div>
 
                             {/* Child Policy */}
-                            <div className="mt-8 bg-blue-50/50 rounded-3xl p-8 border border-blue-100">
-                                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3 font-serif">
+                            <div className="mt-6 bg-blue-50/50 rounded-2xl p-6 border border-blue-100">
+                                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-3 font-serif">
                                     <div className="bg-white p-2 rounded-full shadow-sm text-blue-500"><FaChild /></div>
-                                    Child & Extra Guest Policy
+                                    Child Policy
                                 </h3>
+                                <p className="text-gray-700 mb-6 leading-relaxed">
+                                    Children are welcome! We offer special rates for young guests to make your family vacation more affordable.
+                                </p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="bg-white p-4 rounded-xl border border-blue-100 flex items-center justify-between">
-                                        <div><span className="font-bold text-gray-900 block text-lg">Free Stay</span><span className="text-sm text-gray-500">Age below</span></div>
-                                        <div className="text-2xl font-bold text-blue-600">{ob.childCriteria?.freeAge || 5} <span className="text-sm text-gray-400">yrs</span></div>
+                                        <div><span className="font-bold text-gray-900 block text-lg">Free Stay</span><span className="text-sm text-gray-500">Age below 5 yrs</span></div>
+                                        <div className="text-2xl font-bold text-blue-600">Free</div>
                                     </div>
                                     <div className="bg-white p-4 rounded-xl border border-blue-100 flex items-center justify-between">
                                         <div><span className="font-bold text-gray-900 block text-lg">Chargeable</span><span className="text-sm text-gray-500">Age range</span></div>
@@ -525,6 +621,24 @@ export default function PropertyDetails() {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Extra Guest Policy */}
+                            {!isWaterpark && pricing?.extraGuestLimit && (
+                                <div className="mt-6 bg-purple-50/50 rounded-3xl p-8 border border-purple-100">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-3 font-serif">
+                                        <div className="bg-white p-2 rounded-full shadow-sm text-purple-500"><FaUsers /></div>
+                                        Extra Guest Policy
+                                    </h3>
+                                    <p className="text-gray-700 mb-4 leading-relaxed">
+                                        Additional guests beyond the standard occupancy of {pricing.extraGuestLimit || 10} can be accommodated with extra charges.
+                                    </p>
+                                    <div className="bg-white p-4 rounded-xl border border-purple-100">
+                                        <p className="text-sm text-gray-600">
+                                            <strong>Note:</strong> Extra mattresses and bedding will be provided for additional guests.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* PAYMENT METHODS */}
                             {ob.paymentMethods && (
@@ -543,7 +657,9 @@ export default function PropertyDetails() {
 
                             {ob.idProofs?.length > 0 && (
                                 <div className="mt-6 pt-6 border-t border-gray-200">
-                                    <p className="text-sm font-bold text-gray-900 mb-2">Required ID Proofs:</p>
+                                    <p className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
+                                        <FaShieldAlt className="text-gray-600" /> Required ID Proof (Any one of the following for Prime/Main Guest):
+                                    </p>
                                     <div className="flex gap-2 flex-wrap">
                                         {ob.idProofs.map(id => (
                                             <span key={id} className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-bold border border-gray-200 uppercase">{id}</span>
@@ -601,6 +717,8 @@ export default function PropertyDetails() {
                                     property={property}
                                     guests={guests}
                                     setGuests={setGuests}
+                                    includeFood={includeFood}
+                                    setIncludeFood={setIncludeFood}
                                 />
                             }
                         </div>
@@ -620,11 +738,11 @@ export default function PropertyDetails() {
                 currentIndex={photoIndex}
                 setIndex={setPhotoIndex}
             />
-            <ShareModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} />
+            <ShareModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} property={property} />
 
-            {/* FLOATING VIDEO PLAYER */}
+            {/* FLOATING VIDEO PLAYER - Only if video_url exists */}
             <AnimatePresence>
-                {isVideoOpen && (
+                {isVideoOpen && (property.video_url || property.VideoUrl) && (
                     <motion.div
                         drag
                         dragMomentum={false}
@@ -639,11 +757,11 @@ export default function PropertyDetails() {
                             <button onClick={() => setIsVideoOpen(false)} className="text-gray-400 hover:text-white transition"><FaTimes size={14} /></button>
                         </div>
                         <div className="aspect-video relative">
-                            {getYouTubeId(property.video_url || property.VideoUrl || "https://www.youtube.com/shorts/3epBnm7wdJ4") ? (
+                            {getYouTubeId(property.video_url || property.VideoUrl) ? (
                                 <iframe
                                     width="100%"
                                     height="100%"
-                                    src={`https://www.youtube.com/embed/${getYouTubeId(property.video_url || property.VideoUrl || "https://www.youtube.com/shorts/3epBnm7wdJ4")}?autoplay=1&mute=1`}
+                                    src={`https://www.youtube.com/embed/${getYouTubeId(property.video_url || property.VideoUrl)}?autoplay=1&mute=1`}
                                     title="Property Video"
                                     frameBorder="0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -651,7 +769,7 @@ export default function PropertyDetails() {
                                     className="absolute inset-0 w-full h-full"
                                 ></iframe>
                             ) : (
-                                <a href={property.video_url || property.VideoUrl || "https://www.youtube.com/shorts/3epBnm7wdJ4"} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-full w-full bg-gray-900 text-white gap-2 hover:bg-black transition">
+                                <a href={property.video_url || property.VideoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-full w-full bg-gray-900 text-white gap-2 hover:bg-black transition">
                                     <FaLink /> Open External Video
                                 </a>
                             )}
@@ -660,8 +778,8 @@ export default function PropertyDetails() {
                 )}
             </AnimatePresence>
 
-            {/* FLOATING TOGGLE BUTTON (if closed) */}
-            {!isVideoOpen && (
+            {/* FLOATING TOGGLE BUTTON (if closed and video exists) */}
+            {!isVideoOpen && (property.video_url || property.VideoUrl) && (
                 <motion.button
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
@@ -679,7 +797,7 @@ export default function PropertyDetails() {
 
 // --- SUB COMPONENTS ---
 
-const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen }) => (
+const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navigate, location }) => (
     <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 font-serif mb-3 leading-tight">{property.Name || "Luxury Stay"}</h1>
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -691,7 +809,18 @@ const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen }) => (
             </div>
             <div className="flex gap-2 text-sm font-semibold">
                 <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 hover:bg-gray-100 px-4 py-2 rounded-lg transition underline decoration-gray-300"><FaShare /> Share</button>
-                <button onClick={() => setIsSaved(!isSaved)} className="flex items-center gap-2 hover:bg-gray-100 px-4 py-2 rounded-lg transition underline decoration-gray-300"><FaHeart className={isSaved ? "text-[#FF385C]" : "text-transparent stroke-black stroke-2"} /> {isSaved ? "Saved" : "Save"}</button>
+                <button
+                    onClick={() => {
+                        if (!user) {
+                            navigate('/login', { state: { returnTo: location.pathname + location.search, action: 'save_wishlist' } });
+                        } else {
+                            setIsSaved(!isSaved);
+                        }
+                    }}
+                    className="flex items-center gap-2 hover:bg-gray-100 px-4 py-2 rounded-lg transition underline decoration-gray-300"
+                >
+                    <FaHeart className={isSaved ? "text-[#FF385C]" : "text-transparent stroke-black stroke-2"} /> {isSaved ? "Saved" : "Save"}
+                </button>
             </div>
         </div>
     </div>
@@ -720,6 +849,18 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
     const adultRate = parseFloat(property.price_mon_thu || property.Price || 500);
     const childRate = parseFloat(ob.childCriteria?.monFriPrice || ob.childCriteria?.price || 400);
 
+    // Helper to get price for a specific date (Duplicated for availability in this component)
+    const getPriceForDate = (date) => {
+        const w = date.getDay();
+        const PRICE_WEEKDAY = parseFloat(property?.price_mon_thu || property?.Price || 0);
+        const PRICE_FRISUN = parseFloat(property?.price_fri_sun || property?.Price || 0);
+        const PRICE_SATURDAY = parseFloat(property?.price_sat || property?.Price || 0);
+
+        if (w === 6) return PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY; // Saturday
+        if (w === 0 || w === 5) return PRICE_FRISUN || PRICE_WEEKDAY; // Fri/Sun
+        return PRICE_WEEKDAY; // Mon-Thu
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-end mb-4 border-b pb-4">
@@ -729,6 +870,7 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                     <div className="text-xs text-blue-600 font-bold mt-1">
                         + ₹{Math.round(childRate).toLocaleString()} / child
                     </div>
+                    <div className="text-xs text-gray-400 line-through mt-0.5">₹{Math.round(adultRate * 1.25).toLocaleString()} (Market Price)</div>
                 </div>
                 <div className="flex items-center gap-1 text-xs font-bold underline bg-blue-50 px-2 py-1 rounded text-blue-800"><FaTicketAlt size={10} /> Day Pass</div>
             </div>
@@ -757,6 +899,16 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                         <button onClick={() => setGuests({ ...guests, children: guests.children + 1 })} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded transition font-bold">+</button>
                     </div>
                 </div>
+                {/* Free Stay / Infants */}
+                <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-100">
+                    <div className="flex flex-col">
+                        <span className="text-sm font-bold text-green-600">Free Stay</span>
+                        <span className="text-[10px] text-gray-400">Age below 5 yrs</span>
+                    </div>
+                    <div className="text-xs font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded">
+                        No Ticket
+                    </div>
+                </div>
             </div>
 
             <div className="border border-gray-300 rounded-lg overflow-hidden mb-4 relative hover:border-black transition" ref={datePickerRef}>
@@ -773,6 +925,20 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                             onDayClick={handleDateSelect}
                             numberOfMonths={1}
                             disabled={[{ before: new Date() }]}
+                            formatters={{
+                                formatDay: (date) => {
+                                    const priceForDay = getPriceForDate(date);
+                                    const dayNum = format(date, 'd');
+                                    return (
+                                        <div className="flex flex-col items-center justify-center h-full w-full py-2">
+                                            <span className="text-sm font-medium relative z-10">{dayNum}</span>
+                                            <span className="text-[10px] font-bold text-emerald-600 mt-1 relative z-10 tracking-tight">
+                                                ₹{priceForDay < 1000 ? priceForDay : `${(priceForDay / 1000).toFixed(1)}k`}
+                                            </span>
+                                        </div>
+                                    );
+                                }
+                            }}
                             modifiersClassNames={{
                                 selected: 'bg-blue-600 text-white hover:bg-blue-700 rounded-full',
                                 range_middle: 'bg-blue-50 text-blue-900',
@@ -798,7 +964,7 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
     );
 };
 
-const VillaBooking = ({ price, rating, dateRange, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, handleReserve, priceBreakdown, datePickerRef, property, guests, setGuests }) => {
+const VillaBooking = ({ price, rating, dateRange, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, handleReserve, priceBreakdown, datePickerRef, property, guests, setGuests, includeFood, setIncludeFood }) => {
 
     // Helper to get price for a specific date
     const getPriceForDate = (date) => {
@@ -824,7 +990,7 @@ const VillaBooking = ({ price, rating, dateRange, isDatePickerOpen, setIsDatePic
             <div className={`flex flex-col items-center justify-center w-full h-full py-1 ${activeModifiers.selected ? 'text-white' : ''}`}>
                 <span className={`text-sm font-semibold ${!activeModifiers.selected && isWeekendStr ? 'text-[#FF385C]' : ''}`}>{dayNum}</span>
                 <span className={`text-[9px] font-bold leading-none mt-0.5 ${activeModifiers.selected ? 'text-white/90' : 'text-gray-400'}`}>
-                    {priceForDay < 1000 ? `${(priceForDay / 1000).toFixed(1)}k` : `${Math.round(priceForDay / 1000)}k`}
+                    {priceForDay < 1000 ? priceForDay : `${(priceForDay / 1000).toFixed(1)}k`}
                 </span>
             </div>
         );
@@ -833,7 +999,13 @@ const VillaBooking = ({ price, rating, dateRange, isDatePickerOpen, setIsDatePic
     return (
         <>
             <div className="flex justify-between items-end mb-6">
-                <div><span className="text-2xl font-bold">₹{Math.round(price).toLocaleString()}</span><span className="text-xs text-gray-500 ml-1">/ night</span></div>
+                <div>
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-bold">₹{Math.round(price).toLocaleString()}</span>
+                        <span className="text-sm text-gray-400 line-through">₹{Math.round(price * 1.35).toLocaleString()}</span>
+                    </div>
+                    <span className="text-xs text-green-600 font-bold ml-1">ResortWala Price</span>
+                </div>
                 <div className="flex items-center gap-1 text-xs font-bold underline"><FaStar size={10} /> {rating || 4.8}</div>
             </div>
 
@@ -895,12 +1067,39 @@ const VillaBooking = ({ price, rating, dateRange, isDatePickerOpen, setIsDatePic
                     </motion.div>
                 )}
             </AnimatePresence>
+            {/* FOOD TOGGLE */}
+            <div className="mb-4">
+                <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+                    <input
+                        type="checkbox"
+                        checked={includeFood}
+                        onChange={(e) => setIncludeFood(e.target.checked)}
+                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+                    />
+                    <div className="flex-1">
+                        <span className="font-bold text-gray-900 block text-sm">Include All Meals</span>
+                        <span className="text-xs text-gray-500">Breakfast, Lunch, Hi-Tea, Dinner</span>
+                    </div>
+                    <FaUtensils className="text-orange-500" />
+                </label>
+            </div>
+
             <button onClick={handleReserve} disabled={!dateRange.from || !dateRange.to} className={`w-full font-bold py-3.5 rounded-xl transition mb-4 text-white text-lg ${(!dateRange.from || !dateRange.to) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#FF385C] hover:bg-[#D90B3E] shadow-lg shadow-red-200'}`}>Reserve</button>
             {priceBreakdown && (
                 <div className="space-y-2 mt-4 text-sm text-gray-600 border-t pt-4">
-                    <div className="flex justify-between"><span>Villa Rate ({priceBreakdown.nights} nights)</span><span>₹{Math.round(priceBreakdown.totalVillaRate).toLocaleString()}</span></div>
-                    {priceBreakdown.totalExtra > 0 && <div className="flex justify-between text-orange-600"><span>Extra Guests</span><span>₹{Math.round(priceBreakdown.totalExtra).toLocaleString()}</span></div>}
-                    {priceBreakdown.totalFood > 0 && <div className="flex justify-between text-blue-600"><span>Food Package</span><span>₹{Math.round(priceBreakdown.totalFood).toLocaleString()}</span></div>}
+                    {!isWaterpark ? (
+                        <>
+                            <div className="flex justify-between"><span>Villa Rate ({priceBreakdown.nights} nights)</span><span>₹{Math.round(priceBreakdown.totalVillaRate).toLocaleString()}</span></div>
+                            {priceBreakdown.totalExtra > 0 && <div className="flex justify-between text-orange-600"><span>Extra Guests</span><span>₹{Math.round(priceBreakdown.totalExtra).toLocaleString()}</span></div>}
+                            {priceBreakdown.totalFood > 0 && <div className="flex justify-between text-blue-600"><span>Food Package</span><span>₹{Math.round(priceBreakdown.totalFood).toLocaleString()}</span></div>}
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex justify-between"><span>Adult Tickets ({guests.adults} x {priceBreakdown.nights} days)</span><span>₹{Math.round(priceBreakdown.totalAdultTicket).toLocaleString()}</span></div>
+                            {guests.children > 0 && <div className="flex justify-between"><span>Child Tickets ({guests.children} x {priceBreakdown.nights} days)</span><span>₹{Math.round(priceBreakdown.totalChildTicket).toLocaleString()}</span></div>}
+                        </>
+                    )}
+                    <div className="flex justify-between text-gray-500"><span>GST (18%)</span><span>₹{Math.round(priceBreakdown.gstAmount || 0).toLocaleString()}</span></div>
                     <div className="flex justify-between font-bold text-lg text-black pt-2 border-t mt-2"><span>Total</span><span>₹{Math.round(priceBreakdown.grantTotal).toLocaleString()}</span></div>
                 </div>
             )}
@@ -928,47 +1127,59 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center backdrop-blur-sm"
+                    className="fixed inset-0 z-[100] bg-black/25 backdrop-blur-md flex flex-col items-center justify-center py-4 md:py-6"
                     onClick={onClose}
                 >
-                    {/* Top Bar: Counter & Close */}
-                    <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-50 text-white bg-gradient-to-b from-black/50 to-transparent">
-                        <span className="font-mono text-sm opacity-80">{currentIndex + 1} / {images.length}</span>
-                        <button onClick={onClose} className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition"><FaTimes size={20} /></button>
+                    {/* Main Content Area */}
+                    <div className="flex-1 w-full flex items-center justify-center relative px-4 md:px-20" onClick={e => e.stopPropagation()}>
+
+                        {/* Image Wrapper - Anchors the controls */}
+                        <div className="relative inline-block max-w-[95vw] max-h-[85vh] group">
+
+                            {/* Top Left: Count */}
+                            <div className="absolute top-4 left-4 z-20">
+                                <span className="font-mono font-bold bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs md:text-sm tracking-widest border border-white/20 shadow-sm">
+                                    {currentIndex + 1} / {images.length}
+                                </span>
+                            </div>
+
+                            {/* Top Right: Close */}
+                            <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2.5 bg-black/50 hover:bg-black/80 text-white backdrop-blur-md rounded-full transition-all border border-white/20 shadow-sm group-hover:scale-110">
+                                <FaTimes size={18} />
+                            </button>
+
+                            {/* Left Arrow (Overlay) */}
+                            <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-3 md:p-4 text-white bg-black/40 hover:bg-black/70 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg opacity-0 group-hover:opacity-100 md:opacity-100">
+                                <FaArrowLeft size={20} className="md:w-6 md:h-6" />
+                            </button>
+
+                            {/* Right Arrow (Overlay) */}
+                            <button onClick={next} className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-3 md:p-4 text-white bg-black/40 hover:bg-black/70 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg opacity-0 group-hover:opacity-100 md:opacity-100">
+                                <FaArrowRight size={20} className="md:w-6 md:h-6" />
+                            </button>
+
+                            <AnimatePresence mode="wait">
+                                <motion.img
+                                    key={currentIndex}
+                                    initial={{ opacity: 0, scale: 0.98 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    src={images[currentIndex]}
+                                    className="max-h-[75vh] md:max-h-[80vh] max-w-full object-contain shadow-2xl rounded-lg bg-black"
+                                    alt={`Gallery ${currentIndex}`}
+                                />
+                            </AnimatePresence>
+                        </div>
                     </div>
 
-                    {/* Navigation Arrows */}
-                    <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 p-4 text-white hover:bg-white/10 rounded-full transition z-50 group">
-                        <FaArrowLeft size={28} className="drop-shadow-lg group-hover:scale-110 transition" />
-                    </button>
-                    <button onClick={next} className="absolute right-4 top-1/2 -translate-y-1/2 p-4 text-white hover:bg-white/10 rounded-full transition z-50 group">
-                        <FaArrowRight size={28} className="drop-shadow-lg group-hover:scale-110 transition" />
-                    </button>
-
-                    {/* Main Image */}
-                    <div className="flex-1 w-full h-full flex items-center justify-center p-4 md:p-12" onClick={e => e.stopPropagation()}>
-                        <AnimatePresence mode="wait">
-                            <motion.img
-                                key={currentIndex}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.2 }}
-                                src={images[currentIndex]}
-                                className="max-h-full max-w-full object-contain shadow-2xl rounded-lg"
-                                alt={`Gallery ${currentIndex}`}
-                            />
-                        </AnimatePresence>
-                    </div>
-
-                    {/* Bottom Thumbnails */}
-                    <div className="w-full h-24 bg-black/50 backdrop-blur-md border-t border-white/10 p-3 flex gap-3 overflow-x-auto justify-center md:items-center" onClick={e => e.stopPropagation()}>
+                    {/* Bottom Thumbnails Frame */}
+                    <div className="flex-shrink-0 h-24 w-full mt-4 flex justify-center items-center gap-2 overflow-x-auto px-4 touch-pan-x bg-white/90 backdrop-blur-xl border-t border-gray-200 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]" onClick={e => e.stopPropagation()}>
                         {images.map((img, idx) => (
                             <button
                                 key={idx}
                                 onClick={() => setIndex(idx)}
-                                className={`relative flex-shrink-0 h-16 w-24 rounded-lg overflow-hidden border-2 transition-all ${idx === currentIndex ? 'border-white scale-105 shadow-lg' : 'border-transparent opacity-50 hover:opacity-80'
-                                    }`}
+                                className={`relative flex-shrink-0 h-16 w-24 rounded-lg overflow-hidden border-2 transition-all ${idx === currentIndex ? 'border-black scale-105 shadow-md' : 'border-transparent opacity-60 hover:opacity-100 hover:border-gray-300'}`}
                             >
                                 <img src={img} alt={`Thumb ${idx}`} className="w-full h-full object-cover" />
                             </button>
@@ -980,10 +1191,14 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
     );
 };
 
-const ShareModal = ({ isOpen, onClose }) => {
+const ShareModal = ({ isOpen, onClose, property }) => {
     const [copied, setCopied] = React.useState(false);
     if (!isOpen) return null;
     const url = window.location.href;
+
+    // Create a beautiful message (URL encoded)
+    const shareText = `Check out this amazing stay on ResortWala! 🌟\n\n*${property?.Name || 'Luxury Stay'}*\n📍 ${property?.CityName || 'ResortWala'}\n\n👇 Click here to view:\n${url}`;
+    const whatsappLink = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
     const handleCopy = async () => {
         try {
@@ -1012,7 +1227,7 @@ const ShareModal = ({ isOpen, onClose }) => {
             <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between mb-6"><h3 className="font-bold">Share</h3><button onClick={onClose}><FaTimes /></button></div>
                 <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(url)}`)} className="flex items-center gap-3 p-3 border rounded-xl hover:bg-gray-50"><FaWhatsapp className="text-green-500" /> WhatsApp</button>
+                    <button onClick={() => window.open(whatsappLink, '_blank')} className="flex items-center gap-3 p-3 border rounded-xl hover:bg-gray-50"><FaWhatsapp className="text-green-500" /> WhatsApp</button>
                     <button onClick={handleCopy} className="flex items-center gap-3 p-3 border rounded-xl hover:bg-gray-50 bg-gray-50 font-medium">
                         {copied ? <FaCheck className="text-green-600" /> : <FaLink />}
                         {copied ? "Copied!" : "Copy Link"}

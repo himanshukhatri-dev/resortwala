@@ -13,14 +13,14 @@ class CustomerAuthController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:customers',
-            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|string|email|max:255|unique:customers',
+            'phone' => 'required|string|max:20|unique:customers',
             'password' => 'required|string|min:6',
         ]);
 
         $customer = Customer::create([
             'name' => $request->name,
-            'email' => $request->email,
+            'email' => $request->email, // Can be null
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
         ]);
@@ -30,6 +30,10 @@ class CustomerAuthController extends Controller
         return response()->json([
             'customer' => $customer,
             'token' => $token,
+            'needs_verification' => [
+                'email' => !empty($request->email),
+                'phone' => true // Always verify phone
+            ]
         ], 201);
     }
 

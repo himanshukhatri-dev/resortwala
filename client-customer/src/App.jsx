@@ -6,6 +6,7 @@ import ScrollToTop from './components/utils/ScrollToTop';
 import TokenHandler from './components/common/TokenHandler';
 
 import { AuthProvider } from './context/AuthContext';
+import { SearchProvider } from './context/SearchContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { CompareProvider } from './context/CompareContext';
 
@@ -19,6 +20,8 @@ import Profile from './pages/Profile';
 import Wishlist from './pages/Wishlist';
 import PublicPropertyCalendar from './pages/PublicPropertyCalendar';
 import Contact from './pages/Contact';
+import About from './pages/About';
+import Policy from './pages/Policy';
 import SetPassword from './pages/SetPassword';
 
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -29,39 +32,43 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <WishlistProvider>
-          <CompareProvider>
-            <BrowserRouter>
-              <ScrollToTop />
-              <TokenHandler />
-              <Routes>
-                <Route path="/" element={<MainLayout />}>
-                  <Route index element={<Home />} />
-                  {/* Added Route for Property Details */}
-                  <Route path="/property/:id" element={<PropertyDetails />} />
-                  <Route path="/book/:id" element={<BookingPage />} />
-                  <Route path="/bookings" element={<UserBookings />} />
-                  <Route path="/wishlist" element={<Wishlist />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/contact" element={<Contact />} />
-                </Route>
+        <SearchProvider>
+          <WishlistProvider>
+            <CompareProvider>
+              <BrowserRouter>
+                <ScrollToTop />
+                <TokenHandler />
+                <Routes>
+                  <Route path="/" element={<MainLayout />}>
+                    <Route index element={<Home />} />
+                    {/* Added Route for Property Details */}
+                    <Route path="/property/:id" element={<PropertyDetails />} />
+                    <Route path="/book/:id" element={<BookingPage />} />
+                    <Route path="/bookings" element={<UserBookings />} />
+                    <Route path="/wishlist" element={<Wishlist />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/policy/:type" element={<Policy />} />
+                  </Route>
 
-                {/* Public Standalone Calendar View */}
-                <Route path="/stay/:uuid" element={<PublicPropertyCalendar />} />
+                  {/* Public Standalone Calendar View */}
+                  <Route path="/stay/:uuid" element={<PublicPropertyCalendar />} />
 
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/set-password" element={<SetPassword />} />
-              </Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/set-password" element={<SetPassword />} />
+                </Routes>
 
-              {/* Global Floating Bar & Modal */}
-              <CompareFloatingBar />
-              <CompareModal />
+                {/* Global Floating Bar & Modal */}
+                <CompareFloatingBar />
+                <CompareModal />
 
-            </BrowserRouter>
-          </CompareProvider>
-        </WishlistProvider>
+              </BrowserRouter>
+            </CompareProvider>
+          </WishlistProvider>
+        </SearchProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

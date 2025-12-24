@@ -39,7 +39,7 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
     return (
         <header
             className={`fixed top-0 w-full z-50 transition-all duration-300 border-b ${scrolled || !isHomePage
-                ? 'bg-white border-gray-100 shadow-sm h-[70px]'
+                ? 'bg-white border-gray-100 shadow-sm h-[80px]' // Revert to standard height, let contents fit
                 : 'bg-white border-transparent h-[80px]'
                 }`}
         >
@@ -62,8 +62,6 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
                             onSearch={onSearch} // Pass the handler from MainLayout
                             properties={properties}
                             categories={categories}
-                            activeCategory={activeCategory}
-                            onCategoryChange={onCategoryChange}
                         />
                     </div>
                 </div>
@@ -123,8 +121,6 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
                                     <>
                                         <Link to="/login" className="block px-5 py-4 hover:bg-gray-50 text-sm font-black text-gray-900 uppercase tracking-widest">Login</Link>
                                         <Link to="/signup" className="block px-5 py-3 hover:bg-gray-50 text-sm font-medium text-gray-600">Signup</Link>
-                                        <div className="border-t border-gray-50 my-1"></div>
-                                        <Link to="/contact" className="block px-5 py-3 hover:bg-gray-50 text-sm text-gray-600">Help Center</Link>
                                     </>
                                 )}
                             </motion.div>

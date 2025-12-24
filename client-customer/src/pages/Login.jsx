@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import AuthCard from '../components/auth/AuthCard';
 import OtpInput from '../components/auth/OtpInput';
+import { auth } from '../firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -11,23 +13,81 @@ export default function Login() {
     const { loginWithToken } = useAuth();
 
     // States
-    const [email, setEmail] = useState('');
+    const [identifier, setIdentifier] = useState(''); // Can be email or phone
     const [otp, setOtp] = useState('');
     const [step, setStep] = useState('identifier'); // 'identifier' or 'otp'
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [identifierType, setIdentifierType] = useState(''); // 'email' or 'phone'
+    const [displayIdentifier, setDisplayIdentifier] = useState(''); // For showing normalized version
+    const [confirmationResult, setConfirmationResult] = useState(null); // Firebase confirmation
 
     const API_URL = import.meta.env.VITE_API_BASE_URL;
+
+    // Detect if input is email or phone
+    // Normalize phone number: remove +91, leading 0, spaces, hyphens
+    const normalizePhone = (phone) => {
+        let normalized = phone.replace(/[\s-]/g, ''); // Remove spaces and hyphens
+        normalized = normalized.replace(/^\+91/, ''); // Remove +91 prefix
+        normalized = normalized.replace(/^0/, ''); // Remove leading 0
+        return normalized;
+    };
+
+    const detectIdentifierType = (value) => {
+        if (value.includes('@')) {
+            return 'email';
+        } else if (/^\+?[\d\s-]+$/.test(value)) {
+            return 'phone';
+        }
+        return 'email'; // default
+    };
 
     const handleSendOtp = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
+
+        const type = detectIdentifierType(identifier);
+        setIdentifierType(type);
+
         try {
-            await axios.post(`${API_URL}/api/otp/send`, {
-                email,
-                type: 'login'
-            });
+            if (type === 'email') {
+                await axios.post(`${API_URL}/api/otp/send`, {
+                    email: identifier,
+                    type: 'login'
+                });
+            } else {
+                // Normalize and validate phone
+                const normalizedPhone = normalizePhone(identifier);
+                if (!/^[0-9]{10}$/.test(normalizedPhone)) {
+                    setError('Please enter a valid 10-digit mobile number');
+                    setLoading(false);
+                    return;
+                }
+
+                // Use Firebase for phone OTP
+                const phoneNumber = `+91${normalizedPhone}`;
+
+                // Setup reCAPTCHA
+                if (!window.recaptchaVerifier) {
+                    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                        'size': 'invisible',
+                        'callback': (response) => {
+                            console.log('Recaptcha verified');
+                        }
+                    });
+                }
+
+                // Send OTP via Firebase
+                const confirmation = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
+                setConfirmationResult(confirmation);
+                setDisplayIdentifier(normalizedPhone);
+            }
+
+            // Store the display identifier (normalized for phone, original for email)
+            if (type === 'email') {
+                setDisplayIdentifier(identifier);
+            }
             setStep('otp');
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
@@ -40,19 +100,35 @@ export default function Login() {
         setError('');
         setLoading(true);
         try {
-            const res = await axios.post(`${API_URL}/api/customer/login-email-otp`, {
-                email,
-                code: code || otp
-            });
+            let res;
+            if (identifierType === 'email') {
+                res = await axios.post(`${API_URL}/api/customer/login-email-otp`, {
+                    email: identifier,
+                    code: code || otp
+                });
+                loginWithToken(res.data.token);
+            } else {
+                // For phone, verify Firebase OTP
+                const result = await confirmationResult.confirm(code || otp);
+                const firebaseToken = await result.user.getIdToken();
 
-            loginWithToken(res.data.token);
+                // Login to backend with Firebase token
+                const normalizedPhone = normalizePhone(identifier);
+                res = await axios.post(`${API_URL}/api/customer/login-otp`, {
+                    phone: normalizedPhone,
+                    firebase_token: firebaseToken
+                });
+
+                loginWithToken(res.data.token);
+            }
 
             // Redirect logic
             const state = location.state;
             if (state?.returnTo) {
                 navigate(state.returnTo, { state: state.bookingState });
             } else {
-                navigate('/');
+                // Redirect to profile for phone login, home for email
+                navigate(identifierType === 'phone' ? '/profile' : '/');
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Verification failed. Invalid OTP.');
@@ -63,8 +139,8 @@ export default function Login() {
 
     return (
         <AuthCard
-            title={step === 'identifier' ? "Welcome back" : "Check your email"}
-            subtitle={step === 'identifier' ? "Enter your email to receive a secure login code" : `We sent a 6-digit code to ${email}`}
+            title={step === 'identifier' ? "Welcome back" : "Check your " + (identifierType === 'email' ? 'email' : 'phone')}
+            subtitle={step === 'identifier' ? "Enter your email or mobile number to login" : `We sent a 6-digit code to ${displayIdentifier}`}
         >
             {error && (
                 <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl mb-4 text-sm font-bold text-center border border-rose-100 animate-in fade-in zoom-in duration-300">
@@ -75,15 +151,20 @@ export default function Login() {
             {step === 'identifier' ? (
                 <form onSubmit={handleSendOtp} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email or Mobile Number</label>
                         <input
-                            type="email"
-                            placeholder="e.g. rahul@example.com"
+                            type="text"
+                            placeholder="e.g. rahul@example.com or +91 98765 43210"
                             className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-[1.5rem] focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all placeholder-gray-300"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            value={identifier}
+                            onChange={(e) => setIdentifier(e.target.value)}
+                            pattern={identifier.includes('@') ? "[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$" : "[0-9+\\s-]{10,}"}
+                            title={identifier.includes('@') ? "Please enter a valid email address" : "Please enter a valid 10-digit mobile number"}
                             required
                         />
+                        <p className="text-xs text-gray-500 ml-1">
+                            You can use either your email address or mobile number
+                        </p>
                     </div>
 
                     <button
@@ -102,7 +183,7 @@ export default function Login() {
                             onClick={() => setStep('identifier')}
                             className="text-xs font-black text-blue-600 uppercase tracking-widest hover:underline"
                         >
-                            Change Email
+                            Change {identifierType === 'email' ? 'Email' : 'Mobile Number'}
                         </button>
                     </div>
 
@@ -116,7 +197,7 @@ export default function Login() {
                         </button>
 
                         <p className="text-center text-gray-400 text-xs font-bold leading-relaxed">
-                            Didn't receive the email? <button onClick={handleSendOtp} className="text-blue-600 hover:underline">Resend Code</button>
+                            Didn't receive the code? <button onClick={handleSendOtp} className="text-blue-600 hover:underline">Resend Code</button>
                         </p>
                     </div>
                 </div>
@@ -130,6 +211,9 @@ export default function Login() {
                     </Link>
                 </p>
             </div>
+
+            {/* Firebase Recaptcha Container */}
+            <div id="recaptcha-container"></div>
         </AuthCard>
     );
 }

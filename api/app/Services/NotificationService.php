@@ -26,6 +26,40 @@ class NotificationService
         }
     }
 
+    /**
+     * Send OTP via SMS.
+     *
+     * @param string $phone
+     * @param string $otp
+     * @param string $type
+     * @return void
+     */
+    public function sendSMSOTP($phone, $otp, $type = 'login')
+    {
+        try {
+            // TODO: Integrate with SMS provider (MSG91, Twilio, etc.)
+            // For now, just log the OTP
+            $message = "Your ResortWala verification code is: {$otp}. Valid for 10 minutes.";
+            
+            Log::info("SMS OTP to {$phone}: {$otp} (Type: {$type})");
+            
+            // Example MSG91 integration (uncomment when configured):
+            // $apiKey = env('MSG91_API_KEY');
+            // $senderId = env('MSG91_SENDER_ID');
+            // $url = "https://api.msg91.com/api/v5/otp";
+            // Http::post($url, [
+            //     'authkey' => $apiKey,
+            //     'mobile' => $phone,
+            //     'message' => $message,
+            //     'sender' => $senderId,
+            //     'otp' => $otp
+            // ]);
+            
+        } catch (\Exception $e) {
+            Log::error("Failed to send SMS OTP to {$phone}: " . $e->getMessage());
+        }
+    }
+
     public function sendBookingConfirmation($booking)
     {
         // For now, log and we can later create BookingConfirmationMail

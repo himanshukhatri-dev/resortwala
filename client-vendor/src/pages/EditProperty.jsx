@@ -297,6 +297,21 @@ export default function EditProperty() {
     }, [formData.noofRooms, formData.propertyType]);
 
     const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    // Normalize phone number: remove +91, leading 0, spaces, hyphens
+    const normalizePhone = (phone) => {
+        let normalized = phone.replace(/[\s-]/g, ''); // Remove spaces and hyphens
+        normalized = normalized.replace(/^\+91/, ''); // Remove +91 prefix
+        normalized = normalized.replace(/^0/, ''); // Remove leading 0
+        return normalized;
+    };
+
+    const handlePhoneChange = (e) => {
+        // Only allow digits, +, spaces, and hyphens
+        const value = e.target.value.replace(/[^0-9+\s-]/g, '');
+        setFormData(prev => ({ ...prev, mobileNo: value }));
+    };
+
     const handleNestedChange = (section, key, value) => setFormData(prev => ({ ...prev, [section]: { ...prev[section], [key]: value } }));
 
     const handleAmenityChange = (key, type, value) => {
@@ -323,6 +338,14 @@ export default function EditProperty() {
             return;
         }
 
+        // Normalize and validate Mobile Number
+        const normalizedMobile = normalizePhone(formData.mobileNo);
+        if (!/^\d{10}$/.test(normalizedMobile)) {
+            showError('Invalid Mobile', 'Please enter a valid 10-digit mobile number.');
+            setSaving(false);
+            return;
+        }
+
         const totalImages = (existingImages?.length || 0) + (formData.images?.length || 0);
         if (totalImages < 5) {
             showError('Photos Required', 'Please maintain at least 5 photos for your property.');
@@ -339,7 +362,7 @@ export default function EditProperty() {
             apiData.append('CityName', formData.cityName);
             apiData.append('Address', formData.address);
             apiData.append('ContactPerson', formData.contactPerson);
-            apiData.append('MobileNo', formData.mobileNo);
+            apiData.append('MobileNo', normalizedMobile);
             apiData.append('Email', formData.email);
             apiData.append('Website', formData.website);
             apiData.append('ShortDescription', formData.shortDescription);
@@ -463,7 +486,20 @@ export default function EditProperty() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <InputField label="Contact Person" name="contactPerson" value={formData.contactPerson} onChange={handleInputChange} />
-                <InputField label="Mobile Number" name="mobileNo" value={formData.mobileNo} onChange={handleInputChange} />
+                <div className="space-y-1">
+                    <label className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">Mobile Number</label>
+                    <input
+                        type="tel"
+                        name="mobileNo"
+                        value={formData.mobileNo}
+                        onChange={handlePhoneChange}
+                        pattern="[0-9+\s-]{10,}"
+                        title="Please enter a valid 10-digit mobile number"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-3 text-sm md:text-base text-gray-800 font-medium focus:bg-white focus:border-black focus:ring-1 focus:ring-black outline-none transition-all"
+                        placeholder="9876543210"
+                        required
+                    />
+                </div>
                 <InputField label="Email Address" name="email" value={formData.email} onChange={handleInputChange} type="email" />
                 <InputField label="Website URL" name="website" value={formData.website} onChange={handleInputChange} />
             </div>

@@ -19,7 +19,7 @@ const CATEGORIES = [
 export default function MainLayout() {
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [properties, setProperties] = useState([]);
-    const [activeCategory, setActiveCategory] = useState('all');
+    // Removed local activeCategory state as it's now global in SearchContext
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -42,23 +42,9 @@ export default function MainLayout() {
     const handleSearch = (filters) => {
         setShowSearchModal(false);
         // Navigate to Home with search filters
-        navigate('/', { state: { searchFilters: filters, activeCategory } });
+        // No need to pass activeCategory, it's global now
+        navigate('/', { state: { searchFilters: filters } });
     };
-
-    // Show bubble on all pages, or maybe hide on specific ones if needed
-    // User requested: "search bubble to be kept on second page as well" ie PropertyDetails
-    // So we show it everywhere.
-
-    // Optional: Hide bubble on Home because Home has its own big search bar? 
-    // User said: "search bubble to be above whatsapp bubble".
-    // Previously in Home.jsx it was shown on scroll.
-    // If we move it here, we should probably keep the scroll logic OR show it always?
-    // User said "search bubble to be kept on second page". 
-    // Let's implement scroll logic here too, or just show it effectively.
-    // Let's keep scroll logic for Home, but for other pages maybe show always?
-    // Actually, simplifying: Use the same scroll logic (show after 300px) creates a consistent experience.
-    // However, on PropertyDetails, the user might want to search immediately without scrolling down.
-    // Let's stick to scroll logic for consistency, or standard FAB behavior.
 
     const [scrolled, setScrolled] = useState(false);
     useEffect(() => {
@@ -78,29 +64,19 @@ export default function MainLayout() {
                 onSearch={handleSearch}
                 properties={properties}
                 categories={CATEGORIES}
-                activeCategory={activeCategory}
-                onCategoryChange={setActiveCategory}
             />
-
-
 
             <main className="flex-grow">
                 <Outlet />
             </main>
 
-
-
             <SearchModal
-
                 isOpen={showSearchModal}
                 onClose={() => setShowSearchModal(false)}
                 onSearch={handleSearch}
                 properties={properties}
                 categories={CATEGORIES}
-                activeCategory={activeCategory}
-                onCategoryChange={setActiveCategory}
             />
-
 
             <ChatWidget />
             <Footer />

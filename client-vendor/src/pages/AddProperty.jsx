@@ -170,6 +170,21 @@ export default function AddProperty() {
     });
 
     const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    // Normalize phone number: remove +91, leading 0, spaces, hyphens
+    const normalizePhone = (phone) => {
+        let normalized = phone.replace(/[\s-]/g, ''); // Remove spaces and hyphens
+        normalized = normalized.replace(/^\+91/, ''); // Remove +91 prefix
+        normalized = normalized.replace(/^0/, ''); // Remove leading 0
+        return normalized;
+    };
+
+    const handlePhoneChange = (e) => {
+        // Only allow digits, +, spaces, and hyphens
+        const value = e.target.value.replace(/[^0-9+\s-]/g, '');
+        setFormData(prev => ({ ...prev, mobileNo: value }));
+    };
+
     const handleNestedChange = (section, key, value) => setFormData(prev => ({ ...prev, [section]: { ...prev[section], [key]: value } }));
 
     // Sync Bedrooms
@@ -224,8 +239,9 @@ export default function AddProperty() {
             return;
         }
 
-        // Validate Mobile Number
-        if (!/^\d{10}$/.test(formData.mobileNo)) {
+        // Normalize and validate Mobile Number
+        const normalizedMobile = normalizePhone(formData.mobileNo);
+        if (!/^\d{10}$/.test(normalizedMobile)) {
             showError('Invalid Mobile', 'Please enter a valid 10-digit mobile number.');
             setLoading(false);
             return;
@@ -252,7 +268,7 @@ export default function AddProperty() {
             apiData.append('CityName', formData.cityName);
             apiData.append('Address', formData.address);
             apiData.append('ContactPerson', formData.contactPerson);
-            apiData.append('MobileNo', formData.mobileNo);
+            apiData.append('MobileNo', normalizedMobile);
             apiData.append('Email', formData.email);
             apiData.append('Website', formData.website);
             apiData.append('ShortDescription', formData.shortDescription);
@@ -365,7 +381,20 @@ export default function AddProperty() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <InputField label="Contact Person" name="contactPerson" value={formData.contactPerson} onChange={handleInputChange} />
-                <InputField label="Mobile Number" name="mobileNo" value={formData.mobileNo} onChange={handleInputChange} />
+                <div className="space-y-1">
+                    <label className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">Mobile Number</label>
+                    <input
+                        type="tel"
+                        name="mobileNo"
+                        value={formData.mobileNo}
+                        onChange={handlePhoneChange}
+                        pattern="[0-9+\s-]{10,}"
+                        title="Please enter a valid 10-digit mobile number"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-3 text-sm md:text-base text-gray-800 font-medium focus:bg-white focus:border-black focus:ring-1 focus:ring-black outline-none transition-all"
+                        placeholder="9876543210"
+                        required
+                    />
+                </div>
                 <InputField label="Email Address" name="email" value={formData.email} onChange={handleInputChange} type="email" />
                 <InputField label="Website URL" name="website" value={formData.website} onChange={handleInputChange} />
             </div>
@@ -719,20 +748,110 @@ export default function AddProperty() {
                         </p>
                     </div>
 
-                    {/* Meal Configuration - Simplified Package Style */}
-                    <div className="border border-green-100 p-6 rounded-2xl bg-green-50/50">
-                        <h4 className="flex items-center gap-2 mb-4 font-bold text-green-800"><FaUtensils /> Meal Configuration</h4>
 
-                        <div className="bg-white p-4 rounded-xl border border-green-100 mb-4">
-                            <p className="text-sm text-gray-700 font-medium leading-relaxed">
-                                Veg, Non veg, Jain food. Meal Includes lunch, evening snacks, dinner and Next morning break fast. Meal Price Per person
+                    {/* Meal Configuration - Improved UI */}
+                    <div className="border border-green-100 p-6 rounded-2xl bg-green-50/50">
+                        <h4 className="flex items-center gap-2 mb-4 font-bold text-green-800"><FaUtensils /> Food & Dining</h4>
+
+                        <div className="bg-white p-4 rounded-xl border border-green-100 mb-6">
+                            <p className="text-sm text-gray-700 font-medium leading-relaxed mb-2">
+                                <strong>Package Includes:</strong> Lunch, Evening Snacks, Dinner, and Next Morning Breakfast
+                            </p>
+                            <p className="text-xs text-gray-500 italic">
+                                Price is per person for the complete meal package
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <InputField label="Veg Package (Per Person)" name="foodRateVeg" value={formData.foodRates?.veg || ''} onChange={(e) => handleNestedChange('foodRates', 'veg', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
-                            <InputField label="Non-Veg Package (Per Person)" name="foodRateNonVeg" value={formData.foodRates?.nonVeg || ''} onChange={(e) => handleNestedChange('foodRates', 'nonVeg', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
-                            <InputField label="Jain Package (Per Person)" name="foodRateJain" value={formData.foodRates?.jain || ''} onChange={(e) => handleNestedChange('foodRates', 'jain', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
+                        <div className="space-y-4">
+                            {/* Veg Option */}
+                            <div className="bg-white p-5 rounded-xl border-2 border-gray-100 hover:border-green-200 transition-all">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                            <FaUtensils className="text-green-600" />
+                                        </div>
+                                        <div>
+                                            <h5 className="font-bold text-gray-800">Vegetarian Food</h5>
+                                            <p className="text-xs text-gray-500">Pure veg meals available</p>
+                                        </div>
+                                    </div>
+                                    <Toggle
+                                        active={!!formData.foodRates?.veg}
+                                        onChange={(val) => handleNestedChange('foodRates', 'veg', val ? '' : false)}
+                                    />
+                                </div>
+                                {formData.foodRates?.veg !== false && (
+                                    <InputField
+                                        label="Price Per Person"
+                                        name="foodRateVeg"
+                                        value={formData.foodRates?.veg || ''}
+                                        onChange={(e) => handleNestedChange('foodRates', 'veg', e.target.value)}
+                                        placeholder="₹ 800"
+                                        type="number"
+                                        className="bg-gray-50"
+                                    />
+                                )}
+                            </div>
+
+                            {/* Non-Veg Option */}
+                            <div className="bg-white p-5 rounded-xl border-2 border-gray-100 hover:border-red-200 transition-all">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                            <FaUtensils className="text-red-600" />
+                                        </div>
+                                        <div>
+                                            <h5 className="font-bold text-gray-800">Non-Vegetarian Food</h5>
+                                            <p className="text-xs text-gray-500">Includes chicken, fish, etc.</p>
+                                        </div>
+                                    </div>
+                                    <Toggle
+                                        active={!!formData.foodRates?.nonVeg}
+                                        onChange={(val) => handleNestedChange('foodRates', 'nonVeg', val ? '' : false)}
+                                    />
+                                </div>
+                                {formData.foodRates?.nonVeg !== false && (
+                                    <InputField
+                                        label="Price Per Person"
+                                        name="foodRateNonVeg"
+                                        value={formData.foodRates?.nonVeg || ''}
+                                        onChange={(e) => handleNestedChange('foodRates', 'nonVeg', e.target.value)}
+                                        placeholder="₹ 1000"
+                                        type="number"
+                                        className="bg-gray-50"
+                                    />
+                                )}
+                            </div>
+
+                            {/* Jain Option */}
+                            <div className="bg-white p-5 rounded-xl border-2 border-gray-100 hover:border-orange-200 transition-all">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                                            <FaUtensils className="text-orange-600" />
+                                        </div>
+                                        <div>
+                                            <h5 className="font-bold text-gray-800">Jain Food</h5>
+                                            <p className="text-xs text-gray-500">No onion, garlic, root vegetables</p>
+                                        </div>
+                                    </div>
+                                    <Toggle
+                                        active={!!formData.foodRates?.jain}
+                                        onChange={(val) => handleNestedChange('foodRates', 'jain', val ? '' : false)}
+                                    />
+                                </div>
+                                {formData.foodRates?.jain !== false && (
+                                    <InputField
+                                        label="Price Per Person"
+                                        name="foodRateJain"
+                                        value={formData.foodRates?.jain || ''}
+                                        onChange={(e) => handleNestedChange('foodRates', 'jain', e.target.value)}
+                                        placeholder="₹ 850"
+                                        type="number"
+                                        className="bg-gray-50"
+                                    />
+                                )}
+                            </div>
                         </div>
                     </div>
                 </>
@@ -966,7 +1085,8 @@ export default function AddProperty() {
             if (!formData.cityName) return { valid: false, msg: 'City Name is required.' };
             if (!formData.address) return { valid: false, msg: 'Full Address is required.' };
             if (!formData.mobileNo) return { valid: false, msg: 'Mobile Number is required.' };
-            if (!/^\d{10}$/.test(formData.mobileNo)) return { valid: false, msg: 'Invalid Mobile Number (10 digits required).' };
+            const normalizedMobile = normalizePhone(formData.mobileNo);
+            if (!/^\d{10}$/.test(normalizedMobile)) return { valid: false, msg: 'Invalid Mobile Number (10 digits required).' };
         }
 
         // Step 1: Amenities (Optional, but good to have one)

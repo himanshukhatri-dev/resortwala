@@ -8,6 +8,7 @@ import MapView from '../components/features/MapView';
 // Framer Motion for Animations
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSwimmingPool, FaHome, FaHotel, FaMapMarkedAlt, FaList, FaSearch } from 'react-icons/fa';
+import { useSearch } from '../context/SearchContext';
 
 const CATEGORIES = [
     { id: 'all', label: 'All', icon: <FaHome /> },
@@ -16,7 +17,9 @@ const CATEGORIES = [
 ];
 
 export default function Home() {
-    const [activeCategory, setActiveCategory] = useState('all');
+    // Global Search State
+    const { activeCategory, setActiveCategory } = useSearch();
+
     const [properties, setProperties] = useState([]);
     const [filteredProperties, setFilteredProperties] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -26,6 +29,23 @@ export default function Home() {
     const location = useLocation();
     const resultsRef = useRef(null);
 
+    // Hero Carousel State
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const HERO_IMAGES = [
+        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2070&auto=format&fit=crop", // Beach
+        "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=2070&auto=format&fit=crop", // Resort Pool
+        "https://images.unsplash.com/photo-1540541338287-41700207dee6?q=80&w=2070&auto=format&fit=crop", // Luxury Villa
+        "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=2070&auto=format&fit=crop"  // Waterpark/Fun
+    ];
+
+    // Carousel Timer
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentImageIndex((prev) => (prev + 1) % HERO_IMAGES.length);
+        }, 5000); // Change every 5 seconds
+        return () => clearInterval(timer);
+    }, []);
+
     // Handle incoming search from MainLayout/Global Bubble
     useEffect(() => {
         if (location.state?.searchFilters) {
@@ -34,24 +54,30 @@ export default function Home() {
             if (location.state.activeCategory) {
                 setActiveCategory(location.state.activeCategory);
             }
-            // Scroll to results
-            setTimeout(() => {
-                if (resultsRef.current) {
-                    const yOffset = -120;
-                    const element = resultsRef.current;
-                    const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                    window.scrollTo({ top: y, behavior: 'smooth' });
-                }
-            }, 500); // Slightly longer delay to ensure page load/render
+
+            // check if page reload
+            const navEntry = performance.getEntriesByType("navigation")[0];
+            const isReload = navEntry && navEntry.type === 'reload';
+
+            // Scroll to results ONLY if not a reload
+            if (!isReload) {
+                setTimeout(() => {
+                    if (resultsRef.current) {
+                        const yOffset = -120;
+                        const element = resultsRef.current;
+                        const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                        window.scrollTo({ top: y, behavior: 'smooth' });
+                    }
+                }, 500); // Slightly longer delay to ensure page load/render
+            }
         }
-    }, [location.state]);
+    }, [location.state, setActiveCategory]);
 
     useEffect(() => {
         const fetchProperties = async () => {
             try {
                 // Ensure this matches your Laravel API route
-                // Try LAN IP first, fallback/debug if fails
-                console.log("Fetching properties from:", API_BASE_URL);
+
 
                 // Using proxy (vite.config.js) to avoid CORS
                 const response = await fetch(`${API_BASE_URL}/properties`);
@@ -61,7 +87,6 @@ export default function Home() {
 
                 // Safety check: ensure data is an array
                 const safeData = Array.isArray(data) ? data : [];
-                console.log("Properties fetched:", safeData.length);
 
                 setProperties(safeData);
                 setFilteredProperties(safeData);
@@ -164,35 +189,27 @@ export default function Home() {
         setFilteredProperties([...result]); // Spread to trigger re-render
     }, [properties, activeCategory, searchParams, advancedFilters]);
 
-    // AUTO SCROLL: When filters change (category, price, amenities), scroll to top of results
-    useEffect(() => {
-        // Skip on initial load to avoid annoying jumps
-        if (!hasSearched && activeCategory === 'all' && !advancedFilters.minPrice && !advancedFilters.maxPrice && advancedFilters.amenities.length === 0) return;
+    const isFirstRender = useRef(true);
 
-        if (resultsRef.current) {
-            // Small timeout to allow DOM layout updates if needed
-            setTimeout(() => {
-                const yOffset = -120; // Offset for sticky header
-                const element = resultsRef.current;
-                const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                window.scrollTo({ top: y, behavior: 'smooth' });
-            }, 100);
-        }
-    }, [activeCategory, advancedFilters]);
+    // AUTO SCROLL REMOVED: Relying on explicit 'shouldScroll' flag in handleSearch
+    // to prevent jumping while filtering (live search).
 
 
-    const handleSearch = (filters) => {
+    const handleSearch = (filters, shouldScroll = false) => {
         setSearchParams(filters);
         setHasSearched(true);
-        // Scroll to results after a short delay to allow state update
-        setTimeout(() => {
-            if (resultsRef.current) {
-                const yOffset = -120; // Offset for sticky header
-                const element = resultsRef.current;
-                const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                window.scrollTo({ top: y, behavior: 'smooth' });
-            }
-        }, 100);
+
+        // Only scroll if explicitly requested (e.g., via Enter key or Search button)
+        if (shouldScroll) {
+            setTimeout(() => {
+                if (resultsRef.current) {
+                    const yOffset = -120; // Offset for sticky header
+                    const element = resultsRef.current;
+                    const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+            }, 100);
+        }
     };
 
     const containerRef = useRef(null);
@@ -211,15 +228,22 @@ export default function Home() {
         <div className="pb-20" ref={containerRef}>
             {/* 1. IMMERSIVE HERO */}
             <div className="relative min-h-[200px] md:min-h-[250px] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-20 pb-8 md:pt-24 md:pb-10">
-                {/* Background */}
+                {/* Dynamic Background Carousel */}
                 <div className="absolute inset-0 overflow-hidden">
-                    <img
-                        src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2070&auto=format&fit=crop"
-                        alt="Sunrise Background"
-                        className="w-full h-full object-cover opacity-100"
-                    />
-                    <div className="absolute inset-0 bg-black/20" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-black/10" />
+                    <AnimatePresence mode='popLayout'>
+                        <motion.img
+                            key={currentImageIndex} // Key change triggers animation
+                            src={HERO_IMAGES[currentImageIndex]}
+                            alt="Background"
+                            initial={{ opacity: 0, scale: 1.1 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 1.5, ease: "easeInOut" }}
+                            className="absolute inset-0 w-full h-full object-cover"
+                        />
+                    </AnimatePresence>
+                    <div className="absolute inset-0 bg-black/30" /> {/* Slightly darker overlay for better text contrast */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-black/20" />
                 </div>
 
                 {/* Content */}
@@ -243,8 +267,6 @@ export default function Home() {
                             isSticky={false} // Disabled sticky behavior here as we use Bubble now
                             properties={properties}
                             categories={CATEGORIES}
-                            activeCategory={activeCategory}
-                            onCategoryChange={(cat) => { setActiveCategory(cat); setHasSearched(true); }}
                             compact={true}
                         />
                     </div>

@@ -54,12 +54,22 @@ Route::post('/customer/login', [\App\Http\Controllers\CustomerAuthController::cl
 Route::post('/customer/login-otp', [\App\Http\Controllers\CustomerAuthController::class, 'loginOtp']);
 Route::post('/customer/login-email-otp', [\App\Http\Controllers\CustomerAuthController::class, 'loginWithEmailOtp']);
 
+// Customer Protected Routes
+Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customer/profile', [\App\Http\Controllers\CustomerAuthController::class, 'profile']);
     Route::post('/customer/logout', [\App\Http\Controllers\CustomerAuthController::class, 'logout']);
     
     // Wishlist Routes
     Route::get('/customer/wishlist', [\App\Http\Controllers\WishlistController::class, 'index']);
     Route::post('/customer/wishlist/toggle', [\App\Http\Controllers\WishlistController::class, 'toggle']);
+    
+    // Verification Routes
+    Route::post('/customer/send-verification-email', [\App\Http\Controllers\VerificationController::class, 'sendEmailVerification']);
+    Route::post('/customer/verify-email', [\App\Http\Controllers\VerificationController::class, 'verifyEmail']);
+    Route::post('/customer/send-verification-phone', [\App\Http\Controllers\VerificationController::class, 'sendPhoneVerification']);
+    Route::post('/customer/verify-phone', [\App\Http\Controllers\VerificationController::class, 'verifyPhone']);
+    Route::put('/customer/profile', [\App\Http\Controllers\VerificationController::class, 'updateProfile']);
+});
 
 
 
@@ -133,7 +143,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/properties/{id}/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approve']);
     Route::put('/admin/properties/{id}/pricing', [\App\Http\Controllers\AdminPropertyController::class, 'updatePricing']);
     Route::get('/admin/properties/{id}', [\App\Http\Controllers\AdminPropertyController::class, 'show']);
-    Route::post('/admin/properties/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveProperty']);
     Route::delete('/admin/properties/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectProperty']);
     
     // Change Requests

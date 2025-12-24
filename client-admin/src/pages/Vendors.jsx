@@ -49,11 +49,11 @@ export default function Vendors() {
 
         setActionLoading(true);
         try {
-            console.log('Sending approval request for:', selectedVendor.id);
+
             await axios.post(`${API_BASE_URL}/admin/vendors/${selectedVendor.id}/approve`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            console.log('Approval success');
+
 
             // Update local state
             setVendors(vendors.map(v => v.id === selectedVendor.id ? { ...v, is_approved: 1 } : v));

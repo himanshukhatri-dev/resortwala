@@ -1,6 +1,4 @@
-import React from 'react';
-import { FaFacebook, FaInstagram, FaLinkedin } from 'react-icons/fa';
-import { FaXTwitter } from 'react-icons/fa6';
+import { FaFacebook, FaInstagram, FaYoutube } from 'react-icons/fa';
 
 export default function Footer() {
     return (
@@ -24,10 +22,9 @@ export default function Footer() {
                     <div>
                         <h4 className="font-bold text-white mb-3 text-sm uppercase tracking-wider font-serif">Support</h4>
                         <ul className="space-y-1.5 text-sm">
-                            <li><a href="#" className="hover:text-primary transition">Help Center</a></li>
-                            <li><a href="#" className="hover:text-primary transition">Safety information</a></li>
-                            <li><a href="#" className="hover:text-primary transition">Cancellation options</a></li>
-                            <li><a href="#" className="hover:text-primary transition">Report a concern</a></li>
+                            <li><a href="/contact" className="hover:text-primary transition">Help Center</a></li>
+                            <li><a href="/policy/safety" className="hover:text-primary transition">Safety information</a></li>
+                            <li><a href="/policy/cancellation" className="hover:text-primary transition">Cancellation options</a></li>
                         </ul>
                     </div>
 
@@ -35,10 +32,10 @@ export default function Footer() {
                     <div>
                         <h4 className="font-bold text-white mb-3 text-sm uppercase tracking-wider font-serif">Company</h4>
                         <ul className="space-y-1.5 text-sm">
-                            <li><a href="#" className="hover:text-primary transition">About us</a></li>
-                            <li><a href="#" className="hover:text-primary transition">Careers</a></li>
-                            <li><a href="#" className="hover:text-primary transition">Investors</a></li>
-                            <li><a href="#" className="hover:text-primary transition">Villas</a></li>
+                            <li><a href="/about" className="hover:text-primary transition">About us</a></li>
+                            <li><a href="/policy/terms" className="hover:text-primary transition">Terms of Service</a></li>
+                            <li><a href="/policy/privacy" className="hover:text-primary transition">Privacy Policy</a></li>
+                            <li><a href="/" className="hover:text-primary transition">Villas & Resorts</a></li>
                         </ul>
                     </div>
 
@@ -46,10 +43,9 @@ export default function Footer() {
                     <div>
                         <h4 className="font-bold text-white mb-3 text-sm uppercase tracking-wider font-serif">Follow us</h4>
                         <div className="flex gap-4">
-                            <a href="#" className="hover:text-primary transition"><FaFacebook size={18} /></a>
-                            <a href="#" className="hover:text-primary transition"><FaXTwitter size={18} /></a>
-                            <a href="#" className="hover:text-primary transition"><FaInstagram size={18} /></a>
-                            <a href="#" className="hover:text-primary transition"><FaLinkedin size={18} /></a>
+                            <a href="https://www.facebook.com/people/ResortWala/61574769120799/?rdid=WH84Mo0HyfYDJavP" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition"><FaFacebook size={18} /></a>
+                            <a href="https://www.instagram.com/resortwala.official/?igsh=MXByb3FnaXNmaHJxdw%3D%3D" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition"><FaInstagram size={18} /></a>
+                            <a href="https://www.youtube.com/@ResortWala.official" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition"><FaYoutube size={18} /></a>
                         </div>
                     </div>
                 </div>
@@ -57,9 +53,9 @@ export default function Footer() {
                 <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center text-xs">
                     <p>© {new Date().getFullYear()} ResortWala, Inc. All rights reserved.</p>
                     <div className="flex gap-4 mt-4 md:mt-0">
-                        <a href="#" className="hover:text-primary transition">Privacy</a>
-                        <a href="#" className="hover:text-primary transition">Terms</a>
-                        <a href="#" className="hover:text-primary transition">Sitemap</a>
+                        <a href="/policy/privacy" className="hover:text-primary transition">Privacy</a>
+                        <a href="/policy/terms" className="hover:text-primary transition">Terms</a>
+                        <a href="/" className="hover:text-primary transition">Sitemap</a>
                     </div>
                 </div>
             </div>

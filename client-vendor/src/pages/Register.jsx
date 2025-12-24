@@ -47,7 +47,7 @@ export default function Register() {
 
         try {
             const response = await axios.post(`${API_BASE_URL}/vendor/register`, formData);
-            console.log('Registration response:', response.data);
+
             login(response.data.token, response.data.user);
             await showSuccess('Welcome!', response.data.message || 'Registration successful');
             navigate('/dashboard');

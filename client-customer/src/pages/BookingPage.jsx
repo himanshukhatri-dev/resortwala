@@ -40,8 +40,19 @@ export default function BookingPage() {
     const [holidays, setHolidays] = useState([]);
 
     // Defaults from location state or mock
-    const checkIn = locationState.checkIn ? new Date(locationState.checkIn) : new Date();
-    const checkOut = locationState.checkOut ? new Date(locationState.checkOut) : new Date(new Date().setDate(new Date().getDate() + 1));
+    // Defaults from location state or mock
+    const [checkIn, setCheckIn] = useState(locationState.checkIn ? new Date(locationState.checkIn) : new Date());
+    const [checkOut, setCheckOut] = useState(locationState.checkOut ? new Date(locationState.checkOut) : new Date(new Date().setDate(new Date().getDate() + 1)));
+
+    // Ensure CheckOut > CheckIn
+    useEffect(() => {
+        if (checkOut <= checkIn) {
+            const nextDay = new Date(checkIn);
+            nextDay.setDate(nextDay.getDate() + 1);
+            setCheckOut(nextDay);
+        }
+    }, [checkIn, checkOut]);
+
     const guests = locationState.guests || 2;
     const nights = Math.max(1, Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
 

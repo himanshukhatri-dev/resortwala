@@ -81,14 +81,16 @@ const createPriceIcon = (price) => {
     });
 };
 
-function MapUpdater({ markers }) {
+function MapUpdater({ markers, userLocation }) {
     const map = useMap();
     React.useEffect(() => {
-        if (markers.length > 0) {
+        if (userLocation) {
+            map.flyTo(userLocation, 12, { duration: 2 });
+        } else if (markers.length > 0) {
             const group = new L.featureGroup(markers.map(m => L.marker(m.position)));
             map.fitBounds(group.getBounds(), { padding: [50, 50] });
         }
-    }, [markers, map]);
+    }, [markers, map, userLocation]);
     return null;
 }
 
@@ -106,15 +108,61 @@ export default function MapView({ properties }) {
         });
     }, [properties]);
 
+    const [userLocation, setUserLocation] = React.useState(null);
+
+    const handleLocateMe = () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    setUserLocation([latitude, longitude]);
+                    // You might need to access map instance to flyTo, but simplified for now
+                    // For a proper FlyTo, we'd need a component inside MapContainer or useMap
+                    // We'll add a <LocateHandler> component below
+                },
+                (error) => {
+                    console.error("Error getting location: ", error);
+                    let errorMessage = "Could not access your location.";
+
+                    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                        errorMessage += " Browser security requires HTTPS for location access.";
+                    } else if (error.code === 1) {
+                        errorMessage += " Permission denied. Please allow location access.";
+                    } else if (error.code === 2) {
+                        errorMessage += " Location unavailable.";
+                    } else if (error.code === 3) {
+                        errorMessage += " Request timed out.";
+                    }
+
+                    alert(errorMessage);
+                }
+            );
+        } else {
+            alert("Geolocation is not supported by your browser.");
+        }
+    };
+
     return (
-        <div className="h-full w-full rounded-2xl overflow-hidden shadow-2xl border border-gray-200 z-0 relative">
-            <MapContainer center={defaultCenter} zoom={5} scrollWheelZoom={false} className="h-full w-full">
+        <div className="h-full w-full rounded-2xl overflow-hidden shadow-2xl border border-gray-200 z-0 relative group">
+            <MapContainer center={defaultCenter} zoom={5} scrollWheelZoom={false} className="h-full w-full outline-none">
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                <MapUpdater markers={markers} />
+                <MapUpdater markers={markers} userLocation={userLocation} />
+
+                {/* User Location Marker */}
+                {userLocation && (
+                    <Marker position={userLocation} icon={L.divIcon({
+                        className: 'user-location-marker',
+                        html: '<div style="width: 16px; height: 16px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.3);"></div>',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })}>
+                        <Popup>You are here</Popup>
+                    </Marker>
+                )}
 
                 {markers.map((p, i) => (
                     <Marker
@@ -122,34 +170,51 @@ export default function MapView({ properties }) {
                         position={p.position}
                         icon={createPriceIcon(p.Price || p.price)}
                     >
-                        <Popup className="custom-popup">
-                            <div className="min-w-[200px]">
-                                <div className="h-32 w-full overflow-hidden rounded-t-lg mb-2 relative">
+                        <Popup className="custom-popup" closeButton={false}>
+                            <div className="min-w-[240px] p-0 font-sans">
+                                <div className="relative h-32 w-full overflow-hidden rounded-t-xl">
                                     <img
                                         src={p.image_path || p.ImageUrl || "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb"}
                                         alt={p.Name}
-                                        className="w-full h-full object-cover"
+                                        className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
                                     />
-                                    <div className="absolute top-2 right-2 bg-white px-2 py-0.5 rounded text-xs font-bold shadow-sm">
-                                        ★ {p.Rating || '4.8'}
+                                    <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-md text-xs font-bold shadow-sm flex items-center gap-1">
+                                        <span>★</span> {p.Rating || '4.8'}
                                     </div>
                                 </div>
-                                <h3 className="font-bold text-sm text-gray-900 truncate">{p.Name}</h3>
-                                <p className="text-xs text-gray-500 mb-2 truncate">{p.Location || p.CityName}</p>
-                                <div className="flex justify-between items-center mt-2">
-                                    <span className="font-bold text-lg text-black">₹{Number(p.Price).toLocaleString()}</span>
-                                    <Link
-                                        to={`/property/${p.PropertyId}`}
-                                        className="text-white bg-black hover:bg-gray-800 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                                    >
-                                        View
-                                    </Link>
+                                <div className="p-3">
+                                    <h3 className="font-bold text-gray-900 truncate text-base mb-0.5">{p.Name}</h3>
+                                    <p className="text-xs text-gray-500 mb-3 truncate flex items-center gap-1">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        {p.Location || p.CityName || "Unknown Location"}
+                                    </p>
+                                    <div className="flex justify-between items-center border-t border-gray-100 pt-3">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Price per night</span>
+                                            <span className="font-bold text-lg text-gray-900">₹{Number(p.Price).toLocaleString()}</span>
+                                        </div>
+                                        <Link
+                                            to={`/property/${p.PropertyId}`}
+                                            className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-lg shadow-gray-200"
+                                        >
+                                            View Details
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         </Popup>
                     </Marker>
                 ))}
             </MapContainer>
+
+            {/* Locate Me Button */}
+            <button
+                onClick={handleLocateMe}
+                className="absolute top-4 right-4 z-[400] bg-white text-gray-700 p-3 rounded-xl shadow-lg border border-gray-100 hover:bg-gray-50 hover:text-black transition-all active:scale-95 flex items-center gap-2 font-bold text-xs"
+            >
+                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                Locate Me
+            </button>
         </div>
     );
 }

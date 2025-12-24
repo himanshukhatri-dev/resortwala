@@ -20,10 +20,10 @@ export default function UserBookings() {
             const email = user?.email || localStorage.getItem('user_email');
             const mobile = user?.phone || localStorage.getItem('user_mobile');
 
-            console.log('Fetching bookings for:', { email, mobile });
+
 
             if (!email && !mobile) {
-                console.log('No user identifiers found');
+
                 setLoading(false);
                 return;
             }
@@ -33,7 +33,7 @@ export default function UserBookings() {
                 const res = await axios.get(`${API_BASE_URL}/bookings/search`, {
                     params: { email, mobile }
                 });
-                console.log('Bookings API Response:', res.data);
+
                 const bookingData = res.data.bookings || [];
                 setBookings(bookingData);
             } catch (error) {
