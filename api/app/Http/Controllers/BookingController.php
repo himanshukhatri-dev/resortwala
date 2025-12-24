@@ -67,9 +67,9 @@ class BookingController extends Controller
 
         // Set status based on booking source
         if ($bookingSource === 'customer_app') {
-            $validated['Status'] = 'Confirmed'; // Auto-confirm for customer app
+            $validated['Status'] = 'Confirmed';   // Auto-confirm
         } else {
-            $validated['Status'] = 'pending'; // Require vendor confirmation for public calendar
+            $validated['Status'] = 'Confirmed';   // Also auto-confirm for now (per user request "no vendor confirmation needed")
         }
         
         $validated['booking_source'] = $bookingSource;

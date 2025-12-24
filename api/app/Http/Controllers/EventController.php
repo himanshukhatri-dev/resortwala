@@ -52,7 +52,8 @@ class EventController extends Controller
             'events.*.context' => 'required|array'
         ]);
 
-        $userId = auth()->id();
+        // Try to get user ID from sanctum guard (even if route is public)
+        $userId = auth('sanctum')->id();
 
         foreach ($validated['events'] as $event) {
             $event['user_id'] = $userId;

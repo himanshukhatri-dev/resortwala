@@ -175,12 +175,19 @@ class AdminEventTracker {
         this.batchQueue = [];
 
         try {
+            const token = localStorage.getItem('admin_token');
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
             await axios.post(`${API_BASE_URL}/events/batch`, {
                 events: eventsToSend
             }, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: headers
             });
         } catch (error) {
             console.error('[Admin Analytics] Failed to send batch:', error);

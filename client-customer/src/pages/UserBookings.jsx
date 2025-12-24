@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaQrcode, FaShareAlt, FaPlus, FaMinus, FaMapMarkerAlt, FaCalendarAlt, FaUserFriends, FaMoneyBillWave } from 'react-icons/fa';
+import { FaQrcode, FaShareAlt, FaPlus, FaMinus, FaMapMarkerAlt, FaCalendarAlt, FaUserFriends, FaMoneyBillWave, FaCheck, FaWhatsapp } from 'react-icons/fa';
 
 export default function UserBookings() {
     const [bookings, setBookings] = useState([]);

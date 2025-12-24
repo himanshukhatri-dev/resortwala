@@ -6,7 +6,7 @@
 param (
     [string]$ServerIP = "72.61.242.42",
     [string]$User = "root",
-    [string]$RemoteBasePath = "/var/www/html"
+    [string]$RemoteBasePath = "/var/www/html/"
 )
 
 # Configuration
@@ -14,7 +14,7 @@ $Paths = @{
     "Customer" = @{
         "LocalSource" = "$PSScriptRoot/client-customer"
         "DistDir"     = "dist"
-        "RemotePath"  = "$RemoteBasePath/staging.resortwala.com"
+        "RemotePath"  = "$RemoteBasePath"
         "Type"        = "React"
     }
 }
