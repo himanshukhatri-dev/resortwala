@@ -20,6 +20,11 @@ export function AuthProvider({ children }) {
                     });
                     setUser(res.data.user);
                     setToken(storedToken);
+
+                    // Analytics
+                    import('../utils/analytics').then(module => {
+                        module.default.setUser(res.data.user.id);
+                    });
                 } catch (err) {
                     // Token invalid, clear it
                     localStorage.removeItem('vendor_token');

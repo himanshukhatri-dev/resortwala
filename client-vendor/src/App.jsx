@@ -39,6 +39,7 @@ import Status from './pages/Status';
 
 import PublicMasterCalendar from './pages/PublicMasterCalendar';
 import TokenHandler from './components/common/TokenHandler';
+import PageTracker from './components/common/PageTracker';
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
       <ThemeProvider>
         <ModalProvider>
           <BrowserRouter basename="/vendor">
+            <PageTracker />
             <TokenHandler />
             <Routes>
               <Route path="/login" element={<Login />} />
