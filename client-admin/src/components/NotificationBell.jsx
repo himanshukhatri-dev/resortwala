@@ -21,46 +21,40 @@ export default function NotificationBell() {
     useEffect(() => {
         if (token) {
             fetchNotifications();
-            // Auto-refresh every 30 seconds
-            const interval = setInterval(fetchNotifications, 30000);
-            return () => clearInterval(interval);
+            // Auto-refresh every 5 seconds (Live updates)
+            // const interval = setInterval(fetchNotifications, 5000);
+            // return () => clearInterval(interval);
         }
     }, [token]);
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-            return () => document.removeEventListener('mousedown', handleClickOutside);
-        }
-    }, [isOpen]);
+    // ... (lines 30-44 unchanged)
 
     const fetchNotifications = async () => {
         try {
             setLoading(true);
             const headers = { Authorization: `Bearer ${token}` };
 
-            const [vendorsRes, propsRes, changesRes] = await Promise.all([
+            const [vendorsRes, propsRes, changesRes, bookingsRes, holidaysRes] = await Promise.all([
                 axios.get(`${API_BASE_URL}/admin/vendors/pending`, { headers }),
                 axios.get(`${API_BASE_URL}/admin/properties/pending`, { headers }),
-                axios.get(`${API_BASE_URL}/admin/property-changes`, { headers })
+                axios.get(`${API_BASE_URL}/admin/property-changes`, { headers }),
+                axios.get(`${API_BASE_URL}/admin/bookings`, { headers }),
+                axios.get(`${API_BASE_URL}/admin/holidays/pending`, { headers }) // New endpoint
             ]);
 
             const vendors = vendorsRes.data || [];
             const properties = propsRes.data || [];
             const changes = (changesRes.data || []).filter(c => c.status === 'pending');
+            const bookings = (bookingsRes.data || []).filter(b => b.Status?.toLowerCase() === 'pending');
+            const holidays = holidaysRes.data || [];
 
             setNotifications({
                 vendors,
                 properties,
                 changes,
-                total: vendors.length + properties.length + changes.length
+                bookings,
+                holidays, // Store holidays
+                total: vendors.length + properties.length + changes.length + bookings.length + holidays.length
             });
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
@@ -69,12 +63,12 @@ export default function NotificationBell() {
         }
     };
 
-    const handleNavigate = (path) => {
-        navigate(path);
+    const handleNavigate = (path, state = {}) => {
+        navigate(path, { state });
         setIsOpen(false);
     };
 
-    const { vendors, properties, changes, total } = notifications;
+    const { vendors, properties, changes, bookings, total } = notifications;
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -113,6 +107,46 @@ export default function NotificationBell() {
                             </div>
                         ) : (
                             <div className="divide-y divide-gray-100">
+                                {/* Pending Bookings */}
+                                {bookings && bookings.length > 0 && (
+                                    <div className="p-4 hover:bg-gray-50 transition-colors">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                                    <FaBell className="text-green-600 text-sm" />
+                                                </div>
+                                                <span className="font-bold text-gray-800 text-sm">Booking Requests</span>
+                                                <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                                                    {bookings.length}
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={() => handleNavigate('/calendar')}
+                                                className="text-blue-600 hover:text-blue-700 text-xs font-bold flex items-center gap-1"
+                                            >
+                                                View All <FaArrowRight className="text-[10px]" />
+                                            </button>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {bookings.slice(0, 3).map(b => (
+                                                <div
+                                                    key={b.BookingId}
+                                                    onClick={() => handleNavigate('/calendar', { bookingId: b.BookingId })}
+                                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-white cursor-pointer transition-all"
+                                                >
+                                                    <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                                        {b.CustomerName?.charAt(0) || 'B'}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold text-gray-800 text-sm truncate">{b.CustomerName}</p>
+                                                        <p className="text-xs text-gray-500 truncate">{b.property?.Name || 'Property'}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Pending Vendors */}
                                 {vendors.length > 0 && (
                                     <div className="p-4 hover:bg-gray-50 transition-colors">
@@ -234,7 +268,48 @@ export default function NotificationBell() {
                                 )}
                             </div>
                         )}
+
+                        {/* Pending Holidays - NEW SECTION */}
+                        {notifications.holidays && notifications.holidays.length > 0 && (
+                            <div className="p-4 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
+                                            <FaEdit className="text-pink-600 text-sm" />
+                                        </div>
+                                        <span className="font-bold text-gray-800 text-sm">Holiday Rates</span>
+                                        <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                                            {notifications.holidays.length}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => handleNavigate('/approvals/holidays')}
+                                        className="text-blue-600 hover:text-blue-700 text-xs font-bold flex items-center gap-1"
+                                    >
+                                        View All <FaArrowRight className="text-[10px]" />
+                                    </button>
+                                </div>
+                                <div className="space-y-2">
+                                    {notifications.holidays.slice(0, 3).map(h => (
+                                        <div
+                                            key={h.id}
+                                            onClick={() => handleNavigate('/approvals/holidays')}
+                                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-white cursor-pointer transition-all"
+                                        >
+                                            <div className="w-8 h-8 bg-gradient-to-br from-pink-400 to-rose-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                                                ₹
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-semibold text-gray-800 text-sm truncate">{h.property?.Name || 'Property'}</p>
+                                                <p className="text-xs text-gray-500 truncate">Rate Update: ₹{h.base_price}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
+
 
                     {/* Footer */}
                     {total > 0 && (

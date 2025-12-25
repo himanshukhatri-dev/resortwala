@@ -6,9 +6,17 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use App\Services\NotificationService;
 
 class VendorController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     public function register(Request $request)
     {
         $validated = $request->validate([
@@ -142,6 +150,19 @@ class VendorController extends Controller
             $query->where('vendor_id', $vendor->id);
         })->count();
 
+        // Granular Booking Stats
+        $todayBookings = \App\Models\Booking::whereHas('property', function($query) use ($vendor) {
+            $query->where('vendor_id', $vendor->id);
+        })->whereDate('created_at', now()->toDateString())->count();
+
+        $weekBookings = \App\Models\Booking::whereHas('property', function($query) use ($vendor) {
+            $query->where('vendor_id', $vendor->id);
+        })->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count();
+
+        $monthBookings = \App\Models\Booking::whereHas('property', function($query) use ($vendor) {
+            $query->where('vendor_id', $vendor->id);
+        })->whereMonth('created_at', now()->month)->count();
+
         // Get recent bookings (last 5)
         $recentBookings = \App\Models\Booking::whereHas('property', function($query) use ($vendor) {
             $query->where('vendor_id', $vendor->id);
@@ -173,6 +194,9 @@ class VendorController extends Controller
             'approved_properties' => $approvedProperties,
             'pending_properties' => $pendingProperties,
             'total_bookings' => $totalBookings,
+            'today_bookings' => $todayBookings,
+            'week_bookings' => $weekBookings,
+            'month_bookings' => $monthBookings,
             'total_revenue' => $totalRevenue,
             'recent_bookings' => $recentBookings,
             'chart_data' => $chartData,
@@ -201,6 +225,13 @@ class VendorController extends Controller
         $booking->Status = $request->status;
         $booking->save();
 
+        // Send Notification
+        try {
+            $this->notificationService->sendBookingStatusUpdate($booking, $request->status);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Notification Error: " . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Booking status updated successfully',
             'booking' => $booking
@@ -226,11 +257,6 @@ class VendorController extends Controller
         if (!$property) {
             return response()->json(['message' => 'Unauthorized access to this property'], 403);
         }
-
-        // Check for existing blocking overlaps? 
-        // For now, we allow multiple bookings (maybe multiple rooms?). 
-        // If strict single unit, we should block.
-        // Assuming multi-unit or let vendor manage conflicts.
 
         $booking = new \App\Models\Booking();
         $booking->PropertyId = $request->property_id;

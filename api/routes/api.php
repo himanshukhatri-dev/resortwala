@@ -144,7 +144,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admin Property Management
     Route::get('/admin/properties', [\App\Http\Controllers\AdminController::class, 'getAllProperties']);
     Route::get('/admin/properties/pending', [\App\Http\Controllers\AdminController::class, 'getPendingProperties']);
-    Route::get('/admin/properties/{id}/calendar', [\App\Http\Controllers\Admin\AdminPropertyController::class, 'getCalendar']);
+    Route::get('/admin/properties/{id}/calendar', [\App\Http\Controllers\AdminPropertyController::class, 'getCalendar']);
     
     // Analytics routes (Admin)
     Route::get('/admin/analytics/events', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventLogs']);
@@ -158,12 +158,24 @@ Route::middleware('auth:sanctum')->group(function () {
     // Change Requests
     Route::get('/admin/property-changes', [\App\Http\Controllers\AdminPropertyController::class, 'getChangeRequests']);
     Route::get('/admin/property-changes/{id}', [\App\Http\Controllers\AdminPropertyController::class, 'getChangeRequest']);
+
+    // Admin Calendar Routes (Added for parity with Vendor)
+    Route::get('/admin/bookings', [\App\Http\Controllers\AdminController::class, 'getAllBookings']);
+    Route::post('/admin/bookings/lock', [\App\Http\Controllers\AdminController::class, 'lockDates']); // Needs implementation
+    Route::post('/admin/bookings/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveBooking']); // Needs impl
+    Route::post('/admin/bookings/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectBooking']); // Needs impl
     Route::post('/admin/properties/{id}/changes/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approveChanges']);
     Route::post('/admin/properties/{id}/changes/reject', [\App\Http\Controllers\AdminPropertyController::class, 'rejectChanges']);
+
+    // Admin Holiday Approval
+    Route::get('/admin/holidays/pending', [\App\Http\Controllers\AdminController::class, 'getPendingHolidays']);
+    Route::post('/admin/holidays/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveHoliday']);
+    Route::post('/admin/holidays/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectHoliday']);
     
     // Admin Booking Management
     Route::get('/admin/bookings', [\App\Http\Controllers\AdminController::class, 'getAllBookings']);
     Route::post('/admin/bookings/{id}/status', [\App\Http\Controllers\AdminController::class, 'updateBookingStatus']);
+    Route::post('/admin/bookings/{id}/resend-email', [\App\Http\Controllers\BookingController::class, 'resendConfirmation']);
     
     // User Management
     Route::get('/admin/users/admins', [\App\Http\Controllers\AdminUserController::class, 'getAdmins']);
@@ -185,7 +197,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Public Availability (Shareable Links)
 Route::prefix('public')->group(function () {
-    Route::get('properties/{uuid}/calendar', [App\Http\Controllers\PublicAvailabilityController::class, 'show']);
+    // Route::get('properties/{uuid}/calendar', [App\Http\Controllers\PublicAvailabilityController::class, 'show']);
     Route::post('bookings/request', [App\Http\Controllers\PublicAvailabilityController::class, 'request']);
 });
 

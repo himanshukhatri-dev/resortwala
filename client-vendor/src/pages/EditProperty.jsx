@@ -172,6 +172,7 @@ export default function EditProperty() {
     });
 
     const [existingImages, setExistingImages] = useState([]);
+    const [selectedImages, setSelectedImages] = useState([]);
 
     useEffect(() => {
         const fetchProperty = async () => {
@@ -182,7 +183,31 @@ export default function EditProperty() {
                 });
 
                 const p = res.data;
-                const ob = p.onboarding_data || {};
+                console.log("Property Data:", p); // Debug log
+
+                // Helper to safely get property values regardless of casing
+                const getValue = (obj, keys) => {
+                    if (!obj) return '';
+                    if (!Array.isArray(keys)) keys = [keys];
+
+                    for (const key of keys) {
+                        if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+                        // Try snake_case
+                        const snake = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`).replace(/^_/, '');
+                        if (obj[snake] !== undefined && obj[snake] !== null) return obj[snake];
+                        // Try lowercase
+                        const lower = key.toLowerCase();
+                        if (obj[lower] !== undefined && obj[lower] !== null) return obj[lower];
+                    }
+                    return '';
+                };
+
+                const ob = p.onboarding_data || p.OnboardingData || {}; // Check both casings
+                if (typeof ob === 'string') {
+                    // Fail-safe if parsing failed earlier
+                    try { ob = JSON.parse(ob); } catch (e) { }
+                }
+
                 const pricing = ob.pricing || {};
 
                 // Complex Structures and Defaults
@@ -202,28 +227,28 @@ export default function EditProperty() {
                 const foodOptions = ob.foodOptions || { breakfast: 'Not Included', lunch: 'Not Included', hiTea: 'Not Included', dinner: 'Not Included' };
 
                 setFormData({
-                    name: p.Name || '',
-                    displayName: p.ShortName || '',
-                    propertyType: p.PropertyType || 'Villa',
-                    location: p.Location || '',
-                    cityName: p.CityName || '',
-                    address: p.Address || '',
-                    contactPerson: p.ContactPerson || '',
-                    mobileNo: p.MobileNo || '',
-                    email: p.Email || '',
-                    website: p.Website || '',
-                    description: p.LongDescription || '',
-                    shortDescription: p.ShortDescription || '',
+                    name: getValue(p, 'Name'),
+                    displayName: getValue(p, 'ShortName'),
+                    propertyType: getValue(p, 'PropertyType') || 'Villa',
+                    location: getValue(p, 'Location'),
+                    cityName: getValue(p, 'CityName'),
+                    address: getValue(p, 'Address'),
+                    contactPerson: getValue(p, 'ContactPerson'),
+                    mobileNo: getValue(p, ['MobileNo', 'mobile_no']),
+                    email: getValue(p, 'Email'),
+                    website: getValue(p, 'Website'),
+                    description: getValue(p, ['LongDescription', 'long_description', 'description']),
+                    shortDescription: getValue(p, ['ShortDescription', 'short_description']),
 
                     // Excel Fields Mapping
-                    maxCapacity: p.MaxCapacity?.toString() || '',
-                    noofRooms: p.NoofRooms?.toString() || '',
-                    occupancy: p.Occupancy?.toString() || '',
+                    maxCapacity: getValue(p, ['MaxCapacity', 'max_capacity']),
+                    noofRooms: getValue(p, ['NoofRooms', 'noof_rooms', 'no_of_rooms']),
+                    occupancy: getValue(p, ['Occupancy', 'occupancy']),
 
                     // Pricing Mapping
-                    priceMonThu: p.price_mon_thu || pricing.weekday || '',
-                    priceFriSun: p.price_fri_sun || pricing.weekend || '',
-                    priceSaturday: p.price_sat || pricing.saturday || '',
+                    priceMonThu: getValue(p, ['price_mon_thu', 'Price']),
+                    priceFriSun: getValue(p, ['price_fri_sun', 'weekend']),
+                    priceSaturday: getValue(p, ['price_sat', 'saturday']),
 
                     amenities,
                     rules,
@@ -450,16 +475,18 @@ export default function EditProperty() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <button
                     type="button"
+                    disabled={!!id}
                     onClick={() => setFormData({ ...formData, propertyType: 'Villa' })}
-                    className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${formData.propertyType === 'Villa' ? 'bg-purple-600 border-purple-600 text-white shadow-xl scale-105 ring-2 ring-purple-200' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
+                    className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${!!id ? 'opacity-50 cursor-not-allowed' : ''} ${formData.propertyType === 'Villa' ? 'bg-purple-600 border-purple-600 text-white shadow-xl scale-105 ring-2 ring-purple-200' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
                 >
                     <FaHome size={32} />
                     <span className="font-bold text-lg">Villa / Resort</span>
                 </button>
                 <button
                     type="button"
+                    disabled={!!id}
                     onClick={() => setFormData({ ...formData, propertyType: 'Waterpark' })}
-                    className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${formData.propertyType === 'Waterpark' ? 'bg-blue-600 border-blue-600 text-white shadow-xl scale-105 ring-2 ring-blue-200' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
+                    className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${!!id ? 'opacity-50 cursor-not-allowed' : ''} ${formData.propertyType === 'Waterpark' ? 'bg-blue-600 border-blue-600 text-white shadow-xl scale-105 ring-2 ring-blue-200' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
                 >
                     <FaWater size={32} />
                     <span className="font-bold text-lg">Waterpark</span>
@@ -1048,6 +1075,38 @@ export default function EditProperty() {
             }
         };
 
+        const handleBulkDelete = async () => {
+            if (selectedImages.length === 0) return;
+
+            const isConfirmed = await showConfirm(
+                'Delete Photos',
+                `Are you sure you want to delete ${selectedImages.length} selected photos?`,
+                'Delete All',
+                'Cancel'
+            );
+            if (!isConfirmed) return;
+
+            setSaving(true);
+            try {
+                const baseURL = import.meta.env.VITE_API_BASE_URL || '';
+                // Execute deletes in parallel
+                await Promise.all(selectedImages.map(imgId =>
+                    axios.delete(`${baseURL}/vendor/properties/${id}/images/${imgId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                ));
+
+                setExistingImages(prev => prev.filter(img => !selectedImages.includes(img.id)));
+                setSelectedImages([]);
+                showSuccess('Deleted', `${selectedImages.length} photos removed.`);
+            } catch (err) {
+                console.error(err);
+                showError('Error', 'Failed to delete some photos.');
+            } finally {
+                setSaving(false);
+            }
+        };
+
         return (
             <div className="space-y-6 animate-fade-in-up">
                 <div>
@@ -1093,33 +1152,57 @@ export default function EditProperty() {
                     </div>
                 </div>
 
-                {/* Existing Images */}
                 {existingImages.length > 0 && (
-                    <div className="space-y-2">
-                        <h4 className="font-bold text-sm text-gray-500">Current Photos</h4>
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-end">
+                            <h4 className="font-bold text-sm text-gray-500">Current Photos</h4>
+                            {selectedImages.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={handleBulkDelete}
+                                    className="text-red-600 text-xs font-bold hover:bg-red-50 px-3 py-1 rounded-lg transition-colors border border-red-100"
+                                >
+                                    Delete {selectedImages.length} Selected
+                                </button>
+                            )}
+                        </div>
+
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {existingImages.map((img) => (
-                                <div key={img.id} className={`relative group rounded-xl overflow-hidden aspect-square shadow-md ${img.is_primary ? 'ring-2 ring-yellow-400' : ''}`}>
+                                <div
+                                    key={img.id}
+                                    className={`relative group rounded-xl overflow-hidden aspect-square shadow-md cursor-pointer transition-all ${selectedImages.includes(img.id) ? 'ring-4 ring-red-500 scale-95 opacity-75' :
+                                        img.is_primary ? 'ring-2 ring-yellow-400' : 'hover:shadow-lg'
+                                        }`}
+                                    onClick={() => {
+                                        if (selectedImages.includes(img.id)) {
+                                            setSelectedImages(prev => prev.filter(id => id !== img.id));
+                                        } else {
+                                            setSelectedImages(prev => [...prev, img.id]);
+                                        }
+                                    }}
+                                >
                                     <img src={img.image_url} alt="Existing" className="w-full h-full object-cover" />
 
-                                    {/* Overlay */}
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <button
-                                            type="button"
-                                            title="Set as Main Photo"
-                                            onClick={(e) => handleSetPrimary(img.id, e)}
-                                            className={`p-2 rounded-full shadow-lg transition-all ${img.is_primary ? 'bg-yellow-400 text-white' : 'bg-white text-gray-400 hover:text-yellow-400'}`}
-                                        >
-                                            <FaStar />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleDeleteExisting(img.id, e)}
-                                            className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
-                                        >
-                                            <FaTimes />
-                                        </button>
+                                    {/* Selection Checkbox (Visible on Hover or Selected) */}
+                                    <div className={`absolute top-2 right-2 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all z-10 ${selectedImages.includes(img.id) ? 'bg-red-500 border-red-500 text-white' : 'bg-white/80 border-gray-300 opacity-0 group-hover:opacity-100'}`}>
+                                        {selectedImages.includes(img.id) && <FaCheck size={10} />}
                                     </div>
+
+                                    {/* Overlay Actions (Hidden if selecting) */}
+                                    {!selectedImages.includes(img.id) && (
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2" onClick={e => e.stopPropagation()}>
+                                            <button
+                                                type="button"
+                                                title="Set as Main Photo"
+                                                onClick={(e) => handleSetPrimary(img.id, e)}
+                                                className={`p-2 rounded-full shadow-lg transition-all ${img.is_primary ? 'bg-yellow-400 text-white' : 'bg-white text-gray-400 hover:text-yellow-400'}`}
+                                            >
+                                                <FaStar />
+                                            </button>
+                                        </div>
+                                    )}
+
                                     {img.is_primary && (
                                         <div className="absolute top-2 left-2 bg-yellow-400 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
                                             MAIN
@@ -1129,8 +1212,7 @@ export default function EditProperty() {
                             ))}
                         </div>
                     </div>
-                )
-                }
+                )}
 
                 {/* New Images */}
                 {

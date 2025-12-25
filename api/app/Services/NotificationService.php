@@ -62,21 +62,48 @@ class NotificationService
 
     public function sendBookingConfirmation($booking)
     {
-        // For now, log and we can later create BookingConfirmationMail
-        Log::info("Sending Booking Confirmation to {$booking->CustomerName} ({$booking->CustomerEmail})");
-        
-        // Example of sending to multiple parties as per requirement
-        // if ($booking->CustomerEmail) Mail::to($booking->CustomerEmail)->send(new BookingMail($booking, 'customer'));
-        // if ($booking->property->vendor->email) Mail::to($booking->property->vendor->email)->send(new BookingMail($booking, 'vendor'));
-        // Mail::to(config('mail.admin_address'))->send(new BookingMail($booking, 'admin'));
+        // 1. Notify Admin (Developer)
+        try {
+            Mail::to('himanshukhatri.1988@gmail.com')->send(new \App\Mail\BookingMail($booking, 'new_request_admin'));
+            Log::info("Sent Admin Notification to himanshukhatri.1988@gmail.com");
+        } catch (\Exception $e) {
+            Log::error("Failed to send Admin Email: " . $e->getMessage());
+        }
+
+        // 2. Notify Vendor
+        try {
+            if ($booking->property && $booking->property->vendor && $booking->property->vendor->email) {
+                Mail::to($booking->property->vendor->email)->send(new \App\Mail\BookingMail($booking, 'new_request_vendor'));
+                Log::info("Sent Vendor Notification to " . $booking->property->vendor->email);
+            }
+        } catch (\Exception $e) {
+            Log::error("Failed to send Vendor Email: " . $e->getMessage());
+        }
+
+        // 3. Notify Customer (if source is customer_app and confirmed immediately)
+        if ($booking->Status === 'Confirmed' && $booking->CustomerEmail) {
+            try {
+                Mail::to($booking->CustomerEmail)->send(new \App\Mail\BookingMail($booking, 'confirmed_customer'));
+                Log::info("Sent Customer Confirmation to " . $booking->CustomerEmail);
+            } catch (\Exception $e) {
+                Log::error("Failed to send Customer Email: " . $e->getMessage());
+            }
+        }
     }
 
-    public function sendPropertyStatusNotif($property, $status)
+    public function sendBookingStatusUpdate($booking, $status)
     {
-        $vendor = $property->vendor;
-        if (!$vendor || !$vendor->email) return;
+        if (!$booking->CustomerEmail) return;
 
-        Log::info("Property '{$property->Name}' status changed to '{$status}'. Notifying vendor {$vendor->email}");
-        // Mail::to($vendor->email)->send(new PropertyStatusMail($property, $status));
+        try {
+            $type = ($status === 'Confirmed' || $status === 'confirmed') ? 'confirmed_customer' : 'status_update_customer';
+            Mail::to($booking->CustomerEmail)->send(new \App\Mail\BookingMail($booking, $type));
+            Log::info("Sent Booking Status Update ({$status}) to {$booking->CustomerEmail}");
+        } catch (\Exception $e) {
+            Log::error("Failed to send Status Update Email: " . $e->getMessage());
+        }
+
+        // WhatsApp Placeholder
+        // $this->sendWhatsApp($booking->CustomerMobile, "Your booking status for {$booking->property->Name} is now: {$status}");
     }
 }

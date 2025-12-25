@@ -38,6 +38,12 @@ class BookingController extends Controller
 
         // Default booking source to customer_app if not provided
         $bookingSource = $validated['booking_source'] ?? 'customer_app';
+
+        // Generate Booking Reference
+        do {
+            $ref = 'RES-' . strtoupper(\Illuminate\Support\Str::random(8));
+        } while (Booking::where('booking_reference', $ref)->exists());
+        $validated['booking_reference'] = $ref;
         
         // Get property to check type
         $property = \App\Models\PropertyMaster::find($validated['PropertyId']);
@@ -95,7 +101,7 @@ class BookingController extends Controller
 
         $query = Booking::query()->with('property'); // Eager load property
 
-        $query = Booking::query()->with('property');
+
 
         // Check for Email OR Mobile match (widest search)
         if ($request->email || $request->mobile) {
@@ -120,5 +126,21 @@ class BookingController extends Controller
         $booking->save();
 
         return response()->json(['message' => 'Booking cancelled successfully', 'booking' => $booking]);
+    }
+
+    public function resendConfirmation($id)
+    {
+        $booking = Booking::with('property')->findOrFail($id);
+        
+        // Use existing logic for confirmation email (handles customer/vendor/admin notifications)
+        // or specifically target customer. The prompt says "resend email", usually implying customer confirmation.
+        // Let's force a customer confirmation email.
+        
+        try {
+            $this->notificationService->sendBookingConfirmation($booking);
+            return response()->json(['message' => 'Confirmation email resent successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to send email'], 500);
+        }
     }
 }

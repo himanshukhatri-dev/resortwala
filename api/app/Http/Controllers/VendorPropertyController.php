@@ -109,6 +109,25 @@ class VendorPropertyController extends Controller
             ->with(['images'])
             ->firstOrFail();
 
+        // Check for pending changes and merge them for the vendor view
+        $pendingRequest = \App\Models\PropertyEditRequest::where('property_id', $id)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        if ($pendingRequest && !empty($pendingRequest->changes_json)) {
+            $changes = $pendingRequest->changes_json;
+            // Decode if it's a string (though Eloquent 'json' cast handles this, safety first)
+            if (is_string($changes)) $changes = json_decode($changes, true);
+
+            foreach ($changes as $key => $value) {
+                // Determine if we should override.
+                // PropertyMaster uses PascalCase usually.
+                $property->$key = $value;
+            }
+            $property->has_pending_changes = true;
+        }
+
         return response()->json($property);
     }
 
@@ -185,13 +204,27 @@ class VendorPropertyController extends Controller
                     $existingChanges = $pendingRequest->changes_json;
                     $mergedChanges = array_merge($existingChanges, $changes);
                     $pendingRequest->update(['changes_json' => $mergedChanges]);
+                    $requestId = $pendingRequest->id;
                 } else {
-                    \App\Models\PropertyEditRequest::create([
+                    $req = \App\Models\PropertyEditRequest::create([
                         'property_id' => $property->PropertyId,
                         'vendor_id' => $request->user()->id,
                         'changes_json' => $changes,
                         'status' => 'pending'
                     ]);
+                    $requestId = $req->id;
+                }
+
+                // Notify Admins
+                try {
+                    $admins = \App\Models\User::where('role', 'admin')->get();
+                    foreach ($admins as $admin) {
+                        \Illuminate\Support\Facades\Mail::to($admin->email)->send(
+                            new \App\Mail\PropertyEditRequestSubmitted($property, $request->user(), $requestId)
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to send admin notification: ' . $e->getMessage());
                 }
 
                 // If images were uploaded, we might need a way to stage them. 

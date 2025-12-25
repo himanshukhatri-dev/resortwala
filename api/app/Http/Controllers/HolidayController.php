@@ -27,6 +27,7 @@ class HolidayController extends Controller
             'extra_person_price' => 'nullable|numeric|min:0',
         ]);
 
+        $validated['approved'] = 0; // Default to pending approval
         $holiday = \App\Models\Holiday::create($validated);
         return response()->json($holiday, 201);
     }

@@ -31,6 +31,32 @@ class PropertyMasterController extends Controller
             return response()->json(['message' => 'Property not found'], 404);
         }
 
+        // --- Fetch Booked Dates Logic ---
+        $bookings = \App\Models\Booking::where('PropertyId', $id)
+            ->where('Status', '!=', 'cancelled')
+            ->where('Status', '!=', 'rejected')
+            ->get(['CheckInDate', 'CheckOutDate']);
+
+        $bookedDates = [];
+        foreach ($bookings as $booking) {
+            $start = \Carbon\Carbon::parse($booking->CheckInDate);
+            $end = \Carbon\Carbon::parse($booking->CheckOutDate);
+
+            if ($start->eq($end)) {
+                 $bookedDates[] = $start->format('Y-m-d');
+            } else {
+                 $end->subDay(); // Exclude checkout day
+                 if ($start->lte($end)) {
+                    $period = \Carbon\CarbonPeriod::create($start, $end);
+                    foreach ($period as $date) {
+                        $bookedDates[] = $date->format('Y-m-d');
+                    }
+                 }
+            }
+        }
+        $property->booked_dates = array_values(array_unique($bookedDates));
+        // -----------------------------
+
         return response()->json($property);
     }
 

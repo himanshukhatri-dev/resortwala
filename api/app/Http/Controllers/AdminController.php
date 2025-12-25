@@ -267,4 +267,69 @@ class AdminController extends Controller
 
         return response()->json($results);
     }
+
+    // --- Calendar Actions for Admin ---
+
+    public function lockDates(Request $request)
+    {
+        $request->validate([
+            'property_id' => 'required',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $booking = new Booking();
+        $booking->PropertyId = $request->property_id;
+        $booking->CheckInDate = $request->start_date;
+        $booking->CheckOutDate = $request->end_date;
+        $booking->CustomerName = 'Admin Blocked'; // Distinct name
+        $booking->Status = 'Blocked';
+        $booking->CustomerMobile = 'N/A';
+        $booking->Guests = 0;
+        $booking->TotalAmount = 0;
+        $booking->booked_by = 'admin'; // Track who blocked it if column exists
+        $booking->save();
+
+        return response()->json(['message' => 'Dates blocked successfully']);
+    }
+
+    public function approveBooking(Request $request, $id)
+    {
+        $booking = Booking::findOrFail($id);
+        $booking->Status = 'Confirmed';
+        $booking->save();
+        return response()->json(['message' => 'Booking Approved']);
+    }
+
+    public function rejectBooking(Request $request, $id)
+    {
+        $booking = Booking::findOrFail($id);
+        $booking->Status = 'Cancelled'; // Or Rejected
+        $booking->save();
+        return response()->json(['message' => 'Booking Rejected']);
+    }
+
+    // --- Holiday Approval ---
+    public function getPendingHolidays(Request $request)
+    {
+        $holidays = \App\Models\Holiday::with('property:PropertyId,Name')
+            ->where('approved', 0)
+            ->get();
+        return response()->json($holidays);
+    }
+
+    public function approveHoliday(Request $request, $id)
+    {
+        $holiday = \App\Models\Holiday::findOrFail($id);
+        $holiday->approved = 1;
+        $holiday->save();
+        return response()->json(['message' => 'Holiday Approved']);
+    }
+
+    public function rejectHoliday(Request $request, $id)
+    {
+        $holiday = \App\Models\Holiday::findOrFail($id);
+        $holiday->delete();
+        return response()->json(['message' => 'Holiday Rejected']);
+    }
 }

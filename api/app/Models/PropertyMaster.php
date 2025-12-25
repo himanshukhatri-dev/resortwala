@@ -6,6 +6,32 @@ use Illuminate\Database\Eloquent\Model;
 
 class PropertyMaster extends Model
 {
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        // Check if there is a DB column 'ImageUrl' or similar
+        // If not, maybe return primary image?
+        $path = $this->attributes['ImageUrl'] ?? null;
+        if (!$path) {
+            $primary = $this->primaryImage;
+            return $primary ? $primary->image_url : null;
+        }
+        
+        if (str_starts_with($path, 'http')) {
+            return $path;
+        }
+
+        // Apply same logic as PropertyImage
+        if (str_starts_with($path, 'storage/')) {
+            return asset($path);
+        }
+        if (str_starts_with($path, 'properties/')) {
+            return asset('storage/' . $path);
+        }
+
+        return asset('storage/properties/' . $path);
+    }
     protected $table = 'property_masters';
     protected $primaryKey = 'PropertyId';
     

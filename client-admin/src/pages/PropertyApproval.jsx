@@ -10,8 +10,8 @@ export default function PropertyApproval() {
     const { token } = useAuth();
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [adminPricing, setAdminPricing] = useState(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'pricing' | 'media' | 'rules'
 
     // Editable state for the property details

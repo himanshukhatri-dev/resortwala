@@ -291,7 +291,7 @@ const PublicCalendar = () => {
                             </div>
 
                             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-                                <strong>Note:</strong> This is a booking request. The property owner will contact you to confirm availability and pricing.
+                                <strong>Important:</strong> This is only a <u>request</u>. Dates will not be locked until the host confirms. You will receive a confirmation call/message.
                             </div>
 
                             <button

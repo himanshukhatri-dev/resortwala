@@ -65,14 +65,28 @@ export default function Dashboard() {
     return (
         <div className="max-w-7xl mx-auto space-y-8 animate-fade-in-up pb-20">
             {/* Header / Welcome Section */}
-            <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+            {/* Header / Welcome Section */}
+            <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-gray-100 pb-6">
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">Welcome back, {user?.name?.split(' ')[0] || 'Partner'}! (v2.0) 👋</h1>
-                    <p className="text-gray-500 mt-2 text-lg font-medium">Here's how your business is performing today.</p>
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+                        {(() => {
+                            const hour = new Date().getHours();
+                            if (hour < 12) return 'Good Morning';
+                            if (hour < 18) return 'Good Afternoon';
+                            return 'Good Evening';
+                        })()}, {user?.name?.split(' ')[0]}
+                        <span className="text-2xl animate-bounce">👋</span>
+                    </h1>
+                    <p className="text-gray-500 mt-2 text-lg font-medium">Here is your daily activity overview.</p>
                 </div>
                 <div className="text-right hidden md:block">
-                    <div className="text-sm font-bold text-gray-400 uppercase tracking-wider">Today's Date</div>
-                    <div className="text-xl font-bold text-gray-800">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+                    <div className="bg-gray-50 px-5 py-2 rounded-2xl border border-gray-100">
+                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Today's Date</div>
+                        <div className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                            <span>📅</span>
+                            {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -87,6 +101,63 @@ export default function Dashboard() {
                 </div>
             )}
 
+            {/* Action-First Hero Section */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <ActionCard
+                    title="Add Property"
+                    icon={<span className="text-3xl">➕</span>}
+                    desc="List a new stay"
+                    onClick={() => navigate('/properties/add')}
+                    color="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700"
+                />
+                <ActionCard
+                    title="Bookings"
+                    icon={<span className="text-3xl">📅</span>}
+                    desc="Manage reservations"
+                    onClick={() => navigate('/bookings')}
+                    color="bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700"
+                />
+                <ActionCard
+                    title="Calendar"
+                    icon={<span className="text-3xl">🗓️</span>}
+                    desc="Availability & Rates"
+                    onClick={() => navigate('/calendar')}
+                    color="bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+                />
+                <ActionCard
+                    title="Holidays"
+                    icon={<span className="text-3xl">🌴</span>}
+                    desc="Manage blocked dates"
+                    onClick={() => navigate('/holiday-management')}
+                    color="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700"
+                />
+            </div>
+
+            {/* Quick Booking Stats (New Request) */}
+            <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase">Today</p>
+                        <p className="text-2xl font-extrabold text-blue-600">{stats?.today_bookings || 0}</p>
+                    </div>
+                    <div className="bg-blue-50 p-2 rounded-lg text-blue-500 text-xl">📅</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase">This Week</p>
+                        <p className="text-2xl font-extrabold text-purple-600">{stats?.week_bookings || 0}</p>
+                    </div>
+                    <div className="bg-purple-50 p-2 rounded-lg text-purple-500 text-xl">📊</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase">This Month</p>
+                        <p className="text-2xl font-extrabold text-green-600">{stats?.month_bookings || 0}</p>
+                    </div>
+                    <div className="bg-green-50 p-2 rounded-lg text-green-500 text-xl">📈</div>
+                </div>
+            </div>
+
             {/* Main Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
@@ -94,116 +165,52 @@ export default function Dashboard() {
                     value={stats?.total_properties || 0}
                     icon={<FaHome />}
                     color="bg-blue-500"
-                    trend="+1 this month"
+                    trend={stats?.total_properties > 0 ? "Active" : "Start Listing"}
                 />
                 <StatCard
                     label="Active Listings"
                     value={stats?.approved_properties || 0}
                     icon={<FaCheckCircle />}
                     color="bg-green-500"
-                    trend="100% operational"
+                    trend="Operational"
                 />
                 <StatCard
                     label="Total Bookings"
                     value={stats?.total_bookings || 0}
                     icon={<FaCalendarCheck />}
                     color="bg-purple-500"
-                    trend="+5 this week"
+                    trend="All Time"
                 />
                 <StatCard
                     label="Total Revenue"
                     value={`₹${stats?.total_revenue?.toLocaleString() || 0}`}
                     icon={<FaRupeeSign />}
                     color="bg-orange-500"
-                    trend="+12% vs last month"
+                    trend="Earnings"
                 />
             </div>
 
-            {/* Operational Control & Quick Links Section */}
+            {/* Operational Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Operational Control Center */}
-                <div className="lg:col-span-2 space-y-8">
-                    {/* Control Panel */}
-                    <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-xl shadow-gray-100/50">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h3 className="text-xl font-extrabold text-gray-800">Operational Control</h3>
-                                <p className="text-sm text-gray-500 mt-1">Manage your day-to-day operations efficiently</p>
-                            </div>
-                            <span className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-sm font-bold">Action Center</span>
+                {/* Bookings & Activity */}
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xl shadow-gray-100/50">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-extrabold text-gray-800">Pending Actions</h3>
+                            <button onClick={() => navigate('/bookings')} className="text-blue-600 text-sm font-bold hover:underline">View All</button>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {/* Pending Actions */}
-                            <div className="bg-orange-50 rounded-2xl p-5 border border-orange-100 hover:shadow-md transition-shadow cursor-pointer group" onClick={() => navigate('/bookings')}>
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="p-2 bg-orange-100 rounded-lg text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
-                                        <FaCalendarCheck />
-                                    </div>
-                                    <span className="text-2xl font-bold text-gray-800">{stats?.pending_bookings || 0}</span>
-                                </div>
-                                <h4 className="font-bold text-gray-700">Pending Requests</h4>
-                                <p className="text-xs text-gray-500 mt-1">Bookings waiting for your approval</p>
+                            <div className="bg-orange-50 rounded-2xl p-5 border border-orange-100 cursor-pointer hover:bg-orange-100 transition" onClick={() => navigate('/bookings')}>
+                                <div className="text-3xl font-bold text-orange-600 mb-1">{stats?.pending_bookings || 0}</div>
+                                <div className="font-bold text-gray-700">Pending Bookings</div>
+                                <div className="text-xs text-gray-500">Require your confirmation</div>
                             </div>
-
-                            {/* Today's Arrivals */}
-                            <div className="bg-green-50 rounded-2xl p-5 border border-green-100 hover:shadow-md transition-shadow cursor-pointer group" onClick={() => navigate('/bookings')}>
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="p-2 bg-green-100 rounded-lg text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
-                                        <FaCheckCircle />
-                                    </div>
-                                    <span className="text-2xl font-bold text-gray-800">{stats?.todays_arrivals || 0}</span>
-                                </div>
-                                <h4 className="font-bold text-gray-700">Expected Arrivals</h4>
-                                <p className="text-xs text-gray-500 mt-1">Guests checking in today</p>
+                            <div className="bg-green-50 rounded-2xl p-5 border border-green-100 cursor-pointer hover:bg-green-100 transition" onClick={() => navigate('/bookings')}>
+                                <div className="text-3xl font-bold text-green-600 mb-1">{stats?.todays_arrivals || 0}</div>
+                                <div className="font-bold text-gray-700">Arrivals Today</div>
+                                <div className="text-xs text-gray-500">Prepare for check-in</div>
                             </div>
-
-                            {/* Property Health */}
-                            <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100 hover:shadow-md transition-shadow cursor-pointer group" onClick={() => navigate('/properties')}>
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                        <FaHome />
-                                    </div>
-                                    <span className="text-lg font-bold text-gray-800">{stats?.active_properties || 0}/{stats?.total_properties || 0}</span>
-                                </div>
-                                <h4 className="font-bold text-gray-700">Property Status</h4>
-                                <p className="text-xs text-gray-500 mt-1">Active properties currently listed</p>
-                            </div>
-
-                            {/* Reviews Action */}
-                            <div className="bg-purple-50 rounded-2xl p-5 border border-purple-100 hover:shadow-md transition-shadow cursor-pointer group" onClick={() => navigate('/reviews')}>
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="p-2 bg-purple-100 rounded-lg text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                                        <FaEye />
-                                    </div>
-                                    <span className="text-lg font-bold text-gray-800">New</span>
-                                </div>
-                                <h4 className="font-bold text-gray-700">Guest Reviews</h4>
-                                <p className="text-xs text-gray-500 mt-1">Check recent feedback</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Quick Access Links */}
-                    <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-xl shadow-gray-100/50">
-                        <h3 className="text-xl font-extrabold text-gray-800 mb-6">Quick Access</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <button onClick={() => navigate('/properties/add')} className="flex flex-col items-center justify-center p-4 rounded-xl border border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition-all group">
-                                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">➕</span>
-                                <span className="font-bold text-gray-600 text-sm group-hover:text-blue-600">Add Property</span>
-                            </button>
-                            <button onClick={() => navigate('/calendar')} className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all group">
-                                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">🗓️</span>
-                                <span className="font-bold text-gray-600 text-sm">Calendar</span>
-                            </button>
-                            <button onClick={() => navigate('/holiday-management')} className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all group">
-                                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">🌴</span>
-                                <span className="font-bold text-gray-600 text-sm">Holidays</span>
-                            </button>
-                            <button onClick={() => setShowCalendarModal(true)} className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all group">
-                                <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">⚡</span>
-                                <span className="font-bold text-gray-600 text-sm">Quick Block</span>
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -211,23 +218,13 @@ export default function Dashboard() {
                 {/* Insights / Tips */}
                 <div className="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-3xl p-8 text-white flex flex-col justify-between shadow-2xl h-full">
                     <div>
-                        <h3 className="text-2xl font-bold mb-4 text-white">Boost Your Reach 🚀</h3>
+                        <h3 className="text-2xl font-bold mb-4 text-white">Boost Usage 🚀</h3>
                         <p className="text-indigo-200 mb-6 leading-relaxed text-white/90">
-                            Properties with high-quality images and amenities lists get <strong className="text-white">3x more bookings</strong>. Update your listings to stand out!
+                            Keep your calendar updated to avoid double bookings and improve ranking.
                         </p>
-                        <ul className="space-y-4">
-                            <li className="flex items-center gap-3 text-sm font-medium text-indigo-100">
-                                <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">📸</span>
-                                Add 10+ Photos
-                            </li>
-                            <li className="flex items-center gap-3 text-sm font-medium text-indigo-100">
-                                <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">🏷️</span>
-                                Offer Weekend Deals
-                            </li>
-                        </ul>
                     </div>
-                    <button onClick={() => navigate('/properties')} className="mt-8 bg-white text-indigo-900 font-bold py-3 px-6 rounded-xl hover:bg-indigo-50 transition w-full shadow-lg">
-                        Optimize Properties
+                    <button onClick={() => navigate('/calendar')} className="mt-4 bg-white text-indigo-900 font-bold py-3 px-6 rounded-xl hover:bg-indigo-50 transition w-full shadow-lg">
+                        Update Calendar
                     </button>
                 </div>
             </div>
@@ -324,3 +321,15 @@ const StatusBadge = ({ status }) => {
 
     return <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${styles}`}>{status || 'Pending'}</span>;
 };
+
+const ActionCard = ({ title, icon, desc, onClick, color }) => (
+    <button onClick={onClick} className={`p-6 rounded-3xl border text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group ${color} h-full flex flex-col justify-between`}>
+        <div className="mb-4 bg-white/50 w-14 h-14 rounded-2xl flex items-center justify-center backdrop-blur-sm shadow-sm group-hover:scale-110 transition-transform">
+            {icon}
+        </div>
+        <div>
+            <h3 className="text-xl font-bold mb-1">{title}</h3>
+            <p className="text-sm opacity-80 font-medium">{desc}</p>
+        </div>
+    </button>
+);

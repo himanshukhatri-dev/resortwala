@@ -9,7 +9,7 @@ class Holiday extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['property_id', 'name', 'from_date', 'to_date', 'base_price', 'extra_person_price'];
+    protected $fillable = ['property_id', 'name', 'from_date', 'to_date', 'base_price', 'extra_person_price', 'approved'];
     
     protected $casts = [
         'from_date' => 'date',

@@ -18,6 +18,7 @@ import ReviewPropertyChange from './pages/ReviewPropertyChange';
 import SetPassword from './pages/SetPassword';
 import AdminCalendar from './pages/AdminCalendar';
 import AdminEventLogs from './pages/AdminEventLogs';
+import HolidayApprovals from './pages/HolidayApprovals';
 import adminAnalytics from './utils/analytics';
 import './App.css';
 
@@ -59,6 +60,7 @@ function App() {
               <Route path="/properties/:id/approve" element={<PropertyApproval />} />
               <Route path="/property-changes" element={<PropertyChangeRequests />} />
               <Route path="/properties/:id/changes/:requestId" element={<ReviewPropertyChange />} />
+              <Route path="/approvals/holidays" element={<HolidayApprovals />} />
               <Route path="/day-wise-booking" element={<div style={{ padding: 20 }}>Day Wise Booking (Placeholder)</div>} />
               <Route path="/holidays" element={<div style={{ padding: 20 }}>Holidays (Placeholder)</div>} />
               <Route path="/reviews" element={<div style={{ padding: 20 }}>Reviews (Placeholder)</div>} />

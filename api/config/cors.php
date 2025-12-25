@@ -35,6 +35,7 @@ return [
         'http://stagingvendor.resortwala.com',
         'http://stagingadmin.resortwala.com',
         'http://stagingapi.resortwala.com',
+        'http://72.61.242.42', // Staging IP
     ],
 
     'allowed_origins_patterns' => [],

@@ -123,12 +123,25 @@ export default function Login() {
             }
 
             // Redirect logic
+            // Redirect logic
             const state = location.state;
-            if (state?.returnTo) {
+            const isNewUser = res.data.is_new_user;
+
+            if (isNewUser) {
+                // New user: Go to profile to complete details, passing the returnTo state
+                navigate('/profile', {
+                    state: {
+                        returnTo: state?.returnTo,
+                        bookingState: state?.bookingState,
+                        isNew: true
+                    }
+                });
+            } else if (state?.returnTo) {
+                // Existing user with pending task: Resume task
                 navigate(state.returnTo, { state: state.bookingState });
             } else {
-                // Redirect to profile for phone login, home for email
-                navigate(identifierType === 'phone' ? '/profile' : '/');
+                // Existing user, no task: Default redirect
+                navigate(identifierType === 'phone' ? '/' : '/');
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Verification failed. Invalid OTP.');

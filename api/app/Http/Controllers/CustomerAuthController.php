@@ -106,7 +106,21 @@ class CustomerAuthController extends Controller
 
         // Find customer by phone
         // Normalize phone number if needed (e.g., remove +91 if stored without it)
-        $customer = Customer::where('phone', $request->phone)->first();
+        // Normalize phone: Remove non-digits
+        $digits = preg_replace('/\D/', '', $request->phone);
+        
+        // Remove 91 prefix if present (12 digits)
+        if (strlen($digits) === 12 && substr($digits, 0, 2) === '91') {
+            $digits = substr($digits, 2);
+        }
+        // Also handle if user passed 10 digits (already cleaned) - checking $digits
+        
+        // Find customer matching various formats
+        $customer = Customer::where('phone', $digits)
+            ->orWhere('phone', '+91' . $digits)
+            ->orWhere('phone', '91' . $digits)
+            ->orWhere('phone', $request->phone) // Fallback to exact match
+            ->first();
 
         if (!$customer) {
             // Register new customer

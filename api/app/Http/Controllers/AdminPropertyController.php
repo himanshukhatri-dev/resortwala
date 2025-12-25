@@ -153,6 +153,7 @@ class AdminPropertyController extends Controller
     {
         // Approve specific changes for a property
         $editRequest = \App\Models\PropertyEditRequest::where('property_id', $id)
+            ->with(['vendor'])
             ->where('status', 'pending')
             ->firstOrFail();
 
@@ -164,12 +165,19 @@ class AdminPropertyController extends Controller
         
         $editRequest->status = 'approved';
         $editRequest->save();
-        $editRequest->delete(); // Soft delete or hard? History might be useful. 
-        // For now, let's keep it but status approved, OR delete.
-        // User asked "what changed from and to", implies history?
-        // But if we delete, we lose history.
-        // Let's just delete for MVP to keep it clean, or keep it.
-        // To prevent clogging, let's delete.
+
+        // Notify Vendor
+        try {
+            if ($editRequest->vendor && $editRequest->vendor->email) {
+                \Illuminate\Support\Facades\Mail::to($editRequest->vendor->email)->send(
+                    new \App\Mail\PropertyEditRequestActioned($property, $editRequest->vendor, 'approved')
+                );
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to notify vendor of approval: ' . $e->getMessage());
+        }
+
+        $editRequest->delete(); // Soft delete if trait exists, or hard delete
         
         return response()->json(['message' => 'Changes approved and applied successfully']);
     }
@@ -177,12 +185,27 @@ class AdminPropertyController extends Controller
     public function rejectChanges(Request $request, $id)
     {
         $editRequest = \App\Models\PropertyEditRequest::where('property_id', $id)
+            ->with(['vendor'])
             ->where('status', 'pending')
             ->firstOrFail();
+
+        $property = PropertyMaster::findOrFail($id); // Get property for name in email
 
         $editRequest->status = 'rejected';
         // $editRequest->admin_feedback = $request->feedback;
         $editRequest->save();
+
+        // Notify Vendor
+        try {
+            if ($editRequest->vendor && $editRequest->vendor->email) {
+                \Illuminate\Support\Facades\Mail::to($editRequest->vendor->email)->send(
+                    new \App\Mail\PropertyEditRequestActioned($property, $editRequest->vendor, 'rejected')
+                );
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to notify vendor of rejection: ' . $e->getMessage());
+        }
+
         $editRequest->delete();
 
         return response()->json(['message' => 'Changes rejected']);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 import axios from 'axios';
 import VerificationModal from '../components/VerificationModal';
@@ -9,6 +9,7 @@ import { FaEdit, FaSave, FaTimes, FaCheckCircle, FaExclamationCircle, FaHeart } 
 export default function Profile() {
     const { user, logout, setUser } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [editMode, setEditMode] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -70,14 +71,28 @@ export default function Profile() {
             setSuccess('Profile updated successfully!');
             setEditMode(false);
 
-            // Clear success message after 3 seconds
-            setTimeout(() => setSuccess(''), 3000);
+            // Resume task if returnTo exists
+            if (location.state?.returnTo) {
+                setTimeout(() => {
+                    navigate(location.state.returnTo, { state: location.state.bookingState });
+                }, 1500);
+            } else {
+                // Clear success message after 3 seconds
+                setTimeout(() => setSuccess(''), 3000);
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update profile');
         } finally {
             setSaving(false);
         }
     };
+
+    // Auto-enable edit mode for new users redirected from login
+    useEffect(() => {
+        if (location.state?.isNew) {
+            setEditMode(true);
+        }
+    }, [location.state]);
 
     const handleVerify = (type) => {
         setVerificationType(type);

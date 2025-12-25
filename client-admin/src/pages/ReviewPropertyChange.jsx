@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useModal } from '../context/ModalContext'; // Import Modal Context
 import { API_BASE_URL } from '../config';
-import { FaArrowLeft, FaCheck, FaTimes, FaBuilding, FaExclamationTriangle } from 'react-icons/fa';
+import { FaArrowLeft, FaCheck, FaTimes, FaBuilding, FaExclamationTriangle, FaSpinner } from 'react-icons/fa';
 
 export default function ReviewPropertyChange() {
     const { id, requestId } = useParams(); // Using requestId from route
-    const { token, showSuccess, showError } = useAuth(); // Assuming showSuccess/Error provided or I'll implement local
+    const { token } = useAuth();
+    const { showConfirm, showSuccess, showError } = useModal(); // Use Modal Context
     const navigate = useNavigate();
     const [request, setRequest] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -31,40 +33,54 @@ export default function ReviewPropertyChange() {
     };
 
     const handleApprove = async () => {
-        if (!window.confirm('Are you sure you want to approve and apply these changes?')) return;
+        const isConfirmed = await showConfirm(
+            'Approve Changes',
+            'Are you sure you want to approve and apply these changes?',
+            'Approve',
+            'Cancel'
+        );
+        if (!isConfirmed) return;
+
         setProcessing(true);
         try {
             await axios.post(`${API_BASE_URL}/admin/properties/${request.property_id}/changes/approve`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            alert('Changes approved successfully!');
+            showSuccess('Approved', 'Changes approved successfully!');
             navigate('/property-changes');
         } catch (err) {
             console.error(err);
-            alert('Failed to approve changes.');
+            showError('Error', 'Failed to approve changes.');
             setProcessing(false);
         }
     };
 
     const handleReject = async () => {
-        if (!window.confirm('Are you sure you want to REJECT these changes?')) return;
+        const isConfirmed = await showConfirm(
+            'Reject Changes',
+            'Are you sure you want to REJECT these changes?',
+            'Reject Changes',
+            'Cancel'
+        );
+        if (!isConfirmed) return;
+
         setProcessing(true);
         try {
             await axios.post(`${API_BASE_URL}/admin/properties/${request.property_id}/changes/reject`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            alert('Changes rejected.');
+            showSuccess('Rejected', 'Changes rejected.');
             navigate('/property-changes');
         } catch (err) {
             console.error(err);
-            alert('Failed to reject changes.');
+            showError('Error', 'Failed to reject changes.');
             setProcessing(false);
         }
     };
 
     const renderValue = (val) => {
         if (typeof val === 'object' && val !== null) {
-            return <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto max-w-sm">{JSON.stringify(val, null, 2)}</pre>;
+            return <pre className="text-xs bg-gray-100 p-2 rounded whitespace-pre-wrap break-words max-w-sm">{JSON.stringify(val, null, 2)}</pre>;
         }
         if (typeof val === 'boolean') return val ? 'Yes' : 'No';
         return val;
@@ -165,16 +181,18 @@ export default function ReviewPropertyChange() {
                         <button
                             onClick={handleReject}
                             disabled={processing}
-                            className="px-6 py-3 rounded-xl font-bold text-red-600 bg-white border border-gray-200 hover:bg-red-50 hover:border-red-200 transition disabled:opacity-50"
+                            className="px-6 py-3 rounded-xl font-bold text-red-600 bg-white border border-gray-200 hover:bg-red-50 hover:border-red-200 transition disabled:opacity-50 flex items-center"
                         >
-                            <FaTimes className="inline mr-2" /> Reject Changes
+                            {processing ? <FaSpinner className="animate-spin mr-2" /> : <FaTimes className="mr-2" />}
+                            Reject Changes
                         </button>
                         <button
                             onClick={handleApprove}
                             disabled={processing}
-                            className="px-6 py-3 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 transition shadow-lg hover:shadow-green-200 hover:-translate-y-0.5 disabled:opacity-50"
+                            className="px-6 py-3 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 transition shadow-lg hover:shadow-green-200 hover:-translate-y-0.5 disabled:opacity-50 flex items-center"
                         >
-                            <FaCheck className="inline mr-2" /> Approve & Apply
+                            {processing ? <FaSpinner className="animate-spin mr-2" /> : <FaCheck className="mr-2" />}
+                            Approve & Apply
                         </button>
                     </div>
                 </div>

@@ -58,6 +58,28 @@ export default function Bookings() {
         }
     };
 
+    const handleResendEmail = async (id) => {
+        const confirmed = await showConfirm(
+            'Resend Email',
+            'Send booking confirmation email to customer again?',
+            'Send',
+            'Cancel',
+            'confirm'
+        );
+
+        if (!confirmed) return;
+
+        try {
+            await axios.post(`${API_BASE_URL}/admin/bookings/${id}/resend-email`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            showSuccess('Success', 'Email resent successfully');
+        } catch (error) {
+            console.error(error);
+            showError('Error', 'Failed to send email');
+        }
+    };
+
     // Filter Logic
     const filteredBookings = bookings.filter(booking =>
         booking.CustomerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -163,6 +185,13 @@ export default function Bookings() {
                                                         className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all ${booking.Status === 'rejected' ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : 'bg-red-50 text-red-700 hover:bg-red-100 hover:scale-105 active:scale-95'}`}
                                                     >
                                                         Reject
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleResendEmail(booking.BookingId)}
+                                                        className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:scale-105 active:scale-95 shadow-sm transition-all"
+                                                        title="Resend Confirmation Email"
+                                                    >
+                                                        Email
                                                     </button>
                                                 </div>
                                             </td>

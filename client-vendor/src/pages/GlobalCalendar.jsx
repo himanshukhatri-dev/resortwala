@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import format from 'date-fns/format';
 import parse from 'date-fns/parse';
@@ -10,7 +10,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
-import { FaArrowLeft, FaArrowRight, FaFilter, FaShareAlt, FaWhatsapp, FaFacebook, FaInstagram, FaCopy } from 'react-icons/fa';
+import { FaArrowLeft, FaArrowRight, FaFilter, FaShareAlt, FaSearch, FaTimes, FaCheck, FaBan, FaLock } from 'react-icons/fa';
 import { useModal } from '../context/ModalContext';
 
 const locales = { 'en-US': enUS };
@@ -23,99 +23,187 @@ const localizer = dateFnsLocalizer({
     locales,
 });
 
+// Fallback Copy Function
+const copyToClipboard = (text, onSuccess, onError) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+            fallbackCopy(text, onSuccess, onError);
+        });
+    } else {
+        fallbackCopy(text, onSuccess, onError);
+    }
+};
+
+const fallbackCopy = (text, onSuccess, onError) => {
+    try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";  // Avoid scrolling to bottom
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) onSuccess(); else onError();
+    } catch (err) {
+        onError();
+    }
+};
+
+// --- Custom Components for Rich View ---
+
+// Custom Agenda Event (The Row in the List)
+const CustomAgendaEvent = ({ event }) => {
+    const { resource } = event;
+    const statusColor = resource.Status === 'confirmed' ? 'text-green-700 bg-green-50 border-green-200' :
+        resource.Status === 'pending' ? 'text-amber-700 bg-amber-50 border-amber-200' :
+            'text-red-700 bg-red-50 border-red-200';
+
+    return (
+        <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-2 rounded-lg border ${statusColor} hover:shadow-md transition-all cursor-pointer w-full`}>
+            <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-gray-900">{resource.CustomerName}</span>
+                    <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${statusColor}`}>
+                        {resource.Status}
+                    </span>
+                </div>
+                <div className="text-xs text-gray-600 flex flex-wrap gap-x-3">
+                    <span className="font-medium text-gray-800">{event.propertyName}</span>
+                    <span>📞 {resource.CustomerMobile}</span>
+                    <span>👥 {resource.Guests} Guests</span>
+                </div>
+            </div>
+            <div className="mt-2 sm:mt-0 flex flex-col items-end">
+                <span className="text-sm font-bold text-gray-900">₹{resource.TotalAmount}</span>
+                <span className="text-[10px] text-gray-500">
+                    {format(event.start, 'MMM dd')} - {format(event.end, 'MMM dd')}
+                </span>
+            </div>
+        </div>
+    );
+};
+
 export default function GlobalCalendar() {
     const { token, user } = useAuth();
     const { showConfirm, showSuccess, showError, showInfo } = useModal();
     const navigate = useNavigate();
+    const location = useLocation(); // Add hook
 
-    const [events, setEvents] = useState([]);
+    // Data State
     const [allBookings, setAllBookings] = useState([]);
     const [properties, setProperties] = useState([]);
     const [selectedPropertyId, setSelectedPropertyId] = useState('all');
     const [loading, setLoading] = useState(true);
-    const [currentDate, setCurrentDate] = useState(new Date());
 
-    const handleNavigate = (newDate) => {
-        setCurrentDate(newDate);
-    };
+    // UI State
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    const [view, setView] = useState('month'); // Start in Month view
+    const [showShareModal, setShowShareModal] = useState(false);
+
+    // Deep Link Logic
+    useEffect(() => {
+        if (location.state?.bookingId && allBookings.length > 0) {
+            const booking = allBookings.find(b => b.BookingId == location.state.bookingId);
+            if (booking) {
+                // Ensure we are viewing that date
+                setCurrentDate(new Date(booking.CheckInDate));
+                setSelectedEvent({ resource: booking, start: new Date(booking.CheckInDate), end: new Date(booking.CheckOutDate) });
+                // Clear state so it doesn't reopen on refresh? distinct choice. 
+                // window.history.replaceState({}, document.title); // Optional
+            }
+        }
+    }, [location.state, allBookings]);
 
     useEffect(() => {
         if (token) {
             fetchData();
+            // Poll for live updates every 5 seconds
+            const interval = setInterval(() => fetchData(true), 5000);
+            return () => clearInterval(interval);
         }
     }, [token]);
 
-    const fetchData = async () => {
-        setLoading(true);
+    const fetchData = async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             const [propsRes, bookingsRes] = await Promise.all([
                 axios.get(`${API_BASE_URL}/vendor/properties`, { headers: { Authorization: `Bearer ${token}` } }),
                 axios.get(`${API_BASE_URL}/vendor/bookings`, { headers: { Authorization: `Bearer ${token}` } })
             ]);
-
             setProperties(propsRes.data);
             setAllBookings(bookingsRes.data);
         } catch (error) {
             console.error("Failed to load calendar data", error);
-            const msg = error.response?.data?.message || error.message;
-            console.error("API Response:", error.response);
-            showError("Calendar Error", `Failed to load data: ${msg}`);
+            // Only show error on initial load, not silent poll
+            if (!silent) showError("Calendar Error", "Failed to refresh data");
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
-    // Filter and Transform Data
-    useEffect(() => {
+    // Filter Logic
+    const filteredEvents = useMemo(() => {
         let filtered = allBookings;
+
+        // 1. Property Filter
         if (selectedPropertyId !== 'all') {
-            filtered = allBookings.filter(b => b.property?.id == selectedPropertyId || b.property?.PropertyId == selectedPropertyId); // Handle potential ID naming mismatch
+            filtered = filtered.filter(b => b.property?.id == selectedPropertyId || b.property?.PropertyId == selectedPropertyId);
         }
 
-        const calendarEvents = filtered.map(b => {
-            // Basic validation
-            if (!b.CheckInDate || !b.CheckOutDate) return null;
+        // 2. Search Filter
+        if (searchTerm) {
+            const lowerTerm = searchTerm.toLowerCase();
+            filtered = filtered.filter(b =>
+                b.CustomerName?.toLowerCase().includes(lowerTerm) ||
+                b.CustomerMobile?.includes(searchTerm) ||
+                b.BookingId?.toString().includes(searchTerm)
+            );
+        }
 
+        return filtered.map(b => {
+            if (!b.CheckInDate || !b.CheckOutDate) return null;
             const start = new Date(b.CheckInDate);
             const end = new Date(b.CheckOutDate);
-            const propertyName = b.property?.Name || b.property?.ShortName || 'Unknown Property';
+            const propertyName = b.property?.Name || b.property?.ShortName || 'Unknown';
 
             return {
                 id: b.BookingId,
-                title: `${b.Status?.slice(0, 3).toUpperCase()} - ${b.CustomerName} (${propertyName})`,
-                start: start,
-                end: end,
+                title: `${b.CustomerName}`, // Kept simple for Month view cells
+                start, end,
                 status: b.Status,
                 allDay: true,
                 resource: b,
-                propertyName: propertyName
+                propertyName
             };
         }).filter(Boolean);
+    }, [allBookings, selectedPropertyId, searchTerm]);
 
-        setEvents(calendarEvents);
-    }, [allBookings, selectedPropertyId]);
+    // Pending Requests for Sidebar (AND Search Filter Applied)
+    const pendingRequests = useMemo(() => {
+        let list = allBookings.filter(b => b.Status?.toLowerCase() === 'pending');
 
+        // APPLY SEARCH FILTER TO SIDEBAR TOO
+        if (searchTerm) {
+            const lowerTerm = searchTerm.toLowerCase();
+            list = list.filter(b =>
+                b.CustomerName?.toLowerCase().includes(lowerTerm) ||
+                b.CustomerMobile?.includes(searchTerm) ||
+                b.BookingId?.toString().includes(searchTerm)
+            );
+        }
+        return list;
+    }, [allBookings, searchTerm]);
 
+    // Handlers
     const handleSelectSlot = async ({ start, end }) => {
-        // Prevent past dates
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (start < today) {
-            showError('Invalid Selection', 'You cannot lock dates in the past.');
-            return;
-        }
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        if (start < today) return showError('Invalid', 'Cannot lock past dates.');
+        if (selectedPropertyId === 'all') return showError('Select Property', 'Pick a property to lock dates.');
 
-        if (selectedPropertyId === 'all') {
-            showError('Select Property', 'Please select a specific property from the filter above to lock dates.');
-            return;
-        }
-
-        const confirmed = await showConfirm(
-            'Freeze Dates',
-            `Freeze availability from ${format(start, 'yyyy-MM-dd')} to ${format(end, 'yyyy-MM-dd')}?`,
-            'Freeze',
-            'Cancel'
-        );
+        const confirmed = await showConfirm('Freeze Dates', `Freeze ${format(start, 'MMM dd')} - ${format(end, 'MMM dd')}?`, 'Freeze');
         if (!confirmed) return;
 
         try {
@@ -123,228 +211,292 @@ export default function GlobalCalendar() {
                 property_id: selectedPropertyId,
                 start_date: format(start, 'yyyy-MM-dd'),
                 end_date: format(end, 'yyyy-MM-dd')
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            await showSuccess('Frozen', "Dates Frozen Successfully!");
-            fetchData(); // Refresh
-        } catch (error) {
-            showError('Error', "Failed to freeze dates: " + (error.response?.data?.message || error.message));
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            showSuccess('Frozen', "Dates blocked.");
+            fetchData();
+        } catch (e) { showError('Error', "Failed to freeze dates."); }
+    };
+
+    const handleEventAction = async (action, bookingId) => {
+        try {
+            if (action === 'approve') {
+                await axios.post(`${API_BASE_URL}/vendor/bookings/${bookingId}/approve`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                showSuccess('Approved', 'Booking confirmed.');
+            } else if (action === 'reject') {
+                await axios.post(`${API_BASE_URL}/vendor/bookings/${bookingId}/reject`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                showSuccess('Rejected', 'Booking rejected.');
+            }
+            fetchData();
+            setSelectedEvent(null);
+        } catch (e) { showError('Error', `Failed to ${action} booking.`); }
+    };
+
+    const handleShareClick = () => {
+        if (selectedPropertyId !== 'all') {
+            // Share current
+            shareProperty(selectedPropertyId);
+        } else {
+            // Show Modal
+            setShowShareModal(true);
         }
     };
 
-    const handleSelectEvent = (event) => {
-        showInfo(
-            'Booking Details',
-            `Property: ${event.propertyName}\nGuest: ${event.resource.CustomerName}\nDates: ${format(event.start, 'MMM dd')} - ${format(event.end, 'MMM dd')}\nStatus: ${event.resource.Status}\nAmount: ₹${event.resource.TotalAmount}`
+    const shareProperty = (propId) => {
+        const prop = properties.find(p => (p.id || p.PropertyId) == propId);
+        if (!prop) return;
+        const token = prop.share_token || prop.id || prop.PropertyId;
+        const customerBase = import.meta.env.VITE_CUSTOMER_APP_URL || window.location.origin.replace('vendor', 'customer');
+        const finalBase = customerBase.includes('localhost') ? 'http://localhost:5173' : 'http://72.61.242.42';
+
+        const url = `${finalBase}/stay/${token}`;
+
+        copyToClipboard(
+            url,
+            () => { showSuccess('Copied', `Link for ${prop.Name} copied!`); setShowShareModal(false); },
+            () => { prompt("Copy Link:", url); setShowShareModal(false); }
         );
     };
 
-    // Custom Styles for RBC
-    const styles = `
-        .rbc-calendar { font-family: 'Inter', sans-serif; background: #fff; border: none; }
-        .rbc-month-view { border: 1px solid #eee; border-radius: 16px; overflow: hidden; }
-        .rbc-header { padding: 12px; font-weight: 700; color: #6b7280; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #eee; background: #f9fafb; }
-        .rbc-day-bg { border-left: 1px solid #f3f4f6; }
-        .rbc-off-range-bg { background: #fcfcfc; }
-        .rbc-date-cell { padding: 8px; font-size: 12px; font-weight: 600; color: #374151; }
-        .rbc-event { border-radius: 6px; padding: 2px 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.05); }
-        .rbc-today { background-color: #f0fdf4; }
-        .rbc-current-time-indicator { display: none; }
-        .rbc-toolbar-label { font-size: 1.25rem; font-weight: 800; color: #111827; }
-        .rbc-btn-group button { border: none; background: #f3f4f6; color: #4b5563; font-weight: 600; padding: 6px 12px; border-radius: 8px; margin: 0 2px; }
-        .rbc-btn-group button.rbc-active { background: #000; color: #fff; shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .rbc-btn-group button:hover { background: #e5e7eb; }
-    `;
-
-    // Event Styler
+    // Styles
     const eventStyleGetter = (event) => {
-        let backgroundColor = '#3b82f6'; // Default Blue
-        let color = '#fff';
-        let borderLeft = '4px solid #1d4ed8';
-
+        let bg = '#3b82f6';
+        let border = '#1d4ed8';
         const st = (event.status || '').toLowerCase();
 
-        if (st === 'locked' || st === 'blocked') {
-            backgroundColor = '#fee2e2'; // Light Red
-            color = '#991b1b'; // Dark Red
-            borderLeft = '4px solid #ef4444';
-        }
-        else if (st === 'confirmed') {
-            backgroundColor = '#dcfce7'; // Light Green
-            color = '#166534'; // Dark Green
-            borderLeft = '4px solid #22c55e';
-        }
-        else if (st === 'pending') {
-            backgroundColor = '#fef3c7'; // Light Yellow
-            color = '#92400e'; // Dark Yellow
-            borderLeft = '4px solid #f59e0b';
-        }
-        else if (st === 'cancelled' || st === 'rejected') {
-            backgroundColor = '#f3f4f6'; // Gray
-            color = '#6b7280';
-            borderLeft = '4px solid #9ca3af';
-        }
+        if (st === 'pending') { bg = '#f59e0b'; border = '#b45309'; }
+        else if (st === 'confirmed') { bg = '#10b981'; border = '#047857'; }
+        else if (st === 'locked' || st === 'blocked') { bg = '#ef4444'; border = '#b91c1c'; }
 
         return {
-            style: {
-                backgroundColor,
-                color,
-                fontSize: '11px',
-                borderRadius: '6px',
-                border: 'none',
-                borderLeft,
-                padding: '4px 6px',
-                fontWeight: '600',
-                marginBottom: '2px'
-            }
+            style: { backgroundColor: bg, borderColor: border, borderLeftWidth: '4px', fontSize: '11px', fontWeight: '600' }
         };
     };
 
     const CustomToolbar = (toolbar) => {
-        const goToBack = () => { toolbar.onNavigate('PREV'); };
-        const goToNext = () => { toolbar.onNavigate('NEXT'); };
-        const label = () => {
-            const date = toolbar.date;
-            return (
-                <span className="text-lg font-bold text-gray-800 capitalize">
-                    {format(date, 'MMMM yyyy')}
-                </span>
-            );
-        };
-
         return (
             <div className="flex justify-between items-center mb-4 px-2">
-                <div className="flex items-center gap-4">
-                    <button onClick={goToBack} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 hover:text-black">
-                        <FaArrowLeft />
-                    </button>
-                    {label()}
-                    <button onClick={goToNext} className="p-2 rounded-full hover:bg-gray-100 text-gray-600 hover:text-black">
-                        <FaArrowRight />
-                    </button>
+                <div className="flex bg-gray-100 rounded-lg p-1">
+                    <button onClick={() => toolbar.onNavigate('PREV')} className="p-1 hover:bg-white rounded shadow-sm"><FaArrowLeft /></button>
+                    <span className="px-4 font-bold text-gray-700">{format(toolbar.date, 'MMMM yyyy')}</span>
+                    <button onClick={() => toolbar.onNavigate('NEXT')} className="p-1 hover:bg-white rounded shadow-sm"><FaArrowRight /></button>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={() => toolbar.onView('month')} className={`px-3 py-1 text-xs font-bold rounded ${view === 'month' ? 'bg-black text-white' : 'bg-gray-100'}`}>Month</button>
+                    <button onClick={() => toolbar.onView('agenda')} className={`px-3 py-1 text-xs font-bold rounded ${view === 'agenda' ? 'bg-black text-white' : 'bg-gray-100'}`}>List View</button>
                 </div>
             </div>
         );
-    };
+    }
 
     return (
-        <div className="container mx-auto p-4 md:p-8 min-h-screen max-w-7xl animate-fade-in-up">
-            <style>{styles}</style>
-
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">Availability Calendar</h1>
-                    <p className="text-gray-500 max-w-2xl text-sm md:text-base leading-relaxed">
-                        Manage your property availability, view bookings, and freeze dates instantly.
-                        Select a property below to filter the view.
-                    </p>
+        <div className="flex h-screen bg-gray-50 overflow-hidden pt-20">
+            {/* Sidebar / Action Center */}
+            <div className="w-80 bg-white border-r border-gray-200 flex flex-col shadow-xl z-20 flex-shrink-0">
+                <div className="p-4 border-b border-gray-100 bg-gray-50">
+                    <h2 className="font-extrabold text-lg text-gray-800 mb-1">Action Center</h2>
+                    <p className="text-xs text-gray-500">Manage requests & search</p>
                 </div>
 
-                {/* Share Button Dynamic */}
-                <button
-                    onClick={() => {
-                        let url = '';
-                        let msg = '';
+                {/* Search */}
+                <div className="p-4 border-b border-gray-100">
+                    <div className="relative">
+                        <FaSearch className="absolute left-3 top-3 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Find Guest Name / Mobile..."
+                            className="w-full pl-10 pr-4 py-2 bg-gray-100 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-black outline-none"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
 
-                        if (selectedPropertyId === 'all') {
-                            url = `${window.location.origin}/vendor/s/m/${user?.id}`;
-                            msg = 'Portfolio Link copied!';
-                        } else {
-                            // Find property to get token
-                            const prop = properties.find(p => (p.id || p.PropertyId) == selectedPropertyId);
-                            const token = prop?.share_token || prop?.id || prop?.PropertyId;
-                            // Use Customer App URL or fallback
-                            const customerBase = import.meta.env.VITE_CUSTOMER_APP_URL || 'http://localhost:5173';
-                            url = `${customerBase}/stay/${token}`;
-                            msg = 'Property Link copied!';
-                        }
-
-                        if (navigator.clipboard) {
-                            navigator.clipboard.writeText(url).then(() => showSuccess('Copied', msg));
-                        } else {
-                            prompt("Copy Link:", url);
-                        }
-                    }}
-                    className="flex items-center gap-2 bg-black text-white px-5 py-3 rounded-xl font-bold hover:bg-gray-800 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                >
-                    <FaShareAlt /> {selectedPropertyId === 'all' ? 'Share Portfolio' : 'Share Property'}
-                </button>
+                {/* Pending Requests List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Pending Requests ({pendingRequests.length})</h3>
+                    {pendingRequests.length === 0 ? (
+                        <div className="text-center py-8 text-gray-400 text-sm">
+                            {searchTerm ? 'No matches found' : 'No pending requests'}
+                        </div>
+                    ) : (
+                        pendingRequests.map(req => (
+                            <div key={req.BookingId} onClick={() => setSelectedEvent({ resource: req })} className="bg-amber-50 border border-amber-100 p-3 rounded-xl cursor-pointer hover:shadow-md transition-all">
+                                <div className="flex justify-between items-start mb-1">
+                                    <span className="font-bold text-amber-900 text-sm">{req.CustomerName}</span>
+                                    <span className="text-xs font-mono text-amber-600 bg-amber-100 px-1.5 rounded">₹{req.TotalAmount}</span>
+                                </div>
+                                <div className="text-xs text-amber-700 mb-2">
+                                    {format(new Date(req.CheckInDate), 'MMM dd')} - {format(new Date(req.CheckOutDate), 'MMM dd')}
+                                </div>
+                                <div className="text-[10px] text-gray-500 truncate">{req.property?.Name}</div>
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
 
-            {/* Main Calendar Card */}
-            <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-                <div className="p-4 md:p-8">
+            {/* Main Calendar Area */}
+            <div className="flex-1 flex flex-col relative min-w-0">
+                {/* Header Controls */}
+                <div className="bg-white border-b border-gray-200 p-4 flex justify-between items-center shadow-sm z-10">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100">
+                            <FaFilter className="text-gray-400" />
+                            <select
+                                value={selectedPropertyId}
+                                onChange={e => setSelectedPropertyId(e.target.value)}
+                                className="bg-transparent font-bold text-gray-700 text-sm outline-none cursor-pointer w-48"
+                            >
+                                <option value="all">Check All Properties</option>
+                                {properties.map(p => <option key={p.id || p.PropertyId} value={p.id || p.PropertyId}>{p.Name}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleShareClick}
+                        className="bg-black text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-800 flex items-center gap-2"
+                    >
+                        <FaShareAlt /> Share Public Link
+                    </button>
+                </div>
 
-                    {/* Controls Row */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                        {/* Property Filter */}
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400">
-                                <FaFilter />
+                {/* Calendar Grid */}
+                <div className="flex-1 p-6 overflow-hidden bg-white/50 relative">
+                    <Calendar
+                        localizer={localizer}
+                        events={filteredEvents}
+                        startAccessor="start"
+                        endAccessor="end"
+                        style={{ height: '100%' }}
+                        eventPropGetter={eventStyleGetter}
+                        onSelectEvent={setSelectedEvent}
+                        onSelectSlot={handleSelectSlot}
+                        selectable
+                        view={view}
+                        onView={setView}
+                        date={currentDate}
+                        onNavigate={setCurrentDate}
+                        drilldownView="agenda"
+                        onDrillDown={(date) => {
+                            setCurrentDate(date);
+                            setView('agenda'); // Explicitly switch to Agenda view on drilldown
+                        }}
+                        popup={false} // DISABLE popup to force drilldown to Agenda view
+                        components={{
+                            toolbar: CustomToolbar,
+                            agenda: {
+                                event: CustomAgendaEvent // Use our rich card component
+                            }
+                        }}
+                        length={30} // Show 30 days in agenda view if needed, or default
+                    />
+                </div>
+            </div>
+
+            {/* Slide-over Detail Panel (With Overlay) */}
+            {selectedEvent && (
+                <>
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/20 z-40 backdrop-blur-sm"
+                        onClick={() => setSelectedEvent(null)}
+                    ></div>
+
+                    {/* Panel */}
+                    <div className="absolute inset-y-0 right-0 w-96 bg-white shadow-2xl z-50 transform transition-transform duration-300 border-l border-gray-200 flex flex-col">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-start bg-gray-50">
+                            <div>
+                                <h2 className="text-xl font-extrabold text-gray-900">{selectedEvent.resource.CustomerName}</h2>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase mt-1 inline-block ${selectedEvent.resource.Status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                                    selectedEvent.resource.Status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                                    }`}>
+                                    {selectedEvent.resource.Status}
+                                </span>
                             </div>
-                            <div className="flex flex-col">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Viewing availability for</label>
-                                <select
-                                    value={selectedPropertyId}
-                                    onChange={(e) => setSelectedPropertyId(e.target.value)}
-                                    className="bg-transparent font-bold text-gray-900 outline-none cursor-pointer border-b border-dashed border-gray-400 pb-0.5 hover:border-black transition"
+                            <button
+                                onClick={() => setSelectedEvent(null)}
+                                className="p-2 bg-white border border-gray-200 text-gray-500 hover:text-black hover:bg-gray-100 rounded-full shadow-sm transition-all"
+                            >
+                                <FaTimes size={16} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 uppercase">Property</label>
+                                    <p className="font-semibold text-gray-800">{selectedEvent.resource.property?.Name || selectedEvent.propertyName}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Check In</label>
+                                        <p className="font-semibold text-gray-800">{format(new Date(selectedEvent.resource.CheckInDate), 'EEE, MMM dd')}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Check Out</label>
+                                        <p className="font-semibold text-gray-800">{format(new Date(selectedEvent.resource.CheckOutDate), 'EEE, MMM dd')}</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 uppercase">Stats</label>
+                                    <div className="flex gap-4 mt-1">
+                                        <span className="bg-gray-100 px-3 py-1 rounded-lg text-sm font-bold text-gray-700">👥 {selectedEvent.resource.Guests} Guests</span>
+                                        <span className="bg-gray-100 px-3 py-1 rounded-lg text-sm font-bold text-gray-700">💰 ₹{selectedEvent.resource.TotalAmount}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 uppercase">Contact</label>
+                                    <p className="font-medium text-blue-600 underline cursor-pointer" onClick={() => window.open(`tel:${selectedEvent.resource.CustomerMobile}`)}>{selectedEvent.resource.CustomerMobile}</p>
+                                    <p className="text-sm text-gray-500">{selectedEvent.resource.CustomerEmail}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 space-y-3">
+                            {selectedEvent.resource.Status?.toLowerCase() === 'pending' && (
+                                <>
+                                    <button onClick={() => handleEventAction('approve', selectedEvent.resource.BookingId)} className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 flex justify-center gap-2">
+                                        <FaCheck /> Approve Request
+                                    </button>
+                                    <button onClick={() => handleEventAction('reject', selectedEvent.resource.BookingId)} className="w-full bg-white text-red-600 border border-red-200 font-bold py-3 rounded-xl hover:bg-red-50 flex justify-center gap-2">
+                                        <FaBan /> Reject
+                                    </button>
+                                </>
+                            )}
+                            {selectedEvent.resource.Status?.toLowerCase() === 'confirmed' && (
+                                <button className="w-full bg-gray-200 text-gray-500 font-bold py-3 rounded-xl cursor-not-allowed flex justify-center gap-2">
+                                    <FaLock /> Booking Confirmed
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Share Modal */}
+            {showShareModal && (
+                <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowShareModal(false)}>
+                    <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 bg-gray-900 text-white flex justify-between items-center">
+                            <h3 className="text-xl font-bold">Share Property</h3>
+                            <button onClick={() => setShowShareModal(false)} className="text-gray-400 hover:text-white"><FaTimes /></button>
+                        </div>
+                        <div className="p-6 space-y-2 max-h-[60vh] overflow-y-auto">
+                            <p className="text-sm text-gray-500 mb-4">Select a property to copy its public link:</p>
+                            {properties.map(p => (
+                                <button
+                                    key={p.id || p.PropertyId}
+                                    onClick={() => shareProperty(p.id || p.PropertyId)}
+                                    className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-black hover:bg-gray-50 transition-all group"
                                 >
-                                    <option value="all">All Properties</option>
-                                    {properties.map(p => (
-                                        <option key={p.id || p.PropertyId} value={p.id || p.PropertyId}>{p.Name || p.ShortName}</option>
-                                    ))}
-                                </select>
-                            </div>
+                                    <span className="font-bold text-gray-700 group-hover:text-black">{p.Name}</span>
+                                    <FaShareAlt className="text-gray-300 group-hover:text-black" />
+                                </button>
+                            ))}
                         </div>
-
-                        {/* Legend */}
-                        <div className="flex flex-wrap gap-3 text-xs font-bold text-gray-600">
-                            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm"><span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]"></span> Confirmed</div>
-                            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm"><span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span> Pending</div>
-                            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm"><span className="w-2.5 h-2.5 rounded-full bg-[#ef4444]"></span> Frozen</div>
-                        </div>
-                    </div>
-
-                    {/* Calendar Component */}
-                    <div className="h-[650px] md:h-[750px] booking-calendar-wrapper">
-                        {loading && events.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-gray-400 pb-20">
-                                <div className="w-12 h-12 border-4 border-gray-200 border-t-black rounded-full animate-spin mb-4"></div>
-                                <p className="text-sm font-medium">Loading Schedule...</p>
-                            </div>
-                        ) : (
-                            <Calendar
-                                localizer={localizer}
-                                events={events}
-                                startAccessor="start"
-                                endAccessor="end"
-                                style={{ height: '100%' }}
-                                eventPropGetter={eventStyleGetter}
-                                date={currentDate}
-                                onNavigate={handleNavigate}
-                                onSelectEvent={handleSelectEvent}
-                                selectable
-                                onSelectSlot={handleSelectSlot}
-                                components={{
-                                    toolbar: CustomToolbar,
-                                    event: ({ event }) => (
-                                        <div className="flex items-center gap-1.5 overflow-hidden leading-tight" title={event.title}>
-                                            <span className="truncate">{event.title}</span>
-                                        </div>
-                                    )
-                                }}
-                                tooltipAccessor="title"
-                            />
-                        )}
                     </div>
                 </div>
-            </div>
-
-            <div className="mt-8 text-center text-gray-400 text-xs">
-                <p>Click on any date range to <span className="font-bold text-gray-600">Freeze Availability</span>. Click on a booking to view details.</p>
-            </div>
+            )}
         </div>
     );
 }

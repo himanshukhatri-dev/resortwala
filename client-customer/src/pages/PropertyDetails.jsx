@@ -169,7 +169,7 @@ export default function PropertyDetails() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    const rawImages = property?.images?.length ? property.images.map(img => img.image_url) : (property?.ImageUrl ? [property.ImageUrl] : []);
+    const rawImages = property?.images?.length ? property.images.map(img => img.image_url) : (property?.image_url ? [property.image_url] : []);
     const galleryImages = rawImages; // STRICT: Only show if exists
 
     const handleGalleryOpen = (index = 0) => {
@@ -330,7 +330,7 @@ export default function PropertyDetails() {
             // User not logged in
             navigate('/login', {
                 state: {
-                    redirectTo: `/book/${property.PropertyId}`,
+                    returnTo: `/book/${property.PropertyId}`,
                     checkoutData: {
                         propertyId: property.PropertyId,
                         propertyName: property.Name,
@@ -340,6 +340,7 @@ export default function PropertyDetails() {
                     }
                 }
             });
+
             return;
         }
 
@@ -760,6 +761,7 @@ export default function PropertyDetails() {
                                     setIsDatePickerOpen={setIsDatePickerOpen}
                                     handleDateSelect={handleDateSelect}
                                     datePickerRef={datePickerRef}
+                                    bookedDates={property.booked_dates || []}
                                 />
                                 :
                                 <VillaBooking
@@ -779,6 +781,7 @@ export default function PropertyDetails() {
                                     includeFood={includeFood}
                                     setIncludeFood={setIncludeFood}
                                     isWaterpark={isWaterpark}
+                                    bookedDates={property.booked_dates || []}
                                 />
                             }
                         </div>
@@ -904,7 +907,7 @@ const RuleItem = ({ icon: Icon, label, hasError }) => (
     </div>
 );
 
-const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, dateRange, priceBreakdown, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, datePickerRef }) => {
+const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, dateRange, priceBreakdown, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, datePickerRef, bookedDates = [] }) => {
     // Helper to get price for a specific date (Duplicated for availability in this component)
     const getPriceForDate = (date) => {
         const w = date.getDay();
@@ -993,61 +996,66 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                 </div>
             </div>
 
-            <div className="border border-gray-300 rounded-lg overflow-hidden mb-4 relative hover:border-black transition" ref={datePickerRef}>
+            <div className="border border-gray-300 rounded-lg mb-4 relative hover:border-black transition" ref={datePickerRef}>
                 <div className="flex border-b border-gray-300 cursor-pointer" onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}>
                     <div className="flex-1 p-3 border-r border-gray-300 hover:bg-gray-50"><label className="block text-[10px] font-bold text-gray-800">VISIT DATE</label><div className="text-sm">{dateRange.from ? format(dateRange.from, 'dd/MM/yyyy') : 'Select Date'}</div></div>
                 </div>
+                <AnimatePresence>
+                    {isDatePickerOpen && (
+                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute top-0 right-0 bg-white rounded-2xl shadow-xl p-4 z-50 border border-gray-100" style={{ width: '320px' }}>
+                            <DayPicker
+                                mode="range"
+                                selected={dateRange}
+                                onDayClick={handleDateSelect}
+                                numberOfMonths={1}
+                                disabled={[
+                                    { before: new Date() },
+                                    ...bookedDates.map(d => new Date(d))
+                                ]}
+                                formatters={{
+                                    formatDay: (date) => {
+                                        const priceForDay = getPriceForDate(date);
+                                        const dayNum = format(date, 'd');
+                                        return (
+                                            <div className="flex flex-col items-center justify-center h-full w-full py-2">
+                                                <span className="text-sm font-medium relative z-10">{dayNum}</span>
+                                                <span className="text-[10px] font-bold text-emerald-600 mt-1 relative z-10 tracking-tight">
+                                                    ₹{priceForDay < 1000 ? priceForDay : `${(priceForDay / 1000).toFixed(1)}k`}
+                                                </span>
+                                            </div>
+                                        );
+                                    }
+                                }}
+                                modifiersClassNames={{
+                                    selected: 'bg-blue-600 text-white hover:bg-blue-700 rounded-full',
+                                    range_middle: 'bg-blue-50 text-blue-900',
+                                }}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
-            <AnimatePresence>
-                {isDatePickerOpen && (
-                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute top-0 right-0 bg-white rounded-2xl shadow-xl p-4 z-50 border border-gray-100" style={{ width: '320px' }}>
-                        <DayPicker
-                            mode="range"
-                            selected={dateRange}
-                            onDayClick={handleDateSelect}
-                            numberOfMonths={1}
-                            disabled={[{ before: new Date() }]}
-                            formatters={{
-                                formatDay: (date) => {
-                                    const priceForDay = getPriceForDate(date);
-                                    const dayNum = format(date, 'd');
-                                    return (
-                                        <div className="flex flex-col items-center justify-center h-full w-full py-2">
-                                            <span className="text-sm font-medium relative z-10">{dayNum}</span>
-                                            <span className="text-[10px] font-bold text-emerald-600 mt-1 relative z-10 tracking-tight">
-                                                ₹{priceForDay < 1000 ? priceForDay : `${(priceForDay / 1000).toFixed(1)}k`}
-                                            </span>
-                                        </div>
-                                    );
-                                }
-                            }}
-                            modifiersClassNames={{
-                                selected: 'bg-blue-600 text-white hover:bg-blue-700 rounded-full',
-                                range_middle: 'bg-blue-50 text-blue-900',
-                            }}
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
 
             <button onClick={handleReserve} disabled={!dateRange.from} className={`w-full font-bold py-3.5 rounded-xl transition mb-4 text-white text-lg ${(!dateRange.from) ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200'}`}>
                 Book Tickets
             </button>
 
-            {priceBreakdown && (
-                <div className="space-y-2 mt-4 text-sm text-gray-600 border-t pt-4">
-                    <div className="flex justify-between"><span>Adult Tickets ({guests.adults})</span><span>₹{Math.round(priceBreakdown.totalAdultTicket).toLocaleString()}</span></div>
-                    {guests.children > 0 && <div className="flex justify-between"><span>Child Tickets ({guests.children})</span><span>₹{Math.round(priceBreakdown.totalChildTicket).toLocaleString()}</span></div>}
-                    {priceBreakdown.gstAmount > 0 && <div className="flex justify-between text-gray-500"><span>GST (18%)</span><span>₹{Math.round(priceBreakdown.gstAmount).toLocaleString()}</span></div>}
-                    <div className="flex justify-between font-bold text-lg text-black pt-2 border-t mt-2"><span>Total</span><span>₹{Math.round(priceBreakdown.grantTotal).toLocaleString()}</span></div>
-                </div>
-            )}
-        </div>
+            {
+                priceBreakdown && (
+                    <div className="space-y-2 mt-4 text-sm text-gray-600 border-t pt-4">
+                        <div className="flex justify-between"><span>Adult Tickets ({guests.adults})</span><span>₹{Math.round(priceBreakdown.totalAdultTicket).toLocaleString()}</span></div>
+                        {guests.children > 0 && <div className="flex justify-between"><span>Child Tickets ({guests.children})</span><span>₹{Math.round(priceBreakdown.totalChildTicket).toLocaleString()}</span></div>}
+                        {priceBreakdown.gstAmount > 0 && <div className="flex justify-between text-gray-500"><span>GST (18%)</span><span>₹{Math.round(priceBreakdown.gstAmount).toLocaleString()}</span></div>}
+                        <div className="flex justify-between font-bold text-lg text-black pt-2 border-t mt-2"><span>Total</span><span>₹{Math.round(priceBreakdown.grantTotal).toLocaleString()}</span></div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 
-const VillaBooking = ({ price, rating, dateRange, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, handleReserve, priceBreakdown, datePickerRef, property, guests, setGuests, includeFood, setIncludeFood, isWaterpark }) => {
+const VillaBooking = ({ price, rating, dateRange, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, handleReserve, priceBreakdown, datePickerRef, property, guests, setGuests, includeFood, setIncludeFood, isWaterpark, bookedDates = [] }) => {
 
     // Helper to get price for a specific date
     const getPriceForDate = (date) => {
@@ -1111,47 +1119,50 @@ const VillaBooking = ({ price, rating, dateRange, isDatePickerOpen, setIsDatePic
                     </div>
                 </div>
             </div>
-            <div className="border border-gray-300 rounded-lg overflow-hidden mb-4 relative" ref={datePickerRef}>
+            <div className="border border-gray-300 rounded-lg mb-4 relative" ref={datePickerRef}>
                 <div className="flex border-b border-gray-300 cursor-pointer" onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}>
                     <div className="flex-1 p-3 border-r border-gray-300 hover:bg-gray-50"><label className="block text-[10px] font-bold text-gray-800">CHECK-IN</label><div className="text-sm">{dateRange.from ? format(dateRange.from, 'dd/MM/yyyy') : 'Add date'}</div></div>
                     <div className="flex-1 p-3 hover:bg-gray-50"><label className="block text-[10px] font-bold text-gray-800">CHECK-OUT</label><div className="text-sm">{dateRange.to ? format(dateRange.to, 'dd/MM/yyyy') : 'Add date'}</div></div>
                 </div>
-            </div>
-            <AnimatePresence>
-                {isDatePickerOpen && (
-                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute top-0 right-0 bg-white rounded-2xl shadow-xl p-4 z-50 border border-gray-100" style={{ width: '360px' }}>
-                        <DayPicker
-                            mode="range"
-                            selected={dateRange}
-                            onDayClick={handleDateSelect}
-                            numberOfMonths={1}
-                            disabled={[{ before: new Date() }]}
-                            formatters={{
-                                formatDay: (date) => {
-                                    const priceForDay = getPriceForDate(date);
-                                    const dayNum = format(date, 'd');
-                                    return (
-                                        <div className="flex flex-col items-center justify-center h-full w-full py-2">
-                                            <span className="text-sm font-medium relative z-10">{dayNum}</span>
-                                            <span className="text-[10px] font-bold text-emerald-600 mt-1 relative z-10 tracking-tight">
-                                                ₹{priceForDay < 1000 ? `${(priceForDay / 1000).toFixed(1)}k` : `${Math.round(priceForDay / 1000)}k`}
-                                            </span>
-                                        </div>
-                                    );
-                                }
-                            }}
-                            modifiersClassNames={{
-                                selected: 'bg-rose-400 text-white hover:bg-rose-500 rounded-2xl shadow-md transform scale-100',
-                                range_start: 'bg-rose-400 text-white rounded-l-2xl rounded-r-none',
-                                range_end: 'bg-rose-400 text-white rounded-r-2xl rounded-l-none',
-                                range_middle: 'bg-rose-50 text-rose-900 rounded-none mix-blend-multiply'
-                            }}
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                <AnimatePresence>
+                    {isDatePickerOpen && (
+                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute top-0 right-0 bg-white rounded-2xl shadow-xl p-4 z-50 border border-gray-100" style={{ width: '360px' }}>
+                            <DayPicker
+                                mode="range"
+                                selected={dateRange}
+                                onDayClick={handleDateSelect}
+                                numberOfMonths={1}
+                                disabled={[
+                                    { before: new Date() },
+                                    ...bookedDates.map(d => new Date(d))
+                                ]}
+                                formatters={{
+                                    formatDay: (date) => {
+                                        const priceForDay = getPriceForDate(date);
+                                        const dayNum = format(date, 'd');
+                                        return (
+                                            <div className="flex flex-col items-center justify-center h-full w-full py-2">
+                                                <span className="text-sm font-medium relative z-10">{dayNum}</span>
+                                                <span className="text-[10px] font-bold text-emerald-600 mt-1 relative z-10 tracking-tight">
+                                                    ₹{priceForDay < 1000 ? `${(priceForDay / 1000).toFixed(1)}k` : `${Math.round(priceForDay / 1000)}k`}
+                                                </span>
+                                            </div>
+                                        );
+                                    }
+                                }}
+                                modifiersClassNames={{
+                                    selected: 'bg-rose-400 text-white hover:bg-rose-500 rounded-2xl shadow-md transform scale-100',
+                                    range_start: 'bg-rose-400 text-white rounded-l-2xl rounded-r-none',
+                                    range_end: 'bg-rose-400 text-white rounded-r-2xl rounded-l-none',
+                                    range_middle: 'bg-rose-50 text-rose-900 rounded-none mix-blend-multiply'
+                                }}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div >
             {/* FOOD TOGGLE */}
-            <div className="mb-4">
+            < div className="mb-4" >
                 <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
                     <input
                         type="checkbox"
@@ -1165,27 +1176,29 @@ const VillaBooking = ({ price, rating, dateRange, isDatePickerOpen, setIsDatePic
                     </div>
                     <FaUtensils className="text-orange-500" />
                 </label>
-            </div>
+            </div >
 
             <button onClick={handleReserve} disabled={!dateRange.from || !dateRange.to} className={`w-full font-bold py-3.5 rounded-xl transition mb-4 text-white text-lg ${(!dateRange.from || !dateRange.to) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#FF385C] hover:bg-[#D90B3E] shadow-lg shadow-red-200'}`}>Reserve</button>
-            {priceBreakdown && (
-                <div className="space-y-2 mt-4 text-sm text-gray-600 border-t pt-4">
-                    {!isWaterpark ? (
-                        <>
-                            <div className="flex justify-between"><span>Villa Rate ({priceBreakdown.nights} nights)</span><span>₹{Math.round(priceBreakdown.totalVillaRate).toLocaleString()}</span></div>
-                            {priceBreakdown.totalExtra > 0 && <div className="flex justify-between text-orange-600"><span>Extra Guests</span><span>₹{Math.round(priceBreakdown.totalExtra).toLocaleString()}</span></div>}
-                            {priceBreakdown.totalFood > 0 && <div className="flex justify-between text-blue-600"><span>Food Package</span><span>₹{Math.round(priceBreakdown.totalFood).toLocaleString()}</span></div>}
-                        </>
-                    ) : (
-                        <>
-                            <div className="flex justify-between"><span>Adult Tickets ({guests.adults} x {priceBreakdown.nights} days)</span><span>₹{Math.round(priceBreakdown.totalAdultTicket).toLocaleString()}</span></div>
-                            {guests.children > 0 && <div className="flex justify-between"><span>Child Tickets ({guests.children} x {priceBreakdown.nights} days)</span><span>₹{Math.round(priceBreakdown.totalChildTicket).toLocaleString()}</span></div>}
-                        </>
-                    )}
-                    <div className="flex justify-between text-gray-500"><span>GST (18%)</span><span>₹{Math.round(priceBreakdown.gstAmount || 0).toLocaleString()}</span></div>
-                    <div className="flex justify-between font-bold text-lg text-black pt-2 border-t mt-2"><span>Total</span><span>₹{Math.round(priceBreakdown.grantTotal).toLocaleString()}</span></div>
-                </div>
-            )}
+            {
+                priceBreakdown && (
+                    <div className="space-y-2 mt-4 text-sm text-gray-600 border-t pt-4">
+                        {!isWaterpark ? (
+                            <>
+                                <div className="flex justify-between"><span>Villa Rate ({priceBreakdown.nights} nights)</span><span>₹{Math.round(priceBreakdown.totalVillaRate).toLocaleString()}</span></div>
+                                {priceBreakdown.totalExtra > 0 && <div className="flex justify-between text-orange-600"><span>Extra Guests</span><span>₹{Math.round(priceBreakdown.totalExtra).toLocaleString()}</span></div>}
+                                {priceBreakdown.totalFood > 0 && <div className="flex justify-between text-blue-600"><span>Food Package</span><span>₹{Math.round(priceBreakdown.totalFood).toLocaleString()}</span></div>}
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex justify-between"><span>Adult Tickets ({guests.adults} x {priceBreakdown.nights} days)</span><span>₹{Math.round(priceBreakdown.totalAdultTicket).toLocaleString()}</span></div>
+                                {guests.children > 0 && <div className="flex justify-between"><span>Child Tickets ({guests.children} x {priceBreakdown.nights} days)</span><span>₹{Math.round(priceBreakdown.totalChildTicket).toLocaleString()}</span></div>}
+                            </>
+                        )}
+                        <div className="flex justify-between text-gray-500"><span>GST (18%)</span><span>₹{Math.round(priceBreakdown.gstAmount || 0).toLocaleString()}</span></div>
+                        <div className="flex justify-between font-bold text-lg text-black pt-2 border-t mt-2"><span>Total</span><span>₹{Math.round(priceBreakdown.grantTotal).toLocaleString()}</span></div>
+                    </div>
+                )
+            }
         </>
     );
 };

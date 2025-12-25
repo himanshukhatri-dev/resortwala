@@ -21,8 +21,8 @@ export default function NotificationBell() {
     useEffect(() => {
         if (token) {
             fetchNotifications();
-            // Auto-refresh every 30 seconds
-            const interval = setInterval(fetchNotifications, 30000);
+            // Auto-refresh every 5 seconds (Live updates)
+            const interval = setInterval(fetchNotifications, 5000);
             return () => clearInterval(interval);
         }
     }, [token]);
@@ -46,10 +46,9 @@ export default function NotificationBell() {
             setLoading(true);
             const headers = { Authorization: `Bearer ${token}` };
 
-            const [bookingsRes, propertiesRes, changesRes] = await Promise.all([
+            const [bookingsRes, propertiesRes] = await Promise.all([
                 axios.get(`${API_BASE_URL}/vendor/bookings`, { headers }),
-                axios.get(`${API_BASE_URL}/vendor/properties`, { headers }),
-                axios.get(`${API_BASE_URL}/vendor/property-changes`, { headers }).catch(() => ({ data: [] }))
+                axios.get(`${API_BASE_URL}/vendor/properties`, { headers })
             ]);
 
             // Filter pending bookings
@@ -62,16 +61,10 @@ export default function NotificationBell() {
                 p.Status?.toLowerCase() === 'pending'
             );
 
-            // Filter pending change requests
-            const pendingChanges = (changesRes.data || []).filter(c =>
-                c.status?.toLowerCase() === 'pending'
-            );
-
             setNotifications({
                 pendingBookings,
                 properties: pendingProperties,
-                changeRequests: pendingChanges,
-                total: pendingBookings.length + pendingProperties.length + pendingChanges.length
+                total: pendingBookings.length + pendingProperties.length
             });
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
@@ -80,8 +73,8 @@ export default function NotificationBell() {
         }
     };
 
-    const handleNavigate = (path) => {
-        navigate(path);
+    const handleNavigate = (path, state = {}) => {
+        navigate(path, { state });
         setIsOpen(false);
     };
 
@@ -138,7 +131,7 @@ export default function NotificationBell() {
                                                 </span>
                                             </div>
                                             <button
-                                                onClick={() => handleNavigate('/bookings')}
+                                                onClick={() => handleNavigate('/calendar')}
                                                 className="text-emerald-600 hover:text-emerald-700 text-xs font-bold flex items-center gap-1"
                                             >
                                                 View All <FaArrowRight className="text-[10px]" />
@@ -148,7 +141,7 @@ export default function NotificationBell() {
                                             {pendingBookings.slice(0, 3).map(booking => (
                                                 <div
                                                     key={booking.BookingId}
-                                                    onClick={() => handleNavigate('/bookings')}
+                                                    onClick={() => handleNavigate('/calendar', { bookingId: booking.BookingId })}
                                                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-white cursor-pointer transition-all"
                                                 >
                                                     <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
@@ -206,38 +199,7 @@ export default function NotificationBell() {
                                     </div>
                                 )}
 
-                                {/* Change Requests */}
-                                {changeRequests.length > 0 && (
-                                    <div className="p-4 hover:bg-gray-50 transition-colors">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                                                    <FaEdit className="text-purple-600 text-sm" />
-                                                </div>
-                                                <span className="font-bold text-gray-800 text-sm">Change Requests</span>
-                                                <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-bold">
-                                                    {changeRequests.length}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {changeRequests.slice(0, 3).map(req => (
-                                                <div
-                                                    key={req.id}
-                                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-white cursor-pointer transition-all"
-                                                >
-                                                    <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">
-                                                        <FaExclamationCircle />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="font-semibold text-gray-800 text-sm truncate">{req.property_name}</p>
-                                                        <p className="text-xs text-gray-500 truncate">Pending admin review</p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+
                             </div>
                         )}
                     </div>

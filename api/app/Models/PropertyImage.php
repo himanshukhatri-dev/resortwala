@@ -27,9 +27,21 @@ class PropertyImage extends Model
 
     public function getImageUrlAttribute()
     {
-        if (filter_var($this->image_path, FILTER_VALIDATE_URL)) {
+        if (str_starts_with($this->image_path, 'http')) {
             return $this->image_path;
         }
-        return asset('storage/properties/' . $this->image_path);
+        
+        $path = $this->image_path;
+        // If path already starts with storage/, use it as is
+        if (str_starts_with($path, 'storage/')) {
+            return asset($path);
+        }
+        // If path starts with properties/, prepend storage/
+        if (str_starts_with($path, 'properties/')) {
+            return asset('storage/' . $path);
+        }
+        
+        // Default fallback
+        return asset('storage/properties/' . $path);
     }
 }

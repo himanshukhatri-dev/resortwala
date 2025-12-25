@@ -53,10 +53,16 @@ export default function Holiday() {
             const response = await axios.get(`${API_BASE_URL}/vendor/properties`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setProperties(response.data);
-            if (response.data.length > 0) {
-                setSelectedPropertyId(response.data[0].id || response.data[0].PropertyId);
-            }
+            // Filter out Waterparks as requested
+            const validProperties = response.data.filter(p => {
+                const type = p.PropertyType || '';
+                return !type.toLowerCase().includes('waterpark');
+            });
+            setProperties(validProperties);
+            // requested: do not auto-select first property
+            // if (validProperties.length > 0) {
+            //     setSelectedPropertyId(validProperties[0].id || validProperties[0].PropertyId);
+            // }
         } catch (error) {
             console.error('Error fetching properties:', error);
         }
@@ -74,6 +80,19 @@ export default function Holiday() {
         }
     };
 
+    // Helper: Calculate standard price for a date
+    const getPriceForDate = (date, property) => {
+        if (!property) return 0;
+        const priceMonThu = parseFloat(property.pricing?.weekday || property.price_mon_thu || 0);
+        const priceFriSun = parseFloat(property.pricing?.weekend || property.price_fri_sun || property.price || 0);
+        const priceSat = parseFloat(property.pricing?.saturday || property.price_sat || priceFriSun);
+
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek === 6) return priceSat;
+        if (dayOfWeek === 0 || dayOfWeek === 5) return priceFriSun;
+        return priceMonThu;
+    };
+
     // GENERATE CALENDAR EVENTS (RATES)
     useEffect(() => {
         if (!selectedPropertyId || properties.length === 0) return;
@@ -89,20 +108,23 @@ export default function Holiday() {
         const generatedEvents = [];
 
         // 1. Generate Daily Rates for current view window (e.g., -1 month to +6 months)
-        // Ideally we only generate for the view, but for simplicity we generate a range
-
         const startGen = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
         const endGen = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0);
 
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
         for (let d = new Date(startGen); d <= endGen; d.setDate(d.getDate() + 1)) {
+            // Skip past dates
+            if (d < today) continue;
+
             const dateStr = format(d, 'yyyy-MM-dd');
             const dayOfWeek = d.getDay(); // 0=Sun, 6=Sat
 
             // Check for Holiday Override
+            // Check for Holiday Override
             const holiday = holidays.find(h => {
-                // Check if holiday applies to this property
                 const holidayPropId = h.property_id || h.property?.id || h.property?.PropertyId;
-                // If holiday.property_id is null/undefined => Global holiday? (Assuming per property for now based on form)
                 if (holidayPropId && String(holidayPropId) !== String(selectedPropertyId)) return false;
 
                 const start = new Date(h.from_date);
@@ -114,24 +136,27 @@ export default function Holiday() {
                 return current >= start && current <= end;
             });
 
-            let price = priceMonThu;
+            let price = getPriceForDate(d, property);
             let type = 'standard';
             let title = '';
             let id = `rate-${dateStr}`;
             let resource = null;
+            let status = 'approved';
 
             if (holiday) {
                 price = parseFloat(holiday.base_price || 0);
                 type = 'holiday';
                 title = holiday.name || 'Holiday';
-                id = `holiday-${holiday.id}`;
+                id = `holiday-${holiday.id}-${dateStr}`;
                 resource = holiday;
+                // Check if pending status
+                if (holiday.approved === 0 || holiday.status === 'pending') {
+                    status = 'pending';
+                    title += ' (Pending)';
+                }
             } else {
-                if (dayOfWeek === 6) { // Sat
-                    price = priceSat;
-                    type = 'weekend';
-                } else if (dayOfWeek === 0 || dayOfWeek === 5) { // Fri, Sun
-                    price = priceFriSun;
+                const dayOfWeek = d.getDay();
+                if (dayOfWeek === 6 || dayOfWeek === 0 || dayOfWeek === 5) {
                     type = 'weekend';
                 }
             }
@@ -139,12 +164,13 @@ export default function Holiday() {
             generatedEvents.push({
                 id: id,
                 title: `₹${price}`,
-                subtitle: title, // For holiday name
+                subtitle: title,
                 start: new Date(d),
                 end: new Date(d),
                 allDay: true,
                 price: price,
                 type: type,
+                status: status,
                 resource: resource
             });
         }
@@ -159,25 +185,28 @@ export default function Holiday() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (start < today) {
-            showError('Invalid Selection', 'You cannot update rates for past dates.');
             return;
         }
 
-        // Adjust end date (BigCalendar 'end' is exclusive for slots, sometimes checks needed)
-        // If clicking single day, start=end (or end=start+1 day).
-        // Let's normalize.
-        // If single click:
-        const endDate = new Date(end);
-        endDate.setDate(endDate.getDate() - 1); // Normalize exclusion if needed, usually BigCal selects ranges well.
+        const property = properties.find(p => (p.id || p.PropertyId) == selectedPropertyId);
 
-        // Actually for single day click start is 00:00, end is next day 00:00
+        // Normalize End Date
+        const endDate = new Date(end);
+        endDate.setDate(endDate.getDate() - 1);
         const normalizedEnd = new Date(end);
         if (normalizedEnd.getHours() === 0 && normalizedEnd.getMinutes() === 0 && normalizedEnd > start) {
             normalizedEnd.setDate(normalizedEnd.getDate() - 1);
         }
 
+        // PREFILL PRICE: Calculate price for the START date
+        const currentPrice = getPriceForDate(start, property);
+
         setRange({ start, end: normalizedEnd });
-        setForm({ name: '', base_price: '', extra_person_price: '' });
+        setForm({
+            name: '',
+            base_price: currentPrice > 0 ? currentPrice : '', // Prefill!
+            extra_person_price: ''
+        });
         setEditData(null);
         setIsModalOpen(true);
     };
@@ -186,7 +215,6 @@ export default function Holiday() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (event.start < today) {
-            showError('Past Date', 'You cannot modify rates for past dates.');
             return;
         }
 
@@ -203,7 +231,6 @@ export default function Holiday() {
             });
             setIsModalOpen(true);
         } else {
-            // If clicking a standard date, treat as new override for that date
             setRange({ start: event.start, end: event.start });
             setForm({ name: 'Custom Rate', base_price: event.price, extra_person_price: '' });
             setEditData(null);
@@ -211,10 +238,48 @@ export default function Holiday() {
         }
     };
 
+    const validatePrice = (newPrice) => {
+        const property = properties.find(p => (p.id || p.PropertyId) == selectedPropertyId);
+        if (!property) return true; // Safety
+
+        const priceMonThu = parseFloat(property.pricing?.weekday || property.price_mon_thu || 0);
+        const priceFriSun = parseFloat(property.pricing?.weekend || property.price_fri_sun || property.price || 0);
+        const priceSat = parseFloat(property.pricing?.saturday || property.price_sat || priceFriSun);
+
+        // Iterate date range
+        let current = new Date(range.start);
+        const end = new Date(range.end);
+
+        while (current <= end) {
+            const basePrice = getPriceForDate(current, property);
+
+            if (basePrice > 0) {
+                const minAllowed = basePrice * 0.8; // Max 20% decrease
+                const maxAllowed = basePrice * 2.0; // Max 100% increase (double)
+
+                if (newPrice < minAllowed) {
+                    showError("Price Validation Failed", `Price cannot be less than ₹${minAllowed} (20% limit) for ${format(current, 'EEE, MM/dd')}`);
+                    return false;
+                }
+                if (newPrice > maxAllowed) {
+                    showError("Price Validation Failed", `Price cannot be more than ₹${maxAllowed} (100% limit) for ${format(current, 'EEE, MM/dd')}`);
+                    return false;
+                }
+            }
+            current.setDate(current.getDate() + 1);
+        }
+        return true;
+    };
+
+
     const handleSave = async () => {
         if (!selectedPropertyId) return showError("Error", "No property selected");
         if (!form.base_price) return showError("Error", "Price is required");
 
+        const priceVal = parseFloat(form.base_price);
+        if (!validatePrice(priceVal)) return;
+
+        // ... (rest of logic same)
         const payload = {
             property_id: selectedPropertyId,
             name: form.name || 'Custom Rate',
@@ -233,7 +298,7 @@ export default function Holiday() {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            await showSuccess("Saved", "Rate updated successfully!");
+            await showSuccess("Saved", "Rate updated successfully! Admin might review if unusual.");
             setIsModalOpen(false);
             fetchHolidays();
         } catch (error) {
@@ -262,39 +327,43 @@ export default function Holiday() {
     const CustomToolbar = (toolbar) => {
         const goToBack = () => toolbar.onNavigate('PREV');
         const goToNext = () => toolbar.onNavigate('NEXT');
-        const label = () => <span className="text-xl font-extrabold text-gray-900 capitalize tracking-tight min-w-[200px] text-center">{format(toolbar.date, 'MMMM yyyy')}</span>;
+        const label = () => <span className="text-lg md:text-xl font-extrabold text-gray-900 capitalize tracking-tight min-w-[150px] md:min-w-[200px] text-center">{format(toolbar.date, 'MMMM yyyy')}</span>;
 
         return (
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                <div className="flex items-center gap-4">
-                    <div className="bg-rose-50 p-2 rounded-lg text-rose-500">
-                        <FaMoneyBillWave size={24} />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-extrabold text-gray-900">Rate Manager</h1>
-                        <p className="text-xs text-gray-500 font-medium">Click any date to override prices</p>
+            <div className="flex flex-col md:flex-row justify-between items-center mb-4 md:mb-8 gap-4 md:gap-6 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-rose-50 p-2 rounded-lg text-rose-500 hidden md:block">
+                            <FaMoneyBillWave size={24} />
+                        </div>
+                        <div>
+                            <h1 className="text-lg md:text-xl font-extrabold text-gray-900">Rate Manager</h1>
+                            <p className="text-[10px] md:text-xs text-gray-500 font-medium hidden md:block">Click any date to override prices</p>
+                        </div>
                     </div>
                 </div>
 
-                {/* Filter */}
-                <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl border border-gray-200">
-                    <FaFilter className="text-gray-400" />
-                    <select
-                        value={selectedPropertyId}
-                        onChange={(e) => setSelectedPropertyId(e.target.value)}
-                        className="bg-transparent outline-none font-bold text-gray-700 min-w-[150px] cursor-pointer text-sm"
-                    >
-                        {properties.map(p => (
-                            <option key={p.id || p.PropertyId} value={p.id || p.PropertyId}>{p.Name || p.ShortName}</option>
-                        ))}
-                    </select>
-                </div>
+                {/* Filter & Nav Grouped on Mobile */}
+                <div className="flex w-full md:w-auto items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-200 flex-1 md:flex-none">
+                        <FaFilter className="text-gray-400 text-xs" />
+                        <select
+                            value={selectedPropertyId}
+                            onChange={(e) => setSelectedPropertyId(e.target.value)}
+                            className="bg-transparent outline-none font-bold text-gray-700 w-full md:min-w-[150px] cursor-pointer text-xs md:text-sm truncate"
+                        >
+                            {properties.map(p => (
+                                <option key={p.id || p.PropertyId} value={p.id || p.PropertyId}>{p.Name || p.ShortName}</option>
+                            ))}
+                        </select>
+                    </div>
 
-                {/* Nav */}
-                <div className="flex items-center gap-2">
-                    <button onClick={goToBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-600"><FaArrowLeft /></button>
-                    {label()}
-                    <button onClick={goToNext} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-600"><FaArrowRight /></button>
+                    <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl">
+                        <button onClick={goToBack} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white shadow-sm transition text-gray-600"><FaArrowLeft size={12} /></button>
+                        <span className="text-xs font-bold w-20 text-center md:hidden">{format(toolbar.date, 'MMM yyyy')}</span>
+                        <span className="hidden md:inline">{label()}</span>
+                        <button onClick={goToNext} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white shadow-sm transition text-gray-600"><FaArrowRight size={12} /></button>
+                    </div>
                 </div>
             </div>
         );
@@ -304,9 +373,9 @@ export default function Holiday() {
         <div className="flex min-h-screen bg-gray-50/50">
             <Sidebar activePage="/holiday-management" />
 
-            <div className="flex-1 md:ml-[70px] p-4 md:p-8 transition-all">
+            <div className="flex-1 md:ml-[70px] p-2 md:p-8 transition-all">
                 {/* CALENDAR */}
-                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-gray-200/50 border border-white/20 p-6 h-[800px] relative">
+                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-gray-200/50 border border-white/20 p-2 md:p-6 h-[700px] md:h-[800px] relative flex flex-col">
                     {/* Decorative Background Elements */}
                     <div className="absolute top-0 left-0 w-full h-full bg-grid-slate-50 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] pointer-events-none" />
 
@@ -315,7 +384,7 @@ export default function Holiday() {
                         events={events}
                         startAccessor="start"
                         endAccessor="end"
-                        style={{ height: '100%' }}
+                        style={{ height: '100%', flex: 1 }}
                         onNavigate={date => setCurrentDate(date)}
                         date={currentDate}
                         selectable
@@ -326,7 +395,7 @@ export default function Holiday() {
                             return {
                                 style: {
                                     backgroundColor: 'transparent',
-                                    padding: '2px',
+                                    padding: '1px',
                                     border: 'none',
                                     outline: 'none'
                                 }
@@ -341,15 +410,17 @@ export default function Holiday() {
 
                                 return (
                                     <div className={`
-                                        h-full w-full rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 group relative overflow-hidden
-                                        ${isHoliday ? 'bg-rose-50 border-2 border-rose-100' :
-                                            isWeekend ? 'bg-blue-50 border-2 border-blue-100' :
-                                                'bg-white border hover:border-gray-300 border-gray-100 hover:shadow-md'}
+                                        h-full w-full rounded-md md:rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 group relative overflow-hidden px-1
+                                        ${isHoliday ? (event.status === 'pending' ? 'bg-purple-50 border border-purple-200' : 'bg-rose-50 border border-rose-100') :
+                                            isWeekend ? 'bg-blue-50 border border-blue-100' :
+                                                'bg-white border hover:border-gray-300 border-gray-100'}
                                     `}>
                                         {/* Status Indicator Bar */}
-                                        <div className={`absolute top-0 left-0 right-0 h-1 ${isHoliday ? 'bg-rose-400' : isWeekend ? 'bg-blue-400' : 'bg-transparent'}`} />
+                                        <div className={`absolute top-0 left-0 right-0 h-0.5 md:h-1 ${isHoliday ? (event.status === 'pending' ? 'bg-purple-400' : 'bg-rose-400') :
+                                            isWeekend ? 'bg-blue-400' : 'bg-transparent'
+                                            }`} />
 
-                                        <span className={`text-sm md:text-base font-bold tracking-tight px-2 py-0.5 rounded-md ${isHoliday ? 'text-rose-700' :
+                                        <span className={`text-[10px] md:text-base font-bold tracking-tight ${isHoliday ? (event.status === 'pending' ? 'text-purple-700' : 'text-rose-700') :
                                             isWeekend ? 'text-blue-700' :
                                                 'text-gray-700'
                                             } font-mono`}>
@@ -357,91 +428,135 @@ export default function Holiday() {
                                         </span>
 
                                         {event.subtitle && (
-                                            <span className={`text-[9px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded-full max-w-[90%] truncate
-                                                ${isHoliday ? 'bg-rose-100 text-rose-600' : 'bg-gray-100 text-gray-400'}
+                                            <span className={`text-[8px] md:text-[9px] uppercase font-bold tracking-widest px-1 py-px rounded-full max-w-[90%] truncate hidden md:block
+                                                ${isHoliday ? (event.status === 'pending' ? 'bg-purple-100 text-purple-600' : 'bg-rose-100 text-rose-600') : 'bg-gray-100 text-gray-400'}
                                             `}>
                                                 {event.subtitle}
                                             </span>
                                         )}
-
-                                        {/* Hover Edit Icon */}
-                                        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            {/* Icon can go here if needed */}
-                                        </div>
                                     </div>
                                 );
                             }
                         }}
                     />
+                    {!selectedPropertyId && (
+                        <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-md flex items-center justify-center">
+                            <div className="bg-white p-8 rounded-3xl shadow-2xl text-center border border-gray-100 max-w-sm mx-4 transform transition-all hover:scale-105 duration-300">
+                                <div className="bg-rose-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-rose-500 shadow-inner">
+                                    <FaMoneyBillWave size={32} />
+                                </div>
+                                <h3 className="text-2xl font-black text-gray-900 mb-3 tracking-tight">Select Property</h3>
+                                <p className="text-gray-500 mb-8 text-sm leading-relaxed px-4">
+                                    Choose a Villa or Stay to manage its holiday rates and calendar availability.
+                                </p>
+
+                                <div className="relative group">
+                                    <select
+                                        value={selectedPropertyId}
+                                        onChange={(e) => setSelectedPropertyId(e.target.value)}
+                                        className="w-full appearance-none bg-gray-50 hover:bg-gray-100 border-2 border-gray-100 hover:border-gray-200 text-gray-800 font-bold py-4 px-6 rounded-xl focus:outline-none focus:ring-0 focus:border-black transition-all cursor-pointer"
+                                    >
+                                        <option value="">-- Choose Property --</option>
+                                        {properties.map(p => (
+                                            <option key={p.id || p.PropertyId} value={p.id || p.PropertyId}>
+                                                {p.Name || p.ShortName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </div>
+            </div >
 
             {/* MODAL */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
-                        <div className="bg-gradient-to-r from-gray-900 to-black p-6 text-white flex justify-between items-center">
-                            <h3 className="text-xl font-bold flex items-center gap-3">
-                                <FaMoneyBillWave className="text-rose-400" />
-                                {editData ? 'Edit Rate' : 'Set Daily Rate'}
-                            </h3>
-                            <button onClick={() => setIsModalOpen(false)} className="opacity-70 hover:opacity-100 text-2xl">&times;</button>
-                        </div>
-
-                        <div className="p-6 space-y-6">
-                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
-                                <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Selected Dates</span>
-                                <div className="text-lg font-bold text-gray-800 mt-1">
-                                    {range.start && format(range.start, 'MMM dd')}
-                                    {range.end && range.start?.getTime() !== range.end?.getTime() && ` - ${format(range.end, 'MMM dd')}`}
-                                </div>
+            {
+                isModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
+                            <div className="bg-gradient-to-r from-gray-900 to-black p-6 text-white flex justify-between items-center">
+                                <h3 className="text-xl font-bold flex items-center gap-3">
+                                    <FaMoneyBillWave className="text-rose-400" />
+                                    {editData ? 'Edit Rate' : 'Set Daily Rate'}
+                                </h3>
+                                <button onClick={() => setIsModalOpen(false)} className="opacity-70 hover:opacity-100 text-2xl">&times;</button>
                             </div>
 
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Daily Price (₹)</label>
-                                    <input
-                                        type="number"
-                                        value={form.base_price}
-                                        onChange={e => setForm({ ...form, base_price: e.target.value })}
-                                        className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-2xl font-black text-gray-900 focus:border-black focus:ring-0 outline-none transition-colors"
-                                        placeholder="0"
-                                        autoFocus
-                                    />
+                            <div className="p-6 space-y-6">
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
+                                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Selected Dates</span>
+                                    <div className="text-lg font-bold text-gray-800 mt-1">
+                                        {range.start && format(range.start, 'MMM dd')}
+                                        {range.end && range.start?.getTime() !== range.end?.getTime() && ` - ${format(range.end, 'MMM dd')}`}
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Label (Optional)</label>
-                                    <input
-                                        type="text"
-                                        value={form.name}
-                                        onChange={e => setForm({ ...form, name: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-medium text-gray-800 focus:bg-white focus:border-gray-400 outline-none transition-all"
-                                        placeholder="e.g. Diwali Peak, Christmas"
-                                    />
-                                </div>
-                            </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Daily Price (₹)</label>
+                                        <input
+                                            type="number"
+                                            value={form.base_price}
+                                            onChange={e => setForm({ ...form, base_price: e.target.value })}
+                                            className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-2xl font-black text-gray-900 focus:border-black focus:ring-0 outline-none transition-colors"
+                                            placeholder="0"
+                                            autoFocus
+                                        />
+                                        <p className="text-[10px] text-gray-400 mt-1">Max 20% decrease, 100% increase allowed based on standard rate.</p>
+                                    </div>
 
-                            <div className="flex gap-3 pt-4">
-                                {editData && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Label (Optional)</label>
+                                        <input
+                                            type="text"
+                                            value={form.name}
+                                            onChange={e => setForm({ ...form, name: e.target.value })}
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-medium text-gray-800 focus:bg-white focus:border-gray-400 outline-none transition-all"
+                                            placeholder="e.g. Diwali Peak, Christmas"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    {editData && (
+                                        <button
+                                            onClick={handleDelete}
+                                            className="bg-red-50 text-red-600 px-6 py-3 rounded-xl font-bold hover:bg-red-100 transition flex-1 flex items-center justify-center gap-2"
+                                        >
+                                            <FaTrash /> Revert
+                                        </button>
+                                    )}
                                     <button
-                                        onClick={handleDelete}
-                                        className="bg-red-50 text-red-600 px-6 py-3 rounded-xl font-bold hover:bg-red-100 transition flex-1 flex items-center justify-center gap-2"
+                                        onClick={handleSave}
+                                        className="bg-black text-white px-6 py-3 rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition shadow-lg flex-1"
                                     >
-                                        <FaTrash /> Revert
+                                        Save Rate
                                     </button>
-                                )}
-                                <button
-                                    onClick={handleSave}
-                                    className="bg-black text-white px-6 py-3 rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition shadow-lg flex-1"
-                                >
-                                    Save Rate
-                                </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+            <style>{`
+                 /* Mobile Calendar Tweaks */
+                 @media (max-width: 768px) {
+                    .rbc-calendar { min-height: 500px; }
+                    .rbc-toolbar { flex-direction: column; gap: 10px; }
+                    .rbc-header { font-size: 10px; padding: 2px; text-transform: uppercase; }
+                    .rbc-event { padding: 0 !important; }
+                    .rbc-date-cell { font-size: 10px; padding: 2px; }
+                    /* Increase cell height slightly for touch targets if needed */
+                    .rbc-month-row { overflow: visiblebox; }
+                 }
+            `}</style>
+        </div >
     );
 }
