@@ -29,6 +29,24 @@ class HolidayController extends Controller
 
         $validated['approved'] = 0; // Default to pending approval
         $holiday = \App\Models\Holiday::create($validated);
+
+        // Notify Admins
+        try {
+            if ($request->property_id) {
+                $property = \App\Models\PropertyMaster::find($request->property_id);
+                $vendor = $request->user();
+                $admins = \App\Models\User::where('role', 'admin')->get();
+                
+                foreach ($admins as $admin) {
+                     \Illuminate\Support\Facades\Mail::to($admin->email)->send(
+                        new \App\Mail\HolidayRequestSubmitted($property, $vendor)
+                    );
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Holiday notification failed: ' . $e->getMessage());
+        }
+
         return response()->json($holiday, 201);
     }
 

@@ -42,6 +42,9 @@
                 @elseif($type === 'request_rejected')
                     <h1 style="color: #991b1b;">Changes Rejected</h1>
                     <p>Your property edit request was rejected by the admin.</p>
+                @elseif($type === 'holiday_submitted')
+                    <h1>Holiday Price Application</h1>
+                    <p>A vendor has submitted a new holiday price/date.</p>
                 @endif
             </div>
 
@@ -68,6 +71,10 @@
                 @if($type === 'request_submitted')
                     <p style="text-align: center;">
                         <a href="http://stagingadmin.resortwala.com/property-changes/{{ $requestId ?? '' }}" class="btn">Review Changes</a>
+                    </p>
+                @elseif($type === 'holiday_submitted')
+                    <p style="text-align: center;">
+                        <a href="http://stagingadmin.resortwala.com/admin/approvals" class="btn">Review Holidays</a>
                     </p>
                 @else
                     <p style="text-align: center;">

@@ -26,7 +26,8 @@ class Booking extends Model
         'base_amount',
         'payment_method',
         'payment_status',
-        'booking_reference'
+        'booking_reference',
+        'booking_source'
     ];
 
     public function property()

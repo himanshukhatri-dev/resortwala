@@ -182,9 +182,12 @@ class AdminController extends Controller
 
     public function getAllBookings(Request $request)
     {
-        $bookings = Booking::with(['property:PropertyId,Name,Location'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $bookings = Booking::with(['property' => function($q) {
+            $q->select('PropertyId', 'Name', 'Location', 'vendor_id', 'PropertyType') // Select needed columns
+              ->with('vendor:id,name,email,business_name,phone');
+        }])
+        ->orderBy('created_at', 'desc')
+        ->get();
 
         return response()->json($bookings);
     }
