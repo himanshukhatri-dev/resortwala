@@ -31,6 +31,11 @@ export function WishlistProvider({ children }) {
                     'Accept': 'application/json'
                 }
             });
+            if (res.status === 401) {
+                // Unauthorized - clear wishlist silently
+                setWishlist([]);
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
                 // Store IDs for easy lookup

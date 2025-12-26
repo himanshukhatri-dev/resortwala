@@ -95,6 +95,18 @@ export default function HolidayApprovals() {
                                     </div>
                                 </div>
 
+                                {holiday.old_rate && (
+                                    <div className="flex items-center gap-3 text-gray-600">
+                                        <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-600">
+                                            <FaMoneyBillWave size={14} />
+                                        </div>
+                                        <div className="text-sm">
+                                            <span className="block text-xs text-gray-400 font-bold uppercase">Old Rate</span>
+                                            <span className="text-base font-semibold text-gray-600 line-through">₹{holiday.old_rate}</span>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="flex items-center gap-3 text-gray-600">
                                     <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
                                         <FaMoneyBillWave size={14} />

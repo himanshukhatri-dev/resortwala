@@ -65,11 +65,13 @@ export default function PublicPropertyCalendar() {
             const priceMonThu = parseFloat(data.property.price_mon_thu || 0);
             const priceFriSun = parseFloat(data.property.price_fri_sun || 0);
 
+            // REMOVED: Rate display as per user request
+            // User requested to remove rates from public calendar
+            /*
             for (let d = new Date(today); d <= endGen; d.setDate(d.getDate() + 1)) {
                 const dateStr = format(d, 'yyyy-MM-dd');
                 const day = d.getDay();
 
-                // Check holiday
                 const holiday = holidays.find(h => {
                     const start = new Date(h.from_date);
                     const end = new Date(h.to_date);
@@ -83,11 +85,7 @@ export default function PublicPropertyCalendar() {
                 if (holiday) {
                     price = parseFloat(holiday.base_price);
                 } else {
-                    if (day === 0 || day === 5 || day === 6) price = priceFriSun; // Fri,Sat,Sun as weekend here or stricter? 
-                    // Usually Fri, Sat, Sun are weekend rates in previous logic. 
-                    // Holiday.jsx used: Sat=SatPrice, Fri/Sun=FriSunPrice. 
-                    // PublicController returns price_mon_thu and price_fri_sun. 
-                    // Let's stick to simple Mon-Thu vs Fri-Sun logic unless we have specific Sat price in API response (we don't explicitely see it in property object usage above, except fallback).
+                    if (day === 0 || day === 5 || day === 6) price = priceFriSun;
                 }
 
                 processedEvents.push({
@@ -99,6 +97,7 @@ export default function PublicPropertyCalendar() {
                     status: 'available'
                 });
             }
+            */
 
             // 2. Overlay Bookings (These will visually override rates if we treat them right, or share space)
             data.bookings.forEach(b => {
@@ -121,13 +120,20 @@ export default function PublicPropertyCalendar() {
                         processedEvents.splice(rateIndex, 1); // Remove rate, replace with booking
                     }
 
+                    // Determine label based on booking source
+                    let label = 'Unavailable';
+                    if (b.booking_source === 'customer_app') {
+                        label = 'ResortWala';
+                    }
+
                     processedEvents.push({
-                        title: b.Status === 'confirmed' ? 'Booked' : 'Locked',
+                        title: label,
                         start: new Date(currentDate),
                         end: new Date(currentDate),
                         status: b.Status,
                         allDay: true,
-                        type: 'booking'
+                        type: 'booking',
+                        source: b.booking_source
                     });
                     currentDate.setDate(currentDate.getDate() + 1);
                 }
@@ -251,17 +257,29 @@ export default function PublicPropertyCalendar() {
     const dayPropGetter = (date) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const day = date.getDay();
+        const isWeekend = day === 0 || day === 6; // Sunday or Saturday
 
         if (date < today) {
             return {
                 style: {
-                    backgroundColor: '#f9fafb',
-                    color: '#ccc',
+                    backgroundColor: '#f3f4f6',
+                    color: '#9ca3af',
                     pointerEvents: 'none',
                 },
                 className: 'past-date'
             };
         }
+
+        if (isWeekend) {
+            return {
+                style: {
+                    backgroundColor: '#fef2f2',
+                },
+                className: 'weekend-date'
+            };
+        }
+
         return {};
     };
 
@@ -272,11 +290,7 @@ export default function PublicPropertyCalendar() {
             return (
                 <div className="relative w-full h-full group flex items-center justify-center">
                     <div className="w-full h-full bg-red-50 border border-red-100 rounded-md overflow-hidden relative flex items-center justify-center">
-                        <img
-                            src="/logo_booked.png"
-                            alt="Booked"
-                            className="w-3 h-3 md:w-4 md:h-4 object-contain opacity-60"
-                        />
+                        <span className="text-[9px] md:text-[10px] font-bold text-red-600 uppercase tracking-tight">{event.title}</span>
                         <div className="absolute inset-0 bg-red-100/10 mix-blend-multiply" />
                     </div>
                 </div>
@@ -419,7 +433,8 @@ export default function PublicPropertyCalendar() {
 
             {/* COMPACT LEGEND */}
             <div className="flex-none pb-2 flex gap-4 text-[10px] md:text-xs justify-center flex-wrap bg-white z-10">
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-50 border border-red-100 rounded flex items-center justify-center overflow-hidden"><img src="/logo_booked.png" className="w-full h-full object-contain opacity-50" /></div> Unavailable</div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-50 border border-red-100 rounded flex items-center justify-center text-[8px] font-bold text-red-600">RW</div> ResortWala Booking</div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-50 border border-red-100 rounded flex items-center justify-center text-[7px] font-bold text-red-600">NA</div> Unavailable</div>
                 <div className="flex items-center gap-1.5"><span className="w-3 h-3 bg-yellow-500 rounded"></span> Request Pending</div>
                 <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-gray-300 rounded"></div> Available</div>
             </div>
@@ -522,7 +537,9 @@ export default function PublicPropertyCalendar() {
                 </div>
                 <div className="text-left">
                     <div className="text-[8px] text-gray-500 uppercase tracking-wider font-bold">Powered By</div>
-                    <div className="text-[10px] font-bold text-gray-900 group-hover:text-primary transition-colors">ResortWala</div>
+                    <div className="text-[10px] font-bold group-hover:text-primary transition-colors">
+                        <span className="text-red-600">Resort</span><span className="text-blue-600">Wala</span>
+                    </div>
                 </div>
             </a>
 
@@ -533,6 +550,20 @@ export default function PublicPropertyCalendar() {
                  }
                 .rbc-month-view { border: none; }
                 .rbc-header { padding: 8px 0; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #9ca3af; border-bottom: none; }
+                
+                /* Weekend header styling - Saturday and Sunday in red */
+                .rbc-header:nth-child(1) span, /* Sunday */
+                .rbc-header:nth-child(7) span  /* Saturday */ {
+                    color: #dc2626 !important;
+                    font-weight: 700;
+                }
+                
+                /* Weekend date numbers in red */
+                .weekend-date .rbc-button-link {
+                    color: #dc2626 !important;
+                    font-weight: 600;
+                }
+                
                 .rbc-day-bg { border-left: 1px solid #f3f4f6; }
                 .rbc-off-range-bg { bg-gray-50; }
                 .animate-fade-in { animation: fadeIn 0.5s ease-out; }

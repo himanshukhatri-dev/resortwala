@@ -4,8 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { useModal } from '../context/ModalContext';
 import { API_BASE_URL } from '../config';
+import { FiX, FiLogOut, FiChevronDown, FiChevronRight } from 'react-icons/fi';
 
-export default function Sidebar({ userType = 'admin' }) {
+export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile }) {
     const location = useLocation();
     const navigate = useNavigate();
     const { token, logout } = useAuth();
@@ -13,16 +14,18 @@ export default function Sidebar({ userType = 'admin' }) {
     const [expandedMenu, setExpandedMenu] = useState(null);
     const [isHovered, setIsHovered] = useState(false);
 
-    // Update Layout margin via CSS Variable
+    // Desktop: Update margin via CSS variable
     useEffect(() => {
+        if (isMobile) return;
+
         const root = document.documentElement;
         if (isHovered) {
             root.style.setProperty('--sidebar-width', '240px');
         } else {
-            root.style.setProperty('--sidebar-width', window.innerWidth <= 768 ? '60px' : '70px');
-            setExpandedMenu(null); // Collapse when sidebar shrinks
+            root.style.setProperty('--sidebar-width', '70px');
+            setExpandedMenu(null);
         }
-    }, [isHovered]);
+    }, [isHovered, isMobile]);
 
     const menuItems = [
         { path: '/dashboard', icon: '📊', label: 'Overview' },
@@ -57,13 +60,14 @@ export default function Sidebar({ userType = 'admin' }) {
         } catch (error) {
             console.error('Logout error:', error);
         } finally {
+            if (isMobile && onClose) onClose();
             logout();
             navigate('/login');
         }
     };
 
     const toggleMenu = (id) => {
-        if (!isHovered) {
+        if (!isMobile && !isHovered) {
             setIsHovered(true);
             setExpandedMenu(id);
             return;
@@ -71,223 +75,137 @@ export default function Sidebar({ userType = 'admin' }) {
         setExpandedMenu(expandedMenu === id ? null : id);
     };
 
+    // Desktop Styles
+    const desktopClasses = `fixed left-0 top-0 h-screen bg-white border-r border-gray-100 flex flex-col z-[40] transition-all duration-300 ease-in-out shadow-none ${isHovered ? 'w-60 shadow-xl' : 'w-[70px]'}`;
+
+    // Mobile Styles (Drawer)
+    const mobileClasses = `fixed inset-y-0 left-0 w-72 bg-white shadow-2xl z-[1001] transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`;
+    const overlayClasses = `fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`;
+
     return (
-        <div
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => {
-                setIsHovered(false);
-                setExpandedMenu(null);
-            }}
-            style={{
-                width: isHovered ? '240px' : '70px',
-                backgroundColor: '#ffffff',
-                borderRight: '1px solid #f1f5f9',
-                height: '100vh',
-                position: 'fixed',
-                left: 0,
-                top: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                zIndex: 1000,
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: isHovered ? '20px 0 50px rgba(0,0,0,0.03)' : 'none',
-                overflow: 'hidden',
-                color: '#334155'
-            }}
-        >
-            {/* Logo Area */}
-            <div style={{
-                height: '70px',
-                display: 'flex',
-                alignItems: 'center',
-                padding: isHovered ? '0 24px' : '0',
-                justifyContent: 'center',
-                borderBottom: '1px solid #f1f5f9',
-                backgroundColor: '#ffffff',
-                flexShrink: 0,
-                transition: 'all 0.3s ease'
-            }}>
-                <Link to="/dashboard" style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '100%',
-                    textDecoration: 'none'
-                }}>
-                    <img
-                        src="/admin/loader-logo.png"
-                        alt="ResortWala"
-                        style={{
-                            height: isHovered ? '32px' : '24px',
-                            width: 'auto',
-                            transition: 'all 0.3s ease',
-                            objectFit: 'contain'
-                        }}
-                    />
-                </Link>
-            </div>
+        <>
+            {/* Mobile Overlay */}
+            {isMobile && <div className={overlayClasses} onClick={onClose} />}
 
-            {/* Menu Items */}
-            <nav style={{ padding: '16px 0', flex: 1, overflowY: 'auto', overflowX: 'hidden' }} className="custom-scrollbar">
-                {menuItems.map((item) => {
-                    const hasSubItems = !!item.subItems;
-                    const isExpanded = expandedMenu === item.id;
-                    const isActive = location.pathname === item.path || (hasSubItems && item.subItems.some(s => s.path === location.pathname));
+            <div
+                className={isMobile ? mobileClasses : desktopClasses}
+                onMouseEnter={() => !isMobile && setIsHovered(true)}
+                onMouseLeave={() => {
+                    if (!isMobile) {
+                        setIsHovered(false);
+                        setExpandedMenu(null);
+                    }
+                }}
+            >
+                {/* Logo Area */}
+                <div className="h-[70px] flex items-center justify-between px-6 border-b border-gray-100 bg-white flex-shrink-0">
+                    <Link to="/dashboard" onClick={() => isMobile && onClose && onClose()} className="flex items-center gap-3">
+                        <img
+                            src="/admin/loader-logo.png"
+                            alt="ResortWala"
+                            className={`h-8 w-auto object-contain transition-all duration-300 ${!isMobile && !isHovered ? 'scale-75' : 'scale-100'}`}
+                        />
+                        {(isMobile || isHovered) && (
+                            <span className="font-bold text-gray-800 text-lg hidden">ResortWala</span>
+                        )}
+                    </Link>
+                    {isMobile && (
+                        <button onClick={onClose} className="p-2 -mr-2 text-gray-400 hover:text-gray-600">
+                            <FiX size={24} />
+                        </button>
+                    )}
+                </div>
 
-                    if (hasSubItems) {
+                {/* Navigation */}
+                <nav className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar py-4">
+                    {menuItems.map((item) => {
+                        const hasSubItems = !!item.subItems;
+                        const isExpanded = expandedMenu === item.id;
+                        const isActive = location.pathname === item.path || (hasSubItems && item.subItems.some(s => s.path === location.pathname));
+
+                        if (hasSubItems) {
+                            return (
+                                <div key={item.id} className="mb-1 px-3">
+                                    <button
+                                        onClick={() => toggleMenu(item.id)}
+                                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 
+                                            ${isActive ? 'text-gray-900 bg-gray-50' : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'}
+                                            ${!isMobile && !isHovered ? 'justify-center' : 'justify-start'}
+                                        `}
+                                    >
+                                        <span className="text-xl min-w-[24px] flex justify-center">{item.icon}</span>
+                                        {(isMobile || isHovered) && (
+                                            <>
+                                                <span className="flex-1 text-left font-semibold text-sm">{item.label}</span>
+                                                <span className={`text-xs transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                                    <FiChevronDown />
+                                                </span>
+                                            </>
+                                        )}
+                                        {isActive && !isExpanded && !isMobile && !isHovered && (
+                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-500 rounded-l-full" />
+                                        )}
+                                    </button>
+
+                                    {/* Submenu */}
+                                    {(isExpanded && (isMobile || isHovered)) && (
+                                        <div className="mt-1 ml-4 pl-4 border-l-2 border-gray-100 space-y-1">
+                                            {item.subItems.map(sub => (
+                                                <Link
+                                                    key={sub.path}
+                                                    to={sub.path}
+                                                    onClick={() => isMobile && onClose && onClose()}
+                                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors
+                                                        ${location.pathname === sub.path
+                                                            ? 'text-blue-600 bg-blue-50 font-bold'
+                                                            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50 font-medium'}
+                                                    `}
+                                                >
+                                                    <span className="text-base">{sub.icon}</span>
+                                                    <span>{sub.label}</span>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }
+
+                        // Regular Item
                         return (
-                            <div key={item.id} className="mb-1">
-                                <button
-                                    onClick={() => toggleMenu(item.id)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '12px',
-                                        padding: '12px 24px',
-                                        width: '100%',
-                                        border: 'none',
-                                        background: 'transparent',
-                                        color: isActive ? '#0f172a' : '#64748b',
-                                        cursor: 'pointer',
-                                        fontSize: '14px',
-                                        fontWeight: '700',
-                                        transition: 'all 0.2s ease',
-                                        justifyContent: isHovered ? 'flex-start' : 'center',
-                                        position: 'relative'
-                                    }}
-                                >
-                                    <span style={{ fontSize: '18px', minWidth: '24px' }}>{item.icon}</span>
-                                    {isHovered && (
-                                        <>
-                                            <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
-                                            <span style={{
-                                                fontSize: '10px',
-                                                transition: 'transform 0.3s',
-                                                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
-                                            }}>▼</span>
-                                        </>
-                                    )}
-                                    {isActive && !isExpanded && (
-                                        <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: '4px', backgroundColor: '#3b82f6', borderRadius: '0 4px 4px 0' }} />
-                                    )}
-                                </button>
-
-                                {isHovered && isExpanded && (
-                                    <div style={{
-                                        backgroundColor: '#f8fafc',
-                                        margin: '4px 12px',
-                                        borderRadius: '16px',
-                                        padding: '4px 0'
-                                    }}>
-                                        {item.subItems.map(sub => (
-                                            <Link
-                                                key={sub.path}
-                                                to={sub.path}
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '12px',
-                                                    padding: '10px 16px',
-                                                    color: location.pathname === sub.path ? '#3b82f6' : '#64748b',
-                                                    textDecoration: 'none',
-                                                    fontSize: '13px',
-                                                    fontWeight: location.pathname === sub.path ? '800' : '600',
-                                                    transition: 'all 0.2s ease',
-                                                    borderRadius: '12px',
-                                                    margin: '2px 8px',
-                                                    backgroundColor: location.pathname === sub.path ? '#eff6ff' : 'transparent'
-                                                }}
-                                            >
-                                                <span style={{ fontSize: '16px' }}>{sub.icon}</span>
-                                                <span>{sub.label}</span>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                onClick={() => isMobile && onClose && onClose()}
+                                className={`flex items-center gap-3 mx-3 mb-1 px-3 py-3 rounded-xl transition-all duration-200 group
+                                    ${isActive
+                                        ? 'bg-blue-50 text-blue-600 font-bold shadow-sm'
+                                        : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600 font-medium'}
+                                    ${!isMobile && !isHovered ? 'justify-center' : 'justify-start'}
+                                `}
+                                title={!isHovered && !isMobile ? item.label : ''}
+                            >
+                                <span className={`text-xl min-w-[24px] flex justify-center transition-transform group-hover:scale-110`}>{item.icon}</span>
+                                {(isMobile || isHovered) && <span>{item.label}</span>}
+                            </Link>
                         );
-                    }
+                    })}
+                </nav>
 
-                    return (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '12px 24px',
-                                color: isActive ? '#0f172a' : '#64748b',
-                                backgroundColor: isActive ? '#f8fafc' : 'transparent',
-                                textDecoration: 'none',
-                                fontSize: '14px',
-                                fontWeight: isActive ? '700' : '600',
-                                transition: 'all 0.2s ease',
-                                justifyContent: isHovered ? 'flex-start' : 'center',
-                                position: 'relative',
-                                marginBottom: '4px'
-                            }}
-                            title={!isHovered ? item.label : ''}
-                        >
-                            <span style={{ fontSize: '18px', minWidth: '24px' }}>{item.icon}</span>
-                            {isHovered && <span>{item.label}</span>}
-                            {isActive && (
-                                <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: '4px', backgroundColor: '#3b82f6', borderRadius: '0 4px 4px 0' }} />
-                            )}
-                        </Link>
-                    );
-                })}
-            </nav>
-
-            {/* Logout */}
-            <div style={{ padding: isHovered ? '15px' : '10px', borderTop: '1px solid #e0e0e0' }}>
-                <button
-                    onClick={handleLogout}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        width: '100%',
-                        padding: '10px',
-                        border: 'none',
-                        backgroundColor: 'transparent',
-                        color: '#d32f2f',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '15px',
-                        fontWeight: '600',
-                        transition: 'all 0.2s ease',
-                        justifyContent: isHovered ? 'flex-start' : 'center',
-                        height: '45px'
-                    }}
-                    title={!isHovered ? "Logout" : ""}
-                    className="logout-btn"
-                >
-                    <span style={{ fontSize: '20px' }}>🚪</span>
-                    <span style={{
-                        opacity: isHovered ? 1 : 0,
-                        display: isHovered ? 'block' : 'none',
-                        whiteSpace: 'nowrap'
-                    }}>
-                        Logout
-                    </span>
-                </button>
+                {/* Footer / Logout */}
+                <div className="p-4 border-t border-gray-100 bg-white">
+                    <button
+                        onClick={handleLogout}
+                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors
+                             ${!isMobile && !isHovered ? 'justify-center' : 'justify-start'}
+                        `}
+                        title={!isHovered && !isMobile ? "Logout" : ""}
+                    >
+                        <FiLogOut className="text-xl min-w-[24px]" />
+                        {(isMobile || isHovered) && <span className="font-bold text-sm">Logout</span>}
+                    </button>
+                </div>
             </div>
-
-            <style>{`
-                .sidebar-item:hover {
-                    background-color: #f8f9fa !important;
-                    color: #667eea !important;
-                }
-                .logout-btn:hover {
-                    background-color: #ffebee !important;
-                }
-                @media (max-width: 768px) {
-                    div[style*="width"] {
-                        width: 60px !important;
-                    }
-                }
-            `}</style>
-        </div>
+        </>
     );
 }

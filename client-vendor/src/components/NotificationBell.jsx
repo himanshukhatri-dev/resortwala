@@ -85,12 +85,12 @@ export default function NotificationBell() {
             {/* Bell Icon */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-3 rounded-full hover:bg-white/10 transition-all duration-200 bg-white/5 backdrop-blur-sm"
+                className="relative p-2 rounded-full hover:bg-gray-100 transition-all duration-200 bg-gray-50"
                 title="Notifications"
             >
-                <FaBell className="text-white text-xl" />
+                <FaBell className="text-gray-700 text-lg" />
                 {total > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg animate-pulse">
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg animate-pulse">
                         {total > 99 ? '99+' : total}
                     </span>
                 )}
@@ -98,7 +98,7 @@ export default function NotificationBell() {
 
             {/* Dropdown Panel */}
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-slideDown">
+                <div className="fixed md:absolute left-4 right-4 md:left-auto md:right-0 mt-2 md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[1000] animate-slideDown">
                     {/* Header */}
                     <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4">
                         <h3 className="font-bold text-lg">Action Required</h3>

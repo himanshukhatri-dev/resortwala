@@ -33,7 +33,7 @@ class PublicController extends Controller
             $bookings = Booking::where('PropertyId', $property->PropertyId)
                 ->where('CheckOutDate', '>=', Carbon::today())
                 ->whereIn('Status', ['Confirmed', 'confirmed', 'pending', 'CheckedIn', 'checked_in', 'CheckedOut', 'checked_out', 'Blocked', 'blocked'])
-                ->get(['CheckInDate', 'CheckOutDate', 'Status']);
+                ->get(['CheckInDate', 'CheckOutDate', 'Status', 'booking_source']);
 
             // Fetch holidays (only approved)
             $holidays = \App\Models\Holiday::where('property_id', $property->PropertyId)

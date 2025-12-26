@@ -27,7 +27,6 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
         }
     };
 
-    // Propagate hover state to parent securely
     useEffect(() => {
         if (props.onHoverChange) {
             props.onHoverChange(isHovered);
@@ -36,13 +35,11 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
 
     const menuItems = [
         { path: '/dashboard', icon: '📊', label: 'Dashboard', roles: ['vendor', 'admin'] },
-        { path: '/vendors', icon: '🏢', label: 'Vendor', roles: ['admin'] },
-        { path: '/customers', icon: '👥', label: 'Customer', roles: ['admin'] },
-        { path: '/calendar', icon: '🗓️', label: 'Booking Calendar', roles: ['vendor', 'admin'] },
         { path: '/properties', icon: '🏠', label: 'Property', roles: ['vendor', 'admin'] },
-        { path: '/bookings', icon: '📅', label: 'Booking Reports', roles: ['vendor', 'admin'] },
+        { path: '/bookings', icon: '📅', label: 'Bookings', roles: ['vendor', 'admin'] },
+        { path: '/calendar', icon: '🗓️', label: 'Calendar', roles: ['vendor', 'admin'] },
         { path: '/holiday-management', icon: '🌴', label: 'Holiday', roles: ['vendor', 'admin'] },
-        { path: '/reviews', icon: '⭐', label: 'Review', roles: ['vendor', 'admin'] },
+        { path: '/reviews', icon: '⭐', label: 'Reviews', roles: ['vendor', 'admin'] },
     ];
 
     const filteredItems = menuItems.filter(item => item.roles.includes(userType));
@@ -53,229 +50,142 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
             {isOpen && (
                 <div
                     onClick={onClose}
-                    style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: 'rgba(0,0,0,0.5)',
-                        zIndex: 999,
-                        display: 'none', // Controlled by CSS media query
-                        className: 'mobile-overlay'
-                    }}
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999] md:hidden"
                 />
             )}
 
+            {/* Desktop Sidebar */}
             <div
-                className={`sidebar ${isOpen ? 'mobile-open' : ''}`}
+                className={`
+                    fixed left-0 top-0 h-screen bg-white border-r border-gray-200 
+                    transition-all duration-300 ease-in-out z-[1000]
+                    hidden md:flex flex-col
+                    ${isHovered ? 'w-60' : 'w-[70px]'}
+                    shadow-lg
+                `}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
-                style={{
-                    width: isHovered ? '240px' : '70px',
-                    backgroundColor: 'var(--sidebar-bg)',
-                    borderRight: '1px solid var(--border-color)',
-                    height: '100vh',
-                    position: 'fixed',
-                    left: 0,
-                    top: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    zIndex: 1000,
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: isHovered ? '4px 0 20px rgba(0,0,0,0.1)' : 'none',
-                    overflow: 'hidden',
-                    color: 'var(--text-color)'
-                }}
             >
-                {/* Logo Area */}
-                <div style={{
-                    height: '80px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: isHovered ? '0 20px' : '0',
-                    justifyContent: 'center',
-                    borderBottom: '1px solid var(--border-color)',
-                    backgroundColor: 'var(--sidebar-bg)',
-                    flexShrink: 0,
-                    transition: 'all 0.3s ease',
-                    position: 'relative'
-                }}>
+                {/* Logo */}
+                <div className="h-20 flex items-center justify-center border-b border-gray-200 px-4">
                     <img
                         src="/vendor/loader-logo.png"
                         alt="ResortWala"
-                        style={{
-                            height: isHovered ? '40px' : '28px',
-                            width: 'auto',
-                            transition: 'all 0.3s ease',
-                            objectFit: 'contain'
-                        }}
+                        className={`transition-all duration-300 object-contain ${isHovered ? 'h-10' : 'h-7'}`}
                     />
-
-                    {/* Mobile Close Button */}
-                    <button
-                        className="mobile-close-btn"
-                        onClick={onClose}
-                        style={{
-                            display: 'none',
-                            position: 'absolute',
-                            right: '10px',
-                            background: 'none',
-                            border: 'none',
-                            fontSize: '24px',
-                            color: 'var(--text-color)',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        ×
-                    </button>
                 </div>
 
                 {/* Menu Items */}
-                <nav style={{ padding: '10px 0', flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+                <nav className="flex-1 py-4 overflow-y-auto overflow-x-hidden">
                     {filteredItems.map((item) => {
                         const isActive = location.pathname === item.path;
                         return (
                             <Link
                                 key={item.path}
                                 to={item.path}
-                                onClick={onClose} // Close on mobile when clicked
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '15px',
-                                    padding: '12px 20px',
-                                    height: '50px',
-                                    color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
-                                    backgroundColor: isActive ? 'var(--hover-bg)' : 'transparent',
-                                    textDecoration: 'none',
-                                    fontSize: '15px',
-                                    fontWeight: isActive ? '600' : '500',
-                                    borderLeft: isActive ? '3px solid var(--primary-color)' : '3px solid transparent',
-                                    transition: 'all 0.2s ease',
-                                    justifyContent: isHovered ? 'flex-start' : 'center',
-                                    whiteSpace: 'nowrap'
-                                }}
+                                className={`
+                                    flex items-center gap-4 px-5 py-3 mx-2 rounded-xl
+                                    transition-all duration-200
+                                    ${isActive
+                                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 font-semibold shadow-sm'
+                                        : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
+                                    }
+                                    ${isHovered ? 'justify-start' : 'justify-center'}
+                                `}
                                 title={!isHovered ? item.label : ''}
-                                className="sidebar-item"
                             >
-                                <span style={{ fontSize: '20px', minWidth: '24px', textAlign: 'center' }}>{item.icon}</span>
-                                <span style={{
-                                    opacity: isHovered ? 1 : 0,
-                                    display: isHovered ? 'block' : 'none',
-                                    whiteSpace: 'nowrap',
-                                    transition: 'opacity 0.2s'
-                                }}>
+                                <span className="text-xl min-w-[24px] text-center">{item.icon}</span>
+                                <span className={`text-sm font-medium whitespace-nowrap transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0 w-0'}`}>
                                     {item.label}
                                 </span>
+                                {isActive && isHovered && (
+                                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                                )}
                             </Link>
                         );
                     })}
                 </nav>
 
-                <div style={{
-                    borderTop: '1px solid var(--border-color)',
-                    padding: isHovered ? '20px' : '20px 0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '15px',
-                    backgroundColor: 'var(--sidebar-bg)',
-                    alignItems: isHovered ? 'stretch' : 'center',
-                    transition: 'all 0.3s ease'
-                }}>
-                    {/* User Profile */}
-                    <Link to="/profile" style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        justifyContent: isHovered ? 'flex-start' : 'center'
-                    }}>
-                        <div style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            backgroundColor: 'var(--primary-color)',
-                            color: 'white',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 'bold',
-                            fontSize: '18px',
-                            flexShrink: 0
-                        }}>
+                {/* Profile & Logout - Desktop */}
+                <div className="border-t border-gray-200 p-4 space-y-3">
+                    {/* Profile */}
+                    <Link
+                        to="/profile"
+                        className={`
+                            flex items-center gap-3 p-3 rounded-xl
+                            bg-gradient-to-r from-gray-50 to-gray-100
+                            hover:from-blue-50 hover:to-indigo-50
+                            transition-all duration-200 group
+                            ${isHovered ? 'justify-start' : 'justify-center'}
+                        `}
+                    >
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-white group-hover:ring-blue-200 transition-all">
                             {user?.name?.charAt(0).toUpperCase() || 'V'}
                         </div>
                         {isHovered && (
-                            <div style={{ overflow: 'hidden' }}>
-                                <div style={{ fontWeight: '600', fontSize: '14px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{user?.name || 'Vendor'}</div>
-                                <div style={{ fontSize: '12px', opacity: 0.7, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{user?.business_name || 'Business'}</div>
+                            <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-sm text-gray-900 truncate">{user?.name || 'Vendor'}</div>
+                                <div className="text-xs text-gray-500 truncate">{user?.business_name || 'Business'}</div>
                             </div>
                         )}
                     </Link>
 
-                    {/* Logout Button */}
+                    {/* Logout */}
                     <button
                         onClick={() => setShowLogoutModal(true)}
-                        style={{
-                            padding: isHovered ? '10px' : '10px',
-                            backgroundColor: 'var(--hover-bg-red)', // Define this or use faint red
-                            color: '#dc2626',
-                            border: 'none',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontWeight: '600',
-                            fontSize: '14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: isHovered ? 'flex-start' : 'center',
-                            gap: '10px',
-                            transition: 'all 0.2s'
-                        }}
+                        className={`
+                            w-full flex items-center gap-3 p-3 rounded-xl
+                            bg-red-50 text-red-600 hover:bg-red-100
+                            transition-all duration-200 font-semibold text-sm
+                            ${isHovered ? 'justify-start' : 'justify-center'}
+                            group
+                        `}
                         title="Logout"
                     >
-                        <span style={{ fontSize: '18px' }}>🚪</span>
+                        <span className="text-lg group-hover:scale-110 transition-transform">🚪</span>
                         {isHovered && <span>Logout</span>}
                     </button>
                 </div>
+            </div>
 
-                {/* CSS for Mobile */}
-                <style>{`
-                    .sidebar-item:hover {
-                        background-color: var(--hover-bg) !important;
-                        color: var(--primary-color) !important;
-                    }
-                    
-                    @media (max-width: 768px) {
-                        .mobile-overlay {
-                            display: block !important;
-                        }
+            {/* Mobile Bottom Navigation */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[1000] safe-area-inset-bottom">
+                <div className="flex items-center justify-around px-2 py-2">
+                    {filteredItems.slice(0, 5).map((item) => {
+                        const isActive = location.pathname === item.path;
+                        return (
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                className={`
+                                    flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl
+                                    transition-all duration-200 min-w-[60px]
+                                    ${isActive
+                                        ? 'bg-gradient-to-b from-blue-50 to-indigo-50 text-blue-600 shadow-sm'
+                                        : 'text-gray-600 active:bg-gray-50'
+                                    }
+                                `}
+                            >
+                                <span className={`text-xl ${isActive ? 'scale-110' : ''} transition-transform`}>{item.icon}</span>
+                                <span className={`text-[10px] font-semibold ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                                    {item.label}
+                                </span>
+                                {isActive && <div className="w-1 h-1 rounded-full bg-blue-600 absolute bottom-1" />}
+                            </Link>
+                        );
+                    })}
 
-                        .sidebar {
-                            transform: translateX(-100%);
-                            width: 240px !important; /* Always full width on mobile if open */
-                        }
-
-                        .sidebar.mobile-open {
-                            transform: translateX(0);
-                        }
-
-                        /* Force show labels on mobile when open */
-                        .sidebar.mobile-open span {
-                            opacity: 1 !important;
-                            display: block !important;
-                        }
-                        
-                        .sidebar.mobile-open .sidebar-item {
-                            justify-content: flex-start !important;
-                        }
-                        
-                        .mobile-close-btn {
-                            display: block !important;
-                        }
-                    }
-                `}</style>
+                    {/* Profile Button on Mobile */}
+                    <Link
+                        to="/profile"
+                        className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl text-gray-600 active:bg-gray-50 transition-all min-w-[60px]"
+                    >
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-md">
+                            {user?.name?.charAt(0).toUpperCase() || 'V'}
+                        </div>
+                        <span className="text-[10px] font-semibold text-gray-500">Profile</span>
+                    </Link>
+                </div>
             </div>
 
             <ConfirmModal

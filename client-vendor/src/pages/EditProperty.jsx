@@ -202,7 +202,7 @@ export default function EditProperty() {
                     return '';
                 };
 
-                const ob = p.onboarding_data || p.OnboardingData || {}; // Check both casings
+                let ob = p.onboarding_data || p.OnboardingData || {}; // Check both casings
                 if (typeof ob === 'string') {
                     // Fail-safe if parsing failed earlier
                     try { ob = JSON.parse(ob); } catch (e) { }
@@ -286,7 +286,10 @@ export default function EditProperty() {
                 setLoading(false);
             } catch (err) {
                 console.error("Property Load Error:", err.response || err);
-                setError(`Failed to load property data: ${err.response?.data?.message || err.message}`);
+                const errorMsg = err.code === 'ECONNABORTED'
+                    ? 'Request timed out. Please check your internet connection and try again.'
+                    : err.response?.data?.message || err.message || 'Network error. Please try again.';
+                setError(`Failed to load property data: ${errorMsg}`);
                 setLoading(false);
             }
         };
@@ -520,7 +523,7 @@ export default function EditProperty() {
                         name="mobileNo"
                         value={formData.mobileNo}
                         onChange={handlePhoneChange}
-                        pattern="[0-9+\s-]{10,}"
+                        pattern="[0-9\\s\\-\\+]{10,}"
                         title="Please enter a valid 10-digit mobile number"
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-3 text-sm md:text-base text-gray-800 font-medium focus:bg-white focus:border-black focus:ring-1 focus:ring-black outline-none transition-all"
                         placeholder="9876543210"

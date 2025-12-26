@@ -88,6 +88,11 @@ export default function MyProperties() {
                             placeholder="Search..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.target.blur(); // Dismiss keyboard on mobile
+                                }
+                            }}
                             className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-black outline-none transition text-sm font-medium"
                         />
                     </div>
@@ -119,7 +124,8 @@ export default function MyProperties() {
                                     alt={property.Name}
                                     className="w-full h-full object-cover transition duration-700 group-hover:scale-105"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                                {/* Solid dark overlay at bottom for text readability */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
 
                                 <div className="absolute top-3 right-3 flex gap-2">
                                     <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-white shadow-sm ${property.is_approved ? 'bg-green-500' : 'bg-yellow-500'}`}>
@@ -127,9 +133,10 @@ export default function MyProperties() {
                                     </span>
                                 </div>
 
-                                <div className="absolute bottom-3 left-4 text-white">
-                                    <h3 className="text-lg font-bold leading-tight mb-0.5">{property.Name}</h3>
-                                    <div className="flex items-center gap-1 text-xs opacity-90">
+                                {/* Property name with solid background for visibility */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-4">
+                                    <h3 className="text-lg font-extrabold leading-tight mb-1 text-white">{property.Name}</h3>
+                                    <div className="flex items-center gap-1 text-xs text-white/90">
                                         <FaMapMarkerAlt /> {property.Location}
                                     </div>
                                 </div>
@@ -148,38 +155,36 @@ export default function MyProperties() {
                                     </div>
                                 </div>
 
-                                {/* Booking Stats Compact */}
-                                {property.upcoming_bookings_count > 0 && (
-                                    <div className="bg-blue-50 text-blue-800 px-3 py-2 rounded-lg text-xs font-bold mb-4 flex items-center justify-between">
-                                        <span className="flex items-center gap-1.5"><FaChartLine /> Upcoming Bookings</span>
-                                        <span className="bg-white px-2 py-0.5 rounded text-blue-600 shadow-sm">{property.upcoming_bookings_count}</span>
-                                    </div>
-                                )}
 
-                                {/* Action Buttons Grid */}
-                                <div className="grid grid-cols-4 gap-2">
+
+                                {/* Action Buttons - 2x2 Grid with Text */}
+                                <div className="grid grid-cols-2 gap-2">
                                     <button
-                                        onClick={() => window.open(`http://72.61.242.42/property/${property.PropertyId}`, '_blank')}
-                                        className="col-span-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg py-2.5 flex items-center justify-center transition"
-                                        title="View Live Listing"
+                                        onClick={() => navigate(`/properties/edit/${property.PropertyId}`)}
+                                        className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl py-3 px-3 flex items-center justify-center gap-2 transition font-semibold text-sm"
                                     >
-                                        <FaExternalLinkAlt size={14} />
+                                        <FaEdit size={14} /> Edit
                                     </button>
 
                                     <button
-                                        onClick={() => navigate(`/properties/edit/${property.PropertyId}`)}
-                                        className="col-span-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg py-2.5 flex items-center justify-center transition"
-                                        title="Edit Property"
+                                        onClick={() => window.open(`http://72.61.242.42/property/${property.PropertyId}`, '_blank')}
+                                        className="bg-green-50 hover:bg-green-100 text-green-700 rounded-xl py-3 px-3 flex items-center justify-center gap-2 transition font-semibold text-sm"
                                     >
-                                        <FaEdit size={16} />
+                                        <FaEye size={14} /> View
                                     </button>
 
                                     <button
                                         onClick={() => navigate(`/properties/${property.PropertyId}/calendar`)}
-                                        className="col-span-2 bg-[#FF385C] hover:bg-[#D90B3E] text-white rounded-lg py-2.5 flex items-center justify-center gap-2 font-bold text-sm transition shadow-md hover:shadow-lg"
-                                        title="Manage Calendar"
+                                        className="bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl py-3 px-3 flex items-center justify-center gap-2 transition font-semibold text-sm"
                                     >
-                                        <FaCalendarAlt /> Calendar
+                                        <FaCalendarAlt size={14} /> Calendar
+                                    </button>
+
+                                    <button
+                                        onClick={() => navigate('/bookings', { state: { propertyId: property.PropertyId } })}
+                                        className="bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl py-3 px-3 flex items-center justify-center gap-2 transition font-semibold text-sm"
+                                    >
+                                        <FaChartLine size={14} /> Bookings
                                     </button>
                                 </div>
                                 {/* <div className="mt-2 text-center">

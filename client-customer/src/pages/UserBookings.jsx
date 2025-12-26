@@ -15,7 +15,7 @@ export default function UserBookings() {
     const [expandedId, setExpandedId] = useState(null);
     const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'date'
 
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -54,6 +54,11 @@ export default function UserBookings() {
                 setBookings(bookingData);
             } catch (error) {
                 console.error("Failed to fetch bookings", error);
+                if (error.response && error.response.status === 401) {
+                    // Unauthorized - likely token expired
+                    logout();
+                    navigate('/login', { state: { message: 'Session expired. Please login again.' } });
+                }
             } finally {
                 setLoading(false);
             }
