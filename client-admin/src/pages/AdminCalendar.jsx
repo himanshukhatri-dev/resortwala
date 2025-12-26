@@ -100,7 +100,7 @@ export default function AdminCalendar() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedEvent, setSelectedEvent] = useState(null);
-    const [view, setView] = useState('month'); // Start in Month view
+    const [view, setView] = useState(window.innerWidth < 1024 ? 'agenda' : 'month');
     const [showShareModal, setShowShareModal] = useState(false);
 
     // Deep Link Logic

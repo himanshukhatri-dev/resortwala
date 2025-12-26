@@ -20,6 +20,7 @@ import AdminCalendar from './pages/AdminCalendar';
 import AdminEventLogs from './pages/AdminEventLogs';
 import HolidayApprovals from './pages/HolidayApprovals';
 import adminAnalytics from './utils/analytics';
+import Intelligence from './pages/Intelligence';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -64,6 +65,7 @@ function App() {
               <Route path="/day-wise-booking" element={<div style={{ padding: 20 }}>Day Wise Booking (Placeholder)</div>} />
               <Route path="/holidays" element={<div style={{ padding: 20 }}>Holidays (Placeholder)</div>} />
               <Route path="/reviews" element={<div style={{ padding: 20 }}>Reviews (Placeholder)</div>} />
+              <Route path="/intelligence" element={<Intelligence />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/login" />} />

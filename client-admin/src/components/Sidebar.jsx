@@ -4,9 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { useModal } from '../context/ModalContext';
 import { API_BASE_URL } from '../config';
-import { FiX, FiLogOut, FiChevronDown, FiChevronRight } from 'react-icons/fi';
+import { FiX, FiLogOut, FiChevronDown, FiChevronRight, FiMenu } from 'react-icons/fi';
 
-export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile }) {
+export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile, onToggle }) {
     const location = useLocation();
     const navigate = useNavigate();
     const { token, logout } = useAuth();
@@ -47,6 +47,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile 
         { path: '/day-wise-booking', icon: '📈', label: 'Availability' },
         { path: '/holidays', icon: '🌴', label: 'Holidays' },
         { path: '/reviews', icon: '⭐', label: 'Reviews' },
+        { path: '/intelligence', icon: '🧠', label: 'Intelligence' }, // Restricted Access
     ];
 
     const handleLogout = async () => {
@@ -206,6 +207,70 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile 
                     </button>
                 </div>
             </div>
+
+            {/* Mobile Bottom Navigation */}
+            {
+                isMobile && (
+                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[1000] pb-[env(safe-area-inset-bottom)]">
+                        <div className="flex items-center justify-around px-2 py-2">
+                            {/* 1. Overview */}
+                            <Link
+                                to="/dashboard"
+                                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px] ${location.pathname === '/dashboard' ? 'text-blue-600' : 'text-gray-500'
+                                    }`}
+                            >
+                                <span className={`text-xl ${location.pathname === '/dashboard' ? 'scale-110' : ''} transition-transform`}>📊</span>
+                                <span className="text-[10px] font-semibold">Home</span>
+                                {location.pathname === '/dashboard' && <div className="w-1 h-1 rounded-full bg-blue-600 absolute bottom-1" />}
+                            </Link>
+
+                            {/* 2. Properties */}
+                            <Link
+                                to="/properties"
+                                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px] ${location.pathname.startsWith('/properties') ? 'text-blue-600' : 'text-gray-500'
+                                    }`}
+                            >
+                                <span className={`text-xl ${location.pathname.startsWith('/properties') ? 'scale-110' : ''} transition-transform`}>🏠</span>
+                                <span className="text-[10px] font-semibold">Props</span>
+                                {location.pathname.startsWith('/properties') && <div className="w-1 h-1 rounded-full bg-blue-600 absolute bottom-1" />}
+                            </Link>
+
+                            {/* 3. Bookings */}
+                            <Link
+                                to="/bookings"
+                                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px] ${location.pathname.startsWith('/bookings') ? 'text-blue-600' : 'text-gray-500'
+                                    }`}
+                            >
+                                <span className={`text-xl ${location.pathname.startsWith('/bookings') ? 'scale-110' : ''} transition-transform`}>📅</span>
+                                <span className="text-[10px] font-semibold">Bookings</span>
+                                {location.pathname.startsWith('/bookings') && <div className="w-1 h-1 rounded-full bg-blue-600 absolute bottom-1" />}
+                            </Link>
+
+                            {/* 4. Updates */}
+                            <Link
+                                to="/property-changes"
+                                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px] ${location.pathname.startsWith('/property-changes') ? 'text-blue-600' : 'text-gray-500'
+                                    }`}
+                            >
+                                <span className={`text-xl ${location.pathname.startsWith('/property-changes') ? 'scale-110' : ''} transition-transform`}>📝</span>
+                                <span className="text-[10px] font-semibold">Updates</span>
+                                {location.pathname.startsWith('/property-changes') && <div className="w-1 h-1 rounded-full bg-blue-600 absolute bottom-1" />}
+                            </Link>
+
+                            {/* 5. Menu / More */}
+                            <button
+                                onClick={onToggle}
+                                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px] ${isOpen ? 'text-blue-600' : 'text-gray-500'
+                                    }`}
+                            >
+                                <FiMenu className={`text-xl ${isOpen ? 'scale-110' : ''} transition-transform`} />
+                                <span className="text-[10px] font-semibold">Menu</span>
+                                {isOpen && <div className="w-1 h-1 rounded-full bg-blue-600 absolute bottom-1" />}
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
         </>
     );
 }

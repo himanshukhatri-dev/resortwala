@@ -164,18 +164,18 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
             <div className={`relative bg-white/90 backdrop-blur-xl transition-all duration-300 group
                 ${activeTab ? 'z-[101]' : ''} 
                 ${isSticky
-                    ? 'rounded-full border border-gray-200 shadow-sm hover:shadow-md flex items-center h-[40px] pl-3 pr-1 mx-auto max-w-[500px]' // Smaller height, width, padding
-                    : 'rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.16)] border border-gray-100/50 flex flex-col md:flex-row items-center p-2 md:h-[72px] ring-1 ring-black/5'}`
+                    ? 'rounded-full border border-gray-200 shadow-sm hover:shadow-md flex items-center h-[40px] pl-3 pr-1 mx-auto max-w-[500px]'
+                    : 'rounded-2xl md:rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.16)] border border-gray-100/50 flex flex-col md:flex-row items-stretch md:items-center p-2 md:h-[72px] ring-1 ring-black/5 gap-2 md:gap-0'}`
             }>
 
                 {/* 1. WHERE */}
                 <div
                     onClick={() => setActiveTab('location')}
-                    className={`relative cursor-pointer transition-all duration-300 px-6 py-3 md:py-0
+                    className={`relative cursor-pointer transition-all duration-300 px-6 py-4 md:py-0
                         ${isSticky
                             ? 'flex-1 hover:bg-gray-100/50 rounded-full'
-                            : 'w-full md:flex-[1.2] md:hover:bg-gray-100/50 rounded-full h-full flex flex-col justify-center pl-8'}
-                        ${activeTab === 'location' && !isSticky ? 'bg-white shadow-lg scale-100 z-20' : ''}`
+                            : 'w-full md:flex-[1.2] hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full h-[60px] md:h-full flex flex-col justify-center px-4 md:pl-8 border md:border-none border-gray-100 bg-white/50 md:bg-transparent'}
+                        ${activeTab === 'location' && !isSticky ? 'bg-white shadow-lg scale-100 z-20 ring-1 ring-black/5' : ''}`
                     }
                 >
                     <label className={`text-[10px] font-bold tracking-wider text-gray-800 uppercase block mb-0.5 ${isSticky ? 'hidden' : ''}`}>Where</label>
@@ -185,6 +185,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                         placeholder="Anywhere"
                         value={location}
                         onChange={handleLocationChange}
+                        onFocus={() => setActiveTab('location')}
                         onClick={(e) => { e.stopPropagation(); setActiveTab('location'); }}
                         className={`w-full bg-transparent border-none outline-none text-gray-900 placeholder-gray-500 font-semibold truncate ${isSticky ? 'text-sm' : 'text-sm md:text-base'}`}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()}
@@ -198,11 +199,11 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                 {/* 2. WHEN */}
                 <div
                     onClick={() => setActiveTab('dates')}
-                    className={`relative cursor-pointer transition-all duration-300 px-6 py-3 md:py-0
+                    className={`relative cursor-pointer transition-all duration-300 px-6 py-4 md:py-0
                         ${isSticky
                             ? 'flex-none w-[120px] border-l border-gray-200 hover:bg-gray-100/50 flex items-center justify-center text-center'
-                            : 'w-full md:flex-1 md:hover:bg-gray-100/50 rounded-full h-full flex flex-col justify-center pl-8'}
-                        ${activeTab === 'dates' && !isSticky ? 'bg-white shadow-lg scale-100 z-20' : ''}`
+                            : 'w-full md:flex-1 hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full h-[60px] md:h-full flex flex-col justify-center px-4 md:pl-8 border md:border-none border-gray-100 bg-white/50 md:bg-transparent'}
+                        ${activeTab === 'dates' && !isSticky ? 'bg-white shadow-lg scale-100 z-20 ring-1 ring-black/5' : ''}`
                     }
                 >
                     <label className={`text-[10px] font-bold tracking-wider text-gray-800 uppercase block mb-0.5 ${isSticky ? 'hidden' : ''}`}>Check in - out</label>
@@ -219,11 +220,11 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                 {/* 3. WHO */}
                 <div
                     onClick={() => setActiveTab('guests')}
-                    className={`relative cursor-pointer transition-all duration-300 px-6 py-3 md:py-0
+                    className={`relative cursor-pointer transition-all duration-300 px-6 py-4 md:py-0
                         ${isSticky
                             ? 'flex-none w-[100px] border-l border-gray-200 hover:bg-gray-100/50 flex items-center justify-center'
-                            : 'w-full md:flex-1 md:hover:bg-gray-100/50 rounded-full h-full flex flex-row items-center justify-between pl-8 pr-2'}
-                        ${activeTab === 'guests' && !isSticky ? 'bg-white shadow-lg scale-100 z-20' : ''}`
+                            : 'w-full md:flex-1 hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full h-[60px] md:h-full flex flex-row items-center justify-between px-4 md:pl-8 pr-2 border md:border-none border-gray-100 bg-white/50 md:bg-transparent'}
+                        ${activeTab === 'guests' && !isSticky ? 'bg-white shadow-lg scale-100 z-20 ring-1 ring-black/5' : ''}`
                     }
                 >
                     <div className={`${isSticky ? 'text-center' : ''}`}>
@@ -271,98 +272,146 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
             <AnimatePresence>
                 {activeTab && (
                     <>
-                        {/* Dropdown Card - Removed Backdrop as requested */}
+                        {/* Dropdown Card / Mobile Modal */}
                         <motion.div
                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
                             transition={{ duration: 0.2 }}
                             onClick={(e) => e.stopPropagation()}
-                            className={`absolute left-0 z-[100] bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] p-6 md:p-8 border border-gray-100
+                            className={`
+                                z-[100] bg-white border-gray-100 overflow-hidden
+                                fixed inset-0 top-0 left-0 right-0 bottom-0 h-full w-full flex flex-col  /* Mobile: Full Screen Fixed */
+                                md:absolute md:inset-auto md:h-auto md:w-auto md:flex-col md:rounded-3xl md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] md:p-8 md:border /* Desktop: Dropdown */
                                 ${isSticky
-                                    ? 'top-full mt-2 w-full origin-top' // Always below, with slight margin
-                                    : 'top-full mt-4 w-full origin-top'}` // More margin for Hero to clear shadow
+                                    ? 'md:top-full md:mt-2 md:w-full md:origin-top'
+                                    : 'md:top-full md:mt-4 md:w-full md:origin-top'}`
                             }
                         >
-                            {activeTab === 'location' && (
-                                <div>
-                                    <h3 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-wider">
-                                        {suggestions.length > 0 ? 'Matching Destinations' : 'Popular Destinations'}
-                                    </h3>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {suggestions.length > 0 ? (
-                                            suggestions.map(s => (
-                                                <div
-                                                    key={s.id}
-                                                    onClick={() => {
-                                                        setLocation(s.label);
-                                                        if (onSearch) onSearch({ ...getFilters(s.label), }, false); // Live update, no scroll
-                                                        setActiveTab('dates');
-                                                    }}
-                                                    className="flex items-center gap-4 cursor-pointer hover:bg-gray-50 p-3 rounded-xl transition group"
-                                                >
-                                                    <div className="bg-gray-100 group-hover:bg-white border border-transparent group-hover:border-gray-200 p-3 rounded-xl transition text-gray-500"><FaMapMarkerAlt /></div>
-                                                    <div>
-                                                        <div className="text-gray-900 font-bold">{s.label}</div>
-                                                        <div className="text-xs text-gray-500">{s.subLabel}</div>
+                            {/* MOBILE HEADER (Visible only on small screens) */}
+                            <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 bg-white sticky top-0 z-10">
+                                <h3 className="text-lg font-bold text-gray-900">
+                                    {activeTab === 'location' ? 'Where to?' : activeTab === 'dates' ? 'Select Dates' : 'Who is coming?'}
+                                </h3>
+                                <button
+                                    onClick={() => setActiveTab(null)}
+                                    className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition"
+                                >
+                                    <FaMinus className="transform rotate-45 text-gray-500" />
+                                </button>
+                            </div>
+
+                            {/* CONTENT SCROLLABLE AREA */}
+                            <div className="flex-1 overflow-y-auto p-4 md:p-0">
+                                {activeTab === 'location' && (
+                                    <div>
+                                        <h3 className="hidden md:block text-xs font-bold text-gray-400 mb-4 uppercase tracking-wider">
+                                            {suggestions.length > 0 ? 'Matching Destinations' : 'Popular Destinations'}
+                                        </h3>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {suggestions.length > 0 ? (
+                                                suggestions.map(s => (
+                                                    <div
+                                                        key={s.id}
+                                                        onClick={() => {
+                                                            setLocation(s.label);
+                                                            if (onSearch) onSearch({ ...getFilters(s.label), }, false); // Live update, no scroll
+                                                            setActiveTab('dates');
+                                                        }}
+                                                        className="flex items-center gap-4 cursor-pointer hover:bg-gray-50 p-4 md:p-3 rounded-xl transition group border border-gray-100 md:border-transparent mb-2 md:mb-0"
+                                                    >
+                                                        <div className="bg-gray-100 group-hover:bg-white border border-transparent group-hover:border-gray-200 p-3 rounded-xl transition text-gray-500"><FaMapMarkerAlt /></div>
+                                                        <div>
+                                                            <div className="text-gray-900 font-bold">{s.label}</div>
+                                                            <div className="text-xs text-gray-500">{s.subLabel}</div>
+                                                        </div>
                                                     </div>
+                                                ))
+                                            ) : (
+                                                <div className="p-4 text-center text-gray-400 text-sm bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                                    Type at least 3 characters to search...
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <div className="p-4 text-center text-gray-400 text-sm bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                                Type at least 3 characters to search...
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'dates' && (
-                                <div className="flex justify-center">
-                                    <style>{`
-                                        .rdp { --rdp-cell-size: 44px; --rdp-accent-color: #000; --rdp-background-color: #f3f4f6; margin: 0; }
-                                        .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f3f4f6; }
-                                        .rdp-day_selected { background-color: #000 !important; color: white !important; font-weight: bold; }
-                                        .rdp-caption_label { font-size: 1.1rem; font-weight: 700; color: #1f2937; }
-                                    `}</style>
-                                    <DayPicker
-                                        mode="range"
-                                        selected={dateRange}
-                                        onDayClick={(day) => handleDateSelect(day)}
-                                        disabled={{ before: new Date() }}
-                                        numberOfMonths={2}
-                                    />
-                                </div>
-                            )}
-
-                            {activeTab === 'guests' && (
-                                <div className="space-y-6">
-                                    {['adults', 'children', 'rooms'].map((type) => (
-                                        <div key={type} className="flex justify-between items-center pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-                                            <div>
-                                                <div className="capitalize font-bold text-gray-800 text-base">{type}</div>
-                                                <div className="text-xs text-gray-400">{type === 'adults' ? 'Ages 13 or above' : type === 'children' ? 'Ages 2-12' : 'Number of rooms'}</div>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <button
-                                                    onClick={() => updateGuest(type, -1)}
-                                                    disabled={guests[type] <= 0}
-                                                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition disabled:opacity-30 disabled:hover:border-gray-200 disabled:hover:bg-transparent"
-                                                >
-                                                    <FaMinus size={12} />
-                                                </button>
-                                                <span className="w-6 text-center font-bold text-lg">{guests[type]}</span>
-                                                <button
-                                                    onClick={() => updateGuest(type, 1)}
-                                                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition"
-                                                >
-                                                    <FaPlus size={12} />
-                                                </button>
-                                            </div>
+                                            )}
                                         </div>
-                                    ))}
-                                </div>
-                            )}
+                                    </div>
+                                )}
+
+                                {activeTab === 'dates' && (
+                                    <div className="flex justify-center h-full items-start md:items-center">
+                                        <style>{`
+                                            .rdp { --rdp-cell-size: 44px; --rdp-accent-color: #000; --rdp-background-color: #f3f4f6; margin: 0; width: 100%; }
+                                            .rdp-months { justify-content: center; }
+                                            .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f3f4f6; }
+                                            .rdp-day_selected { background-color: #000 !important; color: white !important; font-weight: bold; }
+                                            .rdp-caption_label { font-size: 1.1rem; font-weight: 700; color: #1f2937; }
+                                            @media (max-width: 768px) {
+                                                .rdp-month { width: 100%; }
+                                                .rdp-table { width: 100%; max-width: 100%; }
+                                                .rdp-cell { height: 50px; width: 14%; } /* Bigger touch targets */
+                                            }
+                                        `}</style>
+                                        <DayPicker
+                                            mode="range"
+                                            selected={dateRange}
+                                            onDayClick={(day) => handleDateSelect(day)}
+                                            disabled={{ before: new Date() }}
+                                            numberOfMonths={window.innerWidth < 768 ? 12 : 2} // Vertical scroll on mobile
+                                            pagedNavigation={window.innerWidth >= 768} // Paged on desktop only
+                                        />
+                                    </div>
+                                )}
+
+                                {activeTab === 'guests' && (
+                                    <div className="space-y-6 pt-4 md:pt-0">
+                                        {['adults', 'children', 'rooms'].map((type) => (
+                                            <div key={type} className="flex justify-between items-center pb-6 md:pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+                                                <div>
+                                                    <div className="capitalize font-bold text-gray-800 text-lg md:text-base">{type}</div>
+                                                    <div className="text-sm md:text-xs text-gray-400">{type === 'adults' ? 'Ages 13 or above' : type === 'children' ? 'Ages 2-12' : 'Number of rooms'}</div>
+                                                </div>
+                                                <div className="flex items-center gap-6 md:gap-4">
+                                                    <button
+                                                        onClick={() => updateGuest(type, -1)}
+                                                        disabled={guests[type] <= 0}
+                                                        className="w-12 h-12 md:w-10 md:h-10 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition disabled:opacity-30 disabled:hover:border-gray-200 disabled:hover:bg-transparent"
+                                                    >
+                                                        <FaMinus size={12} />
+                                                    </button>
+                                                    <span className="w-6 text-center font-bold text-xl md:text-lg">{guests[type]}</span>
+                                                    <button
+                                                        onClick={() => updateGuest(type, 1)}
+                                                        className="w-12 h-12 md:w-10 md:h-10 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition"
+                                                    >
+                                                        <FaPlus size={12} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* MOBILE ACTION FOOTER */}
+                            <div className="md:hidden p-4 border-t border-gray-100 bg-white sticky bottom-0 z-10 flex justify-between items-center bg-white/95 backdrop-blur-sm">
+                                <button
+                                    onClick={() => {
+                                        setSuggestions([]);
+                                        setDateRange({ from: undefined, to: undefined });
+                                        // Reset guests logic if needed
+                                    }}
+                                    className="text-sm font-semibold text-gray-500 underline"
+                                >
+                                    Clear all
+                                </button>
+                                <button
+                                    onClick={handleSearchClick}
+                                    className="bg-black text-white px-8 py-3 rounded-xl font-bold text-base shadow-lg active:scale-95 transition-transform flex items-center gap-2"
+                                >
+                                    <FaSearch size={12} />
+                                    Search
+                                </button>
+                            </div>
+
                         </motion.div>
                     </>
                 )}

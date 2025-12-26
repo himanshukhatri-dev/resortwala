@@ -227,7 +227,7 @@ export default function Home() {
     return (
         <div className="pb-20" ref={containerRef}>
             {/* 1. IMMERSIVE HERO */}
-            <div className="relative min-h-[200px] md:min-h-[250px] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-20 pb-8 md:pt-24 md:pb-10">
+            <div className="relative min-h-[85vh] md:min-h-[90vh] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-32 pb-12 md:pt-40 md:pb-20">
                 {/* Dynamic Background Carousel */}
                 <div className="absolute inset-0 overflow-hidden">
                     <AnimatePresence mode='popLayout'>
@@ -242,18 +242,18 @@ export default function Home() {
                             className="absolute inset-0 w-full h-full object-cover"
                         />
                     </AnimatePresence>
-                    <div className="absolute inset-0 bg-black/30" /> {/* Slightly darker overlay for better text contrast */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-black/20" />
+                    <div className="absolute inset-0 bg-black/50" /> {/* Darker overlay for better text contrast */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-black/40" />
                 </div>
 
                 {/* Content */}
                 <div className="relative z-30 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
-                    <h1 className="text-xl md:text-3xl font-bold text-white mb-1 md:mb-2 drop-shadow-2xl font-serif italic tracking-wide leading-tight text-center">
+                    <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 md:mb-6 drop-shadow-2xl font-serif italic tracking-wide leading-tight text-center">
                         Find your peace in <br className="hidden md:block" />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-0.5">paradise</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-2">paradise</span>
                     </h1>
 
-                    <p className="text-white/90 text-xs md:text-sm mb-2 md:mb-4 max-w-xl text-center font-light drop-shadow-lg px-2">
+                    <p className="text-white/95 text-lg md:text-xl mb-6 md:mb-8 max-w-2xl text-center font-light drop-shadow-lg px-2 leading-relaxed">
                         Discover luxury villas, water parks, and hidden gems across India.
                     </p>
 
@@ -261,7 +261,7 @@ export default function Home() {
                     <div className="mb-2"></div>
 
                     {/* SEARCH BAR - Integrated into Hero Flow */}
-                    <div className="w-full max-w-4xl h-auto scale-90 md:scale-100 origin-top">
+                    <div className="w-full max-w-4xl h-auto scale-100 md:scale-100 origin-top mt-4 md:mt-0">
                         <SearchBar
                             onSearch={handleSearch}
                             isSticky={false} // Disabled sticky behavior here as we use Bubble now

@@ -21,7 +21,8 @@
 param (
     [string]$ServerIP = "72.61.242.42",
     [string]$User = "root",
-    [string]$RemoteBasePath = "/var/www/html"
+    [string]$RemoteBasePath = "/var/www/html",
+    [switch]$AutoDeployAll = $false
 )
 
 # Configuration
@@ -193,7 +194,8 @@ function Deploy-Component {
                 "composer install --no-dev --optimize-autoloader --no-interaction && " +
                 "chown -R www-data:www-data storage bootstrap/cache vendor && " +
                 "chmod -R 775 storage bootstrap/cache && " +
-                "php artisan migrate --force"
+                "php artisan migrate --force && " +
+                "php artisan optimize:clear"
 
                 ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "$RemoteSetupCmd"
 
@@ -214,6 +216,16 @@ function Deploy-Component {
     # Cleanup local
     if (Test-Path $TarPath) { Remove-Item $TarPath -Force }
     if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force }
+}
+
+# Execution Logic
+if ($AutoDeployAll) {
+    Write-Host "Auto-Deploying ALL components..." -ForegroundColor Magenta
+    if (Build-ReactApp "Customer" $Paths.Customer) { Deploy-Component "Customer" $Paths.Customer }
+    if (Build-ReactApp "Admin" $Paths.Admin) { Deploy-Component "Admin" $Paths.Admin }
+    if (Build-Laravel "API" $Paths.API) { Deploy-Component "API" $Paths.API }
+    if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor }
+    exit
 }
 
 # Menu

@@ -207,14 +207,6 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* KPI GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <StatCard label="Platform Revenue" value={formatCurrency(stats?.total_revenue)} icon={<FaRupeeSign />} color="bg-blue-600" />
-                <StatCard label="Total Volume" value={stats?.total_bookings || '0'} icon={<FaCalendarCheck />} color="bg-indigo-600" />
-                <StatCard label="Retail Partners" value={stats?.approved_vendors || '0'} icon={<FaUsers />} color="bg-emerald-600" />
-                <StatCard label="Active Inventory" value={stats?.total_properties || '0'} icon={<FaHome />} color="bg-violet-600" />
-            </div>
-
             {/* ACTION CENTER */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
 
@@ -289,6 +281,14 @@ export default function Dashboard() {
                         </div>
                     )}
                 />
+            </div>
+
+            {/* KPI GRID */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <StatCard label="Platform Revenue" value={formatCurrency(stats?.total_revenue)} icon={<FaRupeeSign />} color="bg-blue-600" />
+                <StatCard label="Total Volume" value={stats?.total_bookings || '0'} icon={<FaCalendarCheck />} color="bg-indigo-600" />
+                <StatCard label="Retail Partners" value={stats?.approved_vendors || '0'} icon={<FaUsers />} color="bg-emerald-600" />
+                <StatCard label="Active Inventory" value={stats?.total_properties || '0'} icon={<FaHome />} color="bg-violet-600" />
             </div>
 
             {/* RECENT BOOKINGS */}

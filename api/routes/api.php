@@ -127,6 +127,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::post('/vendor/calendar/seed', [App\Http\Controllers\VendorCalendarController::class, 'seed']);
 
+// Admin Intelligence
+Route::prefix('admin/intelligence')->middleware(['auth:sanctum', 'verified'])->group(function () {
+    Route::get('/schema', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getSchema']);
+    Route::get('/data/{table}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getTableData']);
+    Route::put('/data/{table}/{id}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'updateTableData']);
+});
+
 // Admin Authentication Routes
 Route::post('/admin/login', [\App\Http\Controllers\AdminController::class, 'login']);
 

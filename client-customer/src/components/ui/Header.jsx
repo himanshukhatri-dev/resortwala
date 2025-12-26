@@ -38,9 +38,9 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
 
     return (
         <header
-            className={`fixed top-0 w-full z-50 transition-all duration-300 border-b ${scrolled || !isHomePage
-                ? 'bg-white border-gray-100 shadow-sm h-[80px]' // Revert to standard height, let contents fit
-                : 'bg-white border-transparent h-[80px]'
+            className={`fixed top-0 w-full z-50 transition-all duration-300 border-b pt-[env(safe-area-inset-top)] ${scrolled || !isHomePage
+                ? 'bg-white border-gray-100 shadow-sm h-[calc(80px+env(safe-area-inset-top))]' // Revert to standard height, let contents fit
+                : 'bg-white border-transparent h-[calc(80px+env(safe-area-inset-top))]'
                 }`}
         >
             <div className="container mx-auto px-4 h-full flex items-center justify-between">

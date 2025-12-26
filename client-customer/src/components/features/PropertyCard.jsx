@@ -215,7 +215,7 @@ export default function PropertyCard({ property, searchParams }) {
                 </div>
 
 
-                <div className="flex items-center justify-between border-t border-gray-50 pt-4 mt-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-t border-gray-50 pt-4 mt-auto gap-3 sm:gap-0">
                     <div className="flex items-center gap-3">
                         <div className="flex -space-x-2 overflow-hidden">
                             {[1, 2, 3].map(i => (
@@ -232,12 +232,12 @@ export default function PropertyCard({ property, searchParams }) {
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-2">
-                        <div className="text-right">
-                            <span className="text-2xl font-bold text-gray-900 font-sans">₹{price.toLocaleString()}</span>
+                    <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 w-full sm:w-auto">
+                        <div className="text-left sm:text-right">
+                            <span className="text-xl sm:text-2xl font-bold text-gray-900 font-sans">₹{price.toLocaleString()}</span>
                             <span className="text-[10px] font-normal text-gray-400 opacity-60 ml-0.5">/ night</span>
                         </div>
-                        <button className="px-6 py-3 bg-white border-2 border-gray-100 text-gray-900 rounded-xl font-bold text-sm hover:border-black hover:bg-black hover:text-white transition-all shadow-sm active:scale-95">
+                        <button className="flex-1 sm:flex-none px-6 py-3 bg-white border-2 border-gray-100 text-gray-900 rounded-xl font-bold text-sm hover:border-black hover:bg-black hover:text-white transition-all shadow-sm active:scale-95">
                             View Details
                         </button>
                     </div>
