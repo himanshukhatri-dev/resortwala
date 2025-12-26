@@ -32,7 +32,7 @@ export default function VendorLayout({ children, title }) {
     return (
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: 'var(--bg-color)' }}>
             {/* Mobile Header */}
-            <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-[998] px-4 py-2.5">
+            <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-[998] px-4 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))]">
                 <div className="flex items-center justify-between gap-3">
                     <img src="/vendor/resortwala-logo.png" alt="ResortWala" className="h-7 object-contain" />
 
@@ -122,7 +122,7 @@ export default function VendorLayout({ children, title }) {
                 flexDirection: 'column',
                 height: '100vh',
                 overflowY: 'auto'
-            }} className="content-area md:mt-0 mt-[56px]">
+            }} className="content-area md:mt-0 mt-[calc(56px+env(safe-area-inset-top))]">
                 <div style={{ padding: '30px' }} className="page-content">
                     {isApproved ? children : <AccountPending />}
                 </div>
