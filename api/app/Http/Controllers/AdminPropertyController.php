@@ -10,9 +10,9 @@ class AdminPropertyController extends Controller
     /**
      * Approve a property and verify admin pricing.
      */
-    public function approve(Request $request, $id)
+    public function approve(\App\Http\Requests\ApprovePropertyRequest $request, $id)
     {
-        try {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id) {
             $property = PropertyMaster::findOrFail($id);
 
             // Update basic fields if provided
@@ -43,7 +43,7 @@ class AdminPropertyController extends Controller
 
             // Apply other manual edits made by admin (filter out null values)
             foreach ($data as $key => $value) {
-                if ($value !== null && !empty($key)) {
+                if ($value !== null && !empty($key) && $key !== 'admin_pricing') {
                     $property->$key = $value;
                 }
             }
@@ -59,20 +59,7 @@ class AdminPropertyController extends Controller
                 'message' => 'Property approved and details updated successfully',
                 'property' => $property
             ]);
-            
-        } catch (\Exception $e) {
-            \Log::error('Property approval failed', [
-                'property_id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json([
-                'message' => 'Failed to approve property',
-                'error' => $e->getMessage(),
-                'details' => config('app.debug') ? $e->getTraceAsString() : 'Enable debug mode for details'
-            ], 500);
-        }
+        });
     }
 
     /**

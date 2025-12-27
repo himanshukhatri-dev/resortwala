@@ -43,7 +43,7 @@ class PropertyMaster extends Model
         'AvailabilityType', 'NoofBathRooms', 'NoofQueenBeds', 'Occupancy',
         'BookingSpecailMessage', 'PropertyOffersDetails', 'PropertyRules',
         'IsDeleted', 'PerCost', 'ResortWalaRate', 'PropertyStatus',
-        'IsVendorPropAvailable', 'IsPropertyUpdate', 'NoofRooms',
+        'IsVendorPropAvailable', 'IsPropertyUpdate', 'NoofRooms', 'MaxCapacity',
         'CheckinDate', 'CheckoutDate', 'Breakfast', 'Lunch', 'Dinner', 'HiTea',
         'checkInTime', 'checkOutTime', 'vendor_id', 'is_approved', 'share_token',
         'price_mon_thu', 'price_fri_sun', 'price_sat',
@@ -78,6 +78,8 @@ class PropertyMaster extends Model
         return $this->hasMany(\App\Models\Booking::class, 'PropertyId', 'PropertyId');
     }
 
-    // Since we have both legacy timestamps (CreatedOn) and Laravel timestamps (created_at),
-    // we can keep default timestamps enabled for future updates.
+    public function videos()
+    {
+        return $this->hasMany(\App\Models\PropertyVideo::class, 'property_id', 'PropertyId');
+    }
 }

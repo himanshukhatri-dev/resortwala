@@ -176,34 +176,58 @@ export default function PropertyApproval() {
     };
 
     const handlePriceChange = (day, type, field, value) => {
+        // Guard against negative numbers or invalid input
+        let num = parseFloat(value);
+        if (isNaN(num) || num < 0) num = 0;
+
         setPricing(prev => ({
             ...prev,
             [day]: {
                 ...prev[day],
                 [type]: {
                     ...prev[day][type],
-                    [field]: parseFloat(value) || 0
+                    [field]: num
                 }
             }
         }));
     };
 
     const handleApprove = async () => {
+        // Prevent double submission
+        if (saving) return;
+
         setSaving(true);
         try {
-            await axios.put(`${API_BASE_URL}/admin/properties/${id}/approve`, {
+            // Sanitize: Only send necessary update fields
+            const payload = {
                 admin_pricing: pricing,
-                ...Object.fromEntries(Object.entries(property).filter(([_, v]) => v != null))
-            }, {
+                Name: formData.Name,
+                Location: formData.Location,
+                LongDescription: formData.LongDescription,
+                Occupancy: formData.Occupancy,
+                NoofRooms: formData.NoofRooms,
+                checkInTime: formData.checkInTime,
+                checkOutTime: formData.checkOutTime,
+                PropertyRules: formData.PropertyRules,
+                BookingSpecailMessage: formData.BookingSpecailMessage
+            };
+
+            const res = await axios.put(`${API_BASE_URL}/admin/properties/${id}/approve`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+
+            if (res.data.property) {
+                setProperty(res.data.property);
+            }
+
             setShowSuccessModal(true);
             setTimeout(() => {
                 navigate('/properties');
             }, 2000);
         } catch (err) {
             console.error(err);
-            alert('Failed to approve property: ' + (err.response?.data?.error || err.message));
+            const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
+            alert('Approval Failed: ' + errorMsg);
         } finally {
             setSaving(false);
         }

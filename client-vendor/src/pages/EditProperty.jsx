@@ -71,19 +71,31 @@ const PROPERTY_RULES = [
 ];
 
 // --- REUSABLE COMPONENTS ---
-const InputField = ({ label, name, type = "text", placeholder, className, value, onChange }) => (
-    <div className={`space-y-1 ${className}`}>
-        <label className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">{label}</label>
-        <input
-            type={type}
-            name={name}
-            value={value !== undefined ? value : ''}
-            onChange={onChange}
-            min={type === 'number' ? 0 : undefined}
-            onKeyDown={type === 'number' ? (e) => ["-", "e", "E"].includes(e.key) && e.preventDefault() : undefined}
-            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-3 text-sm md:text-base text-gray-800 font-medium focus:bg-white focus:border-black focus:ring-1 focus:ring-black outline-none transition-all"
-            placeholder={placeholder}
-        />
+const InputField = ({ label, name, type = "text", placeholder, className, value, onChange, required }) => (
+    <div className={`space-y-1.5 group ${className}`}>
+        <label className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 group-focus-within:text-black transition-colors">
+            {label}
+            {required && (
+                <span className="text-red-500 animate-pulse inline-block" title="Required Field">*</span>
+            )}
+        </label>
+        <div className="relative">
+            <input
+                type={type}
+                name={name}
+                value={value !== undefined ? value : ''}
+                onChange={onChange}
+                min={type === 'number' ? 0 : undefined}
+                onKeyDown={type === 'number' ? (e) => ["-", "e", "E", "."].includes(e.key) && e.preventDefault() : undefined}
+                className={`w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-3 text-sm md:text-base text-gray-800 font-medium focus:bg-white focus:border-black focus:ring-2 focus:ring-black/5 outline-none transition-all peer ${required && !value ? 'border-orange-100' : ''}`}
+                placeholder={placeholder}
+            />
+            {required && !value && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 peer-focus:opacity-100 transition-opacity">
+                    <span className="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold border border-orange-100 uppercase tracking-tighter">Required</span>
+                </div>
+            )}
+        </div>
     </div>
 );
 
@@ -123,6 +135,7 @@ export default function EditProperty() {
     const { token } = useAuth();
     const { showSuccess, showError, showConfirm } = useModal();
     const fileInputRef = useRef(null);
+    const videoInputRef = useRef(null);
     const navigate = useNavigate();
     const [currentStep, setCurrentStep] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -168,10 +181,11 @@ export default function EditProperty() {
         ticketPrices: { adult: '', child: '', includesEntry: false, includesFood: false },
 
         foodOptions: { breakfast: 'Not Included', lunch: 'Not Included', hiTea: 'Not Included', dinner: 'Not Included' },
-        videoUrl: '', images: []
+        videoUrl: '', images: [], videos: []
     });
 
     const [existingImages, setExistingImages] = useState([]);
+    const [existingVideos, setExistingVideos] = useState([]);
     const [selectedImages, setSelectedImages] = useState([]);
 
     useEffect(() => {
@@ -280,9 +294,11 @@ export default function EditProperty() {
 
                     foodOptions,
                     videoUrl: p.video_url || '',
-                    images: []
+                    images: [],
+                    videos: []
                 });
                 setExistingImages(p.images || []);
+                setExistingVideos(p.videos || []);
                 setLoading(false);
             } catch (err) {
                 console.error("Property Load Error:", err.response || err);
@@ -324,23 +340,63 @@ export default function EditProperty() {
         });
     }, [formData.noofRooms, formData.propertyType]);
 
-    const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+
+        // --- REAL-TIME REGEX MASKING ---
+        // Alpha-only fields
+        if (['cityName', 'location', 'contactPerson', 'name', 'displayName'].includes(name)) {
+            const filtered = value.replace(/[^a-zA-Z\s]/g, '');
+            setFormData(prev => ({ ...prev, [name]: filtered }));
+            return;
+        }
+
+        // Numeric-only fields (Integers)
+        if (['maxCapacity', 'noofRooms', 'occupancy', 'priceMonThu', 'priceFriSun', 'priceSaturday', 'extraGuestPriceMonThu', 'extraGuestPriceFriSun', 'extraGuestPriceSaturday'].includes(name)) {
+            const filtered = value.replace(/[^0-9]/g, '');
+            setFormData(prev => ({ ...prev, [name]: filtered }));
+            return;
+        }
+
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
     // Normalize phone number: remove +91, leading 0, spaces, hyphens
     const normalizePhone = (phone) => {
-        let normalized = phone.replace(/[\s-]/g, ''); // Remove spaces and hyphens
+        let normalized = phone.replace(/[^\d+]/g, ''); // Keep only digits and +
         normalized = normalized.replace(/^\+91/, ''); // Remove +91 prefix
         normalized = normalized.replace(/^0/, ''); // Remove leading 0
         return normalized;
     };
 
     const handlePhoneChange = (e) => {
-        // Only allow digits, +, spaces, and hyphens
-        const value = e.target.value.replace(/[^0-9+\s-]/g, '');
+        // Allow +, spaces, hyphens, and digits
+        const value = e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 15);
         setFormData(prev => ({ ...prev, mobileNo: value }));
     };
 
-    const handleNestedChange = (section, key, value) => setFormData(prev => ({ ...prev, [section]: { ...prev[section], [key]: value } }));
+    const handleNestedChange = (section, key, value) => {
+        let filteredValue = value;
+
+        // Numeric restrictions for nested fields
+        if (typeof value === 'string') {
+            // Integer fields
+            if (['veg', 'nonVeg', 'jain', 'rate', 'price', 'adult', 'child', 'week', 'weekend', 'monFriPrice', 'satSunPrice', 'ageFrom', 'ageTo'].includes(key)) {
+                filteredValue = value.replace(/[^0-9]/g, '');
+            }
+            // Float fields (Height)
+            else if (['freeHeight', 'heightFrom', 'heightTo'].includes(key)) {
+                filteredValue = value.replace(/[^0-9.]/g, '');
+                // Allow only one decimal point
+                const parts = filteredValue.split('.');
+                if (parts.length > 2) {
+                    filteredValue = parts[0] + '.' + parts.slice(1).join('');
+                }
+            }
+        }
+
+        setFormData(prev => ({ ...prev, [section]: { ...prev[section], [key]: filteredValue } }));
+    };
 
     const handleAmenityChange = (key, type, value) => {
         setFormData(prev => ({
@@ -356,32 +412,70 @@ export default function EditProperty() {
         e.target.value = null; // Reset input
     };
 
+    const handleVideoUpload = (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        setFormData(prev => ({ ...prev, videos: [...prev.videos, ...files] }));
+        e.target.value = null; // Reset input
+    };
+
+    const handleDeleteVideo = async (idx) => {
+        const isConfirmed = await showConfirm('Remove Video', 'Remove this video from the selection?', 'Remove', 'Cancel');
+        if (isConfirmed) {
+            setFormData(prev => ({ ...prev, videos: prev.videos.filter((_, i) => i !== idx) }));
+        }
+    };
+
+    const handleDeleteExistingVideo = async (videoId) => {
+        const isConfirmed = await showConfirm('Delete Video', 'Permanently delete this video from the property?', 'Delete', 'Cancel');
+        if (isConfirmed) {
+            try {
+                const baseURL = import.meta.env.VITE_API_BASE_URL || '';
+                await axios.delete(`${baseURL}/vendor/properties/videos/${videoId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setExistingVideos(prev => prev.filter(v => (v.id || v.PropertyVideoId) !== videoId));
+                showSuccess('Video Deleted');
+            } catch (err) {
+                showError('Delete Failed', err.response?.data?.message || 'Failed to delete video');
+            }
+        }
+    };
+
     const handleSubmit = async () => {
-        setSaving(true);
-        setError('');
+        // Collect ALL errors across all steps
+        const allSteps = formData.propertyType === 'Villa' ? [0, 1, 2, 3, 4] : [0, 1, 2, 3];
+        let allErrors = [];
 
-        if (!formData.name || !formData.priceMonThu || !formData.mobileNo) {
-            showError('Missing Details', 'Please fill in required fields.');
-            setSaving(false);
-            return;
-        }
-
-        // Normalize and validate Mobile Number
-        const normalizedMobile = normalizePhone(formData.mobileNo);
-        if (!/^\d{10}$/.test(normalizedMobile)) {
-            showError('Invalid Mobile', 'Please enter a valid 10-digit mobile number.');
-            setSaving(false);
-            return;
-        }
+        allSteps.forEach(step => {
+            const { msgs } = validateStep(step);
+            if (msgs) allErrors = [...allErrors, ...msgs];
+        });
 
         const totalImages = (existingImages?.length || 0) + (formData.images?.length || 0);
         if (totalImages < 5) {
-            showError('Photos Required', 'Please maintain at least 5 photos for your property.');
-            setSaving(false);
+            allErrors.push('Please maintain at least 5 photos for your property.');
+        }
+
+        if (allErrors.length > 0) {
+            showError('Missing Details', (
+                <ul className="list-disc ml-5 text-left space-y-1">
+                    {allErrors.map((m, i) => <li key={i}>{m}</li>)}
+                </ul>
+            ));
             return;
         }
 
+        setSaving(true);
+        setError('');
+        const normalizedMobile = normalizePhone(formData.mobileNo);
+
         try {
+            // SYNC PRICE FOR WATERPARK
+            if (formData.propertyType === 'Waterpark' && formData.waterparkPrices?.adult?.week) {
+                formData.priceMonThu = formData.waterparkPrices.adult.week;
+            }
+
             const apiData = new FormData();
             apiData.append('Name', formData.name);
             apiData.append('ShortName', formData.displayName);
@@ -445,6 +539,11 @@ export default function EditProperty() {
                 formData.images.forEach((file) => apiData.append('images[]', file));
             }
 
+            // Append New Videos
+            if (formData.videos && formData.videos.length > 0) {
+                formData.videos.forEach((file) => apiData.append('videos[]', file));
+            }
+
             // Append existing image URLs (for deletion tracking or just to confirm they exist)
             // The backend should handle which images to keep/delete based on what's sent vs what's stored.
             // For simplicity, we'll send a list of existing image URLs that are still present.
@@ -497,8 +596,8 @@ export default function EditProperty() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InputField label="Property Name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Ex: Royal Palms" />
-                <InputField label="Display Name" name="displayName" value={formData.displayName} onChange={handleInputChange} placeholder="Ex: Royal Palms" />
+                <InputField label="Property Name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
+                <InputField label="Display Name" name="displayName" value={formData.displayName} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
                 <InputField label="City" name="cityName" value={formData.cityName} onChange={handleInputChange} placeholder="Ex: Lonavala" />
                 <InputField label="Nearest Station" name="location" value={formData.location} onChange={handleInputChange} placeholder="Ex: Lonavala Station" />
             </div>
@@ -517,7 +616,10 @@ export default function EditProperty() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <InputField label="Contact Person" name="contactPerson" value={formData.contactPerson} onChange={handleInputChange} />
                 <div className="space-y-1">
-                    <label className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">Mobile Number</label>
+                    <label className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 group-focus-within:text-black transition-colors">
+                        Mobile Number
+                        <span className="text-red-500 animate-pulse text-lg">*</span>
+                    </label>
                     <input
                         type="tel"
                         name="mobileNo"
@@ -525,7 +627,7 @@ export default function EditProperty() {
                         onChange={handlePhoneChange}
                         pattern="[0-9\\s\\-\\+]{10,}"
                         title="Please enter a valid 10-digit mobile number"
-                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-3 text-sm md:text-base text-gray-800 font-medium focus:bg-white focus:border-black focus:ring-1 focus:ring-black outline-none transition-all"
+                        className={`w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-3 text-sm md:text-base text-gray-800 font-medium focus:bg-white focus:border-black focus:ring-2 focus:ring-black/5 outline-none transition-all peer ${!formData.mobileNo ? 'border-orange-100' : ''}`}
                         placeholder="9876543210"
                         required
                     />
@@ -577,11 +679,13 @@ export default function EditProperty() {
                                     {getAmenityIcon(item.key)}
                                 </div>
                                 <div>
-                                    <p className="font-bold text-sm leading-tight">{item.label}</p>
+                                    <p className="font-bold text-sm leading-tight pr-2">{item.label}</p>
                                     {item.subtitle && <p className="text-[10px] text-gray-400">{item.subtitle}</p>}
                                 </div>
                             </div>
-                            {item.type === 'number' ? <Counter value={formData.amenities[item.key]} onChange={(val) => handleAmenityChange(item.key, 'number', val)} /> : <Toggle active={!!formData.amenities[item.key]} onChange={(val) => handleAmenityChange(item.key, 'bool', val)} />}
+                            <div className="flex-shrink-0">
+                                {item.type === 'number' ? <Counter value={formData.amenities[item.key]} onChange={(val) => handleAmenityChange(item.key, 'number', val)} /> : <Toggle active={!!formData.amenities[item.key]} onChange={(val) => handleAmenityChange(item.key, 'bool', val)} />}
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -855,14 +959,14 @@ export default function EditProperty() {
                     <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
                         <h3 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2"><FaUsers /> Capacity & Usage</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <InputField label="Standard Occupancy (Base)" name="occupancy" value={formData.occupancy} onChange={handleInputChange} placeholder="Ex: 10" type="number" className="bg-white" />
-                            <InputField label="Max Capacity (Total)" name="maxCapacity" value={formData.maxCapacity} onChange={handleInputChange} placeholder="Ex: 20" type="number" className="bg-white" />
+                            <InputField label="Standard Occupancy (Base)" name="occupancy" value={formData.occupancy} onChange={handleInputChange} placeholder="Ex: 10" type="number" className="bg-white" required />
+                            <InputField label="Max Capacity (Total)" name="maxCapacity" value={formData.maxCapacity} onChange={handleInputChange} placeholder="Ex: 20" type="number" className="bg-white" required />
                         </div>
                     </div>
 
                     <div className="border border-orange-100 p-6 rounded-2xl bg-orange-50">
                         <h4 className="flex items-center gap-2 mb-4 font-bold text-orange-800">
-                            <FaMoneyBillWave /> Base Pricing (Whole Villa/Unit)
+                            <FaMoneyBillWave /> Base Pricing
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <InputField label="Mon-Thu (Per Night)" name="priceMonThu" value={formData.priceMonThu} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
@@ -912,58 +1016,63 @@ export default function EditProperty() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div className="space-y-3">
                                 <h5 className="font-bold text-sm">Adult Tickets</h5>
-                                <InputField label="Mon-Fri Rate" name="priceMonThu" value={formData.priceMonThu} onChange={handleInputChange} placeholder="₹ 1000" className="bg-white" />
-                                <InputField label="Sat-Sun Rate" name="priceFriSun" value={formData.priceFriSun} onChange={handleInputChange} placeholder="₹ 1200" className="bg-white" />
+                                <InputField label="Mon-Fri Rate" name="priceMonThu" value={formData.priceMonThu} onChange={handleInputChange} placeholder="₹ 1000" className="bg-white" required />
+                                <InputField label="Sat-Sun Rate" name="priceFriSun" value={formData.priceFriSun} onChange={handleInputChange} placeholder="₹ 1200" className="bg-white" required />
                             </div>
                             <div className="space-y-3">
                                 <h5 className="font-bold text-sm">Child Tickets</h5>
-                                <InputField label="Mon-Fri Rate" name="childPriceMonFri" value={formData.childCriteria?.monFriPrice || ''} onChange={(e) => handleNestedChange('childCriteria', 'monFriPrice', e.target.value)} placeholder="₹ 800" className="bg-white" />
-                                <InputField label="Sat-Sun Rate" name="childPriceSatSun" value={formData.childCriteria?.satSunPrice || ''} onChange={(e) => handleNestedChange('childCriteria', 'satSunPrice', e.target.value)} placeholder="₹ 1000" className="bg-white" />
+                                <InputField label="Mon-Fri Rate" name="childPriceMonFri" value={formData.childCriteria?.monFriPrice || ''} onChange={(e) => handleNestedChange('childCriteria', 'monFriPrice', e.target.value)} placeholder="₹ 800" className="bg-white" required />
+                                <InputField label="Sat-Sun Rate" name="childPriceSatSun" value={formData.childCriteria?.satSunPrice || ''} onChange={(e) => handleNestedChange('childCriteria', 'satSunPrice', e.target.value)} placeholder="₹ 1000" className="bg-white" required />
                             </div>
                         </div>
                     </div>
 
-                    {/* Child Criteria & Policy */}
+                    {/* Child Criteria & Policy - Standard Waterpark Format */}
                     <div className="bg-white p-6 rounded-2xl border border-gray-200">
-                        <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><FaChild /> Child Criteria & Policy</h4>
+                        <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <FaChild className="text-blue-500" /> Child Pricing Policy
+                            <span className="text-red-500 animate-pulse">*</span>
+                        </h4>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {/* Free Tier */}
-                            <div>
-                                <h5 className="text-xs font-bold text-green-600 uppercase mb-3">FREE TIER (Below)</h5>
+                            <div className="bg-green-50/50 p-4 rounded-xl border border-green-100">
+                                <h5 className="text-[10px] font-bold text-green-600 uppercase mb-3 tracking-widest">FREE ENTRY (Infants)</h5>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-xs block text-gray-400">Height (FT)</label>
-                                        <input type="number" min="0" onKeyDown={(e) => ["-", "e", "E"].includes(e.key) && e.preventDefault()} value={formData.childCriteria?.freeHeight || ''} onChange={(e) => handleNestedChange('childCriteria', 'freeHeight', e.target.value)} className="w-full font-bold border-b border-gray-200 outline-none py-1" placeholder="3.0" />
+                                        <label className="text-[10px] block text-gray-400 uppercase font-bold mb-1">Max Height (FT)</label>
+                                        <input type="number" step="0.1" min="0" onKeyDown={(e) => ["-", "e", "E"].includes(e.key) && e.preventDefault()} value={formData.childCriteria?.freeHeight || ''} onChange={(e) => handleNestedChange('childCriteria', 'freeHeight', e.target.value)} className="w-full font-bold border-b-2 border-green-200 bg-transparent outline-none py-1 focus:border-green-500 transition-colors" placeholder="3.0" />
                                     </div>
                                     <div>
-                                        <label className="text-xs block text-gray-400">Age (Yrs)</label>
-                                        <input type="number" min="0" onKeyDown={(e) => ["-", "e", "E"].includes(e.key) && e.preventDefault()} value={formData.childCriteria?.freeAge || ''} onChange={(e) => handleNestedChange('childCriteria', 'freeAge', e.target.value)} className="w-full font-bold border-b border-gray-200 outline-none py-1" placeholder="5" />
+                                        <label className="text-[10px] block text-gray-400 uppercase font-bold mb-1">Max Age (Yrs)</label>
+                                        <input type="number" min="0" onKeyDown={(e) => ["-", "e", "E", "."].includes(e.key) && e.preventDefault()} value={formData.childCriteria?.freeAge || ''} onChange={(e) => handleNestedChange('childCriteria', 'freeAge', e.target.value)} className="w-full font-bold border-b-2 border-green-200 bg-transparent outline-none py-1 focus:border-green-500 transition-colors" placeholder="3" />
                                     </div>
                                 </div>
+                                <p className="text-[10px] text-green-600 mt-2 italic">Entry is free for guests below these limits.</p>
                             </div>
 
                             {/* Charge Tier */}
-                            <div>
-                                <h5 className="text-xs font-bold text-blue-600 uppercase mb-3">CHILD RATE APPLIES (Range)</h5>
+                            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                <h5 className="text-[10px] font-bold text-blue-600 uppercase mb-3 tracking-widest">CHILD RATE APPLICABLE</h5>
                                 <div className="grid grid-cols-2 gap-6">
                                     <div>
-                                        <label className="text-xs block text-gray-400 mb-1">Height (FT)</label>
+                                        <label className="text-[10px] block text-gray-400 uppercase font-bold mb-1">Height Range (FT)</label>
                                         <div className="flex items-center gap-2">
-                                            <input type="number" className="w-16 border rounded p-1 text-sm" placeholder="From" value={formData.childCriteria?.heightFrom || ''} onChange={(e) => handleNestedChange('childCriteria', 'heightFrom', e.target.value)} />
-                                            <span className="text-gray-400">-</span>
-                                            <input type="number" className="w-16 border rounded p-1 text-sm" placeholder="To" value={formData.childCriteria?.heightTo || ''} onChange={(e) => handleNestedChange('childCriteria', 'heightTo', e.target.value)} />
+                                            <input type="number" step="0.1" className="w-full border-b-2 border-blue-200 bg-transparent py-1 font-bold outline-none focus:border-blue-500" placeholder="3.0" value={formData.childCriteria?.heightFrom || ''} onChange={(e) => handleNestedChange('childCriteria', 'heightFrom', e.target.value)} />
+                                            <span className="text-gray-400">to</span>
+                                            <input type="number" step="0.1" className="w-full border-b-2 border-blue-200 bg-transparent py-1 font-bold outline-none focus:border-blue-500" placeholder="4.5" value={formData.childCriteria?.heightTo || ''} onChange={(e) => handleNestedChange('childCriteria', 'heightTo', e.target.value)} />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-xs block text-gray-400 mb-1">Age (Yrs)</label>
+                                        <label className="text-[10px] block text-gray-400 uppercase font-bold mb-1">Age Range (Yrs)</label>
                                         <div className="flex items-center gap-2">
-                                            <input type="number" className="w-16 border rounded p-1 text-sm" placeholder="From" value={formData.childCriteria?.ageFrom || ''} onChange={(e) => handleNestedChange('childCriteria', 'ageFrom', e.target.value)} />
-                                            <span className="text-gray-400">-</span>
-                                            <input type="number" className="w-16 border rounded p-1 text-sm" placeholder="To" value={formData.childCriteria?.ageTo || ''} onChange={(e) => handleNestedChange('childCriteria', 'ageTo', e.target.value)} />
+                                            <input type="number" className="w-full border-b-2 border-blue-200 bg-transparent py-1 font-bold outline-none focus:border-blue-500" onKeyDown={(e) => ["-", "e", "E", "."].includes(e.key) && e.preventDefault()} placeholder="3" value={formData.childCriteria?.ageFrom || ''} onChange={(e) => handleNestedChange('childCriteria', 'ageFrom', e.target.value)} />
+                                            <span className="text-gray-400">to</span>
+                                            <input type="number" className="w-full border-b-2 border-blue-200 bg-transparent py-1 font-bold outline-none focus:border-blue-500" onKeyDown={(e) => ["-", "e", "E", "."].includes(e.key) && e.preventDefault()} placeholder="12" value={formData.childCriteria?.ageTo || ''} onChange={(e) => handleNestedChange('childCriteria', 'ageTo', e.target.value)} />
                                         </div>
                                     </div>
                                 </div>
+                                <p className="text-[10px] text-blue-600 mt-2 italic">Standard adult rates apply above these limits.</p>
                             </div>
                         </div>
                     </div>
@@ -971,9 +1080,9 @@ export default function EditProperty() {
                     <div className="bg-white border p-6 rounded-2xl">
                         <h4 className="font-bold mb-4">Ticket Inclusions (Food)</h4>
                         <div className="space-y-4">
-                            {['Breakfast', 'Lunch', 'HiTea'].map(meal => (
+                            {['Breakfast', 'Lunch', 'Tea and coffee'].map(meal => (
                                 <div key={meal} className="flex items-center justify-between border-b pb-2 last:border-0 hover:bg-gray-50 p-2 rounded">
-                                    <span className="font-medium text-gray-700">{meal}</span>
+                                    <span className="font-medium text-gray-700">{meal === 'Tea and coffee' ? 'Tea & Coffee' : meal}</span>
                                     <div className="flex gap-2">
                                         {['Not Included', 'Veg', 'Non-Veg', 'Both'].map(opt => (
                                             <button
@@ -995,8 +1104,11 @@ export default function EditProperty() {
             }
 
             {/* Payment Methods - Moved to Bottom */}
-            <div className="border border-gray-200 p-6 rounded-2xl bg-white mt-8">
-                <h4 className="font-bold mb-4 flex items-center gap-2"><FaMoneyBillWave /> Accepted Payment Methods</h4>
+            <div className="border border-gray-200 p-6 rounded-2xl bg-white mt-8 group transition-colors">
+                <h4 className="font-bold mb-4 flex items-center gap-2 group-focus-within:text-black">
+                    <FaMoneyBillWave className="text-green-600" /> Accepted Payment Methods
+                    <span className="text-red-500 animate-pulse">*</span>
+                </h4>
                 <div className="flex gap-4 flex-wrap">
                     {['Cash', 'UPI', 'Debit', 'Credit'].map(method => (
                         <button
@@ -1016,7 +1128,10 @@ export default function EditProperty() {
             {
                 formData.propertyType === 'Waterpark' && (
                     <div className="mt-8">
-                        <h4 className="font-bold mb-4">What's Included? (Facilities)</h4>
+                        <h4 className="font-bold mb-4 flex items-center gap-2">
+                            What's Included? (Facilities)
+                            <span className="text-red-500 animate-pulse text-lg">*</span>
+                        </h4>
                         <div className="flex flex-wrap gap-3">
                             {INCLUSIONS.map(inc => (
                                 <button
@@ -1112,20 +1227,86 @@ export default function EditProperty() {
 
         return (
             <div className="space-y-6 animate-fade-in-up">
-                <div>
-                    <InputField
-                        label="Property Video URL (YouTube)"
-                        name="videoUrl"
-                        value={formData.videoUrl}
-                        onChange={handleInputChange}
-                        placeholder="https://www.youtube.com/watch?v=..."
-                    />
-                    {formData.videoUrl && !/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/.test(formData.videoUrl) && (
-                        <p className="text-red-500 text-xs mt-1">Please enter a valid YouTube URL (including Shorts).</p>
-                    )}
+                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                    <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><FaVideo className="text-red-500" /> Property Video</h4>
+                    <div className="space-y-4">
+                        <InputField
+                            label="YouTube URL (Optional)"
+                            name="videoUrl"
+                            value={formData.videoUrl}
+                            onChange={handleInputChange}
+                            placeholder="https://www.youtube.com/watch?v=..."
+                        />
+                        {formData.videoUrl && !/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/.test(formData.videoUrl) && (
+                            <p className="text-red-500 text-xs mt-1">Please enter a valid YouTube URL (including Shorts).</p>
+                        )}
+
+                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-white transition-colors cursor-pointer"
+                            onClick={() => videoInputRef.current?.click()}
+                        >
+                            <input
+                                type="file"
+                                accept="video/*"
+                                ref={videoInputRef}
+                                onChange={handleVideoUpload}
+                                className="hidden"
+                            />
+                            <FaVideo className="mx-auto text-3xl text-gray-400 mb-2" />
+                            <p className="text-sm font-bold text-gray-600">Upload New Video</p>
+                            <p className="text-xs text-gray-400">MP4, MOV up to 50MB</p>
+                        </div>
+
+                        {(existingVideos.length > 0 || formData.videos.length > 0) && (
+                            <div className="flex flex-wrap gap-4 mt-4">
+                                {existingVideos.map((video, idx) => (
+                                    <div key={`existing-${idx}`} className="relative w-32 h-32 bg-black rounded-lg overflow-hidden group border-2 border-blue-400">
+                                        <video src={video.video_url} className="w-full h-full object-cover" />
+                                        <div className="absolute top-1 right-1 bg-blue-500 text-white text-[8px] px-1 rounded">EXISTING</div>
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteExistingVideo(video.id || video.PropertyVideoId)}
+                                                className="bg-white text-red-500 p-1.5 rounded-full hover:scale-110 transition shadow-lg"
+                                            >
+                                                <FaTimes size={12} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {formData.videos.map((file, idx) => (
+                                    <div key={`new-${idx}`} className="relative w-32 h-32 bg-black rounded-lg overflow-hidden group">
+                                        <video src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
+                                        <div className="absolute top-1 right-1 bg-green-500 text-white text-[8px] px-1 rounded">NEW</div>
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteVideo(idx)}
+                                                className="bg-white text-red-500 p-1.5 rounded-full hover:scale-110 transition shadow-lg"
+                                            >
+                                                <FaTimes size={12} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div>
+                <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-bold text-blue-900 flex items-center gap-2"><FaCamera className="text-blue-500" /> Property Photos (Min 5)</h4>
+                        {selectedImages.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={handleBulkDelete}
+                                className="text-xs bg-red-100 text-red-600 px-3 py-1.5 rounded-lg font-bold hover:bg-red-200 transition"
+                            >
+                                Delete Selected ({selectedImages.length})
+                            </button>
+                        )}
+                    </div>
+
                     <input
                         type="file"
                         multiple
@@ -1141,71 +1322,52 @@ export default function EditProperty() {
                             e.stopPropagation();
                             fileInputRef.current?.click();
                         }}
-                        className="border-3 border-dashed border-gray-200 rounded-3xl p-12 text-center hover:bg-gray-50 transition-colors cursor-pointer relative group"
+                        className="border-3 border-dashed border-blue-200 rounded-3xl p-12 text-center hover:bg-white transition-colors cursor-pointer relative group"
                     >
                         <div className="flex flex-col items-center gap-4 transition-transform group-hover:scale-110 duration-300">
-                            <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center text-3xl mb-2">
+                            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl mb-2">
                                 <FaCamera />
                             </div>
                             <div>
-                                <p className="font-bold text-xl text-gray-800">Add property photos</p>
-                                <p className="text-gray-400">Click to browse or drop files</p>
+                                <p className="font-bold text-xl text-gray-800">Add Property Photos</p>
+                                <p className="text-gray-400">Click to browse or drop photos</p>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {existingImages.length > 0 && (
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-end">
-                            <h4 className="font-bold text-sm text-gray-500">Current Photos</h4>
-                            {selectedImages.length > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={handleBulkDelete}
-                                    className="text-red-600 text-xs font-bold hover:bg-red-50 px-3 py-1 rounded-lg transition-colors border border-red-100"
-                                >
-                                    Delete {selectedImages.length} Selected
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {(existingImages.length > 0 || formData.images.length > 0) && (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                             {existingImages.map((img) => (
                                 <div
                                     key={img.id}
-                                    className={`relative group rounded-xl overflow-hidden aspect-square shadow-md cursor-pointer transition-all ${selectedImages.includes(img.id) ? 'ring-4 ring-red-500 scale-95 opacity-75' :
-                                        img.is_primary ? 'ring-2 ring-yellow-400' : 'hover:shadow-lg'
-                                        }`}
-                                    onClick={() => {
-                                        if (selectedImages.includes(img.id)) {
-                                            setSelectedImages(prev => prev.filter(id => id !== img.id));
-                                        } else {
-                                            setSelectedImages(prev => [...prev, img.id]);
-                                        }
-                                    }}
+                                    onClick={() => setSelectedImages(prev => prev.includes(img.id) ? prev.filter(x => x !== img.id) : [...prev, img.id])}
+                                    className={`relative group rounded-xl overflow-hidden aspect-square shadow-md cursor-pointer border-2 ${selectedImages.includes(img.id) ? 'border-blue-500 ring-2 ring-blue-200' : 'border-transparent'} ${img.is_primary ? 'ring-4 ring-yellow-400 bg-yellow-400' : 'bg-white'}`}
                                 >
-                                    <img src={img.image_url} alt="Existing" className="w-full h-full object-cover" />
+                                    <img src={img.image_url} alt="Property" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
 
-                                    {/* Selection Checkbox (Visible on Hover or Selected) */}
-                                    <div className={`absolute top-2 right-2 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all z-10 ${selectedImages.includes(img.id) ? 'bg-red-500 border-red-500 text-white' : 'bg-white/80 border-gray-300 opacity-0 group-hover:opacity-100'}`}>
-                                        {selectedImages.includes(img.id) && <FaCheck size={10} />}
-                                    </div>
-
-                                    {/* Overlay Actions (Hidden if selecting) */}
-                                    {!selectedImages.includes(img.id) && (
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2" onClick={e => e.stopPropagation()}>
-                                            <button
-                                                type="button"
-                                                title="Set as Main Photo"
-                                                onClick={(e) => handleSetPrimary(img.id, e)}
-                                                className={`p-2 rounded-full shadow-lg transition-all ${img.is_primary ? 'bg-yellow-400 text-white' : 'bg-white text-gray-400 hover:text-yellow-400'}`}
-                                            >
-                                                <FaStar />
-                                            </button>
+                                    {selectedImages.includes(img.id) && (
+                                        <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-1 shadow-lg">
+                                            <FaCheck size={10} />
                                         </div>
                                     )}
 
+                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleSetPrimary(img.id, e)}
+                                            className={`p-2 rounded-full shadow-lg transition-all ${img.is_primary ? 'bg-yellow-400 text-white' : 'bg-white text-gray-400 hover:text-yellow-400'}`}
+                                        >
+                                            <FaStar />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleDeleteExisting(img.id, e)}
+                                            className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
+                                        >
+                                            <FaTimes />
+                                        </button>
+                                    </div>
                                     {img.is_primary && (
                                         <div className="absolute top-2 left-2 bg-yellow-400 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
                                             MAIN
@@ -1213,90 +1375,114 @@ export default function EditProperty() {
                                     )}
                                 </div>
                             ))}
-                        </div>
-                    </div>
-                )}
 
-                {/* New Images */}
-                {
-                    formData.images.length > 0 && (
-                        <div className="space-y-2 mt-4">
-                            <h4 className="font-bold text-sm text-gray-500">New Photos (Pending Save)</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {formData.images.map((file, idx) => (
-                                    <div key={idx} className="relative group rounded-xl overflow-hidden aspect-square shadow-md">
-                                        <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteNewImage(idx)}
-                                                className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
-                                            >
-                                                <FaTimes />
-                                            </button>
-                                        </div>
+                            {formData.images.map((file, idx) => (
+                                <div key={`new-${idx}`} className="relative group rounded-xl overflow-hidden aspect-square shadow-md bg-white">
+                                    <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
+                                    <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                                        NEW
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteNewImage(idx)}
+                                            className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
+                                        >
+                                            <FaTimes />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    )
-                }
-            </div >
+                    )}
+                </div>
+            </div>
         );
     };
 
     // --- VALIDATION AND NAVIGATION ---
     const validateStep = (step) => {
+        const isVilla = formData.propertyType === 'Villa';
+        const errors = [];
+
         // Step 0: Basic Info
         if (step === 0) {
-            if (!formData.name) return { valid: false, msg: 'Property Name is required.' };
-            if (!formData.propertyType) return { valid: false, msg: 'Property Type is required.' };
-            if (!formData.location) return { valid: false, msg: 'Location (Nearest Station) is required.' };
-            if (!formData.cityName) return { valid: false, msg: 'City Name is required.' };
-            if (!formData.address) return { valid: false, msg: 'Full Address is required.' };
-            if (!formData.mobileNo) return { valid: false, msg: 'Mobile Number is required.' };
-            if (!/^\d{10}$/.test(formData.mobileNo)) return { valid: false, msg: 'Invalid Mobile Number (10 digits required).' };
+            if (!formData.name?.trim()) errors.push('Property Name is required.');
+            if (!formData.propertyType) errors.push('Property Type is required.');
+            if (!formData.location?.trim()) errors.push('Nearest Station is required.');
+            if (!formData.cityName?.trim()) errors.push('City Name is required.');
+            if (!formData.address?.trim()) errors.push('Full Address is required.');
+            if (!formData.contactPerson?.trim()) errors.push('Contact Person is required.');
+            if (!formData.mobileNo) errors.push('Mobile Number is required.');
+            if (formData.mobileNo) {
+                const normalized = normalizePhone(formData.mobileNo);
+                if (normalized.length !== 10) {
+                    errors.push('Mobile Number must be 10 digits.');
+                }
+            }
         }
 
-        const isVilla = formData.propertyType === 'Villa';
-
-        // Step 2 Villa: Room Config
+        // Room Config Check (Step 2)
         if (isVilla && step === 2) {
             const rooms = parseInt(formData.noofRooms || 0);
-            if (rooms < 1) return { valid: false, msg: 'Please enter number of rooms.' };
+            if (rooms < 1) errors.push('Please enter number of rooms.');
         }
 
-        // Pricing & Capacity Check (Villa: Step 4 / Waterpark: Step 3)
+        // Policies Step (Villa: 3 / Waterpark: 2)
+        const policiesStep = isVilla ? 3 : 2;
+        if (step === policiesStep) {
+            // Mandate at least one ID proof
+            if (!formData.idProofs || formData.idProofs.length === 0) {
+                errors.push('Please select at least one accepted ID proof.');
+            }
+        }
+
+        // Pricing & Capacity Check (Villa: 4 / Waterpark: 3)
         const pricingStep = isVilla ? 4 : 3;
         if (step === pricingStep) {
             if (isVilla) {
-                if (!formData.priceMonThu) return { valid: false, msg: 'Mon-Thu Price is required.' };
-                if (!formData.priceFriSun) return { valid: false, msg: 'Fri-Sun Price is required.' };
-                if (!formData.priceSaturday) return { valid: false, msg: 'Saturday Price is required.' };
+                if (!formData.priceMonThu) errors.push('Mon-Thu Price is required.');
+                if (!formData.priceFriSun) errors.push('Fri-Sun Price is required.');
+                if (!formData.priceSaturday) errors.push('Saturday Price is required.');
+
+                // Extra Person Pricing
+                if (!formData.extraGuestPriceMonThu) errors.push('Extra Person Mon-Thu Rate is required.');
+                if (!formData.extraGuestPriceFriSun) errors.push('Extra Person Fri-Sun Rate is required.');
+                if (!formData.extraGuestPriceSaturday) errors.push('Extra Person Saturday Rate is required.');
 
                 // Capacity Validation
-                if (!formData.occupancy) return { valid: false, msg: 'Standard Occupancy is required.' };
-                if (!Number.isInteger(Number(formData.occupancy))) return { valid: false, msg: 'Standard Occupancy must be a whole number.' };
-
-                if (!formData.maxCapacity) return { valid: false, msg: 'Max Capacity is required.' };
-                if (!Number.isInteger(Number(formData.maxCapacity))) return { valid: false, msg: 'Max Capacity must be a whole number.' };
-
-                if (Number(formData.maxCapacity) < Number(formData.occupancy)) return { valid: false, msg: 'Max Capacity cannot be less than Standard Occupancy.' };
+                if (!formData.occupancy) errors.push('Standard Occupancy is required.');
+                if (!formData.maxCapacity) errors.push('Max Capacity is required.');
+                if (formData.occupancy && formData.maxCapacity && parseInt(formData.maxCapacity) < parseInt(formData.occupancy)) {
+                    errors.push('Max Capacity cannot be less than Standard Occupancy.');
+                }
 
             } else {
                 // Waterpark Validation
-                if (!formData.priceMonThu) return { valid: false, msg: 'Adult Mon-Fri Price is required.' };
-                if (!formData.priceFriSun) return { valid: false, msg: 'Adult Sat-Sun Price is required.' };
-                if (!formData.childCriteria?.monFriPrice) return { valid: false, msg: 'Child Mon-Fri Price is required.' };
+                if (!formData.priceMonThu) errors.push('Adult Mon-Fri Price is required.');
+                if (!formData.priceFriSun) errors.push('Adult Sat-Sun Price is required.');
+                if (!formData.childCriteria?.monFriPrice) errors.push('Child Mon-Fri Price is required.');
+
+                // Facilities Check for Waterpark
+                const hasFacility = INCLUSIONS.some(inc => formData.inclusions?.[inc]);
+                if (!hasFacility) errors.push('Please select at least one facility (What\'s Included).');
             }
+
+            // Payment Methods Check
+            const hasPayment = Object.values(formData.paymentMethods || {}).some(v => v === true);
+            if (!hasPayment) errors.push('Please select at least one Accepted Payment Method.');
         }
-        return { valid: true };
+        return { valid: errors.length === 0, msgs: errors };
     };
 
     const handleNext = () => {
-        const { valid, msg } = validateStep(currentStep);
+        const { valid, msgs } = validateStep(currentStep);
         if (!valid) {
-            showError('Missing Details', msg);
+            showError('Missing Details', (
+                <ul className="list-disc ml-5 text-left space-y-1">
+                    {msgs.map((m, i) => <li key={i}>{m}</li>)}
+                </ul>
+            ));
             return;
         }
         setCurrentStep(prev => prev + 1);
