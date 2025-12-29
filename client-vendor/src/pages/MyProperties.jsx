@@ -128,6 +128,12 @@ export default function MyProperties() {
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
 
                                 <div className="absolute top-3 right-3 flex gap-2">
+                                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-sm ${property.PropertyType === 'Waterpark'
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-purple-500 text-white'
+                                        }`}>
+                                        {property.PropertyType || 'Villa'}
+                                    </span>
                                     <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-white shadow-sm ${property.is_approved ? 'bg-green-500' : 'bg-yellow-500'}`}>
                                         {property.is_approved ? 'Active' : 'Pending'}
                                     </span>

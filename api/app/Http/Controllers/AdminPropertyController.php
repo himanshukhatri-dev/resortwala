@@ -106,7 +106,7 @@ class AdminPropertyController extends Controller
      */
     public function show($id)
     {
-        $property = PropertyMaster::with(['images', 'vendor'])->findOrFail($id);
+        $property = PropertyMaster::with(['images', 'videos', 'vendor'])->findOrFail($id);
         // Attach checking for pending changes?
         // Let's load it as a relationship if possible, or manual query
         $pendingChanges = \App\Models\PropertyEditRequest::where('property_id', $id)

@@ -11,6 +11,7 @@ import {
 } from 'react-icons/fa';
 import { MdPool, MdWater, MdOutlineDeck, MdChildCare, MdWaterfallChart, MdMusicNote, MdBalcony, MdSportsEsports, MdRestaurant, MdOutlineOutdoorGrill } from 'react-icons/md';
 import { STEPS_VILLA, STEPS_WATERPARK, AMENITY_TYPES } from '../constants/propertyConstants';
+import { API_BASE_URL } from '../config';
 
 const INCLUSIONS = [
     "Waterpark Entry", "All Slides & Pool", "Breakfast",
@@ -205,16 +206,16 @@ export default function AddProperty() {
         const { name, value } = e.target;
 
         // --- REAL-TIME REGEX MASKING ---
-        // Location/City fields (allow letters, numbers, spaces, dots, commas, hyphens)
+        // Location/City fields (allow letters, spaces, dots, commas, hyphens - NO NUMBERS)
         if (['cityName', 'location'].includes(name)) {
-            const filtered = value.replace(/[^a-zA-Z0-9\s.,-]/g, '');
+            const filtered = value.replace(/[^a-zA-Z\s.,-]/g, '');
             setFormData(prev => ({ ...prev, [name]: filtered }));
             return;
         }
 
-        // Name/Contact fields (allow letters, spaces, dots, commas)
+        // Name/Contact fields (allow letters, numbers, spaces, dots, commas)
         if (['contactPerson', 'name', 'displayName'].includes(name)) {
-            const filtered = value.replace(/[^a-zA-Z\s.,]/g, '');
+            const filtered = value.replace(/[^a-zA-Z0-9\s.,]/g, '');
             setFormData(prev => ({ ...prev, [name]: filtered }));
             return;
         }
@@ -276,7 +277,7 @@ export default function AddProperty() {
             const newRooms = [...prev.roomConfig.bedrooms];
             // If growing
             for (let i = newRooms.length; i < count; i++) {
-                newRooms.push({ id: i + 1, bedType: 'Queen', ac: false, bathroom: true, toiletType: 'Western', balcony: false });
+                newRooms.push({ id: i + 1, bedType: 'Queen', ac: false, tv: false, geyser: false, bathroom: true, toiletType: 'Western', balcony: false });
             }
             // If shrinking
             if (newRooms.length > count) {
@@ -427,7 +428,8 @@ export default function AddProperty() {
             // Handle Video Files
             formData.videos.forEach((file) => apiData.append('videos[]', file));
 
-            const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+            const baseURL = API_BASE_URL;
             await axios.post(`${baseURL}/vendor/properties`, apiData, {
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
             });
@@ -798,48 +800,101 @@ export default function AddProperty() {
                     </div>
 
                     {formData.roomConfig.bedrooms.map((room, idx) => (
-                        <div key={idx} className="bg-gray-50 rounded-2xl p-6 border border-gray-200 relative">
-                            <div className="absolute top-4 left-4 bg-gray-900 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">{idx + 1}</div>
-                            <div className="ml-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Bed Type</label>
-                                    <select className="w-full p-2 rounded border text-sm" value={room.bedType} onChange={(e) => updateRoom(idx, 'bedType', e.target.value)}>
-                                        <option value="King">King Size</option>
-                                        <option value="Queen">Queen Size</option>
-                                        <option value="Double">Double Bed</option>
-                                        <option value="Single">Single Bed</option>
+                        <div key={idx} className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border-2 border-gray-200 hover:border-blue-300 transition-all shadow-sm hover:shadow-md relative group">
+                            {/* Bedroom Number Badge */}
+                            <div className="absolute -top-3 -left-3 bg-gradient-to-br from-blue-600 to-purple-600 text-white w-10 h-10 flex items-center justify-center rounded-full font-bold text-lg shadow-lg ring-4 ring-white">
+                                {idx + 1}
+                            </div>
+
+                            {/* Delete Button */}
+                            {formData.roomConfig.bedrooms.length > 1 && (
+                                <button
+                                    type="button"
+                                    onClick={() => removeBedroom(idx)}
+                                    className="absolute -top-3 -right-3 bg-red-500 hover:bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    ×
+                                </button>
+                            )}
+
+                            <div className="space-y-6 mt-2">
+                                {/* Bed Type Selection */}
+                                <div className="bg-white rounded-xl p-4 border border-gray-200">
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Bed Type</label>
+                                    <select
+                                        className="w-full p-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm font-medium bg-white"
+                                        value={room.bedType}
+                                        onChange={(e) => updateRoom(idx, 'bedType', e.target.value)}
+                                    >
+                                        <option value="King">👑 King Size</option>
+                                        <option value="Queen">👸 Queen Size</option>
+                                        <option value="Double">🛏️ Double Bed</option>
+                                        <option value="Single">🛌 Single Bed</option>
                                     </select>
                                 </div>
-                                <div className="flex flex-col justify-center">
-                                    <label className="flex items-center justify-between cursor-pointer">
-                                        <span className="font-bold text-sm">AC</span>
-                                        <Toggle active={room.ac} onChange={(v) => updateRoom(idx, 'ac', v)} />
-                                    </label>
-                                </div>
-                                <div className="flex flex-col justify-center">
-                                    <label className="flex items-center justify-between cursor-pointer">
-                                        <span className="font-bold text-sm">Private Bathroom</span>
-                                        <Toggle active={room.bathroom} onChange={(v) => updateRoom(idx, 'bathroom', v)} />
-                                    </label>
-                                    {room.bathroom && (
-                                        <select className="mt-2 w-full p-1 text-xs rounded border" value={room.toiletType} onChange={(e) => updateRoom(idx, 'toiletType', e.target.value)}>
-                                            <option value="Western">Western</option>
-                                            <option value="Indian">Indian</option>
-                                        </select>
-                                    )}
-                                </div>
-                                <div className="flex flex-col justify-center">
-                                    <label className="flex items-center justify-between cursor-pointer">
-                                        <span className="font-bold text-sm">Balcony</span>
-                                        <Toggle active={room.balcony} onChange={(v) => updateRoom(idx, 'balcony', v)} />
-                                    </label>
+
+                                {/* Amenities Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {/* AC Toggle */}
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
+                                        <label className="flex items-center justify-between cursor-pointer group">
+                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">❄️ AC</span>
+                                            <Toggle active={room.ac} onChange={(v) => updateRoom(idx, 'ac', v)} />
+                                        </label>
+                                    </div>
+
+                                    {/* TV Toggle */}
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
+                                        <label className="flex items-center justify-between cursor-pointer group">
+                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">📺 TV</span>
+                                            <Toggle active={room.tv} onChange={(v) => updateRoom(idx, 'tv', v)} />
+                                        </label>
+                                    </div>
+
+                                    {/* Geyser Toggle */}
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
+                                        <label className="flex items-center justify-between cursor-pointer group">
+                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">🚿 Geyser</span>
+                                            <Toggle active={room.geyser} onChange={(v) => updateRoom(idx, 'geyser', v)} />
+                                        </label>
+                                    </div>
+
+                                    {/* Balcony Toggle */}
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
+                                        <label className="flex items-center justify-between cursor-pointer group">
+                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">🌅 Balcony</span>
+                                            <Toggle active={room.balcony} onChange={(v) => updateRoom(idx, 'balcony', v)} />
+                                        </label>
+                                    </div>
+
+                                    {/* Private Bathroom Toggle */}
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all col-span-2 md:col-span-1">
+                                        <label className="flex items-center justify-between cursor-pointer group">
+                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">🚽 Private Bath</span>
+                                            <Toggle active={room.bathroom} onChange={(v) => updateRoom(idx, 'bathroom', v)} />
+                                        </label>
+                                        {room.bathroom && (
+                                            <select
+                                                className="mt-3 w-full p-2 text-xs rounded-lg border-2 border-blue-200 focus:border-blue-500 outline-none bg-blue-50 font-medium"
+                                                value={room.toiletType}
+                                                onChange={(e) => updateRoom(idx, 'toiletType', e.target.value)}
+                                            >
+                                                <option value="Western">Western Toilet</option>
+                                                <option value="Indian">Indian Toilet</option>
+                                            </select>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     ))}
+
+                    <button type="button" onClick={addBedroom} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-blue-500 hover:text-blue-600 font-bold transition-all flex items-center justify-center gap-2">
+                        <FaPlus /> Add Another Bedroom
+                    </button>
                 </div>
             </div>
-        );
+        )
     };
 
     const renderStep3 = () => (
@@ -1141,15 +1196,12 @@ export default function AddProperty() {
                 <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><FaVideo className="text-red-500" /> Property Video</h4>
                 <div className="space-y-4">
                     <InputField
-                        label="YouTube URL (Optional)"
+                        label="Video URL (Optional)"
                         name="videoUrl"
                         value={formData.videoUrl}
                         onChange={handleInputChange}
-                        placeholder="https://www.youtube.com/watch?v=..."
+                        placeholder="https://example.com/video.mp4 or YouTube/Vimeo"
                     />
-                    {formData.videoUrl && !/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/.test(formData.videoUrl) && (
-                        <p className="text-red-500 text-xs mt-1">Please enter a valid YouTube URL (including Shorts).</p>
-                    )}
 
                     <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-white transition-colors cursor-pointer"
                         onClick={() => videoInputRef.current?.click()}

@@ -414,7 +414,7 @@ export default function PropertyDetails() {
                                 <div>
                                     <h2 className="text-2xl font-bold text-gray-900 mb-1">{property.display_name || property.Name}</h2>
                                     <p className="text-gray-500 text-sm">
-                                        {property.PropertyType} · {property.MaxCapacity} guests · {property.NoofRooms} bedrooms
+                                        {property.PropertyType} · {property.Occupancy || property.MaxCapacity} - {property.MaxCapacity} guests · {roomConfig.bedrooms?.length || property.NoofRooms} bedrooms · {roomConfig.bedrooms?.filter(r => r.bathroom).length || 0} bathrooms
                                     </p>
                                 </div>
                                 <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center text-xl font-bold border border-gray-200 uppercase">{(property.ContactPerson || "H").charAt(0)}</div>

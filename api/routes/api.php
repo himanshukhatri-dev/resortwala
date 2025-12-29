@@ -80,6 +80,11 @@ Route::middleware('auth:sanctum')->group(function () {
 // Vendor Authentication Routes
 Route::post('/vendor/register', [\App\Http\Controllers\VendorController::class, 'register']);
 Route::post('/vendor/login', [\App\Http\Controllers\VendorController::class, 'login']);
+Route::post('/vendor/login-demo', [\App\Http\Controllers\VendorController::class, 'loginDemo']);
+Route::post('/vendor/send-otp', [\App\Http\Controllers\VendorController::class, 'sendOTP']);
+Route::post('/vendor/verify-otp', [\App\Http\Controllers\VendorController::class, 'verifyOTP']);
+Route::post('/vendor/register-send-otp', [\App\Http\Controllers\VendorController::class, 'registerSendOTP']);
+Route::post('/vendor/register-verify-otp', [\App\Http\Controllers\VendorController::class, 'registerVerifyOTP']);
 
 // Public Utility Routes
 Route::get('/ping', function () {
@@ -118,6 +123,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/vendor/properties/{propertyId}/images/{imageId}', [\App\Http\Controllers\PropertyImageController::class, 'delete']);
     Route::put('/vendor/properties/{propertyId}/images/{imageId}/primary', [\App\Http\Controllers\PropertyImageController::class, 'setPrimary']);
     Route::put('/vendor/properties/{propertyId}/images/order', [\App\Http\Controllers\PropertyImageController::class, 'updateOrder']);
+
+    // Property Videos
+    Route::delete('/vendor/properties/videos/{videoId}', [\App\Http\Controllers\VendorPropertyController::class, 'deleteVideo']);
 
     // Vendor Calendar & Automation
     Route::get('/vendor/properties/{id}/calendar', [App\Http\Controllers\VendorCalendarController::class, 'index']);
@@ -200,6 +208,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/users/customers', [\App\Http\Controllers\AdminUserController::class, 'createCustomer']);
     Route::put('/admin/users/customers/{id}', [\App\Http\Controllers\AdminUserController::class, 'updateCustomer']);
     Route::delete('/admin/users/customers/{id}', [\App\Http\Controllers\AdminUserController::class, 'deleteCustomer']);
+
+    // Admin Intelligence Interface
+    Route::prefix('admin/intelligence')->group(function () {
+        Route::get('/schema', [\App\Http\Controllers\IntelligenceController::class, 'getSchema']);
+        Route::get('/routes', [\App\Http\Controllers\IntelligenceController::class, 'getRoutes']);
+        Route::get('/logs', [\App\Http\Controllers\IntelligenceController::class, 'getLogs']);
+        
+        // Live Data Editor
+        Route::get('/data/{table}', [\App\Http\Controllers\IntelligenceController::class, 'getData']);
+        Route::put('/data/{table}/{id}', [\App\Http\Controllers\IntelligenceController::class, 'updateData']);
+    });
 });
 
 // Public Availability (Shareable Links)

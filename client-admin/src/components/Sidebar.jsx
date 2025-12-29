@@ -29,25 +29,17 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
 
     const menuItems = [
         { path: '/dashboard', icon: '📊', label: 'Overview' },
-        {
-            id: 'authority',
-            label: 'Authorities',
-            icon: '🛡️',
-            subItems: [
-                { path: '/users', icon: '👥', label: 'Administrators' },
-                { path: '/vendors', icon: '🏢', label: 'Partner Vendors' },
-                { path: '/customers', icon: '🙂', label: 'Customer Base' },
-            ]
-        },
+        { path: '/users', icon: '👥', label: 'Administrators' },
+        { path: '/vendors', icon: '🏢', label: 'Vendors' },
+        { path: '/customers', icon: '🙂', label: 'Customers' },
         { path: '/properties', icon: '🏠', label: 'Properties' },
         { path: '/property-changes', icon: '📝', label: 'Prop. Updates' },
         { path: '/bookings', icon: '📅', label: 'Bookings' },
         { path: '/calendar', icon: '📆', label: 'Master Calendar' },
         { path: '/analytics', icon: '📊', label: 'Analytics' },
-        { path: '/day-wise-booking', icon: '📈', label: 'Availability' },
         { path: '/holidays', icon: '🌴', label: 'Holidays' },
-        { path: '/reviews', icon: '⭐', label: 'Reviews' },
-        { path: '/intelligence', icon: '🧠', label: 'Intelligence' }, // Restricted Access
+        { path: '/intelligence', icon: '🧠', label: 'Intelligence' },
+        { path: '/vendor-presentation', icon: '🎯', label: 'Vendor Pitch' },
     ];
 
     const handleLogout = async () => {

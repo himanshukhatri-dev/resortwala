@@ -1,10 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
     ReactFlow,
     Controls,
     Background,
-    applyNodeChanges,
-    applyEdgeChanges,
     MiniMap,
     useNodesState,
     useEdgesState,
@@ -13,7 +11,10 @@ import {
     MarkerType
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { FaLaptopCode, FaServer, FaDatabase, FaGlobe, FaCogs } from 'react-icons/fa';
+import axios from 'axios';
+import { API_BASE_URL } from '../../config';
+import { useAuth } from '../../context/AuthContext';
+import { FaLaptopCode, FaServer, FaDatabase, FaGlobe, FaCogs, FaSync } from 'react-icons/fa';
 
 // Custom Node Types
 const ProcessNode = ({ data }) => {
@@ -27,14 +28,14 @@ const ProcessNode = ({ data }) => {
     if (data.type === 'db') { Icon = FaDatabase; bgColor = "bg-amber-50"; borderColor = "border-amber-200"; }
 
     return (
-        <div className={`shadow-lg border-2 ${borderColor} ${bgColor} rounded-xl p-4 min-w-[200px] flex items-center gap-3`}>
+        <div className={`shadow-lg border-2 ${borderColor} ${bgColor} rounded-xl p-4 min-w-[250px] flex items-center gap-3 transition-all hover:scale-105`}>
             <div className={`p-2 rounded-lg bg-white shadow-sm`}>
                 <Icon className="text-xl text-gray-700" />
             </div>
-            <div>
-                <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">{data.type}</div>
-                <div className="font-bold text-gray-900">{data.label}</div>
-                {data.subtext && <div className="text-[10px] text-gray-500">{data.subtext}</div>}
+            <div className='flex-1'>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{data.method || data.type}</div>
+                <div className="font-bold text-gray-900 text-sm truncate w-48" title={data.label}>{data.label}</div>
+                {data.subtext && <div className="text-[10px] text-gray-500 font-mono mt-1">{data.subtext}</div>}
             </div>
             <Handle type="target" position={Position.Left} className="!bg-gray-400" />
             <Handle type="source" position={Position.Right} className="!bg-gray-400" />
@@ -44,28 +45,90 @@ const ProcessNode = ({ data }) => {
 
 const nodeTypes = { process: ProcessNode };
 
-const initialNodes = [
-    { id: '1', type: 'process', position: { x: 50, y: 100 }, data: { label: 'User Action', type: 'ui', subtext: 'Click "Login"' } },
-    { id: '2', type: 'process', position: { x: 350, y: 100 }, data: { label: 'API Route', type: 'server', subtext: '/api/login' } },
-    { id: '3', type: 'process', position: { x: 650, y: 100 }, data: { label: 'AuthController', type: 'controller', subtext: 'login()' } },
-    { id: '4', type: 'process', position: { x: 950, y: 100 }, data: { label: 'Database', type: 'db', subtext: 'SELECT * FROM users' } },
-    { id: '5', type: 'process', position: { x: 650, y: 300 }, data: { label: 'Response', type: 'server', subtext: 'JSON Token' } },
-];
-
-const initialEdges = [
-    { id: 'e1-2', source: '1', target: '2', animated: true, markerEnd: { type: MarkerType.ArrowClosed } },
-    { id: 'e2-3', source: '2', target: '3', animated: true, markerEnd: { type: MarkerType.ArrowClosed } },
-    { id: 'e3-4', source: '3', target: '4', animated: true, markerEnd: { type: MarkerType.ArrowClosed } },
-    { id: 'e4-3-return', source: '4', target: '3', animated: true, style: { strokeDasharray: 5 }, label: 'Data' },
-    { id: 'e3-5', source: '3', target: '5', animated: true, markerEnd: { type: MarkerType.ArrowClosed } },
-];
-
 export default function CodeFlowVisualizer() {
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+    const { token } = useAuth();
+    const [nodes, setNodes, onNodesChange] = useNodesState([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchRoutes = async () => {
+        setLoading(true);
+        try {
+            const res = await axios.get(`${API_BASE_URL}/admin/intelligence/routes`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.data) {
+                const { nodes: backendNodes, edges: backendEdges } = processRoutesToGraph(res.data);
+                setNodes(backendNodes);
+                setEdges(backendEdges);
+            }
+        } catch (err) {
+            console.error("Route fetch error:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchRoutes();
+    }, []);
+
+    const processRoutesToGraph = (routes) => {
+        const nodes = [];
+        const edges = [];
+        let y = 0;
+
+        // Create a central "API Gateway" node
+        nodes.push({
+            id: 'gateway',
+            type: 'process',
+            position: { x: 50, y: (routes.length * 100) / 2 },
+            data: { label: 'API Gateway', type: 'server', subtext: 'api.resortwala.com' }
+        });
+
+        routes.forEach((route, index) => {
+            const routeId = `route-${index}`;
+            const controllerId = `controller-${index}`;
+
+            // Route Node
+            nodes.push({
+                id: routeId,
+                type: 'process',
+                position: { x: 400, y: index * 120 },
+                data: {
+                    label: route.uri,
+                    type: 'ui',
+                    method: route.method,
+                    subtext: route.middleware?.join(', ')
+                }
+            });
+
+            // Controller Node
+            const actionParts = route.action ? route.action.split('\\').pop().split('@') : ['Closure', ''];
+            nodes.push({
+                id: controllerId,
+                type: 'process',
+                position: { x: 800, y: index * 120 },
+                data: {
+                    label: actionParts[0],
+                    type: 'controller',
+                    subtext: actionParts[1] + '()'
+                }
+            });
+
+            // Edges
+            edges.push({ id: `e-gw-${routeId}`, source: 'gateway', target: routeId, animated: true, style: { stroke: '#94a3b8' } });
+            edges.push({ id: `e-${routeId}-${controllerId}`, source: routeId, target: controllerId, animated: true, markerEnd: { type: MarkerType.ArrowClosed } });
+        });
+
+        return { nodes, edges };
+    };
+
+    if (loading) return <div className="h-full flex items-center justify-center text-gray-400">Analyzing System Routes...</div>;
 
     return (
-        <div className="h-[700px] w-full bg-slate-50 relative">
+        <div className="h-[700px] w-full bg-slate-50 relative group">
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -79,8 +142,19 @@ export default function CodeFlowVisualizer() {
                 <MiniMap nodeColor="#64748b" className="!bg-white !border !border-gray-200 !shadow-lg rounded-lg overflow-hidden" />
             </ReactFlow>
 
+            {/* Toolbar */}
+            <div className="absolute top-4 right-4 flex gap-2">
+                <button
+                    onClick={fetchRoutes}
+                    className="p-2 bg-white text-gray-600 rounded-lg shadow-md hover:text-blue-600 hover:shadow-lg transition-all"
+                    title="Refresh Routes"
+                >
+                    <FaSync className={loading ? 'animate-spin' : ''} />
+                </button>
+            </div>
+
             <div className="absolute top-4 left-4 bg-white/90 backdrop-blur p-2 rounded-lg shadow-sm border border-gray-200 text-xs text-gray-500">
-                Mock Flow: Login Request Lifecycle
+                Live Route Analysis: {nodes.length > 0 ? (nodes.length - 1) / 2 : 0} Endpoints Detected
             </div>
         </div>
     );

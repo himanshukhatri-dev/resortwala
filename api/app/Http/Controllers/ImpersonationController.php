@@ -44,6 +44,47 @@ class ImpersonationController extends Controller
 
     private function getRedirectUrlForUser($user, $type = 'user')
     {
+        // Dynamic URL resolution based on current request host
+        $host = request()->getHost();
+        $scheme = request()->getScheme();
+        
+        // Check if we are on Staging (Subdomains)
+        if (str_contains($host, 'staging') || str_contains($host, 'resortwala.com')) {
+            // Staging / Production Logic
+            $baseDomain = 'resortwala.com';
+            
+            // If strictly Staging
+            $prefix = str_contains($host, 'staging') ? 'staging' : '';
+
+            if ($type === 'customer') {
+                return $scheme . '://' . ($prefix ? $prefix . '.' : 'www.') . $baseDomain;
+            }
+
+            if ($user->role === 'admin') {
+                return $scheme . '://' . ($prefix ? $prefix . 'admin.' : 'admin.') . $baseDomain;
+            }
+            
+            if ($user->role === 'vendor' || $user->vendor_type) {
+                return $scheme . '://' . ($prefix ? $prefix . 'vendor.' : 'vendor.') . $baseDomain;
+            }
+        }
+
+        // Check if accessing via Public IP (Path-based routing)
+        if ($host === '72.61.242.42') {
+             if ($type === 'customer') {
+                return $scheme . '://' . $host . '/';
+            }
+
+            if ($user->role === 'admin') {
+                return $scheme . '://' . $host . '/admin';
+            }
+            
+            if ($user->role === 'vendor' || $user->vendor_type) {
+                return $scheme . '://' . $host . '/vendor';
+            }
+        }
+
+        // Fallback for Localhost / Development (using Env or Defaults)
         if ($type === 'customer') {
             return env('FRONTEND_CUSTOMER_URL', 'http://localhost:3003');
         }
@@ -56,7 +97,6 @@ class ImpersonationController extends Controller
             return env('FRONTEND_VENDOR_URL', 'http://localhost:3002');
         }
 
-        // Default to Customer if role is somehow undefined but it's a User model
         return env('FRONTEND_CUSTOMER_URL', 'http://localhost:3003');
     }
 }

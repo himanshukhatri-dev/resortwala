@@ -137,8 +137,8 @@ function Deploy-Component {
     # Ensure remote directory exists
     ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "mkdir -p $($Config.RemotePath)"
 
-    # Clean contents (preserve .env and storage directory)
-    $RemoteCleanCmd = "find $($Config.RemotePath)/ -mindepth 1 ! -name '.env' ! -path '*/storage*' -delete"
+    # Clean contents (preserve .env and storage/app directory with uploaded media)
+    $RemoteCleanCmd = "find $($Config.RemotePath)/ -mindepth 1 ! -name '.env' ! -path '$($Config.RemotePath)/storage/app' ! -path '$($Config.RemotePath)/storage/app/*' -delete"
     ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "$RemoteCleanCmd"
     
     # 2. Compress (Tar Gzip for Linux Compatibility)
@@ -187,13 +187,15 @@ function Deploy-Component {
                 $RemoteSetupCmd = "cd $($Config.RemotePath) && " +
                 "chown -R www-data:www-data . && " +
                 "mkdir -p storage/logs storage/framework/views storage/framework/cache/data storage/framework/sessions bootstrap/cache && " +
-                "chown -R www-data:www-data storage bootstrap/cache && " +
+                "chown -R www-data:www-data storage bootstrap/cache public && " +
                 "chmod -R 775 storage bootstrap/cache && " +
+                "chmod -R 755 public && " +
                 "chmod -R 777 storage/logs && " +
                 "export COMPOSER_ALLOW_SUPERUSER=1 && " +
                 "composer install --no-dev --optimize-autoloader --no-interaction && " +
-                "chown -R www-data:www-data storage bootstrap/cache vendor && " +
+                "chown -R www-data:www-data storage bootstrap/cache vendor public && " +
                 "chmod -R 775 storage bootstrap/cache && " +
+                "chmod -R 755 public && " +
                 "php artisan migrate --force && " +
                 "php artisan optimize:clear"
 

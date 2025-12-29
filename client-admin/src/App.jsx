@@ -21,6 +21,8 @@ import AdminEventLogs from './pages/AdminEventLogs';
 import HolidayApprovals from './pages/HolidayApprovals';
 import adminAnalytics from './utils/analytics';
 import Intelligence from './pages/Intelligence';
+import VendorPresentation from './pages/VendorPresentation';
+import InvestorPresentation from './pages/InvestorPresentation';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -62,10 +64,12 @@ function App() {
               <Route path="/property-changes" element={<PropertyChangeRequests />} />
               <Route path="/properties/:id/changes/:requestId" element={<ReviewPropertyChange />} />
               <Route path="/approvals/holidays" element={<HolidayApprovals />} />
-              <Route path="/day-wise-booking" element={<div style={{ padding: 20 }}>Day Wise Booking (Placeholder)</div>} />
+
               <Route path="/holidays" element={<div style={{ padding: 20 }}>Holidays (Placeholder)</div>} />
-              <Route path="/reviews" element={<div style={{ padding: 20 }}>Reviews (Placeholder)</div>} />
+
               <Route path="/intelligence" element={<Intelligence />} />
+              <Route path="/vendor-presentation" element={<VendorPresentation />} />
+              <Route path="/investor-presentation" element={<InvestorPresentation />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/login" />} />

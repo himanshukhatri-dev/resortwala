@@ -273,4 +273,24 @@ class VendorPropertyController extends Controller
             'message' => 'Property deleted successfully'
         ]);
     }
+
+    public function deleteVideo(Request $request, $videoId)
+    {
+        $video = \App\Models\PropertyVideo::findOrFail($videoId);
+        
+        // Verify the video belongs to a property owned by this vendor
+        $property = PropertyMaster::where('vendor_id', $request->user()->id)
+            ->where('PropertyId', $video->property_id)
+            ->firstOrFail();
+
+        // Delete the video file from storage
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($video->video_path)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($video->video_path);
+        }
+
+        // Delete the database record
+        $video->delete();
+
+        return response()->json(['message' => 'Video deleted successfully']);
+    }
 }

@@ -1,16 +1,7 @@
 const getApiBaseUrl = () => {
     // 1. Production / Staging Environment Check
     if (import.meta.env.PROD) {
-        const hostname = window.location.hostname;
-        if (hostname === '72.61.242.42') {
-            return '/api';
-        }
-        // Strict staging check
-        if (hostname.includes('staging')) {
-            return 'http://stagingapi.resortwala.com/api';
-        }
-        // Main production fallback
-        return 'http://api.resortwala.com/api';
+        return '/api';
     }
 
     // 2. Local / Development Environment

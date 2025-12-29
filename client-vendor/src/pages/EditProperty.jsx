@@ -12,6 +12,7 @@ import {
 import { MdPool, MdWater, MdOutlineDeck, MdChildCare, MdWaterfallChart, MdMusicNote, MdBalcony, MdSportsEsports, MdRestaurant, MdOutlineOutdoorGrill } from 'react-icons/md';
 import { STEPS_VILLA, STEPS_WATERPARK, AMENITY_TYPES } from '../constants/propertyConstants';
 import Loader from '../components/Loader';
+import { API_BASE_URL } from '../config';
 
 // ICON MAPPING FOR AMENITIES
 const getAmenityIcon = (key) => {
@@ -191,7 +192,8 @@ export default function EditProperty() {
     useEffect(() => {
         const fetchProperty = async () => {
             try {
-                const baseURL = import.meta.env.VITE_API_BASE_URL || '';
+                // Use imported API_BASE_URL
+                const baseURL = API_BASE_URL;
                 const res = await axios.get(`${baseURL}/vendor/properties/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -324,7 +326,7 @@ export default function EditProperty() {
             const newRooms = [...current];
             if (count > current.length) {
                 for (let i = current.length; i < count; i++) {
-                    newRooms.push({ id: i + 1, bedType: 'Queen', ac: false, bathroom: true, toiletType: 'Western', balcony: false });
+                    newRooms.push({ id: i + 1, bedType: 'Queen', ac: false, tv: false, geyser: false, bathroom: true, toiletType: 'Western', balcony: false });
                 }
             } else {
                 newRooms.length = count;
@@ -344,9 +346,16 @@ export default function EditProperty() {
         const { name, value } = e.target;
 
         // --- REAL-TIME REGEX MASKING ---
-        // Alpha-only fields
-        if (['cityName', 'location', 'contactPerson', 'name', 'displayName'].includes(name)) {
-            const filtered = value.replace(/[^a-zA-Z\s]/g, '');
+        // Location/City fields (allow letters, spaces, dots, commas, hyphens - NO NUMBERS)
+        if (['cityName', 'location'].includes(name)) {
+            const filtered = value.replace(/[^a-zA-Z\s.,-]/g, '');
+            setFormData(prev => ({ ...prev, [name]: filtered }));
+            return;
+        }
+
+        // Name/Contact fields (allow letters, numbers, spaces, dots, commas)
+        if (['contactPerson', 'name', 'displayName'].includes(name)) {
+            const filtered = value.replace(/[^a-zA-Z0-9\s.,]/g, '');
             setFormData(prev => ({ ...prev, [name]: filtered }));
             return;
         }
@@ -430,7 +439,7 @@ export default function EditProperty() {
         const isConfirmed = await showConfirm('Delete Video', 'Permanently delete this video from the property?', 'Delete', 'Cancel');
         if (isConfirmed) {
             try {
-                const baseURL = import.meta.env.VITE_API_BASE_URL || '';
+                const baseURL = API_BASE_URL;
                 await axios.delete(`${baseURL}/vendor/properties/videos/${videoId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -552,7 +561,7 @@ export default function EditProperty() {
 
             apiData.append('_method', 'PUT'); // Needed for Laravel Update
 
-            const baseURL = import.meta.env.VITE_API_BASE_URL || '';
+            const baseURL = API_BASE_URL;
             const res = await axios.post(`${baseURL}/vendor/properties/${id}`, apiData, {
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
             });
@@ -1206,7 +1215,7 @@ export default function EditProperty() {
 
             setSaving(true);
             try {
-                const baseURL = import.meta.env.VITE_API_BASE_URL || '';
+                const baseURL = API_BASE_URL;
                 // Execute deletes in parallel
                 await Promise.all(selectedImages.map(imgId =>
                     axios.delete(`${baseURL}/vendor/properties/${id}/images/${imgId}`, {
@@ -1386,6 +1395,78 @@ export default function EditProperty() {
                                         <button
                                             type="button"
                                             onClick={() => handleDeleteNewImage(idx)}
+                                            className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
+                                        >
+                                            <FaTimes />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Video Upload Section */}
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-8 rounded-3xl border-2 border-purple-100">
+                    <h4 className="font-bold text-purple-900 flex items-center gap-2 mb-6">
+                        <FaVideo className="text-purple-500" /> Property Videos (Optional)
+                    </h4>
+
+                    <input
+                        type="file"
+                        multiple
+                        accept="video/*"
+                        ref={videoInputRef}
+                        onChange={handleVideoUpload}
+                        className="hidden"
+                        style={{ display: 'none' }}
+                    />
+
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            videoInputRef.current?.click();
+                        }}
+                        className="border-3 border-dashed border-purple-200 rounded-3xl p-12 text-center hover:bg-white transition-colors cursor-pointer relative group"
+                    >
+                        <div className="flex flex-col items-center gap-4 transition-transform group-hover:scale-110 duration-300">
+                            <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-3xl mb-2">
+                                <FaVideo />
+                            </div>
+                            <div>
+                                <p className="font-bold text-xl text-gray-800">Add Property Videos</p>
+                                <p className="text-gray-400">Click to browse or drop videos (Max 50MB each)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {(existingVideos.length > 0 || formData.videos.length > 0) && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                            {existingVideos.map((vid) => (
+                                <div key={vid.id} className="relative group rounded-xl overflow-hidden aspect-video shadow-md bg-black">
+                                    <video src={vid.video_url} className="w-full h-full object-cover" controls />
+                                    <div className="absolute top-2 right-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteExistingVideo(vid.id)}
+                                            className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
+                                        >
+                                            <FaTimes />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {formData.videos.map((file, idx) => (
+                                <div key={`new-video-${idx}`} className="relative group rounded-xl overflow-hidden aspect-video shadow-md bg-black">
+                                    <video src={URL.createObjectURL(file)} className="w-full h-full object-cover" controls />
+                                    <div className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                                        NEW
+                                    </div>
+                                    <div className="absolute top-2 right-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteVideo(idx)}
                                             className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
                                         >
                                             <FaTimes />

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useModal } from '../context/ModalContext';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 export default function Profile() {
     const { user, token, updateUser } = useAuth();

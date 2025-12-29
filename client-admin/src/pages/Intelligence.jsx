@@ -27,13 +27,7 @@ const CodeFlowVisualizer = () => (
 );
 */
 
-const BusinessProcessVisualizer = () => (
-    <div className="h-full flex flex-col items-center justify-center text-gray-400">
-        <FaCogs className="text-6xl mb-4 opacity-20" />
-        <h3 className="text-xl font-bold">Business Processes</h3>
-        <p className="text-sm">Workflows and logic diagrams</p>
-    </div>
-);
+import BusinessProcessVisualizer from './intelligence/BusinessProcessVisualizer';
 
 import LiveDataManager from './intelligence/LiveDataManager';
 
@@ -47,13 +41,7 @@ const LiveDataManager = () => (
 );
 */
 
-const ImpactLogs = () => (
-    <div className="h-full flex flex-col items-center justify-center text-gray-400">
-        <FaHistory className="text-6xl mb-4 opacity-20" />
-        <h3 className="text-xl font-bold">Impact Logs</h3>
-        <p className="text-sm">Audit trail of system modifications</p>
-    </div>
-);
+import ImpactLogs from './intelligence/ImpactLogs';
 
 export default function Intelligence() {
     const [activeTab, setActiveTab] = useState('schema');

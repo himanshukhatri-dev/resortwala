@@ -34,9 +34,9 @@ class StorePropertyRequest extends FormRequest
             'price_mon_thu' => 'nullable|numeric|min:0',
             'price_fri_sun' => 'nullable|numeric|min:0',
             'price_sat' => 'nullable|numeric|min:0',
-            'MaxCapacity' => 'required|integer|min:1',
-            'NoofRooms' => 'required|integer|min:1',
-            'Occupancy' => 'required|integer|min:1',
+            'MaxCapacity' => 'required_if:PropertyType,Villa|nullable|integer|min:1',
+            'NoofRooms' => 'required_if:PropertyType,Villa|nullable|integer|min:1',
+            'Occupancy' => 'required_if:PropertyType,Villa|nullable|integer|min:1',
             'video_url' => 'nullable|url',
             'onboarding_data' => 'nullable|string', // Validated as JSON in withValidator
             'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
@@ -95,6 +95,8 @@ class StorePropertyRequest extends FormRequest
             'CityName.regex' => 'City Name can contain letters, numbers, spaces, dots, commas, and hyphens.',
             'ContactPerson.regex' => 'Contact Person name should contain alphabets, spaces, dots, and commas only.',
             'MobileNo.regex' => 'Mobile Number must be exactly 10 digits.',
+            'videos.*.max' => 'Video file is too large. Please upload a video smaller than 50 MB.',
+            'videos.*.mimes' => 'Invalid video format. Please upload MP4, MOV, AVI, or M4V files only.',
         ];
     }
 }
