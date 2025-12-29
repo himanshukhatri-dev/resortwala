@@ -100,6 +100,16 @@ const InputField = ({ label, name, type = "text", placeholder, className, value,
     </div>
 );
 
+const Toggle = ({ active, onChange }) => (
+    <button
+        type="button"
+        onClick={() => onChange(!active)}
+        className={`w-12 h-6 flex items-center bg-gray-300 rounded-full p-1 duration-300 ease-in-out ${active ? 'bg-green-500' : ''}`}
+    >
+        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out ${active ? 'translate-x-6' : ''}`} />
+    </button>
+);
+
 const Counter = ({ value = 0, onChange }) => (
     <div className="flex items-center gap-3 bg-gray-100 rounded-lg p-1">
         <button
@@ -119,16 +129,6 @@ const Counter = ({ value = 0, onChange }) => (
             +
         </button>
     </div>
-);
-
-const Toggle = ({ active, onChange }) => (
-    <button
-        type="button"
-        onClick={() => onChange(!active)}
-        className={`w-12 h-7 rounded-full p-1 transition-all duration-300 ${active ? 'bg-green-500' : 'bg-gray-300'}`}
-    >
-        <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${active ? 'translate-x-5' : 'translate-x-0'}`} />
-    </button>
 );
 
 export default function EditProperty() {
@@ -182,7 +182,8 @@ export default function EditProperty() {
         ticketPrices: { adult: '', child: '', includesEntry: false, includesFood: false },
 
         foodOptions: { breakfast: 'Not Included', lunch: 'Not Included', hiTea: 'Not Included', dinner: 'Not Included' },
-        videoUrl: '', images: [], videos: []
+        videoUrl: '', images: [], videos: [],
+        googleMapLink: '', latitude: '', longitude: ''
     });
 
     const [existingImages, setExistingImages] = useState([]);
@@ -270,7 +271,7 @@ export default function EditProperty() {
                     rules,
                     paymentMethods,
 
-                    checkInTime: ob.checkInTime || '12:00',
+                    checkInTime: ob.checkInTime || '14:00',
                     checkOutTime: ob.checkOutTime || '11:00',
                     idProofs: ob.idProofs || [],
                     mealPlans: ob.mealPlans || {
@@ -285,6 +286,11 @@ export default function EditProperty() {
                     inclusions,
                     foodRates,
                     ticketPrices,
+
+                    googleMapLink: ob.googleMapLink || '',
+                    latitude: ob.latitude || '',
+                    longitude: ob.longitude || '',
+                    otherAttractions: ob.otherAttractions || '', // Hydrated Field
 
                     extraGuestLimit: pricing.extraGuestLimit || '15',
 
@@ -316,17 +322,30 @@ export default function EditProperty() {
 
     // Sync Room Config with No of Rooms
     useEffect(() => {
+        if (loading) return; // Wait for data
         if (formData.propertyType !== 'Villa') return;
+
         const count = parseInt(formData.noofRooms || 0);
 
         setFormData(prev => {
             const current = prev.roomConfig?.bedrooms || [];
             if (current.length === count) return prev;
 
+            console.log(`Syncing Bedrooms: Target ${count}, Current ${current.length}`);
+
             const newRooms = [...current];
             if (count > current.length) {
                 for (let i = current.length; i < count; i++) {
-                    newRooms.push({ id: i + 1, bedType: 'Queen', ac: false, tv: false, geyser: false, bathroom: true, toiletType: 'Western', balcony: false });
+                    newRooms.push({
+                        id: i + 1,
+                        bedType: 'Queen',
+                        ac: false,
+                        tv: false, // Ensure TV is initialized
+                        geyser: false, // Ensure Geyser is initialized
+                        bathroom: true,
+                        toiletType: 'Western',
+                        balcony: false
+                    });
                 }
             } else {
                 newRooms.length = count;
@@ -340,7 +359,7 @@ export default function EditProperty() {
                 }
             };
         });
-    }, [formData.noofRooms, formData.propertyType]);
+    }, [formData.noofRooms, formData.propertyType, loading]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -405,6 +424,19 @@ export default function EditProperty() {
         }
 
         setFormData(prev => ({ ...prev, [section]: { ...prev[section], [key]: filteredValue } }));
+    };
+
+    const updateRoom = (index, field, value) => {
+        // console.log(`Updating Room ${index} ${field}:`, value); // DEBUG
+        setFormData(prev => ({
+            ...prev,
+            roomConfig: {
+                ...prev.roomConfig,
+                bedrooms: prev.roomConfig.bedrooms.map((room, i) =>
+                    i === index ? { ...room, [field]: value } : room
+                )
+            }
+        }));
     };
 
     const handleAmenityChange = (key, type, value) => {
@@ -537,8 +569,18 @@ export default function EditProperty() {
                         saturday: formData.extraGuestPriceSaturday
                     },
                     extraMattressCharge: formData.extraMattressCharge
-                }
+                },
+                googleMapLink: formData.googleMapLink,
+                latitude: formData.latitude,
+                longitude: formData.longitude,
+                otherAttractions: formData.otherAttractions // Persisted Field
             };
+
+            console.log("Submitting Onboarding Data:", onboardingData); // DEBUG LOG
+            console.log("Submitting Room Config:", onboardingData.roomConfig); // DEBUG LOG
+
+            // ALERT DEBUGGING FOR USER
+            // alert(`DEBUG: Sending Room Config: ${JSON.stringify(onboardingData.roomConfig)}`);
 
             apiData.append('onboarding_data', JSON.stringify(onboardingData));
             apiData.append('video_url', formData.videoUrl);
@@ -608,7 +650,7 @@ export default function EditProperty() {
                 <InputField label="Property Name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
                 <InputField label="Display Name" name="displayName" value={formData.displayName} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
                 <InputField label="City" name="cityName" value={formData.cityName} onChange={handleInputChange} placeholder="Ex: Lonavala" />
-                <InputField label="Nearest Station" name="location" value={formData.location} onChange={handleInputChange} placeholder="Ex: Lonavala Station" />
+                <InputField label="Location (Nearest Landmark)" name="location" value={formData.location} onChange={handleInputChange} placeholder="Ex: Near Lonavala Station" />
             </div>
 
             <div className="space-y-1">
@@ -643,6 +685,96 @@ export default function EditProperty() {
                 </div>
                 <InputField label="Email Address" name="email" value={formData.email} onChange={handleInputChange} type="email" />
                 <InputField label="Website URL" name="website" value={formData.website} onChange={handleInputChange} />
+            </div>
+
+            {/* Map Location Section */}
+            <div className="bg-green-50/50 p-6 rounded-2xl border border-green-100 space-y-4">
+                <h4 className="font-bold text-green-900 flex items-center gap-2">
+                    <FaHome className="text-green-600" /> Map Location
+                </h4>
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Google Map Link</label>
+                    <input
+                        type="text"
+                        name="googleMapLink"
+                        value={formData.googleMapLink || ''}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData(prev => ({ ...prev, googleMapLink: val }));
+
+                            // Try extract coords from various Google Maps URL formats
+                            let lat = '', lng = '';
+
+                            // 1. @lat,lng
+                            const atRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+                            const atMatch = val.match(atRegex);
+                            if (atMatch) { lat = atMatch[1]; lng = atMatch[2]; }
+
+                            // 2. q=lat,lng
+                            if (!lat) {
+                                const qRegex = /q=(-?\d+\.\d+),(-?\d+\.\d+)/;
+                                const qMatch = val.match(qRegex);
+                                if (qMatch) { lat = qMatch[1]; lng = qMatch[2]; }
+                            }
+
+                            // 3. ?ll=lat,lng
+                            if (!lat) {
+                                const llRegex = /[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/;
+                                const llMatch = val.match(llRegex);
+                                if (llMatch) { lat = llMatch[1]; lng = llMatch[2]; }
+                            }
+
+                            // 4. search/lat,lng
+                            if (!lat) {
+                                const searchRegex = /search\/(-?\d+\.\d+),\s*(-?\d+\.\d+)/;
+                                const searchMatch = val.match(searchRegex);
+                                if (searchMatch) { lat = searchMatch[1]; lng = searchMatch[2]; }
+                            }
+
+                            if (lat && lng) {
+                                console.log("Auto-detected Coords:", lat, lng);
+                                setFormData(prev => ({
+                                    ...prev,
+                                    googleMapLink: val,
+                                    latitude: lat,
+                                    longitude: lng
+                                }));
+                            }
+                        }}
+                        className="w-full bg-white border border-green-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 outline-none"
+                        placeholder="Paste Google Maps Link here (e.g. from WhatsApp or Maps)"
+                    />
+                    <p className="text-[10px] text-green-600 italic">We'll try to auto-detect Latitude & Longitude from the link.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <InputField
+                        label="Latitude"
+                        name="latitude"
+                        value={formData.latitude}
+                        onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                        placeholder="Ex: 18.1234"
+                        className="bg-white"
+                    />
+                    <InputField
+                        label="Longitude"
+                        name="longitude"
+                        value={formData.longitude}
+                        onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                        placeholder="Ex: 73.5678"
+                        className="bg-white"
+                    />
+                </div>
+
+                {/* Other Attractions */}
+                <div className="space-y-2 pt-2 border-t border-green-200 mt-4">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nearby Attractions / Places to Visit</label>
+                    <textarea
+                        value={formData.nearbyAttractions || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, nearbyAttractions: e.target.value }))}
+                        className="w-full bg-white border border-green-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 outline-none h-24 resize-none"
+                        placeholder="List nearby tourist spots, distances, etc..."
+                    />
+                </div>
             </div>
 
             <div className="space-y-1">
@@ -915,41 +1047,79 @@ export default function EditProperty() {
                     </div>
 
                     {formData.roomConfig.bedrooms.map((room, idx) => (
-                        <div key={idx} className="bg-gray-50 rounded-2xl p-6 border border-gray-200 relative">
-                            <div className="absolute top-4 left-4 bg-gray-900 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm">{idx + 1}</div>
-                            <div className="ml-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Bed Type</label>
-                                    <select className="w-full p-2 rounded border text-sm" value={room.bedType} onChange={(e) => updateRoom(idx, 'bedType', e.target.value)}>
-                                        <option value="King">King Size</option>
-                                        <option value="Queen">Queen Size</option>
-                                        <option value="Double">Double Bed</option>
-                                        <option value="Single">Single Bed</option>
+                        <div key={idx} className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border-2 border-gray-200 hover:border-blue-300 transition-all shadow-sm hover:shadow-md relative group">
+                            {/* Bedroom Number Badge */}
+                            <div className="absolute -top-3 -left-3 bg-gradient-to-br from-blue-600 to-purple-600 text-white w-10 h-10 flex items-center justify-center rounded-full font-bold text-lg shadow-lg ring-4 ring-white">
+                                {idx + 1}
+                            </div>
+
+                            <div className="space-y-6 mt-2">
+                                {/* Bed Type Selection */}
+                                <div className="bg-white rounded-xl p-4 border border-gray-200">
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Bed Type</label>
+                                    <select
+                                        className="w-full p-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm font-medium bg-white"
+                                        value={room.bedType}
+                                        onChange={(e) => updateRoom(idx, 'bedType', e.target.value)}
+                                    >
+                                        <option value="King">👑 King Size</option>
+                                        <option value="Queen">👸 Queen Size</option>
+                                        <option value="Double">🛏️ Double Bed</option>
+                                        <option value="Single">🛌 Single Bed</option>
                                     </select>
                                 </div>
-                                <div className="flex flex-col justify-center">
-                                    <label className="flex items-center justify-between cursor-pointer">
-                                        <span className="font-bold text-sm">AC</span>
-                                        <Toggle active={room.ac} onChange={(v) => updateRoom(idx, 'ac', v)} />
-                                    </label>
-                                </div>
-                                <div className="flex flex-col justify-center">
-                                    <label className="flex items-center justify-between cursor-pointer">
-                                        <span className="font-bold text-sm">Private Bathroom</span>
-                                        <Toggle active={room.bathroom} onChange={(v) => updateRoom(idx, 'bathroom', v)} />
-                                    </label>
-                                    {room.bathroom && (
-                                        <select className="mt-2 w-full p-1 text-xs rounded border" value={room.toiletType} onChange={(e) => updateRoom(idx, 'toiletType', e.target.value)}>
-                                            <option value="Western">Western</option>
-                                            <option value="Indian">Indian</option>
-                                        </select>
-                                    )}
-                                </div>
-                                <div className="flex flex-col justify-center">
-                                    <label className="flex items-center justify-between cursor-pointer">
-                                        <span className="font-bold text-sm">Balcony</span>
-                                        <Toggle active={room.balcony} onChange={(v) => updateRoom(idx, 'balcony', v)} />
-                                    </label>
+
+                                {/* Amenities Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {/* AC Toggle */}
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
+                                        <label className="flex items-center justify-between cursor-pointer group">
+                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">❄️ AC</span>
+                                            <Toggle active={room.ac} onChange={(v) => updateRoom(idx, 'ac', v)} />
+                                        </label>
+                                    </div>
+
+                                    {/* TV Toggle */}
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
+                                        <label className="flex items-center justify-between cursor-pointer group">
+                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">📺 TV</span>
+                                            <Toggle active={room.tv} onChange={(v) => updateRoom(idx, 'tv', v)} />
+                                        </label>
+                                    </div>
+
+                                    {/* Geyser Toggle */}
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
+                                        <label className="flex items-center justify-between cursor-pointer group">
+                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">🚿 Geyser</span>
+                                            <Toggle active={room.geyser} onChange={(v) => updateRoom(idx, 'geyser', v)} />
+                                        </label>
+                                    </div>
+
+                                    {/* Balcony Toggle */}
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
+                                        <label className="flex items-center justify-between cursor-pointer group">
+                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">🌅 Balcony</span>
+                                            <Toggle active={room.balcony} onChange={(v) => updateRoom(idx, 'balcony', v)} />
+                                        </label>
+                                    </div>
+
+                                    {/* Private Bathroom Toggle */}
+                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all col-span-2 md:col-span-1">
+                                        <label className="flex items-center justify-between cursor-pointer group">
+                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">🚽 Private Bath</span>
+                                            <Toggle active={room.bathroom} onChange={(v) => updateRoom(idx, 'bathroom', v)} />
+                                        </label>
+                                        {room.bathroom && (
+                                            <select
+                                                className="mt-3 w-full p-2 text-xs rounded-lg border-2 border-blue-200 focus:border-blue-500 outline-none bg-blue-50 font-medium"
+                                                value={room.toiletType}
+                                                onChange={(e) => updateRoom(idx, 'toiletType', e.target.value)}
+                                            >
+                                                <option value="Western">Western</option>
+                                                <option value="Indian">Indian</option>
+                                            </select>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1119,17 +1289,20 @@ export default function EditProperty() {
                     <span className="text-red-500 animate-pulse">*</span>
                 </h4>
                 <div className="flex gap-4 flex-wrap">
-                    {['Cash', 'UPI', 'Debit', 'Credit'].map(method => (
-                        <button
-                            key={method}
-                            type="button"
-                            onClick={() => handleNestedChange('paymentMethods', method.toLowerCase(), !formData.paymentMethods?.[method.toLowerCase()])}
-                            className={`px-6 py-3 rounded-lg font-bold border-2 transition-all ${formData.paymentMethods?.[method.toLowerCase()] ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                        >
-                            {formData.paymentMethods?.[method.toLowerCase()] && <FaCheck className="inline mr-2" />}
-                            {method}
-                        </button>
-                    ))}
+                    {['Cash', 'UPI', 'Debit Card', 'Credit Card'].map(method => {
+                        const key = method.toLowerCase().replace(' card', ''); // 'debit card' -> 'debit'
+                        return (
+                            <button
+                                key={method}
+                                type="button"
+                                onClick={() => handleNestedChange('paymentMethods', key, !formData.paymentMethods?.[key])}
+                                className={`px-6 py-3 rounded-lg font-bold border-2 transition-all ${formData.paymentMethods?.[key] ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                            >
+                                {formData.paymentMethods?.[key] && <FaCheck className="inline mr-2" />}
+                                {method}
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
 

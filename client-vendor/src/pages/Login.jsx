@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import OTPInput from '../components/OTPInput';
 import { FaArrowLeft } from 'react-icons/fa';
+import { auth } from '../firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -16,17 +18,54 @@ export default function Login() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [timer, setTimer] = useState(0);
+    const [confirmationResult, setConfirmationResult] = useState(null); // Firebase result
 
     // Demo bypass for vendor@resortwala
     const isDemoAccount = identifier.toLowerCase() === 'vendor@resortwala' || identifier === 'vendor@resortwala.com';
 
+    // Initialize Recaptcha
+    useEffect(() => {
+        // Clear any existing verifier to avoid stale DOM references
+        if (window.recaptchaVerifier) {
+            try {
+                window.recaptchaVerifier.clear();
+            } catch (e) {
+                // Ignore error if clearing fails
+            }
+            window.recaptchaVerifier = null;
+        }
+
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            'size': 'invisible',
+            'callback': (response) => {
+                // reCAPTCHA solved
+            },
+            'expired-callback': () => {
+                // Response expired
+            }
+        });
+
+        // Cleanup on unmount
+        return () => {
+            if (window.recaptchaVerifier) {
+                try {
+                    window.recaptchaVerifier.clear();
+                } catch (e) { }
+                window.recaptchaVerifier = null;
+            }
+        };
+    }, []);
+
     const handleSendOTP = async (e) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
+
+        // Debug Log
+        // console.log("Firebase Config Check:", auth ? "Auth Initialized" : "Auth Missing");
 
         // Demo bypass
         if (isDemoAccount) {
-            setLoading(true);
             try {
                 const response = await axios.post(`${API_BASE_URL}/vendor/login-demo`, {
                     email: 'vendor@resortwala.com'
@@ -40,12 +79,29 @@ export default function Login() {
             return;
         }
 
-        // Regular OTP flow - send to both email and mobile
-        setLoading(true);
+        const isMobile = /^\+?[0-9]{10,15}$/.test(identifier);
+
         try {
+            // 1. Send Firebase SMS if mobile
+            if (isMobile) {
+                const phoneNumber = identifier.startsWith('+') ? identifier : `+91${identifier}`; // Assume +91 if missing
+                const appVerifier = window.recaptchaVerifier;
+                try {
+                    const confirmation = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+                    setConfirmationResult(confirmation);
+                } catch (firebaseError) {
+                    console.error("Firebase SMS Failed:", firebaseError);
+                    // Show error to user so they know SMS failed, but continue to Email OTP
+                    setError(`SMS Failed: ${firebaseError.message}. Sending Email OTP instead.`);
+                    // Small delay to let user see the error before screen potentially changes (though step change will clear it usually, we'll see)
+                }
+            }
+
+            // 2. Trigger Backend OTP (Send Email Always, and Backend SMS as backup)
             await axios.post(`${API_BASE_URL}/vendor/send-otp`, {
                 identifier: identifier
             });
+
             setStep('otp');
             setTimer(300); // 5 minutes
             startTimer();
@@ -56,22 +112,42 @@ export default function Login() {
         }
     };
 
-    const handleVerifyOTP = async () => {
-        if (otp.length !== 6) return;
+    const handleVerifyOTP = async (manualCode) => {
+        // Use manualCode if provided (from onComplete), otherwise state otp
+        const codeToVerify = typeof manualCode === 'string' ? manualCode : otp;
+
+        if (!codeToVerify || codeToVerify.length !== 6) return;
 
         setError('');
         setLoading(true);
 
+        let firebaseToken = null;
+
+        // 1. Verify with Firebase if we have a confirmation result
+        // ... (rest is same, just ensure we use codeToVerify) ...
+        if (confirmationResult) {
+            try {
+                const result = await confirmationResult.confirm(codeToVerify);
+                const user = result.user;
+                firebaseToken = await user.getIdToken();
+            } catch (fbErr) {
+                console.warn("Firebase verification failed, falling back to Backend OTP...", fbErr);
+            }
+        }
+
+        // 2. Verify with Backend
         try {
             const response = await axios.post(`${API_BASE_URL}/vendor/verify-otp`, {
                 identifier: identifier,
-                otp
+                otp: codeToVerify,
+                firebase_token: firebaseToken
             });
             login(response.data.token, response.data.user);
             setTimeout(() => navigate('/dashboard'), 100);
         } catch (err) {
             setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
-            setOtp('');
+            // Only clear OTP if it was a failure
+            if (!manualCode) setOtp('');
             setLoading(false);
         }
     };
@@ -80,6 +156,7 @@ export default function Login() {
         setError('');
         setLoading(true);
         try {
+            // Re-trigger backend SEND only for simplicity in resend
             await axios.post(`${API_BASE_URL}/vendor/send-otp`, {
                 identifier: identifier
             });
@@ -112,6 +189,7 @@ export default function Login() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 sm:px-6 lg:px-8 font-sans">
+            <div id="recaptcha-container"></div>
             <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-2xl border border-gray-100 animate-fade-in">
                 {/* Header */}
                 <div className="text-center">

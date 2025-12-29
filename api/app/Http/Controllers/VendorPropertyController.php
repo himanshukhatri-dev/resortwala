@@ -138,6 +138,11 @@ class VendorPropertyController extends Controller
             // Check if property is approved
             if ($property->is_approved) {
                 // Calculate Changes
+                \Illuminate\Support\Facades\Log::info('Vendor Update Request Data:', $data);
+                if (isset($data['onboarding_data'])) {
+                    \Illuminate\Support\Facades\Log::info('Update Onboarding Data:', $data['onboarding_data']);
+                    \Illuminate\Support\Facades\Log::info('Current DB Onboarding Data:', $property->onboarding_data);
+                }
                 $changes = [];
                 foreach ($data as $key => $value) {
                     if (is_array($value) || is_array($property->$key)) {

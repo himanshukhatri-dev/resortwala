@@ -132,22 +132,30 @@ export default function PropertyApproval() {
 
     const initializePricing = (prop) => {
         try {
-            const existing = prop.admin_pricing || {};
-            const getVal = (day, type, field, fallback) => existing[day]?.[type]?.[field] ?? fallback;
-
-            const mt_villa = parseFloat(prop.price_mon_thu || prop.Price || 0);
-
             const ob = prop.onboarding_data || {};
+            // Extract existing admin pricing if available
+            const existing = prop.admin_pricing || {};
             const pricingData = ob.pricing || {};
 
-            let mt_extra = 0;
-            let fs_extra = 0;
-            let sat_extra = 0;
+            // Helper to get existing admin price or empty string (NO PRE-FILL from vendor price)
+            const getVal = (day, type, field) => {
+                return existing[day]?.[type]?.[field] ?? '';
+            };
 
-            if (ob.extraGuestPriceMonThu) {
-                mt_extra = parseFloat(ob.extraGuestPriceMonThu || 0);
-                fs_extra = parseFloat(ob.extraGuestPriceFriSun || 0);
-                sat_extra = parseFloat(ob.extraGuestPriceSaturday || 0);
+            let mt_villa, mt_extra, fs_villa, fs_extra, sat_villa, sat_extra;
+
+            mt_villa = parseFloat(prop.price_mon_thu || prop.Price || 0);
+
+            // Logic to extract Extra Guest Charges
+            if (pricingData.extraGuestLimit && pricingData.extraGuestCharge) {
+                if (typeof pricingData.extraGuestCharge === 'object') {
+                    mt_extra = parseFloat(pricingData.extraGuestCharge.week || 0);
+                    fs_extra = parseFloat(pricingData.extraGuestCharge.weekend || 0);
+                    sat_extra = parseFloat(pricingData.extraGuestCharge.saturday || 0);
+                } else {
+                    const val = parseFloat(pricingData.extraGuestCharge || 0);
+                    mt_extra = val; fs_extra = val; sat_extra = val;
+                }
             } else if (pricingData.extraGuestCharge) {
                 if (typeof pricingData.extraGuestCharge === 'object') {
                     mt_extra = parseFloat(pricingData.extraGuestCharge.week || pricingData.extraGuestCharge.weekday || 0);
@@ -155,32 +163,35 @@ export default function PropertyApproval() {
                     sat_extra = parseFloat(pricingData.extraGuestCharge.saturday || 0);
                 } else {
                     const val = parseFloat(pricingData.extraGuestCharge || 0);
-                    mt_extra = val;
-                    fs_extra = val;
-                    sat_extra = val;
+                    mt_extra = val; fs_extra = val; sat_extra = val;
                 }
             }
 
             const foodRates = ob.foodRates || {};
-            const mt_meal = parseFloat(foodRates.veg || foodRates.nonVeg || foodRates.jain || 0);
-            const fs_villa = parseFloat(prop.price_fri_sun || 0);
-            const sat_villa = parseFloat(prop.price_sat || 0);
+            const mt_meal = parseFloat(foodRates.veg || foodRates.nonVeg || 0);
+            const jain_meal = parseFloat(foodRates.jain || 0); // Extract Jain
+
+            const fs_fs_villa = parseFloat(prop.price_fri_sun || 0);
+            const sat_sat_villa = parseFloat(prop.price_sat || 0);
 
             setPricing({
                 mon_thu: {
-                    villa: { current: mt_villa, discounted: getVal('mon_thu', 'villa', 'discounted', mt_villa), final: getVal('mon_thu', 'villa', 'final', mt_villa) },
-                    extra_person: { current: mt_extra, discounted: getVal('mon_thu', 'extra_person', 'discounted', mt_extra), final: getVal('mon_thu', 'extra_person', 'final', mt_extra) },
-                    meal_person: { current: mt_meal, discounted: getVal('mon_thu', 'meal_person', 'discounted', mt_meal), final: getVal('mon_thu', 'meal_person', 'final', mt_meal) }
+                    villa: { current: mt_villa, discounted: getVal('mon_thu', 'villa', 'discounted'), final: getVal('mon_thu', 'villa', 'final') },
+                    extra_person: { current: mt_extra, discounted: getVal('mon_thu', 'extra_person', 'discounted'), final: getVal('mon_thu', 'extra_person', 'final') },
+                    meal_person: { current: mt_meal, discounted: getVal('mon_thu', 'meal_person', 'discounted'), final: getVal('mon_thu', 'meal_person', 'final') },
+                    jain_meal_person: { current: jain_meal, discounted: getVal('mon_thu', 'jain_meal_person', 'discounted'), final: getVal('mon_thu', 'jain_meal_person', 'final') }
                 },
                 fri_sun: {
-                    villa: { current: fs_villa, discounted: getVal('fri_sun', 'villa', 'discounted', fs_villa), final: getVal('fri_sun', 'villa', 'final', fs_villa) },
-                    extra_person: { current: fs_extra, discounted: getVal('fri_sun', 'extra_person', 'discounted', fs_extra), final: getVal('fri_sun', 'extra_person', 'final', fs_extra) },
-                    meal_person: { current: mt_meal, discounted: getVal('fri_sun', 'meal_person', 'discounted', mt_meal), final: getVal('fri_sun', 'meal_person', 'final', mt_meal) }
+                    villa: { current: fs_fs_villa, discounted: getVal('fri_sun', 'villa', 'discounted'), final: getVal('fri_sun', 'villa', 'final') },
+                    extra_person: { current: fs_extra, discounted: getVal('fri_sun', 'extra_person', 'discounted'), final: getVal('fri_sun', 'extra_person', 'final') },
+                    meal_person: { current: mt_meal, discounted: getVal('fri_sun', 'meal_person', 'discounted'), final: getVal('fri_sun', 'meal_person', 'final') },
+                    jain_meal_person: { current: jain_meal, discounted: getVal('fri_sun', 'jain_meal_person', 'discounted'), final: getVal('fri_sun', 'jain_meal_person', 'final') }
                 },
                 sat: {
-                    villa: { current: sat_villa, discounted: getVal('sat', 'villa', 'discounted', sat_villa), final: getVal('sat', 'villa', 'final', sat_villa) },
-                    extra_person: { current: sat_extra, discounted: getVal('sat', 'extra_person', 'discounted', sat_extra), final: getVal('sat', 'extra_person', 'final', sat_extra) },
-                    meal_person: { current: mt_meal, discounted: getVal('sat', 'meal_person', 'discounted', mt_meal), final: getVal('sat', 'meal_person', 'final', mt_meal) }
+                    villa: { current: sat_sat_villa, discounted: getVal('sat', 'villa', 'discounted'), final: getVal('sat', 'villa', 'final') },
+                    extra_person: { current: sat_extra, discounted: getVal('sat', 'extra_person', 'discounted'), final: getVal('sat', 'extra_person', 'final') },
+                    meal_person: { current: mt_meal, discounted: getVal('sat', 'meal_person', 'discounted'), final: getVal('sat', 'meal_person', 'final') },
+                    jain_meal_person: { current: jain_meal, discounted: getVal('sat', 'jain_meal_person', 'discounted'), final: getVal('sat', 'jain_meal_person', 'final') }
                 }
             });
         } catch (e) {
@@ -201,23 +212,23 @@ export default function PropertyApproval() {
             setWaterparkPricing({
                 adult_weekday: {
                     current: adultWeek,
-                    discounted: existing.adult_weekday?.discounted ?? adultWeek,
-                    final: existing.adult_weekday?.final ?? adultWeek
+                    discounted: existing.adult_weekday?.discounted ?? '',
+                    final: existing.adult_weekday?.final ?? ''
                 },
                 adult_weekend: {
                     current: adultWeekend,
-                    discounted: existing.adult_weekend?.discounted ?? adultWeekend,
-                    final: existing.adult_weekend?.final ?? adultWeekend
+                    discounted: existing.adult_weekend?.discounted ?? '',
+                    final: existing.adult_weekend?.final ?? ''
                 },
                 child_weekday: {
                     current: childWeek,
-                    discounted: existing.child_weekday?.discounted ?? childWeek,
-                    final: existing.child_weekday?.final ?? childWeek
+                    discounted: existing.child_weekday?.discounted ?? '',
+                    final: existing.child_weekday?.final ?? ''
                 },
                 child_weekend: {
                     current: childWeekend,
-                    discounted: existing.child_weekend?.discounted ?? childWeekend,
-                    final: existing.child_weekend?.final ?? childWeekend
+                    discounted: existing.child_weekend?.discounted ?? '',
+                    final: existing.child_weekend?.final ?? ''
                 }
             });
         } catch (e) {
@@ -318,9 +329,9 @@ export default function PropertyApproval() {
                         { id: 'amenities', label: 'Amenities', icon: <FaStar />, show: true },
                         { id: 'rooms', label: 'Rooms', icon: <FaBed />, show: property.PropertyType === 'Villa' },
                         { id: 'food', label: 'Food & Dining', icon: <FaUtensils />, show: obData.mealPlans && Object.values(obData.mealPlans).some(m => m.available) },
-                        { id: 'pricing', label: property.PropertyType === 'Waterpark' ? 'Ticket Pricing' : 'Pricing Matrix', icon: <FaMoneyBillWave />, show: true },
                         { id: 'media', label: 'Media', icon: <FaCamera />, show: true },
-                        { id: 'rules', label: 'Rules', icon: <FaUtensils />, show: true }
+                        { id: 'rules', label: 'Rules', icon: <FaUtensils />, show: true },
+                        { id: 'pricing', label: property.PropertyType === 'Waterpark' ? 'Ticket Pricing' : 'Pricing Matrix', icon: <FaMoneyBillWave />, show: true }
                     ].filter(tab => tab.show).map(tab => (
                         <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-3 text-sm font-bold whitespace-nowrap border-b-2 flex items-center gap-2 ${activeTab === tab.id ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                             {tab.icon} {tab.label}
@@ -380,16 +391,7 @@ export default function PropertyApproval() {
                                 </div>
                             </div>
 
-                            {/* Other Attractions Card */}
-                            <div className="bg-white border border-gray-200 rounded-xl p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4 pb-3 border-b">Other Attractions</h3>
-                                <textarea
-                                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition h-24 resize-none"
-                                    value={obData.otherAttractions || ''}
-                                    readOnly
-                                    placeholder="No additional attractions listed"
-                                />
-                            </div>
+
                         </div>
                     )}
 
@@ -536,13 +538,13 @@ export default function PropertyApproval() {
                                         <h3 className="font-black text-sm uppercase tracking-widest text-blue-800">Waterpark Ticket Pricing</h3>
                                     </div>
                                     <div className="overflow-x-auto">
-                                        <table className="w-full text-left">
-                                            <thead className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
-                                                <tr>
-                                                    <th className="px-6 py-3">Ticket Type</th>
-                                                    <th className="px-6 py-3">Vendor Ask</th>
-                                                    <th className="px-6 py-3">Our Discounted</th>
-                                                    <th className="px-6 py-3 text-right">Final Customer Price</th>
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="border-b border-gray-100 bg-gray-50/50 text-xs uppercase tracking-wider text-gray-400 font-bold">
+                                                    <th className="px-6 py-4 rounded-tl-lg">Ticket Type</th>
+                                                    <th className="px-6 py-4 text-right">Vendor Ask</th>
+                                                    <th className="px-6 py-4 text-right">Our Discounted</th>
+                                                    <th className="px-6 py-4 text-right rounded-tr-lg">Final Price</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
@@ -552,29 +554,43 @@ export default function PropertyApproval() {
                                                     { label: 'Child - Weekday', type: 'child_weekday', icon: '👶' },
                                                     { label: 'Child - Weekend', type: 'child_weekend', icon: '👶' }
                                                 ].map((item) => (
-                                                    <tr key={item.type} className="hover:bg-gray-50/50 transition">
-                                                        <td className="px-6 py-4 font-bold text-gray-700">
-                                                            <span className="mr-2">{item.icon}</span>
+                                                    <tr key={item.type} className="group hover:bg-blue-50/30 transition-colors duration-200">
+                                                        <td className="px-6 py-4 font-bold text-gray-700 flex items-center gap-3">
+                                                            <span className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-lg shadow-sm border border-blue-100">
+                                                                {item.icon}
+                                                            </span>
                                                             {item.label}
                                                         </td>
-                                                        <td className="px-6 py-4 text-gray-400 font-medium">
-                                                            {waterparkPricing[item.type].current ? `₹${waterparkPricing[item.type].current}` : '--'}
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <input
-                                                                type="number"
-                                                                className="w-28 p-2 bg-gray-50 border border-gray-100 rounded-lg outline-none focus:border-blue-300 transition text-sm"
-                                                                value={waterparkPricing[item.type].discounted}
-                                                                onChange={(e) => handleWaterparkPriceChange(item.type, 'discounted', e.target.value)}
-                                                            />
+                                                        <td className="px-6 py-4 text-right tabular-nums text-gray-500 font-medium">
+                                                            {waterparkPricing[item.type].current ? `₹${waterparkPricing[item.type].current.toLocaleString()}` : '--'}
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
-                                                            <input
-                                                                type="number"
-                                                                className="w-28 p-2 bg-blue-50 border border-blue-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 transition text-sm font-black text-blue-700 text-right"
-                                                                value={waterparkPricing[item.type].final}
-                                                                onChange={(e) => handleWaterparkPriceChange(item.type, 'final', e.target.value)}
-                                                            />
+                                                            <div className="flex justify-end">
+                                                                <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        className="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300"
+                                                                        value={waterparkPricing[item.type].discounted}
+                                                                        onChange={(e) => handleWaterparkPriceChange(item.type, 'discounted', e.target.value)}
+                                                                        placeholder="0"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <div className="flex justify-end">
+                                                                <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500 font-bold pointer-events-none">₹</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        className="w-full pl-7 pr-3 py-2 bg-blue-50/50 border border-blue-200 rounded-lg outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-right font-black text-blue-700 placeholder-blue-300 shadow-sm"
+                                                                        value={waterparkPricing[item.type].final}
+                                                                        onChange={(e) => handleWaterparkPriceChange(item.type, 'final', e.target.value)}
+                                                                        placeholder="0"
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -604,30 +620,57 @@ export default function PropertyApproval() {
                                                 <h3 className={`font-black text-sm uppercase tracking-widest text-${color}-800`}>{titles[day]}</h3>
                                             </div>
                                             <div className="overflow-x-auto">
-                                                <table className="w-full text-left">
-                                                    <thead className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
-                                                        <tr>
-                                                            <th className="px-6 py-3">Service Type</th>
-                                                            <th className="px-6 py-3">Vendor Ask</th>
-                                                            <th className="px-6 py-3">Our Discounted</th>
-                                                            <th className="px-6 py-3 text-right">Final Customer Price</th>
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className={`border-b border-${color}-100 bg-${color}-50/30 text-xs uppercase tracking-wider text-${color}-800/60 font-bold`}>
+                                                            <th className="px-6 py-4 rounded-tl-lg">Service Type</th>
+                                                            <th className="px-6 py-4 text-right">Vendor Ask</th>
+                                                            <th className="px-6 py-4 text-right">Our Discounted</th>
+                                                            <th className="px-6 py-4 text-right rounded-tr-lg">Final Customer Price</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-50">
                                                         {[
-                                                            { label: 'Villa Base Price', type: 'villa' },
-                                                            { label: 'Extra Person', type: 'extra_person' },
-                                                            { label: 'Meal per Person', type: 'meal_person' },
-                                                            { label: 'Jain Meal per Person', type: 'jain_meal_person' }
+                                                            { label: 'Villa Base Price', type: 'villa', icon: '🏡' },
+                                                            { label: 'Extra Person', type: 'extra_person', icon: '👤' },
+                                                            { label: 'Meal per Person', type: 'meal_person', icon: '🍽️' },
+                                                            { label: 'Jain Meal per Person', type: 'jain_meal_person', icon: '🥕' }
                                                         ].map((item) => (
-                                                            <tr key={item.type} className="hover:bg-gray-50/50 transition">
-                                                                <td className="px-6 py-4 font-bold text-gray-700">{item.label}</td>
-                                                                <td className="px-6 py-4 text-gray-400 font-medium">{pricing[day][item.type].current ? `₹${pricing[day][item.type].current}` : '--'}</td>
-                                                                <td className="px-6 py-4">
-                                                                    <input type="number" className="w-28 p-2 bg-gray-50 border border-gray-100 rounded-lg outline-none focus:border-blue-300 transition text-sm" value={pricing[day][item.type].discounted || ''} onChange={(e) => handlePriceChange(day, item.type, 'discounted', e.target.value)} placeholder="0" />
+                                                            <tr key={item.type} className={`group hover:bg-${color}-50/30 transition-colors duration-200`}>
+                                                                <td className="px-6 py-4 font-bold text-gray-700 flex items-center gap-3">
+                                                                    <span className={`w-8 h-8 rounded-full bg-${color}-50 flex items-center justify-center text-lg shadow-sm border border-${color}-100 text-${color}-600`}>
+                                                                        {item.icon}
+                                                                    </span>
+                                                                    {item.label}
+                                                                </td>
+                                                                <td className="px-6 py-4 text-right tabular-nums text-gray-500 font-medium">
+                                                                    {pricing[day][item.type].current ? `₹${pricing[day][item.type].current.toLocaleString()}` : '--'}
                                                                 </td>
                                                                 <td className="px-6 py-4 text-right">
-                                                                    <input type="number" className="w-28 p-2 bg-blue-50 border border-blue-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 transition text-sm font-black text-blue-700 text-right" value={pricing[day][item.type].final || ''} onChange={(e) => handlePriceChange(day, item.type, 'final', e.target.value)} placeholder="0" />
+                                                                    <div className="flex justify-end">
+                                                                        <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
+                                                                            <input type="number"
+                                                                                className={`w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300`}
+                                                                                value={pricing[day][item.type].discounted || ''}
+                                                                                onChange={(e) => handlePriceChange(day, item.type, 'discounted', e.target.value)}
+                                                                                placeholder="0"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-right">
+                                                                    <div className="flex justify-end">
+                                                                        <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                            <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-${color}-500 font-bold pointer-events-none`}>₹</span>
+                                                                            <input type="number"
+                                                                                className={`w-full pl-7 pr-3 py-2 bg-${color}-50/50 border border-${color}-200 rounded-lg outline-none focus:border-${color}-500 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-black text-${color}-700 placeholder-${color}-300 shadow-sm`}
+                                                                                value={pricing[day][item.type].final || ''}
+                                                                                onChange={(e) => handlePriceChange(day, item.type, 'final', e.target.value)}
+                                                                                placeholder="0"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -714,7 +757,7 @@ export default function PropertyApproval() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                                 <div className="bg-white border p-6 rounded-xl">
                                     <h3 className="font-bold text-gray-800 mb-4">Documents Required</h3>
                                     <div className="flex flex-wrap gap-2">
@@ -724,40 +767,31 @@ export default function PropertyApproval() {
                                         {(!obData.idProofs || obData.idProofs.length === 0) && <span className="text-gray-400 text-sm">No ID proofs specified</span>}
                                     </div>
                                 </div>
-                                <div className="bg-white border p-6 rounded-xl">
-                                    <h3 className="font-bold text-gray-800 mb-4">Property Rules & Policy</h3>
-                                    <textarea
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition h-24 resize-none text-sm"
-                                        value={formData.PropertyRules || ''}
-                                        onChange={(e) => setFormData({ ...formData, PropertyRules: e.target.value })}
-                                        placeholder="Additional property rules and policies..."
-                                    />
-                                </div>
                             </div>
 
                             <div className="bg-white border p-6 rounded-xl">
-                                <h3 className="font-bold text-gray-800 mb-4">Booking Special Message</h3>
-                                <textarea
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition h-20 resize-none text-sm"
-                                    value={formData.BookingSpecailMessage || ''}
-                                    onChange={(e) => setFormData({ ...formData, BookingSpecailMessage: e.target.value })}
-                                    placeholder="Special message or instructions for guests during booking..."
-                                />
+                                <h3 className="font-bold text-gray-800 mb-4">Other Rules & Policies</h3>
+                                <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-700 whitespace-pre-wrap">
+                                    {obData.otherRules || obData.policies || obData.policy || 'No additional rules providing.'}
+                                </div>
                             </div>
                         </div>
-                    )}
-                </div>
-            </div>
-            {showSuccessModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm animate-in zoom-in">
-                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">🎉</div>
-                        <h2 className="text-xl font-black mb-2">Property Live!</h2>
-                        <p className="text-gray-500">The property has been approved and is now visible to customers.</p>
+                    )
+                    }
+                </div >
+            </div >
+            {
+                showSuccessModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm animate-in zoom-in">
+                            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">🎉</div>
+                            <h2 className="text-xl font-black mb-2">Property Live!</h2>
+                            <p className="text-gray-500">The property has been approved and is now visible to customers.</p>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
 

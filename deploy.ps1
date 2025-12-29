@@ -22,7 +22,8 @@ param (
     [string]$ServerIP = "72.61.242.42",
     [string]$User = "root",
     [string]$RemoteBasePath = "/var/www/html",
-    [switch]$AutoDeployAll = $false
+    [switch]$AutoDeployAll = $false,
+    [string]$Component = ""
 )
 
 # Configuration
@@ -227,6 +228,17 @@ if ($AutoDeployAll) {
     if (Build-ReactApp "Admin" $Paths.Admin) { Deploy-Component "Admin" $Paths.Admin }
     if (Build-Laravel "API" $Paths.API) { Deploy-Component "API" $Paths.API }
     if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor }
+    exit
+}
+
+if ($Component) {
+    switch ($Component) {
+        "Customer" { if (Build-ReactApp "Customer" $Paths.Customer) { Deploy-Component "Customer" $Paths.Customer } }
+        "Admin" { if (Build-ReactApp "Admin" $Paths.Admin) { Deploy-Component "Admin" $Paths.Admin } }
+        "API" { if (Build-Laravel "API" $Paths.API) { Deploy-Component "API" $Paths.API } }
+        "Vendor" { if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor } }
+        Default { Write-Error "Invalid Component. Use: Customer, Admin, API, Vendor" }
+    }
     exit
 }
 

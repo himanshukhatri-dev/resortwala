@@ -17,11 +17,17 @@ export default function OTPInput({ length = 6, value = '', onChange, onComplete,
             const digits = newVal.split('').slice(0, length);
             const newOtpArray = [...otpArray];
 
-            digits.forEach((digit, i) => {
-                if (index + i < length) {
-                    newOtpArray[index + i] = digit;
-                }
-            });
+            // Edge case: User appending to the last input (e.g. '5' -> '56')
+            // We want the last char ('6') to replace the current one
+            if (index === length - 1 && newVal.length === 2) {
+                newOtpArray[index] = digits[1];
+            } else {
+                digits.forEach((digit, i) => {
+                    if (index + i < length) {
+                        newOtpArray[index + i] = digit;
+                    }
+                });
+            }
 
             const newOtpString = newOtpArray.join('');
             onChange(newOtpString);

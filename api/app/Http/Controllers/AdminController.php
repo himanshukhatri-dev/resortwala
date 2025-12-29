@@ -157,6 +157,15 @@ class AdminController extends Controller
         
         $property = PropertyMaster::findOrFail($id);
         \App\Helpers\Profiler::checkpoint('After findOrFail');
+
+        // Update fields from request
+        $property->fill($request->only([
+            'Name', 'Location', 'ShortDescription', 'LongDescription', 
+            'Occupancy', 'MaxCapacity', 'NoofRooms', 
+            'checkInTime', 'checkOutTime', 
+            'PropertyRules', 'BookingSpecailMessage',
+            'admin_pricing'
+        ]));
         
         $property->is_approved = true;
         \App\Helpers\Profiler::checkpoint('After setting is_approved');

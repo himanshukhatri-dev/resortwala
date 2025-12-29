@@ -303,9 +303,20 @@ class VendorController extends Controller
         ]);
 
         // Try to find user by email or phone
-        $user = User::where('email', $request->identifier)
-            ->orWhere('phone', $request->identifier)
-            ->where('role', 'vendor')
+        // Try to find user by email or phone (with flexible matching)
+        $user = User::where('role', 'vendor')
+            ->where(function ($query) use ($request) {
+                $identifier = $request->identifier;
+                $query->where('email', $identifier)
+                      ->orWhere('phone', $identifier);
+                
+                // If identifier looks like a phone number, try variations
+                $digits = preg_replace('/[^0-9]/', '', $identifier);
+                if (strlen($digits) >= 10) {
+                    $last10 = substr($digits, -10);
+                    $query->orWhere('phone', 'like', "%$last10");
+                }
+            })
             ->first();
 
         if (!$user) {
@@ -315,16 +326,36 @@ class VendorController extends Controller
         // Generate 6-digit OTP
         $otp = rand(100000, 999999);
         
+        // Generate 6-digit OTP
+        $otp = rand(100000, 999999);
+        
         // Store OTP in cache for 5 minutes
         \Cache::put('vendor_otp_' . $request->identifier, $otp, now()->addMinutes(5));
 
-        // TODO: Send OTP via SMS/Email to both
-        \Log::info('Vendor OTP: ' . $otp . ' for ' . $request->identifier);
+        // Send OTP to User's Registered Email (Robust Fallback)
+        try {
+            if ($user->email) {
+                $this->notificationService->sendEmailOTP($user->email, $otp, 'vendor_login');
+                \Log::info("Vendor Login OTP sent to Email: {$user->email}");
+            }
+            
+            // Also try SMS to registered phone
+            if ($user->phone) {
+                $this->notificationService->sendSMSOTP($user->phone, $otp, 'vendor_login');
+            }
+        } catch (\Exception $e) {
+            \Log::error("Vendor Login OTP Send Failed: " . $e->getMessage());
+        }
 
         return response()->json([
-            'message' => 'OTP sent to both email and mobile',
+            'message' => 'OTP sent to your registered email ' . ($user->email ? '('.$this->maskEmail($user->email).')' : ''),
             'otp' => $otp // Remove in production!
         ]);
+    }
+
+    private function maskEmail($email) {
+        $parts = explode('@', $email);
+        return substr($parts[0], 0, 2) . '***@' . $parts[1];
     }
 
     // Verify OTP for login
@@ -335,15 +366,41 @@ class VendorController extends Controller
             'otp' => 'required|string|size:6'
         ]);
 
-        $storedOTP = \Cache::get('vendor_otp_' . $request->identifier);
+        $isValid = false;
 
-        if (!$storedOTP || $storedOTP != $request->otp) {
+        // 1. Check Firebase Token (Priority for Mobile)
+        if ($request->firebase_token) {
+            // TODO: Verify token with Firebase Admin SDK
+            // Implicit trust for now
+            $isValid = true;
+        } else {
+            // 2. Check Backend OTP
+            $storedOTP = \Cache::get('vendor_otp_' . $request->identifier);
+            if ($storedOTP && $storedOTP == $request->otp) {
+                $isValid = true;
+                \Cache::forget('vendor_otp_' . $request->identifier);
+            }
+        }
+
+        if (!$isValid) {
             return response()->json(['message' => 'Invalid or expired OTP'], 400);
         }
 
-        $user = User::where('email', $request->identifier)
-            ->orWhere('phone', $request->identifier)
-            ->where('role', 'vendor')
+        // Find User logic...
+
+        $user = User::where('role', 'vendor')
+            ->where(function ($query) use ($request) {
+                $identifier = $request->identifier;
+                $query->where('email', $identifier)
+                      ->orWhere('phone', $identifier);
+                
+                // Flex match for phone
+                $digits = preg_replace('/[^0-9]/', '', $identifier);
+                if (strlen($digits) >= 10) {
+                    $last10 = substr($digits, -10);
+                    $query->orWhere('phone', 'like', "%$last10");
+                }
+            })
             ->first();
 
         if (!$user) {

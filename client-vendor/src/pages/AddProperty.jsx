@@ -7,7 +7,7 @@ import {
     FaHome, FaWater, FaCheck, FaTimes, FaCamera, FaBed, FaUtensils,
     FaSwimmingPool, FaChild, FaBan, FaMoneyBillWave, FaArrowRight, FaArrowLeft, FaSave, FaStar,
     FaParking, FaWifi, FaMusic, FaTree, FaGlassMartiniAlt, FaSnowflake, FaCouch, FaRestroom, FaDoorOpen, FaUsers,
-    FaTshirt, FaVideo, FaWheelchair, FaMedkit, FaUmbrellaBeach, FaChair, FaUserShield, FaConciergeBell, FaHotTub
+    FaTshirt, FaVideo, FaWheelchair, FaMedkit, FaUmbrellaBeach, FaChair, FaUserShield, FaConciergeBell, FaHotTub, FaPlus
 } from 'react-icons/fa';
 import { MdPool, MdWater, MdOutlineDeck, MdChildCare, MdWaterfallChart, MdMusicNote, MdBalcony, MdSportsEsports, MdRestaurant, MdOutlineOutdoorGrill } from 'react-icons/md';
 import { STEPS_VILLA, STEPS_WATERPARK, AMENITY_TYPES } from '../constants/propertyConstants';
@@ -167,7 +167,7 @@ export default function AddProperty() {
         },
         inclusions: {},
         priceMonThu: '', priceFriSun: '', priceSaturday: '',
-        checkInTime: '12:00', checkOutTime: '11:00',
+        checkInTime: '14:00', checkOutTime: '11:00',
         idProofs: [],
         foodRates: { veg: false, nonVeg: false, jain: false },
         mealPlans: {
@@ -179,8 +179,11 @@ export default function AddProperty() {
         extraGuestLimit: '15',
         extraGuestPriceMonThu: '', extraGuestPriceFriSun: '', extraGuestPriceSaturday: '',
         otherAttractions: '', otherRules: '',
-        videoUrl: '', images: [], videos: []
+        videoUrl: '', images: [], videos: [],
+        googleMapLink: '', latitude: '', longitude: ''
     });
+
+    const [isLoaded, setIsLoaded] = useState(false);
 
     // --- PERSISTENCE: LOAD DRAFT ---
     useEffect(() => {
@@ -188,19 +191,25 @@ export default function AddProperty() {
         if (savedDraft) {
             try {
                 const parsed = JSON.parse(savedDraft);
+                console.log("Draft Loaded:", parsed);
                 // Only merge properties that exist in our initial state
-                setFormData(prev => ({ ...prev, ...parsed, images: [] })); // Images can't be stored in localStorage easily as File objects
+                setFormData(prev => ({ ...prev, ...parsed, images: [] }));
             } catch (e) {
                 console.error("Failed to load draft", e);
             }
+        } else {
+            console.log("No Draft Found");
         }
+        setIsLoaded(true);
     }, []);
 
     // --- PERSISTENCE: SAVE DRAFT ---
     useEffect(() => {
+        if (!isLoaded) return;
         const { images, ...dataToSave } = formData;
+        console.log("Saving Draft...", dataToSave.roomConfig?.bedrooms?.length);
         localStorage.setItem('property_draft', JSON.stringify(dataToSave));
-    }, [formData]);
+    }, [formData, isLoaded]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -269,12 +278,19 @@ export default function AddProperty() {
 
     // Sync Bedrooms
     useEffect(() => {
+        if (!isLoaded) return;
         if (formData.propertyType !== 'Villa') return;
         const count = parseInt(formData.noofRooms || 0);
-        setFormData(prev => {
-            if (prev.roomConfig.bedrooms.length === count) return prev; // No change
 
+        setFormData(prev => {
+            const currentLen = prev.roomConfig.bedrooms.length;
+            // console.log(`Sync Bedrooms: Count=${count}, Current=${currentLen}`);
+
+            if (currentLen === count) return prev; // No change
+
+            console.log(`Sync Bedrooms Change: Adjusting from ${currentLen} to ${count}`);
             const newRooms = [...prev.roomConfig.bedrooms];
+
             // If growing
             for (let i = newRooms.length; i < count; i++) {
                 newRooms.push({ id: i + 1, bedType: 'Queen', ac: false, tv: false, geyser: false, bathroom: true, toiletType: 'Western', balcony: false });
@@ -413,10 +429,19 @@ export default function AddProperty() {
             apiData.append('Website', formData.website);
             apiData.append('ShortDescription', formData.shortDescription);
             apiData.append('LongDescription', formData.description);
-            apiData.append('Price', formData.priceMonThu || 0);
-            apiData.append('price_mon_thu', formData.priceMonThu);
-            apiData.append('price_fri_sun', formData.priceFriSun);
-            apiData.append('price_sat', formData.priceSaturday);
+            // Pricing Logic
+            if (formData.propertyType === 'Waterpark') {
+                apiData.append('Price', formData.waterparkPrices?.adult?.week || 0);
+                apiData.append('price_mon_thu', formData.waterparkPrices?.adult?.week);
+                apiData.append('price_fri_sun', formData.waterparkPrices?.adult?.weekend);
+                apiData.append('price_sat', formData.waterparkPrices?.adult?.weekend); // Use weekend price for Sat
+            } else {
+                apiData.append('Price', formData.priceMonThu || 0);
+                apiData.append('price_mon_thu', formData.priceMonThu);
+                apiData.append('price_fri_sun', formData.priceFriSun);
+                apiData.append('price_sat', formData.priceSaturday);
+            }
+
             apiData.append('MaxCapacity', formData.maxCapacity);
             apiData.append('NoofRooms', formData.noofRooms);
             apiData.append('Occupancy', formData.occupancy);
@@ -446,7 +471,11 @@ export default function AddProperty() {
                         saturday: formData.extraGuestPriceSaturday
                     },
                     extraMattressCharge: formData.extraMattressCharge
-                }
+                },
+                googleMapLink: formData.googleMapLink,
+                latitude: formData.latitude,
+                longitude: formData.longitude,
+                otherAttractions: formData.otherAttractions // Valid Field
             };
             apiData.append('onboarding_data', JSON.stringify(onboardingData));
             apiData.append('video_url', formData.videoUrl);
@@ -526,7 +555,7 @@ export default function AddProperty() {
                 <InputField label="Property Name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
                 <InputField label="Display Name" name="displayName" value={formData.displayName} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
                 <InputField label="City" name="cityName" value={formData.cityName} onChange={handleInputChange} placeholder="Ex: Lonavala" required />
-                <InputField label="Nearest Station" name="location" value={formData.location} onChange={handleInputChange} placeholder="Ex: Lonavala Station" required />
+                <InputField label="Location (Nearest Landmark)" name="location" value={formData.location} onChange={handleInputChange} placeholder="Ex: Near Lonavala Station" required />
             </div>
 
             <div className="space-y-1 group">
@@ -562,6 +591,81 @@ export default function AddProperty() {
                 </div>
                 <InputField label="Email Address" name="email" value={formData.email} onChange={handleInputChange} type="email" />
                 <InputField label="Website URL" name="website" value={formData.website} onChange={handleInputChange} />
+            </div>
+
+            {/* Map Location Section */}
+            <div className="bg-green-50/50 p-6 rounded-2xl border border-green-100 space-y-4">
+                <h4 className="font-bold text-green-900 flex items-center gap-2">
+                    <FaHome className="text-green-600" /> Map Location
+                </h4>
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Google Map Link</label>
+                    <input
+                        type="text"
+                        name="googleMapLink"
+                        value={formData.googleMapLink || ''}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData(prev => ({ ...prev, googleMapLink: val }));
+
+                            // Try extract coords
+                            const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+                            const match = val.match(regex);
+                            if (match) {
+                                setFormData(prev => ({
+                                    ...prev,
+                                    googleMapLink: val,
+                                    latitude: match[1],
+                                    longitude: match[2]
+                                }));
+                            } else {
+                                // Try 'q=' format
+                                const qRegex = /q=(-?\d+\.\d+),(-?\d+\.\d+)/;
+                                const qMatch = val.match(qRegex);
+                                if (qMatch) {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        googleMapLink: val,
+                                        latitude: qMatch[1],
+                                        longitude: qMatch[2]
+                                    }));
+                                }
+                            }
+                        }}
+                        className="w-full bg-white border border-green-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 outline-none"
+                        placeholder="Paste Google Maps Link here (e.g. from WhatsApp or Maps)"
+                    />
+                    <p className="text-[10px] text-green-600 italic">We'll try to auto-detect Latitude & Longitude from the link.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <InputField
+                        label="Latitude"
+                        name="latitude"
+                        value={formData.latitude}
+                        onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                        placeholder="Ex: 18.1234"
+                        className="bg-white"
+                    />
+                    <InputField
+                        label="Longitude"
+                        name="longitude"
+                        value={formData.longitude}
+                        onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                        placeholder="Ex: 73.5678"
+                        className="bg-white"
+                    />
+                </div>
+
+                {/* Other Attractions */}
+                <div className="space-y-2 pt-2 border-t border-green-200">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nearby Attractions / Places to Visit</label>
+                    <textarea
+                        value={formData.otherAttractions || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, otherAttractions: e.target.value }))}
+                        className="w-full bg-white border border-green-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 outline-none h-24 resize-none"
+                        placeholder="List nearby tourist spots, distances, etc..."
+                    />
+                </div>
             </div>
 
             <div className="space-y-1">
@@ -1184,17 +1288,20 @@ export default function AddProperty() {
                     <span className="text-red-500 animate-pulse">*</span>
                 </h4>
                 <div className="flex gap-4 flex-wrap">
-                    {['Cash', 'UPI', 'Debit', 'Credit'].map(method => (
-                        <button
-                            key={method}
-                            type="button"
-                            onClick={() => handleNestedChange('paymentMethods', method.toLowerCase(), !formData.paymentMethods?.[method.toLowerCase()])}
-                            className={`px-6 py-3 rounded-lg font-bold border-2 transition-all ${formData.paymentMethods?.[method.toLowerCase()] ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                        >
-                            {formData.paymentMethods?.[method.toLowerCase()] && <FaCheck className="inline mr-2" />}
-                            {method}
-                        </button>
-                    ))}
+                    {['Cash', 'UPI', 'Debit Card', 'Credit Card'].map(method => {
+                        const key = method.toLowerCase().replace(' card', ''); // 'debit card' -> 'debit'
+                        return (
+                            <button
+                                key={method}
+                                type="button"
+                                onClick={() => handleNestedChange('paymentMethods', key, !formData.paymentMethods?.[key])}
+                                className={`px-6 py-3 rounded-lg font-bold border-2 transition-all ${formData.paymentMethods?.[key] ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                            >
+                                {formData.paymentMethods?.[key] && <FaCheck className="inline mr-2" />}
+                                {method}
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
 
@@ -1202,28 +1309,30 @@ export default function AddProperty() {
                 User said "Its not applicable in villa. please remove."
                 I will only show it for Waterpark then.
             */}
-            {formData.propertyType === 'Waterpark' && (
-                <div className="mt-8">
-                    <h4 className="font-bold mb-4 flex items-center gap-2">
-                        What's Included? (Facilities)
-                        <span className="text-red-500 animate-pulse">*</span>
-                    </h4>
-                    <div className="flex flex-wrap gap-3">
-                        {INCLUSIONS.map(inc => (
-                            <button
-                                key={inc}
-                                type="button"
-                                onClick={() => handleNestedChange('inclusions', inc, !formData.inclusions?.[inc])}
-                                className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${formData.inclusions?.[inc] ? 'bg-green-100 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                            >
-                                {formData.inclusions?.[inc] && <FaCheck className="inline mr-2 text-xs" />}
-                                {inc}
-                            </button>
-                        ))}
+            {
+                formData.propertyType === 'Waterpark' && (
+                    <div className="mt-8">
+                        <h4 className="font-bold mb-4 flex items-center gap-2">
+                            What's Included? (Facilities)
+                            <span className="text-red-500 animate-pulse">*</span>
+                        </h4>
+                        <div className="flex flex-wrap gap-3">
+                            {INCLUSIONS.map(inc => (
+                                <button
+                                    key={inc}
+                                    type="button"
+                                    onClick={() => handleNestedChange('inclusions', inc, !formData.inclusions?.[inc])}
+                                    className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${formData.inclusions?.[inc] ? 'bg-green-100 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                                >
+                                    {formData.inclusions?.[inc] && <FaCheck className="inline mr-2 text-xs" />}
+                                    {inc}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 
     const renderStep4 = () => (
