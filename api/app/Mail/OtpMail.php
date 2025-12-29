@@ -31,6 +31,9 @@ class OtpMail extends Mailable
         } else if ($type === 'signup') {
             $this->title = 'Verify Your Email';
             $this->messageText = 'Welcome to ResortWala! Use the One-Time Password (OTP) below to complete your registration.';
+        } else if ($type === 'vendor_registration') {
+            $this->title = 'Vendor Registration';
+            $this->messageText = 'Welcome to ResortWala Vendor Portal! Use the One-Time Password (OTP) below to complete your registration. This OTP is valid for 5 minutes.';
         } else if ($type === 'verification') {
             $this->title = 'Email Verification';
             $this->messageText = 'Use the One-Time Password (OTP) below to verify your email address. This OTP is valid for 10 minutes.';

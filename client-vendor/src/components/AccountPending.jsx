@@ -64,11 +64,15 @@ export default function AccountPending() {
             <div className="bg-gray-50 rounded-2xl p-6 md:p-8 w-full max-w-2xl border border-gray-100">
                 <h3 className="font-bold text-gray-800 mb-4">Want to speed things up?</h3>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <button className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 font-bold hover:bg-gray-50 hover:border-gray-300 transition shadow-sm group">
+                    <button
+                        onClick={() => window.location.href = 'mailto:support@resortwala.com'}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 font-bold hover:bg-gray-50 hover:border-gray-300 transition shadow-sm group">
                         <FaEnvelope className="text-gray-400 group-hover:text-blue-500 transition" />
                         Email Support
                     </button>
-                    <button className="flex items-center justify-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-xl font-bold hover:bg-[#20bd5a] transition shadow-lg shadow-green-200 group">
+                    <button
+                        onClick={() => window.open('https://wa.me/919870646548?text=Hi%20ResortWala%20Support,%20my%20vendor%20account%20is%20pending%20approval.', '_blank')}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-xl font-bold hover:bg-[#20bd5a] transition shadow-lg shadow-green-200 group">
                         <FaWhatsapp className="text-white text-lg group-hover:scale-110 transition" />
                         Chat on WhatsApp
                     </button>

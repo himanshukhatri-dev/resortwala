@@ -272,4 +272,283 @@ class VendorController extends Controller
 
         return response()->json(['message' => 'Dates frozen successfully', 'booking' => $booking], 201);
     }
+
+    // Demo login for vendor@resortwala (no OTP required)
+    public function loginDemo(Request $request)
+    {
+        $user = User::where('email', 'vendor@resortwala.com')->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Demo account not found'], 404);
+        }
+
+        if ($user->role !== 'vendor') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $token = $user->createToken('vendor-token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Demo login successful',
+            'user' => $user,
+            'token' => $token
+        ]);
+    }
+
+    // Send OTP for login (to both email and mobile)
+    public function sendOTP(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required|string'
+        ]);
+
+        // Try to find user by email or phone
+        $user = User::where('email', $request->identifier)
+            ->orWhere('phone', $request->identifier)
+            ->where('role', 'vendor')
+            ->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Vendor not found'], 404);
+        }
+
+        // Generate 6-digit OTP
+        $otp = rand(100000, 999999);
+        
+        // Store OTP in cache for 5 minutes
+        \Cache::put('vendor_otp_' . $request->identifier, $otp, now()->addMinutes(5));
+
+        // TODO: Send OTP via SMS/Email to both
+        \Log::info('Vendor OTP: ' . $otp . ' for ' . $request->identifier);
+
+        return response()->json([
+            'message' => 'OTP sent to both email and mobile',
+            'otp' => $otp // Remove in production!
+        ]);
+    }
+
+    // Verify OTP for login
+    public function verifyOTP(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required|string',
+            'otp' => 'required|string|size:6'
+        ]);
+
+        $storedOTP = \Cache::get('vendor_otp_' . $request->identifier);
+
+        if (!$storedOTP || $storedOTP != $request->otp) {
+            return response()->json(['message' => 'Invalid or expired OTP'], 400);
+        }
+
+        $user = User::where('email', $request->identifier)
+            ->orWhere('phone', $request->identifier)
+            ->where('role', 'vendor')
+            ->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Vendor not found'], 404);
+        }
+
+        // Clear OTP
+        \Cache::forget('vendor_otp_' . $request->identifier);
+
+        $token = $user->createToken('vendor-token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Login successful',
+            'user' => $user,
+            'token' => $token
+        ]);
+    }
+
+    // Send OTP for registration
+    public function registerSendOTP(Request $request)
+    {
+        $request->validate([
+            'email' => 'nullable|email|unique:users,email',
+            'phone' => 'nullable|string|unique:users,phone',
+            'name' => 'required|string',
+            'business_name' => 'required|string'
+        ]);
+
+        // At least one contact method required
+        if (!$request->email && !$request->phone) {
+            return response()->json(['message' => 'Please provide at least email or mobile number'], 400);
+        }
+
+        $otpService = app(\App\Services\OtpService::class);
+        
+        // Skip OTP generation if coming from Firebase Phone Auth
+        if ($request->skip_otp && $request->phone) {
+            // Just cache the data for registration step
+            $cacheKey = $request->phone;
+             \Cache::put('vendor_reg_data_' . $cacheKey, $request->all(), now()->addMinutes(10));
+             return response()->json(['message' => 'OTP handled by Firebase']);
+        }
+        
+        // Generate ONE OTP for both email and phone
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        
+        // Store OTP for both identifiers if provided
+        try {
+            if ($request->email) {
+                \App\Models\Otp::create([
+                    'identifier' => $request->email,
+                    'code' => $otp,
+                    'type' => 'vendor_registration',
+                    'expires_at' => \Carbon\Carbon::now()->addMinutes(5)
+                ]);
+                $this->notificationService->sendEmailOTP($request->email, $otp, 'vendor_registration');
+                \Log::info("Vendor Registration OTP sent to email: {$request->email}, OTP: {$otp}");
+            }
+            
+            if ($request->phone) {
+                \App\Models\Otp::create([
+                    'identifier' => $request->phone,
+                    'code' => $otp,
+                    'type' => 'vendor_registration',
+                    'expires_at' => \Carbon\Carbon::now()->addMinutes(5)
+                ]);
+                $this->notificationService->sendSMSOTP($request->phone, $otp, 'vendor_registration');
+                \Log::info("Vendor Registration OTP sent to phone: {$request->phone}, OTP: {$otp}");
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to send OTP: ' . $e->getMessage(),
+                'debug_info' => [
+                    'mailer' => config('mail.default'),
+                    'host' => config('mail.mailers.smtp.host'),
+                    'port' => config('mail.mailers.smtp.port'),
+                    'encryption' => config('mail.mailers.smtp.encryption'),
+                    // Do not expose password
+                    'username' => config('mail.mailers.smtp.username') ? 'SET' : 'NOT SET',
+                ]
+            ], 500);
+        }
+        
+        // Store registration data in cache
+        $cacheKey = $request->email ?: $request->phone;
+        \Cache::put('vendor_reg_data_' . $cacheKey, $request->all(), now()->addMinutes(10));
+
+        return response()->json([
+            'message' => 'OTP sent to ' . ($request->email && $request->phone ? 'both email and mobile' : ($request->email ? 'email' : 'mobile')),
+            'debug_otp' => $otp // TEMPORARY: Remove in production
+        ]);
+    }
+
+    // Verify OTP and complete registration
+    public function registerVerifyOTP(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|string|size:6'
+        ]);
+
+        $otpService = app(\App\Services\OtpService::class);
+        
+        // Try to verify OTP for email or phone
+        $isValid = false;
+        $cacheKey = null;
+
+        // Verify Firebase Token if present
+        if ($request->firebase_token) {
+            // TODO: Verify token with Firebase Admin SDK
+            // For now, implicit trust as per CustomerAuthController pattern
+             $isValid = true;
+             $cacheKey = $request->email ?: $request->phone; // Match sendOTP logic
+        } else {
+             // Normal OTP verification logic
+
+        if ($request->email) {
+            $isValid = $otpService->verify($request->email, $request->otp, 'vendor_registration');
+            $cacheKey = $request->email;
+        }
+        
+        if (!$isValid && $request->phone) {
+                $isValid = $otpService->verify($request->phone, $request->otp, 'vendor_registration');
+                $cacheKey = $request->phone;
+            }
+        }
+
+        if (!$isValid) {
+            return response()->json(['message' => 'Invalid or expired OTP'], 400);
+        }
+
+        $regData = \Cache::get('vendor_reg_data_' . $cacheKey);
+
+        if (!$regData) {
+            return response()->json(['message' => 'Registration data expired. Please start again.'], 400);
+        }
+
+        $user = User::create([
+            'name' => $regData['name'],
+            'email' => $regData['email'] ?? null,
+            'phone' => $regData['phone'] ?? null,
+            'password' => Hash::make(bin2hex(random_bytes(16))),
+            'role' => 'vendor',
+            'business_name' => $regData['business_name'],
+            'is_approved' => false
+        ]);
+
+        // Clear cache
+        \Cache::forget('vendor_reg_data_' . $cacheKey);
+
+        // Send registration confirmation email
+        $this->notificationService->sendVendorRegistrationEmail($user);
+
+        $token = $user->createToken('vendor-token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Registration successful',
+            'user' => $user,
+            'token' => $token
+        ], 201);
+    }
+
+    // Approve vendor account
+    public function approveVendor(Request $request, $id)
+    {
+        $vendor = User::where('id', $id)->where('role', 'vendor')->first();
+
+        if (!$vendor) {
+            return response()->json(['message' => 'Vendor not found'], 404);
+        }
+
+        $vendor->is_approved = true;
+        $vendor->save();
+
+        // Send approval email
+        $this->notificationService->sendVendorApprovalEmail($vendor);
+
+        return response()->json([
+            'message' => 'Vendor approved successfully',
+            'vendor' => $vendor
+        ]);
+    }
+
+    // Reject vendor account
+    public function rejectVendor(Request $request, $id)
+    {
+        $request->validate([
+            'rejection_comment' => 'required|string|min:10'
+        ]);
+
+        $vendor = User::where('id', $id)->where('role', 'vendor')->first();
+
+        if (!$vendor) {
+            return response()->json(['message' => 'Vendor not found'], 404);
+        }
+
+        $vendor->is_approved = false;
+        $vendor->rejection_comment = $request->rejection_comment;
+        $vendor->save();
+
+        // Send rejection email
+        $this->notificationService->sendVendorRejectionEmail($vendor, $request->rejection_comment);
+
+        return response()->json([
+            'message' => 'Vendor rejected successfully',
+            'vendor' => $vendor
+        ]);
+    }
 }

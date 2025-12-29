@@ -23,6 +23,7 @@ class NotificationService
             Log::info("OTP Email sent to {$email} (Type: {$type})");
         } catch (\Exception $e) {
             Log::error("Failed to send OTP Email to {$email}: " . $e->getMessage());
+            throw $e;
         }
     }
 
@@ -57,6 +58,7 @@ class NotificationService
             
         } catch (\Exception $e) {
             Log::error("Failed to send SMS OTP to {$phone}: " . $e->getMessage());
+            throw $e;
         }
     }
 
@@ -105,5 +107,56 @@ class NotificationService
 
         // WhatsApp Placeholder
         // $this->sendWhatsApp($booking->CustomerMobile, "Your booking status for {$booking->property->Name} is now: {$status}");
+    }
+
+    /**
+     * Send vendor registration confirmation email
+     */
+    public function sendVendorRegistrationEmail($vendor)
+    {
+        try {
+            Mail::send('emails.vendor.registration-confirmation', ['vendor' => $vendor], function($message) use ($vendor) {
+                $message->to($vendor->email)
+                        ->subject('Welcome to ResortWala - Registration Received');
+            });
+            Log::info("Sent registration confirmation email to {$vendor->email}");
+        } catch (\Exception $e) {
+            Log::error("Failed to send registration email to {$vendor->email}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Send vendor approval email
+     */
+    public function sendVendorApprovalEmail($vendor)
+    {
+        try {
+            Mail::send('emails.vendor.approval', ['vendor' => $vendor], function($message) use ($vendor) {
+                $message->to($vendor->email)
+                        ->subject('Your ResortWala Account is Approved! 🎉');
+            });
+            Log::info("Sent approval email to {$vendor->email}");
+        } catch (\Exception $e) {
+            Log::error("Failed to send approval email to {$vendor->email}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Send vendor rejection email
+     */
+    public function sendVendorRejectionEmail($vendor, $rejectionComment)
+    {
+        try {
+            Mail::send('emails.vendor.rejection', [
+                'vendor' => $vendor,
+                'rejectionComment' => $rejectionComment
+            ], function($message) use ($vendor) {
+                $message->to($vendor->email)
+                        ->subject('ResortWala Vendor Registration - Action Required');
+            });
+            Log::info("Sent rejection email to {$vendor->email}");
+        } catch (\Exception $e) {
+            Log::error("Failed to send rejection email to {$vendor->email}: " . $e->getMessage());
+        }
     }
 }

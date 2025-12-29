@@ -303,6 +303,42 @@ export default function AddProperty() {
         e.target.value = null; // Reset input to allow re-selection
     };
 
+    // Bedroom management functions
+    const addBedroom = () => {
+        setFormData(prev => ({
+            ...prev,
+            roomConfig: {
+                ...prev.roomConfig,
+                bedrooms: [
+                    ...prev.roomConfig.bedrooms,
+                    { bedType: 'King', ac: false, tv: false, geyser: false, balcony: false, privateBath: false }
+                ]
+            }
+        }));
+    };
+
+    const removeBedroom = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            roomConfig: {
+                ...prev.roomConfig,
+                bedrooms: prev.roomConfig.bedrooms.filter((_, i) => i !== index)
+            }
+        }));
+    };
+
+    const updateRoom = (index, field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            roomConfig: {
+                ...prev.roomConfig,
+                bedrooms: prev.roomConfig.bedrooms.map((room, i) =>
+                    i === index ? { ...room, [field]: value } : room
+                )
+            }
+        }));
+    };
+
     const handleDeleteImage = async (idx) => {
         const isConfirmed = await showConfirm('Delete Photo', 'Remove this photo from the list?', 'Remove', 'Cancel');
         if (isConfirmed) {

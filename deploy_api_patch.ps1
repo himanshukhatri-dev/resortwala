@@ -98,6 +98,11 @@ function Deploy-Component {
         else {
             Write-Host "[$Name] Extraction Failed." -ForegroundColor Red
         }
+
+        # 6. Clear Cache (Critical for config changes)
+        Write-Host "[$Name] Clearing Cache..." -ForegroundColor Yellow
+        ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "cd $($Config.RemotePath) && php artisan optimize:clear"
+        Write-Host "[$Name] Cache Cleared." -ForegroundColor Green
     }
     else {
         Write-Error "[$Name] SCP Upload Failed."

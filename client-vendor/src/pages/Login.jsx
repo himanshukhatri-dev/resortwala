@@ -4,14 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import OTPInput from '../components/OTPInput';
-import { FaEnvelope, FaMobileAlt, FaArrowLeft } from 'react-icons/fa';
+import { FaArrowLeft } from 'react-icons/fa';
 
 export default function Login() {
     const navigate = useNavigate();
     const { login } = useAuth();
 
     const [step, setStep] = useState('input'); // 'input' | 'otp'
-    const [method, setMethod] = useState('email'); // 'email' | 'mobile'
     const [identifier, setIdentifier] = useState('');
     const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
@@ -41,12 +40,11 @@ export default function Login() {
             return;
         }
 
-        // Regular OTP flow
+        // Regular OTP flow - send to both email and mobile
         setLoading(true);
         try {
             await axios.post(`${API_BASE_URL}/vendor/send-otp`, {
-                [method]: identifier,
-                method
+                identifier: identifier
             });
             setStep('otp');
             setTimer(300); // 5 minutes
@@ -66,9 +64,8 @@ export default function Login() {
 
         try {
             const response = await axios.post(`${API_BASE_URL}/vendor/verify-otp`, {
-                [method]: identifier,
-                otp,
-                method
+                identifier: identifier,
+                otp
             });
             login(response.data.token, response.data.user);
             setTimeout(() => navigate('/dashboard'), 100);
@@ -84,8 +81,7 @@ export default function Login() {
         setLoading(true);
         try {
             await axios.post(`${API_BASE_URL}/vendor/send-otp`, {
-                [method]: identifier,
-                method
+                identifier: identifier
             });
             setTimer(300);
             startTimer();
@@ -138,47 +134,28 @@ export default function Login() {
 
                 {step === 'input' ? (
                     <>
-                        {/* Method Toggle */}
-                        <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
-                            <button
-                                type="button"
-                                onClick={() => setMethod('email')}
-                                className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${method === 'email'
-                                        ? 'bg-white text-blue-600 shadow-md'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                    }`}
-                            >
-                                <FaEnvelope /> Email
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMethod('mobile')}
-                                className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${method === 'mobile'
-                                        ? 'bg-white text-blue-600 shadow-md'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                    }`}
-                            >
-                                <FaMobileAlt /> Mobile
-                            </button>
-                        </div>
-
                         {/* Input Form */}
                         <form onSubmit={handleSendOTP} className="space-y-6">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    {method === 'email' ? 'Email Address' : 'Mobile Number'}
+                                    Email or Mobile Number
                                 </label>
                                 <input
-                                    type={method === 'email' ? 'email' : 'tel'}
+                                    type="text"
                                     required
                                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-lg"
-                                    placeholder={method === 'email' ? 'vendor@resortwala.com' : '+91 9876543210'}
+                                    placeholder="vendor@example.com or +91 9876543210"
                                     value={identifier}
                                     onChange={e => setIdentifier(e.target.value)}
                                 />
                                 {isDemoAccount && (
                                     <p className="mt-2 text-xs text-green-600 font-medium">
                                         ✓ Demo account - No OTP required
+                                    </p>
+                                )}
+                                {!isDemoAccount && identifier && (
+                                    <p className="mt-2 text-xs text-blue-600 font-medium">
+                                        📱 OTP will be sent to both your email and mobile
                                     </p>
                                 )}
                             </div>
@@ -204,15 +181,18 @@ export default function Login() {
                             onClick={() => { setStep('input'); setOtp(''); setError(''); }}
                             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium text-sm transition-colors"
                         >
-                            <FaArrowLeft /> Change {method}
+                            <FaArrowLeft /> Change email/mobile
                         </button>
 
                         {/* OTP Input */}
                         <div className="space-y-6">
                             <div className="text-center">
-                                <p className="text-sm text-gray-600 mb-6">
-                                    Enter the 6-digit code sent to<br />
-                                    <span className="font-bold text-gray-900">{identifier}</span>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    Enter the 6-digit code sent to
+                                </p>
+                                <p className="font-bold text-gray-900 mb-4">{identifier}</p>
+                                <p className="text-xs text-blue-600 mb-6">
+                                    Check both your email and mobile for the OTP
                                 </p>
                                 <OTPInput
                                     length={6}

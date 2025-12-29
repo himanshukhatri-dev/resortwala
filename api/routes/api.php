@@ -86,6 +86,12 @@ Route::post('/vendor/verify-otp', [\App\Http\Controllers\VendorController::class
 Route::post('/vendor/register-send-otp', [\App\Http\Controllers\VendorController::class, 'registerSendOTP']);
 Route::post('/vendor/register-verify-otp', [\App\Http\Controllers\VendorController::class, 'registerVerifyOTP']);
 
+// Admin routes for vendor management
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/admin/vendors/{id}/approve', [\App\Http\Controllers\VendorController::class, 'approveVendor']);
+    Route::post('/admin/vendors/{id}/reject', [\App\Http\Controllers\VendorController::class, 'rejectVendor']);
+});
+
 // Public Utility Routes
 Route::get('/ping', function () {
     return response()->json(['status' => 'ok', 'message' => 'PHP is reachable']);

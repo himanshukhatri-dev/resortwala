@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import OTPInput from '../components/OTPInput';
 import { FaEnvelope, FaMobileAlt, FaArrowLeft, FaCheck } from 'react-icons/fa';
+import { auth, setupRecaptcha } from '../firebase';
+import { signInWithPhoneNumber } from 'firebase/auth';
 
 export default function Register() {
     const navigate = useNavigate();
@@ -23,6 +25,9 @@ export default function Register() {
     const [loading, setLoading] = useState(false);
     const [timer, setTimer] = useState(0);
 
+    // Firebase state
+    const [confirmationResult, setConfirmationResult] = useState(null);
+
     const handleSendOTP = async (e) => {
         e.preventDefault();
         setError('');
@@ -33,50 +38,93 @@ export default function Register() {
             return;
         }
 
-        if (method === 'email' && !formData.email) {
-            setError('Please enter your email address');
-            return;
-        }
-
-        if (method === 'mobile' && !formData.phone) {
-            setError('Please enter your mobile number');
+        if (!formData.email && !formData.phone) {
+            setError('Please enter at least email or mobile number');
             return;
         }
 
         setLoading(true);
         try {
-            await axios.post(`${API_BASE_URL}/vendor/register-send-otp`, {
-                ...formData,
-                method
-            });
+            // Determine method: prefer Phone if available for Firebase SMS, else Email
+
+            if (formData.phone) {
+                // Firebase Phone Auth Flow
+                try {
+                    const appVerifier = setupRecaptcha('sign-in-button');
+                    if (!appVerifier) throw new Error("Firebase not initialized");
+
+                    const formattedPhone = formData.phone.startsWith('+') ? formData.phone : `+91${formData.phone.replace(/^0+/, '')}`; // Default to +91 if missing
+
+                    const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+                    setConfirmationResult(confirmation);
+                    setMethod('mobile');
+                    // Also trigger backend to store registration data AND send valid Email OTP
+                    await axios.post(`${API_BASE_URL}/vendor/register-send-otp`, {
+                        ...formData
+                        // skip_otp removed: We want backend to generate Email OTP as backup
+                    });
+
+                } catch (firebaseError) {
+                    console.error("Firebase Error:", firebaseError);
+                    throw new Error(`SMS Failed: ${firebaseError.message}`);
+                }
+            } else {
+                // Email Flow (Backend)
+                setMethod('email');
+                await axios.post(`${API_BASE_URL}/vendor/register-send-otp`, {
+                    ...formData
+                });
+            }
+
             setStep('otp');
             setTimer(300); // 5 minutes
             startTimer();
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
+            setError(err.response?.data?.message || err.message || 'Failed to send OTP. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleVerifyOTP = async () => {
-        if (otp.length !== 6) return;
+    const handleVerifyOTP = async (otpValue) => {
+        // Safe check for otpValue being string
+        if (!otpValue || otpValue.length !== 6) return;
+
+        // Update local state if verification triggered by onComplete
+        setOtp(otpValue);
 
         setError('');
         setLoading(true);
 
         try {
+            let firebaseToken = null;
+
+            if (method === 'mobile' && confirmationResult) {
+                // Verify with Firebase
+                try {
+                    const result = await confirmationResult.confirm(otpValue);
+                    const user = result.user;
+                    firebaseToken = await user.getIdToken();
+                } catch (fbErr) {
+                    console.warn("Firebase verification failed, falling back to Backend OTP...", fbErr);
+                    // Do NOT throw. firebaseToken remains null.
+                    // We will try to verify the code against the backend (Email OTP)
+                }
+            }
+
+            // Verify with Backend
             const response = await axios.post(`${API_BASE_URL}/vendor/register-verify-otp`, {
                 ...formData,
-                otp,
-                method
+                otp: otpValue, // Send OTP for email verification (or ignored if firebase_token present)
+                firebase_token: firebaseToken
             });
+
             login(response.data.token, response.data.user);
             setStep('complete');
             setTimeout(() => navigate('/dashboard'), 2000);
         } catch (err) {
-            setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
-            setOtp('');
+            setError(err.response?.data?.message || err.message || 'Invalid OTP. Please try again.');
+            // Only clear OTP on error if desired, but user might want to edit it
             setLoading(false);
         }
     };
@@ -85,12 +133,17 @@ export default function Register() {
         setError('');
         setLoading(true);
         try {
-            await axios.post(`${API_BASE_URL}/vendor/register-send-otp`, {
-                ...formData,
-                method
-            });
-            setTimer(300);
-            startTimer();
+            if (method === 'mobile') {
+                // Resend Firebase SMS not easily supported for same instance without re-captcha
+                // For simplicity, just error or try original flow
+                setError("Please refresh to resend SMS (Firebase limitation)");
+            } else {
+                await axios.post(`${API_BASE_URL}/vendor/register-send-otp`, {
+                    ...formData
+                });
+                setTimer(300);
+                startTimer();
+            }
         } catch (err) {
             setError('Failed to resend OTP. Please try again.');
         } finally {
@@ -118,6 +171,9 @@ export default function Register() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 px-4 py-8 sm:px-6 lg:px-8 font-sans">
+            {/* Invisible Recaptcha Container */}
+            <div id="sign-in-button"></div>
+
             <div className="max-w-xl w-full space-y-8 bg-white p-8 rounded-2xl shadow-2xl border border-gray-100 animate-fade-in">
                 {/* Header */}
                 <div className="text-center">
@@ -158,30 +214,6 @@ export default function Register() {
 
                 {step === 'details' ? (
                     <>
-                        {/* Method Toggle */}
-                        <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
-                            <button
-                                type="button"
-                                onClick={() => setMethod('email')}
-                                className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${method === 'email'
-                                        ? 'bg-white text-blue-600 shadow-md'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                    }`}
-                            >
-                                <FaEnvelope /> Email
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMethod('mobile')}
-                                className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${method === 'mobile'
-                                        ? 'bg-white text-blue-600 shadow-md'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                    }`}
-                            >
-                                <FaMobileAlt /> Mobile
-                            </button>
-                        </div>
-
                         {/* Registration Form */}
                         <form onSubmit={handleSendOTP} className="space-y-5">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -213,40 +245,43 @@ export default function Register() {
                                     />
                                 </div>
 
-                                {method === 'email' ? (
-                                    <div className="col-span-1 md:col-span-2">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">
-                                            Email Address <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="email"
-                                            required
-                                            value={formData.email}
-                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                                            placeholder="vendor@example.com"
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="col-span-1 md:col-span-2">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">
-                                            Mobile Number <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="tel"
-                                            required
-                                            value={formData.phone}
-                                            onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                                            placeholder="+91 9876543210"
-                                        />
-                                    </div>
-                                )}
+                                <div className="col-span-1 md:col-span-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        Email Address <span className="text-orange-500 text-xs">(At least one required)</span>
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                        placeholder="vendor@example.com"
+                                    />
+                                </div>
+
+                                <div className="col-span-1 md:col-span-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        Mobile Number <span className="text-orange-500 text-xs">(At least one required)</span>
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        value={formData.phone}
+                                        onChange={e => {
+                                            const value = e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 15);
+                                            setFormData({ ...formData, phone: value });
+                                        }}
+                                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                        placeholder="+91 9876543210"
+                                    />
+                                </div>
+
+                                <p className="col-span-1 md:col-span-2 text-xs text-blue-600 font-medium bg-blue-50 p-3 rounded-lg">
+                                    📱 OTP will be sent via SMS (Firebase) or Email
+                                </p>
                             </div>
 
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={loading || (!formData.email && !formData.phone)}
                                 className="w-full py-4 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-4 focus:ring-purple-300 transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
                             >
                                 {loading ? 'Sending OTP...' : 'Continue'}
@@ -266,11 +301,11 @@ export default function Register() {
                         {/* OTP Input */}
                         <div className="space-y-6">
                             <div className="text-center">
-                                <p className="text-sm text-gray-600 mb-6">
-                                    Enter the 6-digit code sent to<br />
-                                    <span className="font-bold text-gray-900">
-                                        {method === 'email' ? formData.email : formData.phone}
-                                    </span>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    Enter the 6-digit code sent to
+                                </p>
+                                <p className="font-bold text-gray-900 mb-4">
+                                    {method === 'mobile' ? `📱 ${formData.phone}` : `📧 ${formData.email}`}
                                 </p>
                                 <OTPInput
                                     length={6}
@@ -305,8 +340,16 @@ export default function Register() {
                             <FaCheck className="text-4xl text-green-600" />
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900">Registration Successful!</h2>
-                        <p className="text-gray-600">
-                            Welcome to ResortWala. Redirecting to dashboard...
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 max-w-md mx-auto">
+                            <p className="text-blue-800 font-medium mb-2">
+                                🔍 Your account is under admin review
+                            </p>
+                            <p className="text-blue-600 text-sm">
+                                We'll notify you within 24-48 hours once approved
+                            </p>
+                        </div>
+                        <p className="text-gray-600 text-sm">
+                            Redirecting to login...
                         </p>
                         <div className="flex justify-center">
                             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
