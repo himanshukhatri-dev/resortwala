@@ -43,8 +43,20 @@ class OtpController extends Controller
         $code = $this->otpService->generate($email, $type);
         $this->notificationService->sendEmailOTP($email, $code, $type);
 
+        // --- DUAL OTP: Send SMS if user has phone ---
+        if ($type !== 'signup') { // For signup, we don't have user yet (or handled in register)
+            $user = User::where('email', $email)->first() ?? Customer::where('email', $email)->first();
+            if ($user && $user->phone) {
+                 try {
+                    $this->notificationService->sendSMSOTP($user->phone, $code, $type);
+                 } catch (\Exception $e) {
+                    \Log::error("Failed to send secondary SMS OTP to {$user->phone}: " . $e->getMessage());
+                 }
+            }
+        }
+        
         return response()->json([
-            'message' => 'OTP sent successfully to your email'
+            'message' => 'OTP sent successfully to your email' . ($user && $user->phone ? ' and mobile number' : '')
         ]);
     }
 

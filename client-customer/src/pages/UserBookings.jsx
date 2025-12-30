@@ -6,7 +6,6 @@ import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaQrcode, FaShareAlt, FaPlus, FaMinus, FaMapMarkerAlt, FaCalendarAlt, FaUserFriends, FaMoneyBillWave, FaCheck, FaWhatsapp, FaDownload, FaTicketAlt } from 'react-icons/fa';
-import Layout from '../layouts/MainLayout';
 import QRCode from 'react-qr-code';
 
 export default function UserBookings() {
@@ -14,6 +13,17 @@ export default function UserBookings() {
     const [loading, setLoading] = useState(true);
     const [expandedId, setExpandedId] = useState(null);
     const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'date'
+
+    const safeDateFormat = (dateStr, formatStr) => {
+        try {
+            if (!dateStr) return 'N/A';
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return 'Invalid Date';
+            return format(date, formatStr);
+        } catch (e) {
+            return 'Error';
+        }
+    };
 
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -166,7 +176,7 @@ export default function UserBookings() {
                                 <tr>
                                     <td>
                                         Accommodation - ${booking.property?.Name}<br>
-                                        <small>${format(new Date(booking.CheckInDate), 'MMM dd')} to ${format(new Date(booking.CheckOutDate), 'MMM dd, yyyy')} (${booking.Guests} Guests)</small>
+                                        <small>${safeDateFormat(booking.CheckInDate, 'MMM dd')} to ${safeDateFormat(booking.CheckOutDate, 'MMM dd, yyyy')} (${booking.Guests} Guests)</small>
                                     </td>
                                     <td style="text-align: right;">₹${Number(booking.base_amount || booking.TotalAmount).toLocaleString()}</td>
                                 </tr>
@@ -209,8 +219,8 @@ export default function UserBookings() {
         const shareUrl = `${origin}/stay/${booking.property?.share_token || booking.PropertyId}`;
         const ref = booking.booking_reference || booking.BookingId;
 
-        const checkIn = format(new Date(booking.CheckInDate), 'EEE, MMM dd');
-        const checkOut = format(new Date(booking.CheckOutDate), 'EEE, MMM dd');
+        const checkIn = safeDateFormat(booking.CheckInDate, 'EEE, MMM dd');
+        const checkOut = safeDateFormat(booking.CheckOutDate, 'EEE, MMM dd');
 
         const text = `I'm going to ${booking.property?.Name} via ResortWala! 🌴\n\nBooking Ref: ${ref}\nDates: ${checkIn} - ${checkOut}\nLocation: ${booking.property?.Location}\n\nCheck it out: ${shareUrl}`;
 
@@ -235,183 +245,185 @@ export default function UserBookings() {
     };
 
     return (
-        <Layout>
-            <div className="pt-28 pb-20 min-h-screen bg-gray-50">
-                <div className="container mx-auto px-4 max-w-4xl">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                        <div>
-                            <h1 className="text-4xl font-bold font-serif text-gray-900">My Trips</h1>
-                            <p className="text-gray-500 mt-1">Manage your upcoming and past getaways</p>
-                        </div>
-
-                        {/* Sort Dropdown */}
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500 font-medium">Sort by:</span>
-                            <select
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value)}
-                                className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-black focus:border-black block p-2.5 shadow-sm outline-none cursor-pointer"
-                            >
-                                <option value="recent">Recently Booked</option>
-                                <option value="date">Trip Date (Soonest)</option>
-                            </select>
-                        </div>
+        <div className="pt-28 pb-20 min-h-screen bg-gray-50">
+            <div className="container mx-auto px-4 max-w-4xl">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                    <div>
+                        <h1 className="text-4xl font-bold font-serif text-gray-900">My Trips</h1>
+                        <p className="text-gray-500 mt-1">Manage your upcoming and past getaways</p>
                     </div>
 
-                    {/* SUCCESS BANNER */}
-                    <AnimatePresence>
-                        {successState && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -20, height: 0 }}
-                                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                                exit={{ opacity: 0, y: -20, height: 0 }}
-                                className="mb-8"
-                            >
-                                <div className="bg-green-50 border border-green-200 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
-                                    <div className="flex items-start gap-4">
-                                        <div className="bg-green-500 text-white rounded-full p-2 mt-1">
-                                            <FaCheck size={16} />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-green-900">Booking Confirmed!</h3>
-                                            <p className="text-green-700 text-sm mt-1">Your trip to <strong>{successState.property_name}</strong> is confirmed.</p>
-                                            <p className="text-green-600 text-xs mt-1">Ref: <strong>{successState.booking_reference || ('#' + successState.newBookingId)}</strong></p>
-                                        </div>
+                    {/* Sort Dropdown */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500 font-medium">Sort by:</span>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-black focus:border-black block p-2.5 shadow-sm outline-none cursor-pointer"
+                        >
+                            <option value="recent">Recently Booked</option>
+                            <option value="date">Trip Date (Soonest)</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* SUCCESS BANNER */}
+                <AnimatePresence>
+                    {successState && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20, height: 0 }}
+                            animate={{ opacity: 1, y: 0, height: 'auto' }}
+                            exit={{ opacity: 0, y: -20, height: 0 }}
+                            className="mb-8"
+                        >
+                            <div className="bg-green-50 border border-green-200 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+                                <div className="flex items-start gap-4">
+                                    <div className="bg-green-500 text-white rounded-full p-2 mt-1">
+                                        <FaCheck size={16} />
                                     </div>
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={() => {
-                                                const booking = bookings.find(b => b.BookingId == successState.newBookingId);
-                                                if (booking) handleDownloadInvoice(booking);
-                                            }}
-                                            className="bg-white text-green-700 border border-green-200 px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-green-50 transition"
-                                        >
-                                            <FaDownload className="inline mr-1" /> Invoice
-                                        </button>
-                                        <button
-                                            onClick={handleChatWithAdmin}
-                                            className="bg-[#25D366] text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-[#20be5c] transition"
-                                        >
-                                            <FaWhatsapp className="inline mr-1" /> Support
-                                        </button>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-green-900">Booking Confirmed!</h3>
+                                        <p className="text-green-700 text-sm mt-1">Your trip to <strong>{successState.property_name}</strong> is confirmed.</p>
+                                        <p className="text-green-600 text-xs mt-1">Ref: <strong>{successState.booking_reference || ('#' + successState.newBookingId)}</strong></p>
                                     </div>
                                 </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => {
+                                            const booking = bookings.find(b => b.BookingId == successState.newBookingId);
+                                            if (booking) handleDownloadInvoice(booking);
+                                        }}
+                                        className="bg-white text-green-700 border border-green-200 px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-green-50 transition"
+                                    >
+                                        <FaDownload className="inline mr-1" /> Invoice
+                                    </button>
+                                    <button
+                                        onClick={handleChatWithAdmin}
+                                        className="bg-[#25D366] text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-[#20be5c] transition"
+                                    >
+                                        <FaWhatsapp className="inline mr-1" /> Support
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center py-20">
-                            <div className="w-10 h-10 border-4 border-gray-200 border-t-black rounded-full animate-spin"></div>
-                        </div>
-                    ) : bookings.length === 0 ? (
-                        <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-dashed border-gray-300">
-                            <h2 className="text-xl font-bold mb-4 text-gray-800">No trips booked... yet!</h2>
-                            <Link to="/" className="bg-black text-white px-8 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition-transform">
-                                Explore Stays
-                            </Link>
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            {sortedBookings.map((booking, index) => (
-                                <div
-                                    key={booking.BookingId}
-                                    className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-lg border border-gray-100 transition-all group"
-                                >
-                                    {/* Ticket Header */}
-                                    <div className={`h-2 ${booking.Status === 'Confirmed' ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
-                                        booking.Status === 'Pending' ? 'bg-gradient-to-r from-amber-400 to-orange-500' :
-                                            'bg-gray-300'
-                                        }`}></div>
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20">
+                        <div className="w-10 h-10 border-4 border-gray-200 border-t-black rounded-full animate-spin"></div>
+                    </div>
+                ) : bookings.length === 0 ? (
+                    <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-dashed border-gray-300">
+                        <h2 className="text-xl font-bold mb-4 text-gray-800">No trips booked... yet!</h2>
+                        <Link to="/" className="bg-black text-white px-8 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition-transform">
+                            Explore Stays
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="space-y-6">
+                        {sortedBookings.map((booking, index) => (
+                            <div
+                                key={booking.BookingId}
+                                className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-lg border border-gray-100 transition-all group"
+                            >
+                                {/* Ticket Header */}
+                                <div className={`h-2 ${booking.Status === 'Confirmed' ? 'bg-gradient-to-r from-green-400 to-emerald-500' :
+                                    booking.Status === 'Pending' ? 'bg-gradient-to-r from-amber-400 to-orange-500' :
+                                        'bg-gray-300'
+                                    }`}></div>
 
-                                    <div className="p-6 md:p-8">
-                                        <div className="flex flex-col md:flex-row justify-between gap-8">
-                                            {/* LEFT: Info */}
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-3 mb-3">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${booking.Status === 'Confirmed' ? 'bg-green-100 text-green-700' :
-                                                        booking.Status === 'Pending' ? 'bg-amber-100 text-amber-700' :
-                                                            'bg-red-100 text-red-700'
-                                                        }`}>
-                                                        {booking.Status}
-                                                    </span>
-                                                    <span className="text-gray-400 font-mono text-sm font-bold">
-                                                        {booking.booking_reference || booking.BookingId}
-                                                    </span>
-                                                </div>
-
-                                                <h3 className="text-2xl font-extrabold text-gray-900 mb-1">{booking.property?.Name || 'Unknown Property'}</h3>
-                                                <div className="flex items-center gap-1 text-gray-500 text-sm mb-6">
-                                                    <FaMapMarkerAlt /> {booking.property?.Location}
-                                                </div>
-
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-gray-50/80 p-5 rounded-2xl border border-gray-100">
-                                                    <div>
-                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Check-In</p>
-                                                        <p className="font-bold text-gray-900">{format(new Date(booking.CheckInDate), 'MMM dd')}</p>
-                                                        <p className="text-xs text-gray-500">2:00 PM</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Check-Out</p>
-                                                        <p className="font-bold text-gray-900">{format(new Date(booking.CheckOutDate), 'MMM dd')}</p>
-                                                        <p className="text-xs text-gray-500">11:00 AM</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Guests</p>
-                                                        <p className="font-bold text-gray-900">{booking.Guests}</p>
-                                                        <p className="text-xs text-gray-500">Adults</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total</p>
-                                                        <p className="font-bold text-indigo-600">₹{Number(booking.TotalAmount).toLocaleString()}</p>
-                                                    </div>
-                                                </div>
+                                <div className="p-6 md:p-8">
+                                    <div className="flex flex-col md:flex-row justify-between gap-8">
+                                        {/* LEFT: Info */}
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${booking.Status === 'Confirmed' ? 'bg-green-100 text-green-700' :
+                                                    booking.Status === 'Pending' ? 'bg-amber-100 text-amber-700' :
+                                                        'bg-red-100 text-red-700'
+                                                    }`}>
+                                                    {booking.Status}
+                                                </span>
+                                                <span className="text-gray-400 font-mono text-sm font-bold">
+                                                    {booking.booking_reference || booking.BookingId}
+                                                </span>
                                             </div>
 
-                                            {/* RIGHT: Actions & QR */}
-                                            <div className="flex flex-col items-center justify-center min-w-[220px] bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                                                <div className="bg-white p-2 rounded-xl shadow-sm mb-4">
+                                            <h3 className="text-2xl font-extrabold text-gray-900 mb-1">{booking.property?.Name || 'Unknown Property'}</h3>
+                                            <div className="flex items-center gap-1 text-gray-500 text-sm mb-6">
+                                                <FaMapMarkerAlt /> {booking.property?.Location}
+                                            </div>
+
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-gray-50/80 p-5 rounded-2xl border border-gray-100">
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Check-In</p>
+                                                    <p className="font-bold text-gray-900">{safeDateFormat(booking.CheckInDate, 'MMM dd')}</p>
+                                                    <p className="text-xs text-gray-500">2:00 PM</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Check-Out</p>
+                                                    <p className="font-bold text-gray-900">{safeDateFormat(booking.CheckOutDate, 'MMM dd')}</p>
+                                                    <p className="text-xs text-gray-500">11:00 AM</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Guests</p>
+                                                    <p className="font-bold text-gray-900">{booking.Guests}</p>
+                                                    <p className="text-xs text-gray-500">Adults</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total</p>
+                                                    <p className="font-bold text-indigo-600">₹{Number(booking.TotalAmount).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* RIGHT: Actions & QR */}
+                                        <div className="flex flex-col items-center justify-center min-w-[220px] bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                                            <div className="bg-white p-2 rounded-xl shadow-sm mb-4">
+                                                {(booking.booking_reference || booking.BookingId) ? (
                                                     <QRCode
                                                         value={`REF:${booking.booking_reference || booking.BookingId}`}
                                                         size={80}
                                                     />
-                                                </div>
+                                                ) : (
+                                                    <div className="w-20 h-20 bg-gray-200 rounded flex items-center justify-center text-[10px] text-gray-500">No QR</div>
+                                                )}
+                                            </div>
 
-                                                <div className="w-full space-y-2">
+                                            <div className="w-full space-y-2">
+                                                <button
+                                                    onClick={() => handleShare(booking)}
+                                                    className="w-full flex items-center justify-center gap-2 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-gray-800 transition shadow-sm"
+                                                >
+                                                    <FaShareAlt /> Share Ticket
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDownloadInvoice(booking)}
+                                                    className="w-full flex items-center justify-center gap-2 bg-white text-gray-700 border border-gray-200 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-50 transition"
+                                                >
+                                                    <FaDownload /> Invoice
+                                                </button>
+                                                {booking.Status !== 'Cancelled' && (
                                                     <button
-                                                        onClick={() => handleShare(booking)}
-                                                        className="w-full flex items-center justify-center gap-2 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-gray-800 transition shadow-sm"
+                                                        onClick={() => handleCancel(booking.BookingId)}
+                                                        className="w-full text-red-500 text-xs font-bold hover:text-red-700 py-1"
                                                     >
-                                                        <FaShareAlt /> Share Ticket
+                                                        Cancel Booking
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleDownloadInvoice(booking)}
-                                                        className="w-full flex items-center justify-center gap-2 bg-white text-gray-700 border border-gray-200 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-50 transition"
-                                                    >
-                                                        <FaDownload /> Invoice
-                                                    </button>
-                                                    {booking.Status !== 'Cancelled' && (
-                                                        <button
-                                                            onClick={() => handleCancel(booking.BookingId)}
-                                                            className="w-full text-red-500 text-xs font-bold hover:text-red-700 py-1"
-                                                        >
-                                                            Cancel Booking
-                                                        </button>
-                                                    )}
-                                                </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Ticket Cutouts */}
-                                    <div className="absolute top-1/2 -left-3 w-6 h-6 bg-gray-50 rounded-full border-r border-gray-200"></div>
-                                    <div className="absolute top-1/2 -right-3 w-6 h-6 bg-gray-50 rounded-full border-l border-gray-200"></div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+
+                                {/* Ticket Cutouts */}
+                                <div className="absolute top-1/2 -left-3 w-6 h-6 bg-gray-50 rounded-full border-r border-gray-200"></div>
+                                <div className="absolute top-1/2 -right-3 w-6 h-6 bg-gray-50 rounded-full border-l border-gray-200"></div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
-        </Layout>
+        </div>
     );
 }

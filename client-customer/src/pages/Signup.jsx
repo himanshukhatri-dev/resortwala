@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import AuthCard from '../components/auth/AuthCard';
-import { FaCheckCircle, FaPaperPlane, FaArrowRight } from 'react-icons/fa';
+import { FaCheckCircle, FaPaperPlane, FaArrowRight, FaStar, FaArrowLeft } from 'react-icons/fa';
 import { auth } from '../firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
@@ -17,8 +16,7 @@ export default function Signup() {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        phone: '',
-        password: ''
+        phone: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -80,7 +78,32 @@ export default function Signup() {
                 setStep(4);
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Registration failed. Please check your details.');
+            if (err.response?.data?.errors) {
+                const errors = err.response.data.errors;
+                const errorMessages = Object.values(errors).flat();
+                const firstError = errorMessages[0];
+
+                setError(firstError);
+
+                // Smart Redirect for Existing Users
+                if (firstError.includes('already been taken')) {
+                    const isEmailTaken = errors['email'];
+                    const isPhoneTaken = errors['phone'];
+
+                    setTimeout(() => {
+                        const targetIdentifier = isPhoneTaken ? formData.phone : formData.email;
+                        navigate('/login', {
+                            state: {
+                                identifier: targetIdentifier,
+                                autoTrigger: true,
+                                message: `Account already exists for ${targetIdentifier}. Logging you in...`
+                            }
+                        });
+                    }, 2000); // 2s delay to let user read the error
+                }
+            } else {
+                setError(err.response?.data?.message || 'Registration failed. Please check your details.');
+            }
         } finally {
             setLoading(false);
         }
@@ -188,41 +211,109 @@ export default function Signup() {
         }
     };
 
+    // Common Render Wrapper
+    const renderContent = (content) => (
+        <div className="h-screen w-full flex font-outfit overflow-hidden">
+            {/* Left Side - Hero Image (Desktop Only) */}
+            <div className="hidden lg:flex w-1/2 bg-[#0a0a0a] relative items-center justify-center overflow-hidden">
+                <div className="absolute inset-0 z-0">
+                    <img
+                        src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80"
+                        alt="Luxury Resort"
+                        className="w-full h-full object-cover opacity-60"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                </div>
+
+                <div className="relative z-10 p-16 max-w-2xl text-white">
+                    <div className="mb-8 w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-2xl">
+                        <img src="/resortwala-logo.png" alt="RW" className="w-10 h-10 object-contain invert brightness-0" />
+                    </div>
+                    <h1 className="text-5xl font-black mb-6 tracking-tight leading-tight">
+                        Start Your Journey <br /> With ResortWala
+                    </h1>
+                    <p className="text-lg text-gray-300 font-medium leading-relaxed max-w-md">
+                        Create an account to unlock exclusive deals, manage your bookings, and experience luxury travel.
+                    </p>
+                    <div className="mt-12 flex gap-4">
+                        <div className="flex -space-x-3">
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} className="w-10 h-10 rounded-full border-2 border-black bg-gray-600 overflow-hidden">
+                                    <img src={`https://i.pravatar.cc/100?img=${i + 15}`} alt="User" className="w-full h-full object-cover" />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex flex-col justify-center">
+                            <span className="font-bold text-sm">Join 10k+ Travelers</span>
+                            <div className="flex items-center gap-1 text-xs text-yellow-400">
+                                <FaStar /> <FaStar /> <FaStar /> <FaStar /> <FaStar />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Right Side - Form */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center bg-white p-6 md:p-12 relative h-full overflow-y-auto">
+                {/* Mobile Background Elements */}
+                <div className="lg:hidden absolute top-0 left-0 w-full h-48 bg-[#1e1e1e] z-0">
+                    <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80')] opacity-30 bg-cover bg-center" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white" />
+                </div>
+
+                <div className="w-full max-w-[420px] relative z-10 pt-10 sm:pt-0">
+                    <button onClick={() => navigate('/')} className="mb-8 flex items-center gap-2 text-gray-500 hover:text-black transition font-bold text-sm group">
+                        <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center group-hover:bg-gray-100 transition"><FaArrowLeft size={12} /></div> Back to Home
+                    </button>
+
+                    {content}
+
+                    <div id="recaptcha-container-signup"></div>
+                </div>
+            </div>
+        </div>
+    );
+
     // Step 1: Registration Form
     if (step === 1) {
-        return (
-            <AuthCard
-                title="Create account"
-                subtitle="Join ResortWala to find your perfect getaway"
-            >
+        return renderContent(
+            <>
+                <div className="mb-8">
+                    <div className="lg:hidden mb-6 w-14 h-14 bg-black rounded-2xl flex items-center justify-center shadow-xl">
+                        <img src="/resortwala-logo.png" alt="RW" className="w-8 h-8 object-contain" />
+                    </div>
+                    <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-3">Create Account</h2>
+                    <p className="text-gray-500 font-medium">Enter your details to get started.</p>
+                </div>
+
                 {error && (
-                    <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl mb-4 text-sm font-bold text-center border border-rose-100">
+                    <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-4 rounded-r-lg mb-6 text-sm font-bold animate-in fade-in slide-in-from-top-2">
                         {error}
                     </div>
                 )}
 
                 <form onSubmit={handleRegister} className="space-y-5">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
+                        <label className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest pl-1">Full Name</label>
                         <input
                             type="text"
                             placeholder="Rahul Sharma"
-                            className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all placeholder-gray-300"
+                            className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-black focus:bg-white outline-none font-bold text-gray-900 transition-all placeholder-gray-400"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             required
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+                            <label className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest pl-1">
                                 Mobile Number <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="tel"
                                 placeholder="+91 98765 43210"
-                                className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all placeholder-gray-300"
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-black focus:bg-white outline-none font-bold text-gray-900 transition-all placeholder-gray-400"
                                 value={formData.phone}
                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                 pattern="[0-9+\\s-]{10,}"
@@ -231,13 +322,13 @@ export default function Signup() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+                            <label className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest pl-1">
                                 Email Address (Optional)
                             </label>
                             <input
                                 type="email"
                                 placeholder="rahul@example.com"
-                                className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all placeholder-gray-300"
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-black focus:bg-white outline-none font-bold text-gray-900 transition-all placeholder-gray-400"
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$"
@@ -246,184 +337,172 @@ export default function Signup() {
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Choose Password</label>
-                        <input
-                            type="password"
-                            placeholder="••••••••"
-                            className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all placeholder-gray-300"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            required
-                        />
-                    </div>
-
-                    <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100 flex items-start gap-3">
+                    <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100 flex items-start gap-3 mt-2">
                         <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5">!</div>
                         <p className="text-[11px] font-bold text-blue-800 leading-relaxed">
-                            Mobile number is required. Email is optional but recommended for account recovery.
+                            No password needed. We'll verify your mobile number via OTP.
                         </p>
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className={`w-full bg-[#1e1e1e] hover:bg-black text-white font-black py-4.5 rounded-[1.5rem] transition-all active:scale-[0.98] shadow-xl shadow-gray-200 uppercase text-xs tracking-widest mt-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        className={`w-full bg-[#000] hover:bg-[#222] text-white font-bold py-4.5 rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xl shadow-gray-200 uppercase text-xs tracking-widest flex items-center justify-center gap-2 mt-4 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
-                        {loading ? 'Creating Account...' : 'Create My Account'}
+                        {loading ? 'Creating Account...' : 'Continue'} <FaArrowRight />
                     </button>
-                </form>
 
-                <div className="pt-6 border-t border-gray-100 mt-6 text-center">
-                    <p className="text-sm font-bold text-gray-400">
-                        Already have an account? {' '}
-                        <Link to="/login" className="text-black hover:underline underline-offset-4">
-                            Login here
-                        </Link>
-                    </p>
-                </div>
-            </AuthCard>
+                    <div className="relative my-8">
+                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100"></div></div>
+                        <div className="relative flex justify-center text-xs uppercase tracking-widest"><span className="px-4 bg-white text-gray-400 font-bold">Already have an account?</span></div>
+                    </div>
+
+                    <Link to="/login" className="block w-full text-center py-4 border-2 border-gray-100 rounded-2xl font-bold text-gray-600 hover:border-black hover:text-black transition-all">
+                        Login
+                    </Link>
+                </form>
+            </>
         );
     }
 
     // Step 2: Mobile OTP Verification
     if (step === 2) {
-        return (
-            <AuthCard
-                title="Verify Mobile Number"
-                subtitle={`We sent a 6-digit code to ${formData.phone}`}
-            >
+        return renderContent(
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-300">
+                <div className="mb-6 text-center lg:text-left">
+                    <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-3">Verify Mobile</h2>
+                    <p className="text-gray-500 font-medium">We sent a 6-digit code to {formData.phone}</p>
+                </div>
+
                 {otpError && (
-                    <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl mb-4 text-sm font-bold text-center border border-rose-100">
+                    <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-4 rounded-r-lg mb-6 text-sm font-bold">
                         {otpError}
                     </div>
                 )}
 
                 <form onSubmit={handleVerifyMobile} className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-center block">Enter 6-Digit Code</label>
-                        <input
-                            type="text"
-                            value={mobileOtp}
-                            onChange={(e) => setMobileOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                            placeholder="000000"
-                            maxLength={6}
-                            className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all text-center text-2xl tracking-widest font-mono"
-                            autoFocus
-                        />
+                    <div className="bg-gray-50 rounded-3xl p-8 border border-gray-100">
+                        <div className="flex flex-col items-center gap-6">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Enter 6-Digit Code</label>
+                            <input
+                                type="text"
+                                value={mobileOtp}
+                                onChange={(e) => setMobileOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                placeholder="000000"
+                                maxLength={6}
+                                className="w-full text-center bg-white border-2 border-gray-200 focus:border-black rounded-2xl py-4 text-3xl font-mono font-bold tracking-[0.5em] outline-none transition-all"
+                                autoFocus
+                            />
+                        </div>
                     </div>
 
                     <button
                         type="submit"
                         disabled={otpLoading || mobileOtp.length !== 6}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4.5 rounded-2xl transition-all shadow-xl shadow-blue-200 uppercase text-xs tracking-widest flex items-center justify-center gap-2"
                     >
                         {otpLoading ? 'Verifying...' : 'Verify Mobile'} <FaCheckCircle />
                     </button>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 pt-2">
                         <button
                             type="button"
                             onClick={sendMobileOtp}
                             disabled={otpLoading}
-                            className="flex-1 text-blue-600 font-semibold py-2 hover:underline text-sm"
+                            className="flex-1 text-gray-500 hover:text-black font-bold py-2 text-xs uppercase tracking-widest hover:underline"
                         >
                             Resend Code
                         </button>
                         <button
                             type="button"
                             onClick={handleSkip}
-                            className="flex-1 text-gray-500 font-semibold py-2 hover:underline text-sm"
+                            className="flex-1 text-gray-400 hover:text-gray-600 font-bold py-2 text-xs uppercase tracking-widest hover:underline"
                         >
-                            Skip for now
+                            Skip Step
                         </button>
                     </div>
                 </form>
-            </AuthCard>
+            </div>
         );
     }
 
     // Step 3: Email OTP Verification
     if (step === 3) {
-        return (
-            <AuthCard
-                title="Verify Email"
-                subtitle={`We sent a 6-digit code to ${formData.email}`}
-            >
+        return renderContent(
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-300">
+                <div className="mb-6 text-center lg:text-left">
+                    <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-3">Verify Email</h2>
+                    <p className="text-gray-500 font-medium">We sent a 6-digit code to {formData.email}</p>
+                </div>
+
                 {otpError && (
-                    <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl mb-4 text-sm font-bold text-center border border-rose-100">
+                    <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-4 rounded-r-lg mb-6 text-sm font-bold">
                         {otpError}
                     </div>
                 )}
 
                 <form onSubmit={handleVerifyEmail} className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-center block">Enter 6-Digit Code</label>
-                        <input
-                            type="text"
-                            value={emailOtp}
-                            onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                            placeholder="000000"
-                            maxLength={6}
-                            className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-600 focus:bg-white outline-none font-bold text-gray-700 transition-all text-center text-2xl tracking-widest font-mono"
-                            autoFocus
-                        />
+                    <div className="bg-gray-50 rounded-3xl p-8 border border-gray-100">
+                        <div className="flex flex-col items-center gap-6">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Enter 6-Digit Code</label>
+                            <input
+                                type="text"
+                                value={emailOtp}
+                                onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                placeholder="000000"
+                                maxLength={6}
+                                className="w-full text-center bg-white border-2 border-gray-200 focus:border-black rounded-2xl py-4 text-3xl font-mono font-bold tracking-[0.5em] outline-none transition-all"
+                                autoFocus
+                            />
+                        </div>
                     </div>
 
                     <button
                         type="submit"
                         disabled={otpLoading || emailOtp.length !== 6}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4.5 rounded-2xl transition-all shadow-xl shadow-blue-200 uppercase text-xs tracking-widest flex items-center justify-center gap-2"
                     >
                         {otpLoading ? 'Verifying...' : 'Verify Email'} <FaCheckCircle />
                     </button>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 pt-2">
                         <button
                             type="button"
                             onClick={sendEmailOtp}
                             disabled={otpLoading}
-                            className="flex-1 text-blue-600 font-semibold py-2 hover:underline text-sm"
+                            className="flex-1 text-gray-500 hover:text-black font-bold py-2 text-xs uppercase tracking-widest hover:underline"
                         >
                             Resend Code
                         </button>
                         <button
                             type="button"
                             onClick={() => navigate('/')}
-                            className="flex-1 text-gray-500 font-semibold py-2 hover:underline text-sm"
+                            className="flex-1 text-gray-400 hover:text-gray-600 font-bold py-2 text-xs uppercase tracking-widest hover:underline"
                         >
-                            Skip for now
+                            Skip Step
                         </button>
                     </div>
                 </form>
-            </AuthCard>
+            </div>
         );
     }
 
     // Step 4: Success
-    return (
-        <AuthCard
-            title="Account Created!"
-            subtitle="Welcome to ResortWala"
-        >
-            <div className="text-center py-8">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <FaCheckCircle className="text-green-600 text-4xl" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">You're all set!</h3>
-                <p className="text-gray-600 mb-8">
-                    Your account has been created successfully. Start exploring amazing properties.
-                </p>
-                <button
-                    onClick={() => navigate('/')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-2xl transition-all flex items-center justify-center gap-2 mx-auto"
-                >
-                    Start Exploring <FaArrowRight />
-                </button>
+    return renderContent(
+        <div className="text-center py-8 animate-in fade-in zoom-in duration-500">
+            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl shadow-green-100">
+                <FaCheckCircle className="text-green-600 text-5xl" />
             </div>
-
-            {/* Firebase Recaptcha Container */}
-            <div id="recaptcha-container-signup"></div>
-        </AuthCard>
+            <h3 className="text-3xl font-black text-gray-900 mb-3 tracking-tight">You're All Set!</h3>
+            <p className="text-gray-500 mb-10 font-medium">
+                Your account has been created successfully.
+            </p>
+            <button
+                onClick={() => navigate('/')}
+                className="w-full bg-black hover:bg-gray-900 text-white font-bold py-4.5 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-xl shadow-gray-200 uppercase text-xs tracking-widest"
+            >
+                Start Exploring <FaArrowRight />
+            </button>
+        </div>
     );
 }

@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import ScrollToTop from './components/utils/ScrollToTop';
 import PageTracker from './components/utils/PageTracker';
 import TokenHandler from './components/common/TokenHandler';
+import { Toaster } from 'react-hot-toast';
 
 import { AuthProvider } from './context/AuthContext';
 import { SearchProvider } from './context/SearchContext';
@@ -40,6 +41,7 @@ function App() {
                 <ScrollToTop />
                 <PageTracker />
                 <TokenHandler />
+                <Toaster position="top-center" />
                 <Routes>
                   <Route path="/" element={<MainLayout />}>
                     <Route index element={<Home />} />

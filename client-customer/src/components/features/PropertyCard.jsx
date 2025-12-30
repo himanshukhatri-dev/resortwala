@@ -76,8 +76,8 @@ export default function PropertyCard({ property, searchParams }) {
             onClick={handleCardClick}
             className="group flex flex-col xl:flex-row gap-5 bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 p-3 cursor-pointer relative hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300"
         >
-            {/* IMAGE SLIDER (Left Side) - Increased Height (~15%) */}
-            <div className="relative w-full xl:w-[300px] h-[276px] xl:h-[300px] flex-shrink-0 rounded-[1.2rem] overflow-hidden bg-gray-100">
+            {/* IMAGE SLIDER (Left Side) - Updated to Landscape Aspect Ratio */}
+            <div className="relative w-full xl:w-[320px] h-[276px] xl:h-[300px] flex-shrink-0 rounded-[1.2rem] overflow-hidden bg-gray-100">
                 <AnimatePresence mode="wait">
                     <motion.img
                         key={currentImageIndex}
@@ -169,11 +169,27 @@ export default function PropertyCard({ property, searchParams }) {
 
                         <div className="flex items-center gap-1.5 font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
                             <FaStar className="text-yellow-400 text-xs mb-0.5" />
-                            <span>{rating}</span>
+                            <span>{rating > 0 ? rating : "New"}</span>
+                            {rating > 0 && <span className="text-[10px] text-gray-400 font-normal ml-0.5">({(id % 50) + 5} Reviews)</span>}
                         </div>
                         <div className="flex items-center gap-1.5 text-gray-500 font-medium">
                             <FaMapMarkerAlt className="text-gray-400" size={12} />
-                            <span className="truncate max-w-[200px]">{location}</span>
+                            <span className="truncate max-w-[150px]">{location}</span>
+                            {property.GoogleMapLink && (
+                                <a
+                                    href={property.GoogleMapLink.includes('iframe') ? '#' : property.GoogleMapLink}
+                                    onClick={(e) => {
+                                        if (property.GoogleMapLink.includes('iframe')) return; // handled by details page
+                                        e.stopPropagation();
+                                    }}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline text-xs hover:text-blue-800 ml-1"
+                                    title="View on Map"
+                                >
+                                    Map
+                                </a>
+                            )}
                         </div>
                     </div>
 
@@ -184,61 +200,87 @@ export default function PropertyCard({ property, searchParams }) {
                     {/* QUICK STATS & AMENITIES */}
                     <div className="flex flex-col gap-2 mb-2">
                         {/* Quick Stats Row */}
-                        <div className="flex items-center gap-6 text-sm text-gray-700 font-medium">
-                            <div className="flex items-center gap-2">
-                                <FaUserFriends className="text-gray-400" />
-                                <span>{property?.MaxGuests || 6} Guests</span>
+                        {/* Quick Stats Row */}
+                        {property?.PropertyType !== 'Waterpark' && (
+                            <div className="flex items-center gap-6 text-sm text-gray-700 font-medium">
+                                <div className="flex items-center gap-2">
+                                    <FaUserFriends className="text-gray-400" />
+                                    <span>{property?.MaxCapacity || property?.MaxGuests || 0} Guests</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <FaBed className="text-gray-400" />
+                                    <span>{property?.NoofRooms || property?.Bedrooms || 0} Bedroom</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <FaBath className="text-gray-400" />
+                                    <span>{
+                                        // Try to calculate bathrooms from room config, else fallback to room count (ensuite assumption)
+                                        property?.onboarding_data?.roomConfig?.bedrooms?.filter(r => r.bathroom)?.length
+                                        || property?.NoofRooms
+                                        || property?.Bathrooms
+                                        || 0
+                                    } Bath</span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <FaBed className="text-gray-400" />
-                                <span>{property?.Bedrooms || 3} Bedroom</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <FaBath className="text-gray-400" />
-                                <span>{property?.Bathrooms || 3} Bath</span>
-                            </div>
-                        </div>
+                        )}
 
-                        {/* Amenities Tags */}
-                        <div className="flex flex-wrap gap-2">
-                            <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold">
-                                <FaSwimmingPool size={10} /> Pool
-                            </div>
-                            <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold">
-                                <FaWifi size={10} /> Wi-Fi
-                            </div>
-                            <div className="flex items-center gap-1.5 px-3 py-1 bg-sky-50 text-sky-700 rounded-lg text-xs font-bold">
-                                <FaSnowflake size={10} /> AC
-                            </div>
+                        {/* Amenities Tags (Dynamic) */}
+                        <div className="flex flex-wrap gap-2 text-xs font-bold">
+                            {/* Pool Check */}
+                            {(property?.onboarding_data?.amenities?.big_pools || property?.onboarding_data?.amenities?.small_pools) ? (
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-lg">
+                                    <FaSwimmingPool size={10} /> Pool
+                                </div>
+                            ) : null}
+
+                            {/* Wifi Check */}
+                            {property?.onboarding_data?.amenities?.wifi ? (
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg">
+                                    <FaWifi size={10} /> Wi-Fi
+                                </div>
+                            ) : null}
+
+                            {/* AC Check (From Room Config) */}
+                            {property?.onboarding_data?.roomConfig?.bedrooms?.some(r => r.ac) ? (
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-sky-50 text-sky-700 rounded-lg">
+                                    <FaSnowflake size={10} /> AC
+                                </div>
+                            ) : null}
+
+                            {/* Fallback: Parking if not enough items? Or just show what we have. */}
+                            {property?.onboarding_data?.amenities?.parking ? (
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-50 text-gray-700 rounded-lg">
+                                    <FaParking size={10} /> Parking
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                 </div>
 
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-t border-gray-50 pt-4 mt-auto gap-3 sm:gap-0">
-                    <div className="flex items-center gap-3">
-                        <div className="flex -space-x-2 overflow-hidden">
-                            {[1, 2, 3].map(i => (
-                                <img
-                                    key={i}
-                                    className="inline-block h-8 w-8 rounded-full ring-2 ring-white"
-                                    src={`https://i.pravatar.cc/100?img=${i + 10}`}
-                                    alt=""
-                                />
+                    <div className="flex items-center gap-3 mt-1">
+                        <div className="flex items-center -space-x-2">
+                            {[...Array(3)].map((_, i) => (
+                                <div key={i} className="w-5 h-5 rounded-full border border-white bg-gray-100 overflow-hidden flex items-center justify-center shadow-sm">
+                                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${id + i}`} alt="User" className="w-full h-full object-cover" />
+                                </div>
                             ))}
                         </div>
-                        <div className="text-xs font-bold text-gray-600">
-                            <span className="text-gray-900 font-extrabold">+12 people</span> booked recently
+                        <div className="text-[10px] font-medium text-gray-500">
+                            <span className="font-bold text-gray-900">{(id % 5) + 3} people</span> booked this today
                         </div>
                     </div>
 
                     <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 w-full sm:w-auto">
                         <div className="text-left sm:text-right">
                             <span className="text-xl sm:text-2xl font-bold text-gray-900 font-sans">₹{price.toLocaleString()}</span>
-                            <span className="text-[10px] font-normal text-gray-400 opacity-60 ml-0.5">/ night</span>
+                            <span className="text-[10px] font-normal text-gray-400 opacity-60 ml-0.5">
+                                {property.PropertyType?.toLowerCase() === 'waterpark' ? '/ person' : '/ night'}
+                            </span>
                         </div>
-                        <button className="flex-1 sm:flex-none px-6 py-3 bg-white border-2 border-gray-100 text-gray-900 rounded-xl font-bold text-sm hover:border-black hover:bg-black hover:text-white transition-all shadow-sm active:scale-95">
-                            View Details
+                        <button className="flex-1 sm:flex-none px-6 py-3 bg-white border-2 border-gray-100 text-gray-900 rounded-xl font-bold text-sm hover:border-black hover:bg-black hover:text-white transition-all shadow-sm active:scale-95 flex items-center gap-2 justify-center">
+                            View Details <FaChevronRight size={10} />
                         </button>
                     </div>
                 </div>

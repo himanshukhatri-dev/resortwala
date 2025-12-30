@@ -17,7 +17,8 @@ class PropertyMasterController extends Controller
                 $query->where('Location', 'like', '%' . $request->input('location') . '%');
             }
 
-            return response()->json($query->get());
+            // Return paginated results (standard Laravel pagination structure)
+            return response()->json($query->paginate(12));
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()], 500);
         }

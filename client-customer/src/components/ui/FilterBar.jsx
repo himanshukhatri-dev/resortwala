@@ -239,23 +239,140 @@ export default function FilterBar(props) {
         );
     }
 
-    // ORIGINAL HORIZONTAL BAR (Fallback / Tablet)
+    // ACTIVE DROPDOWN STATE for Horizontal Bar
+    const [activeDropdown, setActiveDropdown] = useState(null);
+    const dropdownRef = useRef(null);
+
+    // Close dropdown on click outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setActiveDropdown(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Helper to toggle active dropdown
+    const toggleDropdown = (name) => setActiveDropdown(activeDropdown === name ? null : name);
+
+    // RICH HORIZONTAL BAR (Sticky Header)
     return (
-        <div className="w-full relative z-20 bg-white rounded-2xl shadow-sm border border-gray-200 p-2 px-4 flex flex-wrap items-center gap-4 mb-6 transition-all hover:shadow-md">
-            <div className="flex items-center gap-2 text-gray-400 border-r border-gray-100 pr-4 py-2">
+        <div ref={dropdownRef} className="w-full relative z-20 flex flex-nowrap items-center gap-3 overflow-visible">
+
+            {/* 1. FILTER LABEL (Hidden on mobile, visible md+) */}
+            <div className="hidden md:flex items-center gap-2 text-gray-400 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100 flex-shrink-0">
                 <FaFilter className="text-secondary text-xs" />
                 <span className="text-xs font-bold uppercase tracking-wider">Filters</span>
             </div>
 
-            <select
-                value={filters.sortBy}
-                onChange={handleSortChange}
-                className="bg-transparent text-sm font-bold outline-none"
-            >
-                <option value="all">Recommended</option>
-                <option value="price_low">Price: Low to High</option>
-                <option value="price_high">Price: High to Low</option>
-            </select>
+            {/* 2. PRICE FILTER (Dropdown with Slider) */}
+            <div className="relative">
+                <button
+                    onClick={() => toggleDropdown('price')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all whitespace-nowrap ${activeDropdown === 'price' || filters.minPrice || filters.maxPrice
+                        ? 'bg-black text-white border-black shadow-md'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-black'
+                        }`}
+                >
+                    <span>Price Range</span>
+                    {(filters.minPrice || filters.maxPrice) && <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />}
+                    <FaChevronDown className={`text-[10px] transition-transform ${activeDropdown === 'price' ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                    {activeDropdown === 'price' && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute top-full left-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 p-5 z-50"
+                        >
+                            <div className="flex justify-between items-center mb-4">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Select Range</label>
+                                <div className="text-xs font-black text-gray-900">₹{currentMin.toLocaleString()} - ₹{currentMax.toLocaleString()}</div>
+                            </div>
+
+                            {/* Dual Slider Visualization */}
+                            <div className="relative h-6 mb-6 select-none">
+                                <div className="absolute top-1/2 left-0 right-0 h-1 bg-gray-200 rounded-full -translate-y-1/2"></div>
+                                <div className="absolute top-1/2 h-1 bg-[#EAB308] rounded-full -translate-y-1/2" style={{ left: `${(currentMin / MAX_RANGE) * 100}%`, right: `${100 - (currentMax / MAX_RANGE) * 100}%` }}></div>
+                                <input type="range" min={MIN_RANGE} max={MAX_RANGE} value={currentMin} onChange={(e) => handleSliderChange(e, 'min')} className="absolute top-1/2 -translate-y-1/2 w-full h-6 appearance-none bg-transparent cursor-pointer pointer-events-none z-20 [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#EAB308] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform" />
+                                <input type="range" min={MIN_RANGE} max={MAX_RANGE} value={currentMax} onChange={(e) => handleSliderChange(e, 'max')} className="absolute top-1/2 -translate-y-1/2 w-full h-6 appearance-none bg-transparent cursor-pointer pointer-events-none z-20 [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#EAB308] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:transition-transform" />
+                            </div>
+
+                            <div className="flex gap-2 mb-2">
+                                <input type="number" name="minPrice" value={filters.minPrice} onChange={handlePriceChange} placeholder="Min" className="w-full bg-gray-50 rounded px-2 py-1 text-xs font-bold border-transparent focus:bg-white focus:border-yellow-400 border outline-none" />
+                                <input type="number" name="maxPrice" value={filters.maxPrice} onChange={handlePriceChange} placeholder="Max" className="w-full bg-gray-50 rounded px-2 py-1 text-xs font-bold border-transparent focus:bg-white focus:border-yellow-400 border outline-none" />
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* 3. AMENITIES (Dropdown with Checkboxes) */}
+            <div className="relative">
+                <button
+                    onClick={() => toggleDropdown('amenities')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all whitespace-nowrap ${activeDropdown === 'amenities' || filters.amenities.length > 0
+                        ? 'bg-black text-white border-black shadow-md'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-black'
+                        }`}
+                >
+                    <span>Amenities</span>
+                    {filters.amenities.length > 0 && <span className="bg-yellow-400 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">{filters.amenities.length}</span>}
+                    <FaChevronDown className={`text-[10px] transition-transform ${activeDropdown === 'amenities' ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                    {activeDropdown === 'amenities' && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-50 overflow-hidden"
+                        >
+                            <div className="max-h-60 overflow-y-auto custom-scrollbar p-1 flex flex-col gap-1">
+                                {amenitiesList.map(item => {
+                                    const isActive = filters.amenities.includes(item.id);
+                                    return (
+                                        <button key={item.id} onClick={() => toggleAmenity(item.id)} className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${isActive ? 'bg-yellow-50 text-yellow-700 font-bold' : 'hover:bg-gray-50 text-gray-600'}`}>
+                                            <span>{item.label}</span>
+                                            {isActive && <FaCheck className="text-yellow-600 text-[10px]" />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* 4. SORT (Right Aligned) */}
+            <div className="ml-auto relative group hidden sm:block">
+                <select
+                    value={filters.sortBy}
+                    onChange={handleSortChange}
+                    className="appearance-none bg-white border border-gray-200 hover:border-black text-gray-700 text-sm font-medium rounded-lg px-4 py-2 pr-8 outline-none transition-all cursor-pointer shadow-sm focus:ring-2 focus:ring-black/5"
+                >
+                    <option value="all">Sort: Recommended</option>
+                    <option value="price_low">Price: Low to High</option>
+                    <option value="price_high">Price: High to Low</option>
+                    <option value="rating_high">Highest Rated</option>
+                </select>
+                <FaChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none" />
+            </div>
+
+            {/* RESET - Only if filters active */}
+            {(filters.minPrice || filters.maxPrice || filters.amenities.length > 0) && (
+                <button
+                    onClick={() => updateFilters({ sortBy: 'all', minPrice: '', maxPrice: '', amenities: [] })}
+                    className="ml-2 text-red-500 text-xs font-bold uppercase tracking-wider hover:text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition-all flex items-center gap-1 flex-shrink-0"
+                >
+                    <FaTimes /> Clear
+                </button>
+            )}
         </div>
     );
 }

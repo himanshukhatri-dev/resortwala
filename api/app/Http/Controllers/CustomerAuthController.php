@@ -15,24 +15,50 @@ class CustomerAuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'nullable|string|email|max:255|unique:customers',
             'phone' => 'required|string|max:20|unique:customers',
-            'password' => 'required|string|min:6',
+            'password' => 'nullable|string|min:6', // Password optional
         ]);
 
         $customer = Customer::create([
             'name' => $request->name,
-            'email' => $request->email, // Can be null
+            'email' => $request->email,
             'phone' => $request->phone,
-            'password' => Hash::make($request->password),
+            'password' => $request->password ? Hash::make($request->password) : Hash::make(\Illuminate\Support\Str::random(16)),
         ]);
 
         $token = $customer->createToken('customer-token')->plainTextToken;
+
+        // --- DUAL OTP GENERATION ---
+        
+        // 1. Email OTP (if email exists)
+        if ($customer->email) {
+            $emailOtp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            $customer->update(['email_verification_token' => $emailOtp]);
+            
+            try {
+                // Send Welcome/Verification Email
+                \Mail::to($customer->email)->send(new \App\Mail\OtpMail($emailOtp, 'signup'));
+            } catch (\Exception $e) {
+                \Log::error("Failed to send signup email to {$customer->email}: " . $e->getMessage());
+            }
+        }
+
+        // 2. SMS OTP (Always, since phone is required)
+        $smsOtp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $customer->update(['phone_verification_token' => $smsOtp]);
+
+        try {
+            $notificationService = app(\App\Services\NotificationService::class);
+            $notificationService->sendSMSOTP($customer->phone, $smsOtp, 'signup');
+        } catch (\Exception $e) {
+             \Log::error("Failed to send signup SMS to {$customer->phone}: " . $e->getMessage());
+        }
 
         return response()->json([
             'customer' => $customer,
             'token' => $token,
             'needs_verification' => [
                 'email' => !empty($request->email),
-                'phone' => true // Always verify phone
+                'phone' => true 
             ]
         ], 201);
     }

@@ -70,10 +70,13 @@ export function AuthProvider({ children }) {
         setUser(null);
     };
 
-    const loginWithToken = (newToken) => {
+    const loginWithToken = (newToken, userData = null) => {
         localStorage.setItem('customer_token', newToken);
         setToken(newToken);
-        // User will be fetched by useEffect logic
+        if (userData) {
+            setUser(userData);
+            setLoading(false);
+        }
     };
 
     return (

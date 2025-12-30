@@ -35,9 +35,9 @@
         - generic [ref=e22]: P
       - button "🚪" [ref=e23] [cursor=pointer]:
         - generic [ref=e24]: 🚪
-  - button "11" [ref=e27] [cursor=pointer]:
+  - button "9" [ref=e27] [cursor=pointer]:
     - img [ref=e28]
-    - generic [ref=e30]: "11"
+    - generic [ref=e30]: "9"
   - generic [ref=e31]:
     - generic [ref=e33]:
       - generic [ref=e34]:

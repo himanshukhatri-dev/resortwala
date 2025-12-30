@@ -27,8 +27,9 @@ export const CompareProvider = ({ children }) => {
             toast.error("Already in comparison list");
             return;
         }
-        if (compareList.length >= 3) {
-            toast.error("You can compare up to 3 properties");
+        const limit = window.innerWidth < 768 ? 2 : 3;
+        if (compareList.length >= limit) {
+            toast.error(`You can compare up to ${limit} properties`);
             return;
         }
 

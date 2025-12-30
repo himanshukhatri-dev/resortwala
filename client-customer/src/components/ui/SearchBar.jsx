@@ -174,7 +174,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                     className={`relative cursor-pointer transition-all duration-300 px-6 py-4 md:py-0
                         ${isSticky
                             ? 'flex-1 hover:bg-gray-100/50 rounded-full'
-                            : 'w-full md:flex-[1.2] hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full h-[60px] md:h-full flex flex-col justify-center px-4 md:pl-8 border md:border-none border-gray-100 bg-white/50 md:bg-transparent'}
+                            : 'w-full md:flex-[1.2] hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full h-[60px] md:h-full flex flex-col justify-center items-start text-left px-4 md:pl-8 border md:border-none border-gray-100 bg-white/50 md:bg-transparent'}
                         ${activeTab === 'location' && !isSticky ? 'bg-white shadow-lg scale-100 z-20 ring-1 ring-black/5' : ''}`
                     }
                 >
@@ -202,7 +202,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                     className={`relative cursor-pointer transition-all duration-300 px-6 py-4 md:py-0
                         ${isSticky
                             ? 'flex-none w-[120px] border-l border-gray-200 hover:bg-gray-100/50 flex items-center justify-center text-center'
-                            : 'w-full md:flex-1 hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full h-[60px] md:h-full flex flex-col justify-center px-4 md:pl-8 border md:border-none border-gray-100 bg-white/50 md:bg-transparent'}
+                            : 'w-full md:flex-1 hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full h-[60px] md:h-full flex flex-col justify-center items-start text-left px-4 md:pl-8 border md:border-none border-gray-100 bg-white/50 md:bg-transparent'}
                         ${activeTab === 'dates' && !isSticky ? 'bg-white shadow-lg scale-100 z-20 ring-1 ring-black/5' : ''}`
                     }
                 >

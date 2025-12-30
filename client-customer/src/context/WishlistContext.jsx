@@ -5,42 +5,46 @@ import { useAuth } from './AuthContext';
 const WishlistContext = createContext();
 
 export function WishlistProvider({ children }) {
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const [wishlist, setWishlist] = useState([]); // Array of property IDs
     const [loading, setLoading] = useState(false);
 
     // Fetch wishlist on load
     useEffect(() => {
-        if (user) {
+        if (user && token) {
             fetchWishlist();
         } else {
             setWishlist([]);
         }
-    }, [user]);
+    }, [user, token]);
 
     const fetchWishlist = async () => {
         try {
-            const token = localStorage.getItem('token');
+            if (!token) return;
+
             // We fetch the full list of wishlisted properties to get IDs
-            // Optimally, backend could just return IDs if we only need to check status
-            // But if we want to show a "Wishlist Page", we need details. 
-            // Let's assume endpoint returns array of objects with PropertyId
             const res = await fetch(`${API_BASE_URL}/customer/wishlist`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'
                 }
             });
+
             if (res.status === 401) {
                 // Unauthorized - clear wishlist silently
                 setWishlist([]);
                 return;
             }
+
             if (res.ok) {
                 const data = await res.json();
-                // Store IDs for easy lookup
-                const ids = data.map(p => p.PropertyId || p.id);
-                setWishlist(ids);
+                if (Array.isArray(data)) {
+                    const ids = data.map(p => p.PropertyId || p.id);
+                    setWishlist(ids);
+                } else {
+                    console.warn("Wishlist response is not an array:", data);
+                    setWishlist([]);
+                }
             }
         } catch (err) {
             console.error("Failed to fetch wishlist", err);
@@ -64,7 +68,7 @@ export function WishlistProvider({ children }) {
         );
 
         try {
-            const token = localStorage.getItem('token');
+            // Use token from context
             const res = await fetch(`${API_BASE_URL}/customer/wishlist/toggle`, {
                 method: 'POST',
                 headers: {

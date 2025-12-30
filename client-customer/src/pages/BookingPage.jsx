@@ -11,7 +11,19 @@ export default function BookingPage() {
     const navigate = useNavigate();
     const location = useLocation();
     const locationState = location.state || {};
-    const { user } = useAuth(); // Auth Context
+    const { user, loading } = useAuth(); // Auth Context
+
+    // Redirect if not logged in
+    useEffect(() => {
+        if (!loading && !user) {
+            navigate('/login', {
+                state: {
+                    returnTo: location.pathname,
+                    bookingState: locationState // Pass booking details forward
+                }
+            });
+        }
+    }, [user, loading, navigate, location.pathname, locationState]);
 
     const [form, setForm] = useState({
         CustomerName: '',
@@ -98,73 +110,77 @@ export default function BookingPage() {
         }
     };
 
-    const calculateTotal = () => {
-        let basePrice = 0;
+    const getPricingDetails = () => {
+        let base = 0;
+        let extraGuestCost = 0;
+        let foodCost = 0;
+        let nightsCount = nights;
 
-        if (property) {
-            // Logic: Iterate through dates from checkIn to checkOut - 1 day
+        // 1. Try use passed breakdown (High Fidelity)
+        if (locationState.breakdown) {
+            const b = locationState.breakdown;
+            base = b.totalVillaRate || 0;
+            extraGuestCost = b.totalExtra || 0;
+            foodCost = b.totalFood || 0;
+            nightsCount = b.nights || nights;
+        }
+        // 2. Fallback Calculation (Basic)
+        else if (property) {
+            // Logic: Iterate through dates...
             const start = startOfDay(checkIn);
             const end = startOfDay(checkOut);
-
-            // Generate range of dates involved (excluding checkout day)
-            // If stay is 1 night (14th to 15th), we need key for 14th.
             const nightDates = eachDayOfInterval({ start, end: subDays(end, 1) });
 
             nightDates.forEach(date => {
-                const dayOfWeek = getDay(date); // 0=Sun, 1=Mon... 6=Sat
-                let nightlyRate = Number(property.PricePerNight) || 5000; // Fallback
-                let appliedHoliday = null;
-
-                // Check Overrides
-                if (holidays && holidays.length > 0) {
-                    appliedHoliday = holidays.find(h => {
-                        const from = new Date(h.from_date);
-                        const to = new Date(h.to_date);
-                        from.setHours(0, 0, 0, 0);
-                        to.setHours(23, 59, 59, 999);
-
-                        const checking = new Date(date);
-                        checking.setHours(12, 0, 0, 0);
-                        return checking >= from && checking <= to;
-                    });
-                }
+                const dayOfWeek = getDay(date);
+                let nightlyRate = Number(property.PricePerNight) || 5000;
+                let appliedHoliday = holidays.find(h => {
+                    const from = new Date(h.from_date); from.setHours(0, 0, 0, 0);
+                    const to = new Date(h.to_date); to.setHours(23, 59, 59, 999);
+                    const d = new Date(date); d.setHours(12, 0, 0, 0);
+                    return d >= from && d <= to;
+                });
 
                 if (appliedHoliday) {
                     nightlyRate = Number(appliedHoliday.base_price);
                 } else {
-                    if (dayOfWeek >= 1 && dayOfWeek <= 4) {
-                        if (property.price_mon_thu) nightlyRate = Number(property.price_mon_thu);
-                    } else if (dayOfWeek === 5 || dayOfWeek === 0) {
-                        if (property.price_fri_sun) nightlyRate = Number(property.price_fri_sun);
-                    } else if (dayOfWeek === 6) {
-                        if (property.price_sat) nightlyRate = Number(property.price_sat);
-                    }
+                    if (dayOfWeek >= 1 && dayOfWeek <= 4 && property.price_mon_thu) nightlyRate = Number(property.price_mon_thu);
+                    else if ((dayOfWeek === 5 || dayOfWeek === 0) && property.price_fri_sun) nightlyRate = Number(property.price_fri_sun);
+                    else if (dayOfWeek === 6 && property.price_sat) nightlyRate = Number(property.price_sat);
                 }
-
-                basePrice += nightlyRate;
+                base += nightlyRate;
             });
         } else {
-            basePrice = 5000 * nights;
+            base = 5000 * nights;
         }
 
-        const taxes = basePrice * 0.18; // 18% GST Mock
-        let discount = 0;
-
+        // Coupon Logic
+        let discountVal = 0;
         if (appliedCoupon) {
             if (appliedCoupon.discount_type === 'percentage') {
-                discount = (basePrice * appliedCoupon.value) / 100;
+                discountVal = (base * appliedCoupon.value) / 100;
             } else {
-                discount = Number(appliedCoupon.value);
+                discountVal = Number(appliedCoupon.value);
             }
         }
 
+        // Tax Logic
+        const taxable = base + extraGuestCost + foodCost - discountVal;
+        const gstPercent = property?.gst_percentage ? parseFloat(property.gst_percentage) : 18;
+        const taxVal = (taxable * gstPercent) / 100;
+
         return {
-            basePrice,
-            taxes,
-            discount,
-            total: Math.max(0, basePrice + taxes - discount)
+            basePrice: base,
+            extraGuestCost,
+            foodCost,
+            taxes: taxVal,
+            discount: discountVal,
+            total: Math.max(0, taxable + taxVal),
+            nights: nightsCount
         };
     };
+
+    const { basePrice, extraGuestCost, foodCost, taxes, discount, total, nights: nightsDisplay } = getPricingDetails();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -182,25 +198,28 @@ export default function BookingPage() {
             base_amount: basePrice,
             tax_amount: taxes,
             discount_amount: discount,
+            extra_guest_charge: extraGuestCost, // Added
+            food_charge: foodCost,             // Added
             coupon_code: appliedCoupon?.code || null,
             payment_method: form.payment_method,
             SpecialRequest: form.SpecialRequest,
             booking_source: 'customer_app',
-            Status: 'Pending' // Vendor Approval Flow
+            Status: 'Pending',
+            metadata: { // Send breakdown details for reference
+                breakdown: locationState.breakdown,
+                foodIncluded: locationState.breakdown?.totalFood > 0
+            }
         };
 
         try {
             const res = await axios.post(`${API_BASE_URL}/bookings`, payload);
-
-            // Store user identity
             if (form.CustomerEmail) localStorage.setItem('user_email', form.CustomerEmail);
             if (form.CustomerMobile) localStorage.setItem('user_mobile', form.CustomerMobile);
-
             navigate('/bookings', {
                 state: {
                     bookingSuccess: true,
                     message: "Booking Request Sent! Waiting for Approval.",
-                    newBookingId: res.data.bookingId || res.data.id || res.data.booking?.BookingId || null, // Ensure ID is passed
+                    newBookingId: res.data.bookingId || res.data.id || res.data.booking?.BookingId || null,
                     property_name: property.Name
                 }
             });
@@ -212,8 +231,6 @@ export default function BookingPage() {
     };
 
     if (!property) return <div className="pt-32 text-center">Loading...</div>;
-
-    const { basePrice, taxes, discount, total } = calculateTotal();
 
     return (
         <div className="pt-32 pb-20 min-h-screen bg-gray-50">
@@ -334,14 +351,7 @@ export default function BookingPage() {
                             </div>
                         </div>
 
-                        {/* Submit Button */}
-                        <button
-                            onClick={handleSubmit}
-                            disabled={bookingStatus === 'submitting' || !form.CustomerName || !form.CustomerMobile}
-                            className="w-full bg-[#FF385C] hover:bg-[#d9324e] text-white py-4 rounded-xl text-lg font-bold shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {bookingStatus === 'submitting' ? 'Processing...' : 'Confirm and pay'}
-                        </button>
+
 
                     </div>
 
@@ -369,11 +379,23 @@ export default function BookingPage() {
                             <div className="space-y-1">
                                 <h3 className="text-xl font-bold mb-4">Price details</h3>
                                 <div className="flex justify-between text-gray-600">
-                                    <span>Total Base Price ({nights} nights)</span>
+                                    <span>Total Base Price ({nightsDisplay} nights)</span>
                                     <span>₹{basePrice.toLocaleString()}</span>
                                 </div>
+                                {extraGuestCost > 0 && (
+                                    <div className="flex justify-between text-gray-600">
+                                        <span>Extra Guest Charges</span>
+                                        <span>₹{extraGuestCost.toLocaleString()}</span>
+                                    </div>
+                                )}
+                                {foodCost > 0 && (
+                                    <div className="flex justify-between text-gray-600">
+                                        <span>Food Charges</span>
+                                        <span>₹{foodCost.toLocaleString()}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-gray-600">
-                                    <span>Taxes (18% GST)</span>
+                                    <span>Taxes ({property.gst_percentage || 18}% GST)</span>
                                     <span>₹{taxes.toLocaleString()}</span>
                                 </div>
                                 {appliedCoupon && (
@@ -408,19 +430,21 @@ export default function BookingPage() {
                             {couponError && <div className="text-red-500 text-xs mt-1">{couponError}</div>}
                             {appliedCoupon && <div className="text-green-600 text-xs mt-1">Code applied successfully!</div>}
 
-                            {/* Map Widget (Static Placeholder) */}
-                            <div className="pt-4">
-                                <h4 className="font-semibold mb-2 flex items-center gap-2"><FaMapMarkerAlt /> Location</h4>
-                                <div className="w-full h-40 bg-gray-200 rounded-lg overflow-hidden relative group cursor-pointer">
-                                    <img
-                                        src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=600&auto=format&fit=crop"
-                                        className="w-full h-full object-cover"
-                                        alt="Map Placeholder"
-                                    />
-                                    <div className="absolute inset-x-0 bottom-0 bg-white/90 p-2 text-center text-xs font-bold text-black backdrop-blur-sm">
-                                        View on Maps
-                                    </div>
-                                </div>
+                            {/* Confirm Button Moved Here */}
+                            <button
+                                onClick={handleSubmit}
+                                disabled={bookingStatus === 'submitting' || !form.CustomerName || !form.CustomerMobile}
+                                className="w-full bg-[#FF385C] hover:bg-[#d9324e] text-white py-4 rounded-xl text-lg font-bold shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed mt-4 flex items-center justify-center gap-2"
+                            >
+                                {bookingStatus === 'submitting' ? (
+                                    <>Processing...</>
+                                ) : (
+                                    <>Confirm and pay</>
+                                )}
+                            </button>
+
+                            <div className="text-center text-xs text-gray-400 flex items-center justify-center gap-1 mt-2">
+                                <FaShieldAlt /> Secure Payment via Razorpay/UPI
                             </div>
 
                         </div>

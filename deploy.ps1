@@ -138,8 +138,8 @@ function Deploy-Component {
     # Ensure remote directory exists
     ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "mkdir -p $($Config.RemotePath)"
 
-    # Clean contents (preserve .env and storage/app directory with uploaded media)
-    $RemoteCleanCmd = "find $($Config.RemotePath)/ -mindepth 1 ! -name '.env' ! -path '$($Config.RemotePath)/storage/app' ! -path '$($Config.RemotePath)/storage/app/*' -delete"
+    # Clean contents (preserve .env and ENTIRE storage directory)
+    $RemoteCleanCmd = "find $($Config.RemotePath)/ -mindepth 1 ! -name '.env' ! -path '$($Config.RemotePath)/storage' ! -path '$($Config.RemotePath)/storage/*' -delete"
     ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "$RemoteCleanCmd"
     
     # 2. Compress (Tar Gzip for Linux Compatibility)
@@ -198,6 +198,7 @@ function Deploy-Component {
                 "chmod -R 775 storage bootstrap/cache && " +
                 "chmod -R 755 public && " +
                 "php artisan migrate --force && " +
+                "php artisan storage:link && " +
                 "php artisan optimize:clear"
 
                 ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "$RemoteSetupCmd"

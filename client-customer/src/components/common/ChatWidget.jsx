@@ -26,7 +26,7 @@ export default function ChatWidget() {
             }}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className="fixed bottom-24 right-4 z-[9999] bg-secondary hover:bg-green-600 text-white p-3 rounded-full shadow-xl flex items-center justify-center cursor-grab active:cursor-grabbing"
+            className="fixed bottom-24 right-4 z-[9999] bg-[#25D366] hover:bg-[#128C7E] text-white p-3 rounded-full shadow-xl flex items-center justify-center cursor-grab active:cursor-grabbing"
             aria-label="Chat with us"
             title="Chat with Us (Drag to move)"
         >
