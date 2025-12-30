@@ -1,0 +1,152 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - img "ResortWala" [ref=e6]
+    - navigation [ref=e7]:
+      - link "📊 Dashboard" [ref=e8] [cursor=pointer]:
+        - /url: /vendor/dashboard
+        - generic [ref=e9]: 📊
+        - generic: Dashboard
+      - link "🏠 Property" [ref=e10] [cursor=pointer]:
+        - /url: /vendor/properties
+        - generic [ref=e11]: 🏠
+        - generic: Property
+      - link "📅 Bookings" [ref=e12] [cursor=pointer]:
+        - /url: /vendor/bookings
+        - generic [ref=e13]: 📅
+        - generic: Bookings
+      - link "🗓️ Calendar" [ref=e14] [cursor=pointer]:
+        - /url: /vendor/calendar
+        - generic [ref=e15]: 🗓️
+        - generic: Calendar
+      - link "🌴 Holiday" [ref=e16] [cursor=pointer]:
+        - /url: /vendor/holiday-management
+        - generic [ref=e17]: 🌴
+        - generic: Holiday
+      - link "⭐ Reviews" [ref=e18] [cursor=pointer]:
+        - /url: /vendor/reviews
+        - generic [ref=e19]: ⭐
+        - generic: Reviews
+    - generic [ref=e20]:
+      - link "P" [ref=e21] [cursor=pointer]:
+        - /url: /vendor/profile
+        - generic [ref=e22]: P
+      - button "🚪" [ref=e23] [cursor=pointer]:
+        - generic [ref=e24]: 🚪
+  - button "11" [ref=e27] [cursor=pointer]:
+    - img [ref=e28]
+    - generic [ref=e30]: "11"
+  - generic [ref=e31]:
+    - generic [ref=e33]:
+      - generic [ref=e34]:
+        - heading "Create Listing" [level=1] [ref=e35]
+        - paragraph [ref=e36]: "Step 1: Basic Info"
+      - generic [ref=e45]:
+        - button "Back" [disabled] [ref=e46]:
+          - img [ref=e47]
+          - text: Back
+        - button "Next" [ref=e49] [cursor=pointer]:
+          - text: Next
+          - img [ref=e50]
+      - generic [ref=e53]:
+        - generic [ref=e54]:
+          - button "Villa / Resort" [ref=e55] [cursor=pointer]:
+            - img [ref=e56]
+            - generic [ref=e58]: Villa / Resort
+          - button "Waterpark" [ref=e59] [cursor=pointer]:
+            - img [ref=e60]
+            - generic [ref=e62]: Waterpark
+        - generic [ref=e63]:
+          - generic [ref=e64]:
+            - generic [ref=e65]:
+              - text: Property Name
+              - generic "Required Field" [ref=e66]: "*"
+            - generic [ref=e67]:
+              - 'textbox "Ex: Royal Palms" [ref=e68]'
+              - generic: Required
+          - generic [ref=e69]:
+            - generic [ref=e70]:
+              - text: Display Name
+              - generic "Required Field" [ref=e71]: "*"
+            - generic [ref=e72]:
+              - 'textbox "Ex: Royal Palms" [ref=e73]'
+              - generic: Required
+          - generic [ref=e74]:
+            - generic [ref=e75]:
+              - text: City
+              - generic "Required Field" [ref=e76]: "*"
+            - generic [ref=e77]:
+              - 'textbox "Ex: Lonavala" [ref=e78]'
+              - generic: Required
+          - generic [ref=e79]:
+            - generic [ref=e80]:
+              - text: Location (Nearest Landmark)
+              - generic "Required Field" [ref=e81]: "*"
+            - generic [ref=e82]:
+              - 'textbox "Ex: Near Lonavala Station" [ref=e83]'
+              - generic: Required
+        - generic [ref=e84]:
+          - generic [ref=e85]:
+            - text: Full Address
+            - generic [ref=e86]: "*"
+          - textbox "Enter complete address..." [ref=e87]
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - generic [ref=e90]:
+              - text: Contact Person
+              - generic "Required Field" [ref=e91]: "*"
+            - generic [ref=e92]:
+              - textbox [ref=e93]
+              - generic: Required
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - text: Mobile Number
+              - generic [ref=e96]: "*"
+            - textbox "+91 9876543210" [ref=e97]
+          - generic [ref=e98]:
+            - generic [ref=e99]: Email Address
+            - textbox [ref=e101]
+          - generic [ref=e102]:
+            - generic [ref=e103]: Website URL
+            - textbox [ref=e105]
+        - generic [ref=e106]:
+          - heading "Map Location" [level=4] [ref=e107]:
+            - img [ref=e108]
+            - text: Map Location
+          - generic [ref=e110]:
+            - text: Google Map Link
+            - textbox "Paste Google Maps Link here (e.g. from WhatsApp or Maps)" [ref=e111]
+            - paragraph [ref=e112]: We'll try to auto-detect Latitude & Longitude from the link.
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - generic [ref=e115]: Latitude
+              - 'textbox "Ex: 18.1234" [ref=e117]'
+            - generic [ref=e118]:
+              - generic [ref=e119]: Longitude
+              - 'textbox "Ex: 73.5678" [ref=e121]'
+          - generic [ref=e122]:
+            - text: Nearby Attractions / Places to Visit
+            - textbox "List nearby tourist spots, distances, etc..." [ref=e123]
+        - generic [ref=e124]:
+          - text: Short Description
+          - textbox "Brief summary for listings..." [ref=e125]
+        - generic [ref=e126]:
+          - text: Description
+          - textbox "Tell guests what makes your place special..." [ref=e127]
+      - generic [ref=e128]:
+        - button "Back" [disabled] [ref=e129]:
+          - img [ref=e130]
+          - text: Back
+        - button "Next" [ref=e132] [cursor=pointer]:
+          - text: Next
+          - img [ref=e133]
+    - generic [ref=e136]:
+      - generic [ref=e138]: Resortwala Registered Vendor
+      - generic [ref=e140]:
+        - generic [ref=e141]: Business Partner
+        - generic [ref=e142]: •
+        - generic [ref=e143]: "ID: 2"
+      - generic [ref=e144]: Authorized Partner • Terms of Service Apply
+```

@@ -1,0 +1,23 @@
+
+Running 1 test using 1 worker
+
+[1A[2K[1/1] [chromium] › e2e-playwright\tests\debug.spec.js:4:1 › Debug Staging Environment
+[1A[2K[chromium] › e2e-playwright\tests\debug.spec.js:4:1 › Debug Staging Environment
+Vendor URL: http://stagingvendor.resortwala.com/
+
+[1A[2KVendor Title: ResortWala
+
+[1A[2KVendor Inputs found: [33m2[39m
+
+[1A[2KAdmin URL: http://stagingadmin.resortwala.com/
+
+[1A[2KAdmin Title: ResortWala
+
+[1A[2KAdmin Inputs found: [33m2[39m
+
+[1A[2K  1 passed (2.2s)
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report[39m
+[36m[39m

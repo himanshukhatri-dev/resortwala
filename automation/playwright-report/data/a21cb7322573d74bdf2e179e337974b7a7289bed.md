@@ -1,0 +1,214 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - img "ResortWala" [ref=e6]
+    - navigation [ref=e7]:
+      - link "📊 Dashboard" [ref=e8] [cursor=pointer]:
+        - /url: /vendor/dashboard
+        - generic [ref=e9]: 📊
+        - generic: Dashboard
+      - link "🏠 Property" [ref=e10] [cursor=pointer]:
+        - /url: /vendor/properties
+        - generic [ref=e11]: 🏠
+        - generic: Property
+      - link "📅 Bookings" [ref=e12] [cursor=pointer]:
+        - /url: /vendor/bookings
+        - generic [ref=e13]: 📅
+        - generic: Bookings
+      - link "🗓️ Calendar" [ref=e14] [cursor=pointer]:
+        - /url: /vendor/calendar
+        - generic [ref=e15]: 🗓️
+        - generic: Calendar
+      - link "🌴 Holiday" [ref=e16] [cursor=pointer]:
+        - /url: /vendor/holiday-management
+        - generic [ref=e17]: 🌴
+        - generic: Holiday
+      - link "⭐ Reviews" [ref=e18] [cursor=pointer]:
+        - /url: /vendor/reviews
+        - generic [ref=e19]: ⭐
+        - generic: Reviews
+    - generic [ref=e20]:
+      - link "P" [ref=e21] [cursor=pointer]:
+        - /url: /vendor/profile
+        - generic [ref=e22]: P
+      - button "🚪" [ref=e23] [cursor=pointer]:
+        - generic [ref=e24]: 🚪
+  - button "11" [ref=e27] [cursor=pointer]:
+    - img [ref=e28]
+    - generic [ref=e30]: "11"
+  - generic [ref=e31]:
+    - generic [ref=e33]:
+      - generic [ref=e35]:
+        - heading "Good Evening, Partner 👋" [level=1] [ref=e36]:
+          - text: Good Evening, Partner
+          - generic [ref=e37]: 👋
+        - paragraph [ref=e38]: Here is your daily activity overview.
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - heading "Pending Actions" [level=3] [ref=e41]
+          - button "View All" [ref=e42] [cursor=pointer]
+        - generic [ref=e43]:
+          - generic [ref=e44] [cursor=pointer]:
+            - generic [ref=e45]: "0"
+            - generic [ref=e46]: Pending Bookings
+            - generic [ref=e47]: Require your confirmation
+          - generic [ref=e48] [cursor=pointer]:
+            - generic [ref=e49]: "0"
+            - generic [ref=e50]: Arrivals Today
+            - generic [ref=e51]: Prepare for check-in
+      - generic [ref=e52]:
+        - button "➕ Add Property List a new stay" [ref=e53] [cursor=pointer]:
+          - generic [ref=e55]: ➕
+          - generic [ref=e56]:
+            - heading "Add Property" [level=3] [ref=e57]
+            - paragraph [ref=e58]: List a new stay
+        - button "📅 Bookings Manage reservations" [ref=e59] [cursor=pointer]:
+          - generic [ref=e61]: 📅
+          - generic [ref=e62]:
+            - heading "Bookings" [level=3] [ref=e63]
+            - paragraph [ref=e64]: Manage reservations
+        - button "🗓️ Calendar Availability & Rates" [ref=e65] [cursor=pointer]:
+          - generic [ref=e67]: 🗓️
+          - generic [ref=e68]:
+            - heading "Calendar" [level=3] [ref=e69]
+            - paragraph [ref=e70]: Availability & Rates
+        - button "🌴 Holidays Manage blocked dates" [ref=e71] [cursor=pointer]:
+          - generic [ref=e73]: 🌴
+          - generic [ref=e74]:
+            - heading "Holidays" [level=3] [ref=e75]
+            - paragraph [ref=e76]: Manage blocked dates
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - generic [ref=e79]: 📅
+          - paragraph [ref=e80]: Today
+          - paragraph [ref=e81]: "0"
+        - generic [ref=e82]:
+          - generic [ref=e83]: 📊
+          - paragraph [ref=e84]: Week
+          - paragraph [ref=e85]: "0"
+        - generic [ref=e86]:
+          - generic [ref=e87]: 📈
+          - paragraph [ref=e88]: Month
+          - paragraph [ref=e89]: "69"
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - img [ref=e93]
+          - generic [ref=e95]:
+            - img [ref=e97]
+            - paragraph [ref=e99]: Total Properties
+            - heading "20" [level=3] [ref=e100]
+            - paragraph [ref=e101]: Active
+        - generic [ref=e102]:
+          - img [ref=e104]
+          - generic [ref=e106]:
+            - img [ref=e108]
+            - paragraph [ref=e110]: Active Listings
+            - heading "11" [level=3] [ref=e111]
+            - paragraph [ref=e112]: Operational
+        - generic [ref=e113]:
+          - img [ref=e115]
+          - generic [ref=e117]:
+            - img [ref=e119]
+            - paragraph [ref=e121]: Total Bookings
+            - heading "69" [level=3] [ref=e122]
+            - paragraph [ref=e123]: All Time
+        - generic [ref=e124]:
+          - img [ref=e126]
+          - generic [ref=e128]:
+            - img [ref=e130]
+            - paragraph [ref=e132]: Total Revenue
+            - heading "₹2403720.00" [level=3] [ref=e133]
+            - paragraph [ref=e134]: Earnings
+      - generic [ref=e136]:
+        - generic [ref=e137]:
+          - heading "Boost Usage 🚀" [level=3] [ref=e138]
+          - paragraph [ref=e139]: Keep your calendar updated to avoid double bookings and improve ranking.
+        - button "Update Calendar" [ref=e140] [cursor=pointer]
+      - generic [ref=e141]:
+        - generic [ref=e142]:
+          - heading "Recent Activity" [level=3] [ref=e143]
+          - button "View All" [ref=e144] [cursor=pointer]
+        - table [ref=e147]:
+          - rowgroup [ref=e148]:
+            - row "ID Property Customer Date Status Amount Action" [ref=e149]:
+              - columnheader "ID" [ref=e150]
+              - columnheader "Property" [ref=e151]
+              - columnheader "Customer" [ref=e152]
+              - columnheader "Date" [ref=e153]
+              - columnheader "Status" [ref=e154]
+              - columnheader "Amount" [ref=e155]
+              - columnheader "Action" [ref=e156]
+          - rowgroup [ref=e157]:
+            - row "#104 Ali Villa Lonavala Abhay 9892327306 1/2/2026 pending ₹ ✓ ✕" [ref=e158]:
+              - cell "#104" [ref=e159]
+              - cell "Ali Villa Lonavala" [ref=e160]:
+                - generic [ref=e161]: Ali Villa
+                - generic [ref=e162]: Lonavala
+              - cell "Abhay 9892327306" [ref=e163]:
+                - generic [ref=e164]: Abhay
+                - generic [ref=e165]: "9892327306"
+              - cell "1/2/2026" [ref=e166]
+              - cell "pending" [ref=e167]
+              - cell "₹" [ref=e168]
+              - cell "✓ ✕" [ref=e169]:
+                - generic [ref=e170]:
+                  - button "✓" [ref=e171] [cursor=pointer]
+                  - button "✕" [ref=e172] [cursor=pointer]
+            - row "#103 test himanshu Vila's Igatpuri himanshu khatri +919870646548 12/26/2025 Confirmed ₹2360.00" [ref=e173]:
+              - cell "#103" [ref=e174]
+              - cell "test himanshu Vila's Igatpuri" [ref=e175]:
+                - generic [ref=e176]: test himanshu Vila's
+                - generic [ref=e177]: Igatpuri
+              - cell "himanshu khatri +919870646548" [ref=e178]:
+                - generic [ref=e179]: himanshu khatri
+                - generic [ref=e180]: "+919870646548"
+              - cell "12/26/2025" [ref=e181]
+              - cell "Confirmed" [ref=e182]
+              - cell "₹2360.00" [ref=e183]
+              - cell [ref=e184]
+            - row "#102 test himanshu Vila's Igatpuri himanshu khatri +919870646548 12/26/2025 Confirmed ₹2360.00" [ref=e185]:
+              - cell "#102" [ref=e186]
+              - cell "test himanshu Vila's Igatpuri" [ref=e187]:
+                - generic [ref=e188]: test himanshu Vila's
+                - generic [ref=e189]: Igatpuri
+              - cell "himanshu khatri +919870646548" [ref=e190]:
+                - generic [ref=e191]: himanshu khatri
+                - generic [ref=e192]: "+919870646548"
+              - cell "12/26/2025" [ref=e193]
+              - cell "Confirmed" [ref=e194]
+              - cell "₹2360.00" [ref=e195]
+              - cell [ref=e196]
+            - row "#101 Ali Villa Lonavala Vaishali 9769137565 1/14/2026 confirmed ₹" [ref=e197]:
+              - cell "#101" [ref=e198]
+              - cell "Ali Villa Lonavala" [ref=e199]:
+                - generic [ref=e200]: Ali Villa
+                - generic [ref=e201]: Lonavala
+              - cell "Vaishali 9769137565" [ref=e202]:
+                - generic [ref=e203]: Vaishali
+                - generic [ref=e204]: "9769137565"
+              - cell "1/14/2026" [ref=e205]
+              - cell "confirmed" [ref=e206]
+              - cell "₹" [ref=e207]
+              - cell [ref=e208]
+            - row "#100 test himanshu Vila's Igatpuri Test 9898989898 12/30/2025 Confirmed ₹" [ref=e209]:
+              - cell "#100" [ref=e210]
+              - cell "test himanshu Vila's Igatpuri" [ref=e211]:
+                - generic [ref=e212]: test himanshu Vila's
+                - generic [ref=e213]: Igatpuri
+              - cell "Test 9898989898" [ref=e214]:
+                - generic [ref=e215]: Test
+                - generic [ref=e216]: "9898989898"
+              - cell "12/30/2025" [ref=e217]
+              - cell "Confirmed" [ref=e218]
+              - cell "₹" [ref=e219]
+              - cell [ref=e220]
+    - generic [ref=e222]:
+      - generic [ref=e224]: Resortwala Registered Vendor
+      - generic [ref=e226]:
+        - generic [ref=e227]: Business Partner
+        - generic [ref=e228]: •
+        - generic [ref=e229]: "ID: 2"
+      - generic [ref=e230]: Authorized Partner • Terms of Service Apply
+```
