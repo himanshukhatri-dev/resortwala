@@ -20,8 +20,8 @@ class WishlistController extends Controller
             ->where('user_id', $user->id)
             ->pluck('property_id');
 
-        // Fetch property details
-        $properties = PropertyMaster::whereIn('PropertyId', $favorites)->get();
+        // Fetch property details with images
+        $properties = PropertyMaster::with(['images', 'primaryImage'])->whereIn('PropertyId', $favorites)->get();
 
         return response()->json($properties);
     }

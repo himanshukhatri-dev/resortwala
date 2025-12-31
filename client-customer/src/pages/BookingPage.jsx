@@ -115,11 +115,21 @@ export default function BookingPage() {
         let extraGuestCost = 0;
         let foodCost = 0;
         let nightsCount = nights;
+        let childTicketCost = 0;
+        let isWaterparkBreakdown = false;
 
         // 1. Try use passed breakdown (High Fidelity)
         if (locationState.breakdown) {
             const b = locationState.breakdown;
-            base = b.totalVillaRate || 0;
+            if (b.totalAdultTicket !== undefined) {
+                // Waterpark Logic
+                base = b.totalAdultTicket || 0;
+                childTicketCost = b.totalChildTicket || 0;
+                isWaterparkBreakdown = true;
+            } else {
+                // Villa Logic
+                base = b.totalVillaRate || 0;
+            }
             extraGuestCost = b.totalExtra || 0;
             foodCost = b.totalFood || 0;
             nightsCount = b.nights || nights;
@@ -165,22 +175,24 @@ export default function BookingPage() {
         }
 
         // Tax Logic
-        const taxable = base + extraGuestCost + foodCost - discountVal;
+        const taxable = base + extraGuestCost + foodCost + childTicketCost - discountVal;
         const gstPercent = property?.gst_percentage ? parseFloat(property.gst_percentage) : 18;
         const taxVal = (taxable * gstPercent) / 100;
 
         return {
             basePrice: base,
+            childTicketCost,
             extraGuestCost,
             foodCost,
             taxes: taxVal,
             discount: discountVal,
             total: Math.max(0, taxable + taxVal),
-            nights: nightsCount
+            nights: nightsCount,
+            isWaterparkBreakdown
         };
     };
 
-    const { basePrice, extraGuestCost, foodCost, taxes, discount, total, nights: nightsDisplay } = getPricingDetails();
+    const { basePrice, childTicketCost, extraGuestCost, foodCost, taxes, discount, total, nights: nightsDisplay, isWaterparkBreakdown } = getPricingDetails();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -198,16 +210,17 @@ export default function BookingPage() {
             base_amount: basePrice,
             tax_amount: taxes,
             discount_amount: discount,
-            extra_guest_charge: extraGuestCost, // Added
-            food_charge: foodCost,             // Added
+            extra_guest_charge: extraGuestCost,
+            food_charge: foodCost,
             coupon_code: appliedCoupon?.code || null,
             payment_method: form.payment_method,
             SpecialRequest: form.SpecialRequest,
             booking_source: 'customer_app',
             Status: 'Pending',
-            metadata: { // Send breakdown details for reference
+            metadata: {
                 breakdown: locationState.breakdown,
-                foodIncluded: locationState.breakdown?.totalFood > 0
+                foodIncluded: locationState.breakdown?.totalFood > 0,
+                childTicketCost
             }
         };
 
@@ -261,7 +274,16 @@ export default function BookingPage() {
                             <div className="flex justify-between items-center">
                                 <div>
                                     <div className="font-semibold">Guests</div>
-                                    <div className="text-gray-600">{guests} guests</div>
+                                    <div className="text-gray-600">
+                                        {typeof guestsFromState === 'object' ? (
+                                            <>
+                                                {guestsFromState.adults} Adults
+                                                {guestsFromState.children > 0 && `, ${guestsFromState.children} Children`}
+                                            </>
+                                        ) : (
+                                            `${guests} guests`
+                                        )}
+                                    </div>
                                 </div>
                                 <button className="text-black font-semibold underline text-sm">Edit</button>
                             </div>
@@ -379,9 +401,15 @@ export default function BookingPage() {
                             <div className="space-y-1">
                                 <h3 className="text-xl font-bold mb-4">Price details</h3>
                                 <div className="flex justify-between text-gray-600">
-                                    <span>Total Base Price ({nightsDisplay} nights)</span>
+                                    <span>{isWaterparkBreakdown ? 'Adult Tickets' : `Total Base Price (${nightsDisplay} nights)`}</span>
                                     <span>₹{basePrice.toLocaleString()}</span>
                                 </div>
+                                {childTicketCost > 0 && (
+                                    <div className="flex justify-between text-gray-600">
+                                        <span>Children Tickets</span>
+                                        <span>₹{childTicketCost.toLocaleString()}</span>
+                                    </div>
+                                )}
                                 {extraGuestCost > 0 && (
                                     <div className="flex justify-between text-gray-600">
                                         <span>Extra Guest Charges</span>

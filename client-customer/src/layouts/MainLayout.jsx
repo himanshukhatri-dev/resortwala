@@ -1,5 +1,5 @@
 import { API_BASE_URL } from '../config';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/ui/Header';
 import Footer from '../components/ui/Footer';
@@ -16,12 +16,38 @@ const CATEGORIES = [
     { id: 'waterpark', label: 'Water Park', icon: <FaSwimmingPool /> },
 ];
 
+import { useWishlist } from '../context/WishlistContext';
+import { toast } from 'react-hot-toast';
+
 export default function MainLayout() {
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [properties, setProperties] = useState([]);
     // Removed local activeCategory state as it's now global in SearchContext
     const navigate = useNavigate();
     const location = useLocation();
+    const { toggleWishlist } = useWishlist();
+    const processingRef = useRef(null);
+
+    // Handle pending actions (e.g. wishlist after login)
+    useEffect(() => {
+        if (location.state?.action === 'wishlist' && location.state?.propertyId) {
+            const { propertyId } = location.state;
+
+            // Prevent duplicate execution if already processing this ID
+            if (processingRef.current === propertyId) return;
+
+            processingRef.current = propertyId;
+
+            toggleWishlist(propertyId).then(result => {
+                if (result.success) toast.success(result.message);
+                else toast.error(result.message);
+
+                // Clear state
+                navigate(location.pathname + location.search, { replace: true, state: {} });
+                processingRef.current = null;
+            });
+        }
+    }, [location.state, toggleWishlist, navigate, location.pathname, location.search]);
 
     // Fetch properties for search autocomplete
     useEffect(() => {

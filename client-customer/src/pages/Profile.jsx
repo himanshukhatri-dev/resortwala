@@ -7,7 +7,7 @@ import VerificationModal from '../components/VerificationModal';
 import { FaEdit, FaSave, FaTimes, FaCheckCircle, FaExclamationCircle, FaHeart } from 'react-icons/fa';
 
 export default function Profile() {
-    const { user, logout, setUser } = useAuth();
+    const { user, token, logout, setUser } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [editMode, setEditMode] = useState(false);
@@ -59,7 +59,6 @@ export default function Profile() {
         setSaving(true);
 
         try {
-            const token = localStorage.getItem('token');
             const response = await axios.put(
                 `${API_BASE_URL}/customer/profile`,
                 formData,
@@ -101,7 +100,6 @@ export default function Profile() {
 
     const handleVerificationSuccess = () => {
         // Refresh user data
-        const token = localStorage.getItem('token');
         axios.get(`${API_BASE_URL}/customer/profile`, {
             headers: { Authorization: `Bearer ${token}` }
         }).then(res => {

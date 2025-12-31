@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { FaStar, FaHeart, FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaWifi, FaSwimmingPool, FaParking, FaSnowflake, FaBed, FaBath, FaUserFriends, FaExchangeAlt } from 'react-icons/fa';
 
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useWishlist } from '../../context/WishlistContext';
+import { useAuth } from '../../context/AuthContext';
 import { useCompare } from '../../context/CompareContext';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function PropertyCard({ property, searchParams }) {
+import { getPricing } from '../../utils/pricing';
+
+export default function PropertyCard({ property, searchParams, cardType = 'horizontal' }) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const pricing = getPricing(property);
 
     const {
         id = property?.PropertyId || property?.id,
@@ -54,6 +58,8 @@ export default function PropertyCard({ property, searchParams }) {
 
     const queryString = buildQuery();
     const navigate = useNavigate();
+    const locationRoute = useLocation();
+    const { user } = useAuth();
     const { isWishlisted, toggleWishlist } = useWishlist();
     const { toggleCompare, compareList } = useCompare();
     const active = id ? isWishlisted(id) : false;
@@ -66,6 +72,17 @@ export default function PropertyCard({ property, searchParams }) {
     const handleWishlist = async (e) => {
         e.stopPropagation();
         if (!id) return;
+
+        if (!user) {
+            navigate('/login', {
+                state: {
+                    returnTo: locationRoute.pathname + locationRoute.search,
+                    bookingState: { action: 'wishlist', propertyId: id }
+                }
+            });
+            return;
+        }
+
         const result = await toggleWishlist(id);
         if (result.success) toast.success(result.message);
         else toast.error(result.message);
@@ -74,10 +91,10 @@ export default function PropertyCard({ property, searchParams }) {
     return (
         <div
             onClick={handleCardClick}
-            className="group flex flex-col xl:flex-row gap-5 bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 p-3 cursor-pointer relative hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300"
+            className={`group flex flex-col ${cardType === 'horizontal' ? 'xl:flex-row' : ''} gap-5 bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 p-3 cursor-pointer relative hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 h-full`}
         >
             {/* IMAGE SLIDER (Left Side) - Updated to Landscape Aspect Ratio */}
-            <div className="relative w-full xl:w-[320px] h-[276px] xl:h-[300px] flex-shrink-0 rounded-[1.2rem] overflow-hidden bg-gray-100">
+            <div className={`relative w-full ${cardType === 'horizontal' ? 'xl:w-[320px] h-[276px] xl:h-[300px]' : 'h-[250px]'} flex-shrink-0 rounded-[1.2rem] overflow-hidden bg-gray-100`}>
                 <AnimatePresence mode="wait">
                     <motion.img
                         key={currentImageIndex}
@@ -273,11 +290,20 @@ export default function PropertyCard({ property, searchParams }) {
                     </div>
 
                     <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 w-full sm:w-auto">
-                        <div className="text-left sm:text-right">
-                            <span className="text-xl sm:text-2xl font-bold text-gray-900 font-sans">₹{price.toLocaleString()}</span>
-                            <span className="text-[10px] font-normal text-gray-400 opacity-60 ml-0.5">
-                                {property.PropertyType?.toLowerCase() === 'waterpark' ? '/ person' : '/ night'}
-                            </span>
+                        <div className="text-left sm:text-right flex flex-col items-start sm:items-end">
+                            {/* Market Price & Savings */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">₹{Math.round(price * 1.25).toLocaleString()}</span>
+                                <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">20% OFF</span>
+                            </div>
+
+                            {/* Selling Price */}
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-xl sm:text-2xl font-bold text-gray-900 font-sans">₹{price.toLocaleString()}</span>
+                                <span className="text-[10px] font-normal text-gray-400 opacity-60">
+                                    {property.PropertyType?.toLowerCase() === 'waterpark' ? '/ person' : '/ night'}
+                                </span>
+                            </div>
                         </div>
                         <button className="flex-1 sm:flex-none px-6 py-3 bg-white border-2 border-gray-100 text-gray-900 rounded-xl font-bold text-sm hover:border-black hover:bg-black hover:text-white transition-all shadow-sm active:scale-95 flex items-center gap-2 justify-center">
                             View Details <FaChevronRight size={10} />

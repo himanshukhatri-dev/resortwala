@@ -15,6 +15,8 @@ export default function LiveDataManager() {
     const [showImpactModal, setShowImpactModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
+    const [primaryKey, setPrimaryKey] = useState('id');
+
     // Fetch Tables List on Mount
     useEffect(() => {
         fetchTables();
@@ -25,8 +27,9 @@ export default function LiveDataManager() {
             const res = await axios.get(`${API_BASE_URL}/admin/intelligence/schema`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            if (res.data.success) {
-                const tableNames = Object.keys(res.data.schema);
+            if (res.data.success || res.status === 200) {
+                // schema endpoint returns object with keys as table names
+                const tableNames = Object.keys(res.data);
                 setTables(tableNames);
                 if (tableNames.length > 0 && !selectedTable) {
                     setSelectedTable(tableNames[0]);
@@ -57,6 +60,7 @@ export default function LiveDataManager() {
 
             if (res.data && res.data.data) {
                 setData(res.data.data);
+                setPrimaryKey(res.data.pk || 'id'); // Set dynamic PK
                 if (res.data.data.length > 0) {
                     setSchema(Object.keys(res.data.data[0]));
                 }
@@ -193,26 +197,27 @@ export default function LiveDataManager() {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {data.map(row => {
-                                    const rowEdits = edits[row.id] || {};
+                                    const recordId = row[primaryKey];
+                                    const rowEdits = edits[recordId] || {};
                                     return (
-                                        <tr key={row.id} className="hover:bg-blue-50/30 transition-colors group">
+                                        <tr key={recordId} className="hover:bg-blue-50/30 transition-colors group">
                                             {schema.map(col => {
                                                 const value = rowEdits[col] !== undefined ? rowEdits[col] : row[col];
                                                 const isEdited = rowEdits[col] !== undefined;
-                                                const isId = col === 'id' || col === 'created_at' || col === 'updated_at'; // Read-only cols
+                                                const isReadOnly = col === primaryKey || col === 'created_at' || col === 'updated_at'; // Read-only cols
 
                                                 return (
                                                     <td key={col} className={`px-6 py-3 text-sm border-r border-transparent group-hover:border-gray-100 last:border-r-0 relative
                                                         ${isEdited ? 'bg-yellow-50 text-amber-700 font-medium' : 'text-gray-600'}
                                                     `}>
-                                                        {isId ? (
-                                                            <span className="text-gray-400 select-none">{value}</span>
+                                                        {isReadOnly ? (
+                                                            <span className="text-gray-400 select-none block max-w-[200px] truncate" title={value}>{value}</span>
                                                         ) : (
                                                             <input
                                                                 type="text"
                                                                 value={value === null ? '' : value}
-                                                                onChange={(e) => handleEdit(row.id, col, e.target.value)}
-                                                                className="w-full bg-transparent border-none p-0 focus:ring-0 text-sm font-inherit placeholder-gray-300"
+                                                                onChange={(e) => handleEdit(recordId, col, e.target.value)}
+                                                                className="w-full bg-transparent border-none p-0 focus:ring-0 text-sm font-inherit placeholder-gray-300 min-w-[100px]"
                                                             />
                                                         )}
                                                         {isEdited && <div className="absolute top-0 right-0 w-2 h-2 bg-amber-500 rounded-bl" />}

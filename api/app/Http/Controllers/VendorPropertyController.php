@@ -7,6 +7,7 @@ use App\Models\PropertyMaster;
 use App\Http\Requests\StorePropertyRequest;
 use App\Http\Requests\UpdatePropertyRequest;
 use Illuminate\Support\Facades\DB;
+use App\Services\NotificationService;
 
 class VendorPropertyController extends Controller
 {
@@ -34,7 +35,7 @@ class VendorPropertyController extends Controller
         return response()->json($properties);
     }
 
-    public function store(StorePropertyRequest $request)
+    public function store(StorePropertyRequest $request, NotificationService $notificationService)
     {
         $validated = $request->validated();
 
@@ -46,7 +47,7 @@ class VendorPropertyController extends Controller
             $data['onboarding_data'] = json_decode($request->onboarding_data, true);
         }
 
-        return DB::transaction(function () use ($data, $request) {
+        return DB::transaction(function () use ($data, $request, $notificationService) {
             $property = PropertyMaster::create([
                 ...$data,
                 'vendor_id' => $request->user()->id,
@@ -83,6 +84,11 @@ class VendorPropertyController extends Controller
                     ]);
                 }
             }
+
+
+
+            // Notify Admin
+            $notificationService->notifyAdminNewProperty($property, $request->user());
 
             return response()->json([
                 'message' => 'Property created successfully. Awaiting admin approval.',

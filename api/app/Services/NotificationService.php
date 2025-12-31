@@ -159,4 +159,24 @@ class NotificationService
             Log::error("Failed to send rejection email to {$vendor->email}: " . $e->getMessage());
         }
     }
+    /**
+     * Notify Admin about a new property addition
+     */
+    public function notifyAdminNewProperty($property, $vendor)
+    {
+        // 1. Send Email Notification
+        try {
+            $admins = \App\Models\User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                Mail::to($admin->email)->send(new \App\Mail\PropertyAddedMail($property, $vendor));
+            }
+            Log::info("Sent New Property Notification to Admins for property: {$property->Name}");
+        } catch (\Exception $e) {
+            Log::error("Failed to send Admin Property Notification: " . $e->getMessage());
+        }
+
+        // 2. Future: Send Push Notification (FCM) 
+        // If an Admin App (APK) or PWA is connected via Firebase:
+        // $this->sendPushNotificationToTopic('admin_notifications', 'New Property Added', "{$vendor->name} added {$property->Name}");
+    }
 }

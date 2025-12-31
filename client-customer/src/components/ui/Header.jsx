@@ -114,6 +114,7 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
                                         </div>
                                         <Link to="/profile" className="block px-5 py-3.5 hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors">Personal Profile</Link>
                                         <Link to="/bookings" className="block px-5 py-3.5 hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors">My Stays & Bookings</Link>
+                                        <Link to="/wishlist" className="block px-5 py-3.5 hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors">My Wishlist</Link>
                                         <div className="border-t border-gray-50 my-1"></div>
                                         <button onClick={logout} className="block w-full text-left px-5 py-3.5 hover:bg-gray-50 text-sm text-red-500 font-bold">Log out</button>
                                     </>

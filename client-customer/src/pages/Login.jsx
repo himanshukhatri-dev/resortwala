@@ -288,7 +288,9 @@ export default function Login() {
                             </button>
 
                             <div className="text-center">
-                                <button onClick={handleSendOtp} className="text-gray-400 hover:text-gray-900 text-xs font-bold transition">Resend Code</button>
+                                <button onClick={handleSendOtp} disabled={loading} className={`text-gray-400 hover:text-gray-900 text-xs font-bold transition ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                    {loading ? 'Sending...' : 'Resend Code'}
+                                </button>
                             </div>
                         </div>
                     )}

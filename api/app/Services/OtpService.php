@@ -18,6 +18,8 @@ class OtpService
      */
     public function generate($identifier, $type = 'login', $expiryMinutes = 10)
     {
+        $identifier = strtolower(trim($identifier));
+
         // 1. Invalidate any existing active OTPs for this identifier/type
         Otp::where('identifier', $identifier)
             ->where('type', $type)
@@ -48,6 +50,10 @@ class OtpService
      */
     public function verify($identifier, $code, $type = 'login')
     {
+        $identifier = strtolower(trim($identifier));
+
+        \Log::info("Verifying OTP for Identifier: {$identifier}, Code: {$code}, Type: {$type}");
+
         $otp = Otp::where('identifier', $identifier)
             ->where('type', $type)
             ->where('code', $code)
@@ -56,6 +62,15 @@ class OtpService
             ->first();
 
         if (!$otp) {
+            // Debugging: Check why it failed
+            $debugParams = [
+                'exists_code' => Otp::where('identifier', $identifier)->where('code', $code)->exists(),
+                'exists_identifier' => Otp::where('identifier', $identifier)->exists(),
+                'expired' => Otp::where('identifier', $identifier)->where('code', $code)->where('expires_at', '<=', Carbon::now())->exists(),
+                'wrong_type' => Otp::where('identifier', $identifier)->where('code', $code)->where('type', '!=', $type)->exists(),
+                'server_time' => Carbon::now()->toDateTimeString()
+            ];
+            \Log::warning("OTP Verification Failed. Debug: " . json_encode($debugParams));
             return false;
         }
 

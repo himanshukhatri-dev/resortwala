@@ -89,6 +89,9 @@ class IntelligenceController extends Controller
     /**
      * Get Data from a specific table (with pagination/search)
      */
+    /**
+     * Get Data from a specific table (with pagination/search)
+     */
     public function getData(Request $request, $table)
     {
         if (!$this->isTableAllowed($table)) {
@@ -97,10 +100,10 @@ class IntelligenceController extends Controller
 
         try {
             $query = DB::table($table);
+            $columns = Schema::getColumnListing($table);
+            $pk = in_array('PropertyId', $columns) ? 'PropertyId' : (in_array('id', $columns) ? 'id' : $columns[0]);
 
             if ($request->has('search') && !empty($request->search)) {
-                // simple search on likely columns
-                $columns = Schema::getColumnListing($table);
                 $query->where(function ($q) use ($columns, $request) {
                     foreach ($columns as $col) {
                         $q->orWhere($col, 'LIKE', '%' . $request->search . '%');
@@ -108,8 +111,8 @@ class IntelligenceController extends Controller
                 });
             }
 
-            $data = $query->orderBy('id', 'desc')->limit(100)->get();
-            return response()->json(['data' => $data]);
+            $data = $query->orderBy($pk, 'desc')->limit(100)->get();
+            return response()->json(['data' => $data, 'pk' => $pk]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
@@ -125,10 +128,14 @@ class IntelligenceController extends Controller
         }
 
         try {
-            $updateData = $request->except(['id', 'created_at', 'updated_at']); // Protect meta fields
-            DB::table($table)->where('id', $id)->update($updateData);
+            $columns = Schema::getColumnListing($table);
+            $pk = in_array('PropertyId', $columns) ? 'PropertyId' : (in_array('id', $columns) ? 'id' : $columns[0]);
+
+            $updateData = $request->except(['id', 'PropertyId', 'created_at', 'updated_at']); // Protect meta fields
             
-            // Log the impact (Optional but recommended)
+            DB::table($table)->where($pk, $id)->update($updateData);
+            
+            // Log the impact
             try {
                  DB::table('admin_event_logs')->insert([
                      'admin_id' => auth()->id() ?? 0,
