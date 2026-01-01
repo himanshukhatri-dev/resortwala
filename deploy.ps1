@@ -256,8 +256,16 @@ if ($Component) {
         "Admin" { if (Build-ReactApp "Admin" $Paths.Admin) { Deploy-Component "Admin" $Paths.Admin } }
         "API" { if (Build-Laravel "API" $Paths.API) { Deploy-Component "API" $Paths.API } }
         "Vendor" { if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor } }
-        "Beta" { if (Build-ReactApp "Beta" $Paths.Beta) { Deploy-Component "Beta" $Paths.Beta } }
-        "ComingSoon" { Deploy-Component "ComingSoon" $Paths.ComingSoon }
+        "Beta" { 
+            if (Build-ReactApp "Beta" $Paths.Beta) { 
+                Deploy-Component "Beta" $Paths.Beta 
+                Write-Host "NOTE: Ensure 'beta.resortwala.com' points to $ServerIP" -ForegroundColor Cyan
+            } 
+        }
+        "ComingSoon" { 
+            Deploy-Component "ComingSoon" $Paths.ComingSoon 
+            Write-Host "NOTE: Ensure 'resortwala.com' points to $ServerIP" -ForegroundColor Cyan
+        }
         Default { Write-Error "Invalid Component. Use: Customer, Admin, API, Vendor, Beta, ComingSoon" }
     }
     exit
@@ -300,10 +308,14 @@ switch ($Selection) {
         if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor }
     }
     "6" {
-        if (Build-ReactApp "Beta" $Paths.Beta) { Deploy-Component "Beta" $Paths.Beta }
+        if (Build-ReactApp "Beta" $Paths.Beta) { 
+            Deploy-Component "Beta" $Paths.Beta 
+            Write-Host "NOTE: Ensure 'beta.resortwala.com' points to $ServerIP" -ForegroundColor Cyan
+        }
     }
     "7" {
         Deploy-Component "ComingSoon" $Paths.ComingSoon
+        Write-Host "NOTE: Ensure 'resortwala.com' points to $ServerIP" -ForegroundColor Cyan
     }
     "Q" { exit }
     Default { Write-Host "Invalid Selection" -ForegroundColor Red }

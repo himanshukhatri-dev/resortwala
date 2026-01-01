@@ -36,6 +36,10 @@ return [
         'http://stagingadmin.resortwala.com',
         'http://stagingapi.resortwala.com',
         'http://72.61.242.42', // Staging IP
+        // Beta & Production Domains
+        'http://beta.resortwala.com',
+        'http://resortwala.com',
+        'http://www.resortwala.com',
     ],
 
     'allowed_origins_patterns' => [],

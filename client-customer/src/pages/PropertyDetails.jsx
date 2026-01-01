@@ -925,17 +925,22 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                                 disabled={[{ before: startOfDay(new Date()) }, (date) => bookedDates.includes(format(date, 'yyyy-MM-dd'))]}
                                 components={{
                                     DayContent: (props) => {
-                                        const { date } = props;
+                                        const { date, activeModifiers } = props;
                                         let price = getPriceForDate(date);
                                         // Fallback logic
                                         if (!price || isNaN(price)) price = property.Price || 0;
 
+                                        // Check disabled state (v9 uses activeModifiers Set)
+                                        const isDisabled = activeModifiers?.has ? activeModifiers.has("disabled") : props.modifiers?.disabled;
+
                                         return (
                                             <div className="flex flex-col items-center justify-center -mt-1 w-full h-full">
                                                 <span className={`text-sm font-medium leading-tight ${props.hidden ? 'invisible' : ''}`}>{format(date, 'd')}</span>
-                                                <span className="text-[9px] font-bold leading-tight mt-0.5 text-gray-500 group-hover:text-black group-aria-selected:text-white">
-                                                    {price > 0 ? `₹${(parseFloat(price) / 1000).toFixed(1)}k` : '-'}
-                                                </span>
+                                                {!isDisabled && (
+                                                    <span className="text-[9px] font-bold leading-tight mt-0.5 text-gray-500 group-hover:text-black group-aria-selected:text-white">
+                                                        {price >= 1000 ? `₹${(parseFloat(price) / 1000).toFixed(1)}k` : `₹${price}`}
+                                                    </span>
+                                                )}
                                             </div>
                                         );
                                     }
@@ -1060,13 +1065,13 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                     disabled={[{ before: startOfDay(new Date()) }, (date) => bookedDates.includes(format(date, 'yyyy-MM-dd'))]}
                                     classNames={{
                                         day: "p-0",
-                                        button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:border-transparent",
+                                        button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
                                         selected: "!bg-black !text-white hover:!bg-black hover:!text-white",
                                         day_selected: "!bg-black !text-white"
                                     }}
                                     components={{
                                         DayContent: (props) => {
-                                            const { date } = props;
+                                            const { date, activeModifiers } = props;
                                             let price = getPriceForDate(date);
                                             // Fallback to base rate if specific date price is 0/missing
                                             if (!price || isNaN(price)) price = pricing.sellingPrice || property.Price || 0;
@@ -1074,12 +1079,17 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                             // Ensure price is a number for display
                                             price = parseFloat(price);
 
+                                            // Check disabled state (v9 uses activeModifiers Set)
+                                            const isDisabled = activeModifiers?.has ? activeModifiers.has("disabled") : props.modifiers?.disabled;
+
                                             return (
                                                 <div className="flex flex-col items-center justify-center -mt-1 w-full h-full">
                                                     <span className={`text-sm font-medium leading-tight ${props.hidden ? 'invisible' : ''}`}>{format(date, 'd')}</span>
-                                                    <span className="text-[9px] font-bold leading-tight mt-0.5 text-gray-700 group-hover:text-black group-aria-selected:text-white">
-                                                        {price > 0 ? `₹${(price / 1000).toFixed(1)}k` : '-'}
-                                                    </span>
+                                                    {!isDisabled && (
+                                                        <span className="text-[9px] font-bold leading-tight mt-0.5 text-gray-700 group-hover:text-black group-aria-selected:text-white">
+                                                            {price >= 1000 ? `₹${(price / 1000).toFixed(1)}k` : `₹${price}`}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             );
                                         }

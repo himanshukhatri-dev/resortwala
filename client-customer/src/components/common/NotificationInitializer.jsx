@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { requestNotificationPermission } from '../utils/notifications';
+import { useAuth } from '../../context/AuthContext';
+import { requestNotificationPermission } from '../../utils/notifications';
 
 // This component handles notification logic without cluttering App.jsx
 const NotificationInitializer = () => {
