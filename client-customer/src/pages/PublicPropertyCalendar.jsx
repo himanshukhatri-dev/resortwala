@@ -189,19 +189,18 @@ export default function PublicPropertyCalendar() {
         }
 
         try {
-            // Call API using IP address with Host header to route to stagingapi
+            // Call API using unique path /request-booking to avoid Nginx/Laravel routing conflicts
             const apiUrl = import.meta.env.PROD
-                ? 'http://72.61.242.42/api/public/bookings/request'
-                : `${API_BASE_URL}/public/bookings/request`;
+                ? 'http://72.61.242.42/api/request-booking'
+                : `${API_BASE_URL}/request-booking`;
 
             const headers = {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             };
 
-            // Add Host header in production to route to stagingapi.resortwala.com
-            if (import.meta.env.PROD) {
-                headers['Host'] = 'stagingapi.resortwala.com';
-            }
+            // Note: Host header setting is removed as browsers often ignore it. 
+            // Reliance is now on the URL pattern matching existing working routes.
 
             const res = await fetch(apiUrl, {
                 method: 'POST',

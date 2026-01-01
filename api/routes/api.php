@@ -46,11 +46,14 @@ Route::post('/coupons/check', [\App\Http\Controllers\CouponController::class, 'c
 Route::post('/events/track', [\App\Http\Controllers\EventController::class, 'track']);
 Route::post('/events/batch', [\App\Http\Controllers\EventController::class, 'batchTrack']);
 
+
 // Customer Authentication Routes
 // Public Availability (Shareable Links)
 Route::get('/public/properties/{id}/calendar', [\App\Http\Controllers\PublicController::class, 'getPropertyCalendar']);
 Route::get('/public/vendors/{id}/calendar', [\App\Http\Controllers\PublicController::class, 'getVendorMasterCalendar']);
 Route::post('/public/bookings/request', [\App\Http\Controllers\PublicAvailabilityController::class, 'request']);
+// Alternative path using unique top-level segment to avoid any properties resource conflicts
+Route::post('/request-booking', [\App\Http\Controllers\PublicAvailabilityController::class, 'request']);
 
 // Route::post('/register', [AuthController::class, 'register']);
 
