@@ -16,11 +16,20 @@ const firebaseConfig = {
 // Initialize Firebase only if config is present
 let app;
 let auth;
+let messaging;
 
 if (firebaseConfig.apiKey) {
     try {
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
+
+        // Initialize Messaging
+        // Check if supported (e.g., not supported in Safari private mode)
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+            import('firebase/messaging').then(({ getMessaging }) => {
+                messaging = getMessaging(app);
+            }).catch(err => console.log('Messaging not supported', err));
+        }
     } catch (e) {
         console.error("Firebase Init Failed:", e);
     }
@@ -28,7 +37,7 @@ if (firebaseConfig.apiKey) {
     console.warn("Firebase Config missing completely. Phone auth will not work.");
 }
 
-export { auth };
+export { auth, messaging };
 
 // Helper to setup Recaptcha
 export const setupRecaptcha = (buttonId) => {

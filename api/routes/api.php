@@ -73,6 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/customer/send-verification-phone', [\App\Http\Controllers\VerificationController::class, 'sendPhoneVerification']);
     Route::post('/customer/verify-phone', [\App\Http\Controllers\VerificationController::class, 'verifyPhone']);
     Route::put('/customer/profile', [\App\Http\Controllers\VerificationController::class, 'updateProfile']);
+    Route::post('/customer/device-token', [\App\Http\Controllers\CustomerAuthController::class, 'updateDeviceToken']);
 });
 
 
@@ -228,10 +229,11 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Public Availability (Shareable Links)
-Route::prefix('public')->group(function () {
-    // Route::get('properties/{uuid}/calendar', [App\Http\Controllers\PublicAvailabilityController::class, 'show']);
-    Route::post('bookings/request', [App\Http\Controllers\PublicAvailabilityController::class, 'request']);
-});
+// Public Availability (Shareable Links)
+Route::post('/public/bookings/request', [App\Http\Controllers\PublicAvailabilityController::class, 'request']);
+// Route::prefix('public')->group(function () {
+//     Route::post('bookings/request', [App\Http\Controllers\PublicAvailabilityController::class, 'request']);
+// });
 
 
 

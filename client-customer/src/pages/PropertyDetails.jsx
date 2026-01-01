@@ -16,7 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
-import { format, differenceInDays, isWithinInterval, parseISO } from 'date-fns';
+import { format, differenceInDays, isWithinInterval, parseISO, parse, startOfDay } from 'date-fns';
 import toast from 'react-hot-toast';
 
 const PROPERTY_RULES = [
@@ -922,7 +922,7 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                                 selected={isWaterpark ? dateRange.from : dateRange}
                                 onDayClick={handleDateSelect}
                                 numberOfMonths={1}
-                                disabled={[{ before: new Date() }, ...bookedDates.map(d => new Date(d))]}
+                                disabled={[{ before: startOfDay(new Date()) }, (date) => bookedDates.includes(format(date, 'yyyy-MM-dd'))]}
                                 components={{
                                     DayContent: (props) => {
                                         const { date } = props;
@@ -1057,10 +1057,10 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                     selected={dateRange}
                                     onDayClick={handleDateSelect}
                                     numberOfMonths={1}
-                                    disabled={[{ before: new Date() }, ...bookedDates.map(d => new Date(d))]}
+                                    disabled={[{ before: startOfDay(new Date()) }, (date) => bookedDates.includes(format(date, 'yyyy-MM-dd'))]}
                                     classNames={{
                                         day: "p-0",
-                                        button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5",
+                                        button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:border-transparent",
                                         selected: "!bg-black !text-white hover:!bg-black hover:!text-white",
                                         day_selected: "!bg-black !text-white"
                                     }}

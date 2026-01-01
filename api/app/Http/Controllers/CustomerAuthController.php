@@ -181,4 +181,16 @@ class CustomerAuthController extends Controller
             'message' => 'Logged out successfully'
         ]);
     }
+    public function updateDeviceToken(Request $request)
+    {
+        $request->validate([
+            'fcm_token' => 'required|string'
+        ]);
+
+        $user = $request->user();
+        $user->fcm_token = $request->fcm_token;
+        $user->save();
+
+        return response()->json(['message' => 'Device token updated']);
+    }
 }

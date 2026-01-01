@@ -28,30 +28,42 @@ param (
 
 # Configuration
 $Paths = @{
-    "Customer" = @{
+    "Customer"   = @{
         "LocalSource" = "$PSScriptRoot/client-customer"
         "DistDir"     = "dist"
         "RemotePath"  = "$RemoteBasePath/staging.resortwala.com"
         "Type"        = "React"
     }
-    "Admin"    = @{
+    "Admin"      = @{
         "LocalSource" = "$PSScriptRoot/client-admin"
         "DistDir"     = "dist"
         "RemotePath"  = "$RemoteBasePath/stagingadmin.resortwala.com"
         "Type"        = "React"
     }
-    "API"      = @{
+    "API"        = @{
         "LocalSource" = "$PSScriptRoot/api"
         "DistDir"     = "." 
         "RemotePath"  = "$RemoteBasePath/stagingapi.resortwala.com"
         "Type"        = "Laravel"
         "Excludes"    = @(".env", "node_modules", "vendor", ".git", "storage/*.key", "tests") # Vendor excluded (install on server)
     }
-    "Vendor"   = @{
+    "Vendor"     = @{
         "LocalSource" = "$PSScriptRoot/client-vendor"
         "DistDir"     = "dist"
         "RemotePath"  = "$RemoteBasePath/stagingvendor.resortwala.com"
         "Type"        = "React"
+    }
+    "Beta"       = @{
+        "LocalSource" = "$PSScriptRoot/client-customer"
+        "DistDir"     = "dist"
+        "RemotePath"  = "$RemoteBasePath/beta.resortwala.com"
+        "Type"        = "React"
+    }
+    "ComingSoon" = @{
+        "LocalSource" = "$PSScriptRoot/coming_soon"
+        "DistDir"     = "."
+        "RemotePath"  = "$RemoteBasePath/resortwala.com"
+        "Type"        = "Static"
     }
 }
 
@@ -128,7 +140,13 @@ function Deploy-Component {
         $SourcePath = $TempDir
     }
     else {
-        Copy-Item -Path "$SourcePath/*" -Destination $TempDir -Recurse -Force
+        # Validates if DistDir is "." to avoid appending /. to the path which can cause copy issues
+        if ($Config.DistDir -eq ".") {
+            Copy-Item -Path "$($Config.LocalSource)/*" -Destination $TempDir -Recurse -Force
+        }
+        else {
+            Copy-Item -Path "$SourcePath/*" -Destination $TempDir -Recurse -Force
+        }
         $SourcePath = $TempDir
     }
 
@@ -205,7 +223,7 @@ function Deploy-Component {
 
             }
             else {
-                # Regular permissions for static React apps
+                # Regular permissions for static React apps or HTML pages
                 ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "chmod -R 755 $($Config.RemotePath)"
             }
         }
@@ -238,7 +256,9 @@ if ($Component) {
         "Admin" { if (Build-ReactApp "Admin" $Paths.Admin) { Deploy-Component "Admin" $Paths.Admin } }
         "API" { if (Build-Laravel "API" $Paths.API) { Deploy-Component "API" $Paths.API } }
         "Vendor" { if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor } }
-        Default { Write-Error "Invalid Component. Use: Customer, Admin, API, Vendor" }
+        "Beta" { if (Build-ReactApp "Beta" $Paths.Beta) { Deploy-Component "Beta" $Paths.Beta } }
+        "ComingSoon" { Deploy-Component "ComingSoon" $Paths.ComingSoon }
+        Default { Write-Error "Invalid Component. Use: Customer, Admin, API, Vendor, Beta, ComingSoon" }
     }
     exit
 }
@@ -252,7 +272,9 @@ Write-Host "1. Deploy Customer App (React)"
 Write-Host "2. Deploy Admin App (React)"
 Write-Host "3. Deploy API (Laravel)"
 Write-Host "4. Deploy Vendor App (React)"
-Write-Host "5. Deploy ALL"
+Write-Host "5. Deploy ALL Staging"
+Write-Host "6. Deploy Beta (beta.resortwala.com)"
+Write-Host "7. Deploy Coming Soon (resortwala.com)"
 Write-Host "Q. Quit"
 Write-Host "=========================================="
 
@@ -276,6 +298,12 @@ switch ($Selection) {
         if (Build-ReactApp "Admin" $Paths.Admin) { Deploy-Component "Admin" $Paths.Admin }
         if (Build-Laravel "API" $Paths.API) { Deploy-Component "API" $Paths.API }
         if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor }
+    }
+    "6" {
+        if (Build-ReactApp "Beta" $Paths.Beta) { Deploy-Component "Beta" $Paths.Beta }
+    }
+    "7" {
+        Deploy-Component "ComingSoon" $Paths.ComingSoon
     }
     "Q" { exit }
     Default { Write-Host "Invalid Selection" -ForegroundColor Red }

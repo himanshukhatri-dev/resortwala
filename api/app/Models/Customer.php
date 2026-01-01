@@ -20,6 +20,7 @@ class Customer extends Authenticatable
         'phone_verification_token',
         'phone_verified_at',
         'email_verified_at',
+        'fcm_token',
     ];
 
     protected $hidden = [

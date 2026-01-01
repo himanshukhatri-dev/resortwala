@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import NotificationInitializer from './components/common/NotificationInitializer';
 import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
 import ScrollToTop from './components/utils/ScrollToTop';
@@ -41,6 +42,7 @@ function App() {
                 <ScrollToTop />
                 <PageTracker />
                 <TokenHandler />
+                <NotificationInitializer />
                 <Toaster position="top-center" />
                 <Routes>
                   <Route path="/" element={<MainLayout />}>

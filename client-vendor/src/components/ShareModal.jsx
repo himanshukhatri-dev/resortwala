@@ -41,7 +41,7 @@ export default function ShareModal({ isOpen, onClose }) {
             (window.location.hostname === 'localhost' ? 'http://localhost:5173' : window.location.origin.replace(':8081', ''));
 
         const link = `${customerBaseUrl}/stay/${property.share_token || property.PropertyId}`;
-        const message = `Check out *${property.Name}* in ${property.Location}!\n\n${property.ShortDescription || 'Beautiful property available for booking.'}\n\nPrice: ₹${property.Price}/night\n\nView details & availability: ${link}`;
+        const message = `Check out *${property.Name}* in ${property.Location}!\n\n${property.ShortDescription || 'Beautiful property available for booking.'}\n\nPrice: ₹${property.Price}/night\n\nView Property: ${link}`;
 
         window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
     };

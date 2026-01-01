@@ -175,8 +175,8 @@ export default function GlobalCalendar() {
 
         return filtered.map(b => {
             if (!b.CheckInDate || !b.CheckOutDate) return null;
-            const start = new Date(b.CheckInDate);
-            const end = new Date(b.CheckOutDate);
+            const start = parse(b.CheckInDate, 'yyyy-MM-dd', new Date());
+            const end = parse(b.CheckOutDate, 'yyyy-MM-dd', new Date());
             const propertyName = b.property?.Name || b.property?.ShortName || 'Unknown';
 
             return {
