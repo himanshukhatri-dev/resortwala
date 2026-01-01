@@ -47,9 +47,10 @@ Route::post('/events/track', [\App\Http\Controllers\EventController::class, 'tra
 Route::post('/events/batch', [\App\Http\Controllers\EventController::class, 'batchTrack']);
 
 // Customer Authentication Routes
-// Public Routes
-Route::get('/public/properties/{id}/calendar', [App\Http\Controllers\PublicController::class, 'getPropertyCalendar']);
-Route::get('/public/vendors/{id}/calendar', [App\Http\Controllers\PublicController::class, 'getVendorMasterCalendar']);
+// Public Availability (Shareable Links)
+Route::get('/public/properties/{id}/calendar', [\App\Http\Controllers\PublicController::class, 'getPropertyCalendar']);
+Route::get('/public/vendors/{id}/calendar', [\App\Http\Controllers\PublicController::class, 'getVendorMasterCalendar']);
+Route::post('/public/bookings/request', [\App\Http\Controllers\PublicAvailabilityController::class, 'request']);
 
 // Route::post('/register', [AuthController::class, 'register']);
 
@@ -228,12 +229,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
-// Public Availability (Shareable Links)
-// Public Availability (Shareable Links)
-Route::post('/public/bookings/request', [App\Http\Controllers\PublicAvailabilityController::class, 'request']);
-// Route::prefix('public')->group(function () {
-//     Route::post('bookings/request', [App\Http\Controllers\PublicAvailabilityController::class, 'request']);
-// });
 
 
 

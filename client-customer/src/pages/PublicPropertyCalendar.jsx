@@ -189,9 +189,23 @@ export default function PublicPropertyCalendar() {
         }
 
         try {
-            const res = await fetch(`${API_BASE_URL}/public/bookings/request`, {
+            // Call API using IP address with Host header to route to stagingapi
+            const apiUrl = import.meta.env.PROD
+                ? 'http://72.61.242.42/api/public/bookings/request'
+                : `${API_BASE_URL}/public/bookings/request`;
+
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            // Add Host header in production to route to stagingapi.resortwala.com
+            if (import.meta.env.PROD) {
+                headers['Host'] = 'stagingapi.resortwala.com';
+            }
+
+            const res = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({
                     property_id: property.id,
                     start_date: format(selectedSlot.start, 'yyyy-MM-dd'),

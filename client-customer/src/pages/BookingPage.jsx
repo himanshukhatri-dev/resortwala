@@ -54,8 +54,14 @@ export default function BookingPage() {
 
     // Defaults from location state or mock
     // Defaults from location state or mock
-    const [checkIn, setCheckIn] = useState(locationState.checkIn ? new Date(locationState.checkIn) : new Date());
-    const [checkOut, setCheckOut] = useState(locationState.checkOut ? new Date(locationState.checkOut) : new Date(new Date().setDate(new Date().getDate() + 1)));
+    const [checkIn, setCheckIn] = useState(
+        locationState.dateRange?.from ? new Date(locationState.dateRange.from) :
+            (locationState.checkIn ? new Date(locationState.checkIn) : new Date())
+    );
+    const [checkOut, setCheckOut] = useState(
+        locationState.dateRange?.to ? new Date(locationState.dateRange.to) :
+            (locationState.checkOut ? new Date(locationState.checkOut) : new Date(new Date().setDate(new Date().getDate() + 1)))
+    );
 
     // Ensure CheckOut > CheckIn
     useEffect(() => {

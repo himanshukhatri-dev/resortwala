@@ -398,12 +398,12 @@ export default function PropertyDetails() {
             navigate('/login', {
                 state: {
                     returnTo: `/book/${property.PropertyId}`,
-                    checkoutData: {
+                    bookingState: {
                         propertyId: property.PropertyId,
                         propertyName: property.Name,
                         dateRange,
                         guests,
-                        totalCost: priceBreakdown?.grantTotal
+                        breakdown: priceBreakdown
                     }
                 }
             });
@@ -924,24 +924,33 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                                 numberOfMonths={1}
                                 disabled={[{ before: startOfDay(new Date()) }, (date) => bookedDates.includes(format(date, 'yyyy-MM-dd'))]}
                                 components={{
-                                    DayContent: (props) => {
-                                        const { date, activeModifiers } = props;
-                                        let price = getPriceForDate(date);
-                                        // Fallback logic
-                                        if (!price || isNaN(price)) price = property.Price || 0;
+                                    DayButton: (props) => {
+                                        const { day, children, className, modifiers, ...buttonProps } = props;
+                                        const date = day?.date;
+                                        if (!date) return <button className={className} {...buttonProps}>{children}</button>;
 
-                                        // Check disabled state (v9 uses activeModifiers Set)
-                                        const isDisabled = activeModifiers?.has ? activeModifiers.has("disabled") : props.modifiers?.disabled;
+                                        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                                        let price = getPriceForDate(date);
+                                        if (!price || isNaN(price)) price = property.Price || 0;
+                                        const isButtonDisabled = buttonProps.disabled;
+
+                                        let combinedClassName = `${className || ''} flex flex-col items-center justify-center gap-0.5 h-full w-full py-1 transition-all duration-200`.trim();
+
+                                        if (isButtonDisabled) {
+                                            combinedClassName += " relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-tr before:from-transparent before:via-red-500/40 before:to-transparent before:z-10 before:pointer-events-none";
+                                        }
 
                                         return (
-                                            <div className="flex flex-col items-center justify-center -mt-1 w-full h-full">
-                                                <span className={`text-sm font-medium leading-tight ${props.hidden ? 'invisible' : ''}`}>{format(date, 'd')}</span>
-                                                {!isDisabled && (
-                                                    <span className="text-[9px] font-bold leading-tight mt-0.5 text-gray-500 group-hover:text-black group-aria-selected:text-white">
+                                            <button className={combinedClassName} {...buttonProps}>
+                                                <span className={`text-sm font-medium leading-tight ${isWeekend ? 'text-red-600 font-bold' : ''}`}>
+                                                    {children}
+                                                </span>
+                                                {!isButtonDisabled && (
+                                                    <span className="text-[9px] font-bold leading-tight text-green-600 group-hover:text-green-700 group-aria-selected:text-white">
                                                         {price >= 1000 ? `₹${(parseFloat(price) / 1000).toFixed(1)}k` : `₹${price}`}
                                                     </span>
                                                 )}
-                                            </div>
+                                            </button>
                                         );
                                     }
                                 }}
@@ -1070,27 +1079,41 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                         day_selected: "!bg-black !text-white"
                                     }}
                                     components={{
-                                        DayContent: (props) => {
-                                            const { date, activeModifiers } = props;
+                                        DayButton: (props) => {
+                                            const { day, children, className, modifiers, ...buttonProps } = props;
+                                            const date = day?.date;
+
+                                            if (!date) return <button className={className} {...buttonProps}>{children}</button>;
+
+                                            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                                            const isButtonDisabled = buttonProps.disabled;
+
                                             let price = getPriceForDate(date);
                                             // Fallback to base rate if specific date price is 0/missing
                                             if (!price || isNaN(price)) price = pricing.sellingPrice || property.Price || 0;
-
-                                            // Ensure price is a number for display
                                             price = parseFloat(price);
 
-                                            // Check disabled state (v9 uses activeModifiers Set)
-                                            const isDisabled = activeModifiers?.has ? activeModifiers.has("disabled") : props.modifiers?.disabled;
+                                            // Base class for the day button
+                                            let combinedClassName = `${className || ''} flex flex-col items-center justify-center gap-0.5 h-full w-full py-1 transition-all duration-200`.trim();
+
+                                            // Add "scratch out" effect for disabled dates using a diagonal red line gradient
+                                            if (isButtonDisabled) {
+                                                combinedClassName += " relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-tr before:from-transparent before:via-red-500/40 before:to-transparent before:z-10 before:pointer-events-none";
+                                                // Optional: Cross line (scratch out)
+                                                // combinedClassName += " relative overflow-hidden before:content-[''] before:absolute before:top-1/2 before:left-0 before:w-full before:h-px before:bg-red-400 before:-rotate-45 before:z-10";
+                                            }
 
                                             return (
-                                                <div className="flex flex-col items-center justify-center -mt-1 w-full h-full">
-                                                    <span className={`text-sm font-medium leading-tight ${props.hidden ? 'invisible' : ''}`}>{format(date, 'd')}</span>
-                                                    {!isDisabled && (
-                                                        <span className="text-[9px] font-bold leading-tight mt-0.5 text-gray-700 group-hover:text-black group-aria-selected:text-white">
+                                                <button className={combinedClassName} {...buttonProps}>
+                                                    <span className={`text-sm font-medium leading-tight ${isWeekend ? 'text-red-600 font-bold' : ''}`}>
+                                                        {children}
+                                                    </span>
+                                                    {!isButtonDisabled && (
+                                                        <span className="text-[9px] font-bold leading-tight text-green-600 group-hover:text-green-700 group-aria-selected:text-white">
                                                             {price >= 1000 ? `₹${(price / 1000).toFixed(1)}k` : `₹${price}`}
                                                         </span>
                                                     )}
-                                                </div>
+                                                </button>
                                             );
                                         }
                                     }}
