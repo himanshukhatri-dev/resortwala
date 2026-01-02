@@ -65,7 +65,7 @@ function App() {
               <Route path="/properties/:id/changes/:requestId" element={<ReviewPropertyChange />} />
               <Route path="/approvals/holidays" element={<HolidayApprovals />} />
 
-              <Route path="/holidays" element={<div style={{ padding: 20 }}>Holidays (Placeholder)</div>} />
+              <Route path="/holidays" element={<HolidayApprovals />} />
 
               <Route path="/intelligence" element={<Intelligence />} />
               <Route path="/vendor-presentation" element={<VendorPresentation />} />

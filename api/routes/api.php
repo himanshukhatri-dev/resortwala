@@ -194,6 +194,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/properties/{id}/changes/reject', [\App\Http\Controllers\AdminPropertyController::class, 'rejectChanges']);
 
     // Admin Holiday Approval
+    Route::post('/admin/holidays/bulk-action', [\App\Http\Controllers\AdminController::class, 'bulkHolidayAction']);
+    Route::get('/admin/holidays', [\App\Http\Controllers\AdminController::class, 'getAllHolidays']);
     Route::get('/admin/holidays/pending', [\App\Http\Controllers\AdminController::class, 'getPendingHolidays']);
     Route::post('/admin/holidays/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveHoliday']);
     Route::post('/admin/holidays/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectHoliday']);

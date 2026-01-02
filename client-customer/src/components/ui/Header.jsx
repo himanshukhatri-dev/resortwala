@@ -69,9 +69,8 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
                 {/* 3. RIGHT - MENU */}
                 <div className="flex items-center gap-4 relative" ref={menuRef}>
                     <a
-                        href={window.location.hostname === '72.61.242.42' ? '/vendor/' : 'http://stagingvendor.resortwala.com'}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="/vendor/"
+                        target="_self"
                         className="hidden lg:flex items-center gap-2 group"
                     >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-pink-500 flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform">

@@ -32,7 +32,7 @@ class PublicController extends Controller
             // Fetch bookings
             $bookings = Booking::where('PropertyId', $property->PropertyId)
                 ->where('CheckOutDate', '>=', Carbon::today())
-                ->whereIn('Status', ['Confirmed', 'confirmed', 'pending', 'CheckedIn', 'checked_in', 'CheckedOut', 'checked_out', 'Blocked', 'blocked'])
+                ->whereIn('Status', ['Confirmed', 'confirmed', 'pending', 'CheckedIn', 'checked_in', 'CheckedOut', 'checked_out', 'Blocked', 'blocked', 'locked', 'Locked'])
                 ->get(['CheckInDate', 'CheckOutDate', 'Status', 'booking_source']);
 
             // Fetch holidays (only approved)
@@ -110,7 +110,7 @@ class PublicController extends Controller
         // Get bookings
         $bookings = Booking::whereIn('PropertyId', $propertyIds)
             ->where('CheckOutDate', '>=', Carbon::today())
-            ->whereIn('Status', ['Confirmed', 'confirmed', 'CheckedIn', 'checked_in', 'CheckedOut', 'checked_out', 'Blocked', 'blocked'])
+            ->whereIn('Status', ['Confirmed', 'confirmed', 'CheckedIn', 'checked_in', 'CheckedOut', 'checked_out', 'Blocked', 'blocked', 'locked', 'Locked'])
             ->get(['PropertyId', 'CheckInDate', 'CheckOutDate', 'Status']);
 
         // Format

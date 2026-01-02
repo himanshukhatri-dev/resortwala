@@ -82,4 +82,9 @@ class PropertyMaster extends Model
     {
         return $this->hasMany(\App\Models\PropertyVideo::class, 'property_id', 'PropertyId');
     }
+
+    public function holidays()
+    {
+        return $this->hasMany(\App\Models\Holiday::class, 'property_id', 'PropertyId');
+    }
 }

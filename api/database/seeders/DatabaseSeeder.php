@@ -45,11 +45,11 @@ class DatabaseSeeder extends Seeder
 
         // 3. Seed Properties & Detailed Data
         $this->call([
-            UserSeeder::class,       // Create mass users first
-            VendorDataSeeder::class, // Keep existing specific demo data
-            PropertySeeder::class,   // Create 50+ random properties
-            BookingSeeder::class,    // Create bookings
-            HolidaySeeder::class,
+            // UserSeeder::class,       // Create mass users first
+            // VendorDataSeeder::class, // Keep existing specific demo data
+            // PropertySeeder::class,   // Create 50+ random properties
+            // BookingSeeder::class,    // Create bookings
+            // HolidaySeeder::class,
         ]);
     }
 }

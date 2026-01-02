@@ -127,6 +127,7 @@ export default function PropertyDetails() {
         const fetchData = async () => {
             try {
                 const response = await axios.get(`${API_BASE_URL}/properties/${id}`);
+                console.log("Property Data with Holidays:", response.data); // Debug
                 setProperty(response.data);
             } catch (error) {
                 console.error('Failed to fetch property:', error);
@@ -315,9 +316,26 @@ export default function PropertyDetails() {
             const w = d.getDay();
             const isWeekend = (w === 0 || w === 6 || w === 5);
 
-            let rate = PRICE_WEEKDAY;
-            if (w === 6) rate = PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
-            else if (w === 0 || w === 5) rate = PRICE_FRISUN || PRICE_WEEKDAY;
+            // 1. Check for Holiday Override
+            // We check if this specific date falls into any approved holiday range
+            const holiday = property.holidays?.find(h => {
+                const hStart = new Date(h.from_date);
+                const hEnd = new Date(h.to_date);
+                // Adjust hEnd to include the full day or handle timezones strictly? 
+                // DB dates are YYYY-MM-DD. 'd' is YYYY-MM-DD (from loop).
+                // Let's use string comparison for safety
+                const currentStr = format(d, 'yyyy-MM-dd');
+                return currentStr >= h.from_date && currentStr <= h.to_date;
+            });
+
+            if (holiday) {
+                rate = parseFloat(holiday.base_price);
+            } else {
+                // Standard Logic
+                if (w === 6) rate = PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
+                else if (w === 0 || w === 5) rate = PRICE_FRISUN || PRICE_WEEKDAY;
+            }
+
             totalVillaRate += rate;
 
             if (isWaterpark) {

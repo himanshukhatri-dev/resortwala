@@ -30,7 +30,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
             return;
         }
 
-        if (val.length >= 3) {
+        if (val.length >= 1) {
             const lowerVal = val.toLowerCase();
             const matches = properties.filter(p => {
                 if (!p) return false;
@@ -329,7 +329,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                                                 ))
                                             ) : (
                                                 <div className="p-4 text-center text-gray-400 text-sm bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                                    Type at least 3 characters to search...
+                                                    Type to search...
                                                 </div>
                                             )}
                                         </div>

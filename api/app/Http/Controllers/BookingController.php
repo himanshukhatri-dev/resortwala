@@ -72,10 +72,10 @@ class BookingController extends Controller
         // For waterparks and other types, allow multiple bookings (no check needed)
 
         // Set status based on booking source
-        if ($bookingSource === 'customer_app') {
-            $validated['Status'] = 'Confirmed';   // Auto-confirm
+        if ($bookingSource === 'public_calendar') {
+            $validated['Status'] = 'Pending'; // Needs admin approval (User Request)
         } else {
-            $validated['Status'] = 'Confirmed';   // Also auto-confirm for now (per user request "no vendor confirmation needed")
+            $validated['Status'] = 'Confirmed';   // Auto-confirm Vendor/Website bookings
         }
         
         $validated['booking_source'] = $bookingSource;

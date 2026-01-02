@@ -8,6 +8,8 @@ use App\Models\Booking;
 use App\Models\PropertyMaster;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\HolidayStatusUpdatedMail;
 
 class AdminController extends Controller
 {
@@ -330,18 +332,102 @@ class AdminController extends Controller
         return response()->json($holidays);
     }
 
+    public function getAllHolidays(Request $request)
+    {
+        $holidays = \App\Models\Holiday::with('property:PropertyId,Name')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        return response()->json($holidays);
+    }
+
     public function approveHoliday(Request $request, $id)
     {
-        $holiday = \App\Models\Holiday::findOrFail($id);
+        $holiday = \App\Models\Holiday::with('property.vendor')->findOrFail($id);
         $holiday->approved = 1;
         $holiday->save();
+
+        // Send Email
+        if ($holiday->property && $holiday->property->vendor && $holiday->property->vendor->email) {
+            try {
+                Mail::to($holiday->property->vendor->email)->send(new HolidayStatusUpdatedMail($holiday, 'approved'));
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send holiday approval email: ' . $e->getMessage());
+            }
+        }
+
         return response()->json(['message' => 'Holiday Approved']);
     }
 
     public function rejectHoliday(Request $request, $id)
     {
-        $holiday = \App\Models\Holiday::findOrFail($id);
+        $request->validate([
+            'reason' => 'required|string|max:1000'
+        ]);
+
+        $holiday = \App\Models\Holiday::with('property.vendor')->findOrFail($id);
+        
+        // Send Email before deleting
+        if ($holiday->property && $holiday->property->vendor && $holiday->property->vendor->email) {
+            try {
+                Mail::to($holiday->property->vendor->email)->send(new HolidayStatusUpdatedMail($holiday, 'rejected', $request->reason));
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send holiday rejection email: ' . $e->getMessage());
+            }
+        }
+
         $holiday->delete();
         return response()->json(['message' => 'Holiday Rejected']);
+    }
+
+    public function bulkHolidayAction(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:holidays,id',
+            'action' => 'required|in:approve,reject',
+            'reason' => 'required_if:action,reject|nullable|string'
+        ]);
+
+        $ids = $request->ids;
+        $action = $request->action;
+        $reason = $request->reason;
+        
+        $holidays = \App\Models\Holiday::with('property.vendor')->whereIn('id', $ids)->get();
+        $processedCount = 0;
+
+        foreach ($holidays as $holiday) {
+            // Skip already approved if action is approve? Or mostly just re-approve is fine.
+            // Actually, pending checking logic is handled by frontend mostly, but good to be safe.
+            
+            if ($action === 'approve') {
+                $holiday->approved = 1;
+                $holiday->save();
+                
+                // Send Email
+                if ($holiday->property && $holiday->property->vendor && $holiday->property->vendor->email) {
+                    try {
+                        Mail::to($holiday->property->vendor->email)->queue(new HolidayStatusUpdatedMail($holiday, 'approved'));
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error('Failed to send holiday approval email: ' . $e->getMessage());
+                    }
+                }
+            } elseif ($action === 'reject') {
+                // Send Email
+                if ($holiday->property && $holiday->property->vendor && $holiday->property->vendor->email) {
+                    try {
+                        Mail::to($holiday->property->vendor->email)->queue(new HolidayStatusUpdatedMail($holiday, 'rejected', $reason));
+                    } catch (\Exception $e) {
+                         \Illuminate\Support\Facades\Log::error('Failed to send holiday rejection email: ' . $e->getMessage());
+                    }
+                }
+                $holiday->delete();
+            }
+            $processedCount++;
+        }
+
+        return response()->json([
+            'message' => ucfirst($action) . 'd ' . $processedCount . ' holidays successfully',
+            'count' => $processedCount
+        ]);
     }
 }
