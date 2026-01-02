@@ -94,8 +94,9 @@ const PublicMasterCalendar = () => {
         let baseUrl = 'http://localhost:3002'; // Default Local
         if (hostname.includes('staging')) {
             baseUrl = 'http://staging.resortwala.com';
-        } else if (hostname === '72.61.242.42' || hostname === 'resortwala.com' || hostname.includes('resortwala.com')) {
-            baseUrl = 'http://resortwala.com';
+        } else {
+            // Default production/beta URL
+            baseUrl = 'https://beta.resortwala.com';
         }
 
         // Prioritize Share Token if available

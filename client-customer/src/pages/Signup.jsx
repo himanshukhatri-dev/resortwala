@@ -5,6 +5,7 @@ import axios from 'axios';
 import { FaCheckCircle, FaPaperPlane, FaArrowRight, FaStar, FaArrowLeft } from 'react-icons/fa';
 import { auth } from '../firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { normalizePhone, isValidMobile } from '../utils/validation';
 
 export default function Signup() {
     const navigate = useNavigate();
@@ -30,14 +31,6 @@ export default function Signup() {
     const [otpError, setOtpError] = useState('');
     const [confirmationResult, setConfirmationResult] = useState(null); // Firebase confirmation
 
-    // Normalize phone number: remove +91, leading 0, spaces, hyphens
-    const normalizePhone = (phone) => {
-        let normalized = phone.replace(/[\s-]/g, ''); // Remove spaces and hyphens
-        normalized = normalized.replace(/^\+91/, ''); // Remove +91 prefix
-        normalized = normalized.replace(/^0/, ''); // Remove leading 0
-        return normalized;
-    };
-
     // Step 1: Registration
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -50,11 +43,11 @@ export default function Signup() {
         }
 
         // Normalize and validate phone
-        const normalizedPhone = normalizePhone(formData.phone);
-        if (!/^[0-9]{10}$/.test(normalizedPhone)) {
+        if (!isValidMobile(formData.phone)) {
             setError('Please enter a valid 10-digit mobile number');
             return;
         }
+        const normalizedPhone = normalizePhone(formData.phone);
 
         setLoading(true);
         try {

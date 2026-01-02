@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('bookings', function (Blueprint $table) {
             $table->id('BookingId');
             $table->unsignedBigInteger('PropertyId');
+            $table->string('booking_reference', 20)->nullable()->unique();
             $table->string('CustomerName');
             $table->string('CustomerMobile');
             $table->string('CustomerEmail')->nullable(); // Optional contact

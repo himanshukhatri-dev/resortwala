@@ -328,12 +328,14 @@ export default function PropertyDetails() {
                 return currentStr >= h.from_date && currentStr <= h.to_date;
             });
 
+            let rate = 0; // Declare rate variable
             if (holiday) {
                 rate = parseFloat(holiday.base_price);
             } else {
                 // Standard Logic
                 if (w === 6) rate = PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
                 else if (w === 0 || w === 5) rate = PRICE_FRISUN || PRICE_WEEKDAY;
+                else rate = PRICE_WEEKDAY;
             }
 
             totalVillaRate += rate;

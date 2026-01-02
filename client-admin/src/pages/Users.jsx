@@ -73,7 +73,7 @@ export default function Users() {
             }
 
             // Construct Base URL based on Role and Current Origin
-            const currentOrigin = window.location.origin; // e.g., http://72.61.242.42 or http://stagingadmin.resortwala.com
+            const currentOrigin = window.location.origin; // e.g., http://<server-ip> or http://stagingadmin.resortwala.com
             let targetBaseUrl = currentOrigin;
 
             // Logic to switch domains/subdomains
@@ -108,11 +108,7 @@ export default function Users() {
                     targetBaseUrl = `${window.location.protocol}//${isStaging ? 'stagingadmin' : 'admin'}.${rootDomain}`;
                 }
             } else {
-                // IP MODE (http://72.61.242.42) - Use Ports or Paths?
-                // Providing Paths as fallback based on typical setup
-                // Customer: /
-                // Vendor: /vendor
-                // Admin: /admin
+                // IP MODE or Fallback
                 targetBaseUrl = currentOrigin;
             }
 

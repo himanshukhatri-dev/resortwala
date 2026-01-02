@@ -69,8 +69,9 @@ class ImpersonationController extends Controller
             }
         }
 
-        // Check if accessing via Public IP (Path-based routing)
-        if ($host === '72.61.242.42') {
+        // Check if accessing via Public IP (Path-based routing) - Generalize for any IP if needed, or remove specific IP check
+        // Assuming we want to support any host that isn't caught by the domain logic above
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
              if ($type === 'customer') {
                 return $scheme . '://' . $host . '/';
             }

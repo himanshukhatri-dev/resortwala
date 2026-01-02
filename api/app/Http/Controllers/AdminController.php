@@ -160,6 +160,16 @@ class AdminController extends Controller
         $property = PropertyMaster::findOrFail($id);
         \App\Helpers\Profiler::checkpoint('After findOrFail');
 
+        // Validation: Ensure Price is updated before approval
+        $hasPriceUpdate = $request->anyFilled(['admin_pricing', 'Price']);
+        $hasExistingPrice = !empty($property->admin_pricing) || $property->Price > 0;
+
+        if (!$hasPriceUpdate && !$hasExistingPrice) {
+            return response()->json([
+                'message' => 'Cannot approve property. Please update the pricing details first.'
+            ], 422);
+        }
+
         // Update fields from request
         $property->fill($request->only([
             'Name', 'Location', 'ShortDescription', 'LongDescription', 

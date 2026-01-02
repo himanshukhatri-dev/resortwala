@@ -250,8 +250,8 @@ export default function GlobalCalendar() {
         const prop = properties.find(p => (p.id || p.PropertyId) == propId);
         if (!prop) return;
         const token = prop.share_token || prop.id || prop.PropertyId;
-        const customerBase = import.meta.env.VITE_CUSTOMER_APP_URL || window.location.origin.replace('vendor', 'customer');
-        const finalBase = customerBase.includes('localhost') ? 'http://localhost:5173' : 'http://72.61.242.42';
+        const propertyBase = import.meta.env.VITE_CUSTOMER_APP_URL || 'https://beta.resortwala.com';
+        const finalBase = window.location.hostname.includes('localhost') ? 'http://localhost:5173' : propertyBase;
         const url = `${finalBase}/stay/${token}`;
 
         copyToClipboard(

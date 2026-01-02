@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { normalizePhone, isValidMobile } from '../utils/validation';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import format from 'date-fns/format';
 import parse from 'date-fns/parse';
@@ -43,7 +44,7 @@ export default function PublicPropertyCalendar() {
 
     const fetchCalendarData = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/public/properties/${uuid}/calendar`);
+            const res = await fetch(`${API_BASE_URL} /public/properties / ${uuid}/calendar`);
             if (!res.ok) throw new Error('Failed to load');
             const data = await res.json();
 
@@ -71,7 +72,7 @@ export default function PublicPropertyCalendar() {
             for (let d = new Date(today); d <= endGen; d.setDate(d.getDate() + 1)) {
                 const dateStr = format(d, 'yyyy-MM-dd');
                 const day = d.getDay();
-
+            
                 const holiday = holidays.find(h => {
                     const start = new Date(h.from_date);
                     const end = new Date(h.to_date);
@@ -80,14 +81,14 @@ export default function PublicPropertyCalendar() {
                     current.setHours(0, 0, 0, 0);
                     return current >= start && current <= end;
                 });
-
+            
                 let price = priceMonThu;
                 if (holiday) {
                     price = parseFloat(holiday.base_price);
                 } else {
                     if (day === 0 || day === 5 || day === 6) price = priceFriSun;
                 }
-
+            
                 processedEvents.push({
                     title: `₹${price}`,
                     start: new Date(d),
@@ -188,54 +189,47 @@ export default function PublicPropertyCalendar() {
             return;
         }
 
+        if (!isValidMobile(mobile)) {
+            alert("Please enter a valid 10-digit mobile number");
+            return;
+        }
+
+        const cleanMobile = normalizePhone(mobile); // Clean up for backend
+
         try {
             // Call API using unique path /request-booking to avoid Nginx/Laravel routing conflicts
-            const apiUrl = import.meta.env.PROD
-                ? 'http://72.61.242.42/api/request-booking'
-                : `${API_BASE_URL}/request-booking`;
+            const apiUrl = `${API_BASE_URL}/request-booking`;
 
             const headers = {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             };
 
-            // Note: Host header setting is removed as browsers often ignore it. 
-            // Reliance is now on the URL pattern matching existing working routes.
-
-            const res = await fetch(apiUrl, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                    property_id: property.id,
-                    start_date: format(selectedSlot.start, 'yyyy-MM-dd'),
-                    end_date: format(selectedSlot.end, 'yyyy-MM-dd'),
-                    name,
-                    mobile
-                })
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.message || 'Failed');
-            }
-
-            setShowModal(false);
+            const response = await axios.post(apiUrl, {
+                property_id: property.id,
+                start_date: format(selectedSlot.start, 'yyyy-MM-dd'),
+                end_date: format(selectedSlot.end, 'yyyy-MM-dd'),
+                name,
+                mobile: cleanMobile
+            }, { headers });
 
             // Prepare details for Success Modal & WhatsApp
             setRequestDetails({
                 name,
-                mobile,
+                mobile: cleanMobile,
                 startDate: format(selectedSlot.start, 'dd MMM'),
                 endDate: format(selectedSlot.end, 'dd MMM'),
                 property: property?.name || 'Villa'
             });
             setShowSuccessModal(true);
+            setShowModal(false);
 
             setName('');
             setMobile('');
             fetchCalendarData(); // Refresh immediately
         } catch (error) {
-            alert("Booking Failed: " + error.message);
+            console.error(error);
+            alert("Booking Failed: " + (error.response?.data?.message || error.message));
         }
     };
 
@@ -477,7 +471,7 @@ export default function PublicPropertyCalendar() {
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mobile Number</label>
                                 <input
                                     type="tel"
-                                    className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl font-semibold focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all"
+                                    className="w-full p-4 pl-12 border border-gray-200 rounded-xl outline-none focus:border-black transition font-bold text-gray-800"
                                     value={mobile}
                                     onChange={e => setMobile(e.target.value)}
                                     placeholder="+91 9999999999"

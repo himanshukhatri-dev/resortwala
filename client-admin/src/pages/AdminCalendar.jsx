@@ -242,7 +242,7 @@ export default function AdminCalendar() {
         if (!prop) return;
         const token = prop.share_token || prop.id || prop.PropertyId;
         const customerBase = import.meta.env.VITE_CUSTOMER_APP_URL || window.location.origin.replace('admin', 'customer');
-        const finalBase = customerBase.includes('localhost') ? 'http://localhost:5173' : 'http://72.61.242.42';
+        const finalBase = customerBase.includes('localhost') ? 'http://localhost:5173' : customerBase;
 
         const url = `${finalBase}/stay/${token}`;
 

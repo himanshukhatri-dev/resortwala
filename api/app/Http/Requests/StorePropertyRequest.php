@@ -38,6 +38,8 @@ class StorePropertyRequest extends FormRequest
             'NoofRooms' => 'required_if:PropertyType,Villa|nullable|integer|min:1',
             'Occupancy' => 'required_if:PropertyType,Villa|nullable|integer|min:1',
             'video_url' => 'nullable|url',
+            'ShortDescription' => 'nullable|string|max:500', 
+            'LongDescription' => 'nullable|string',
             'onboarding_data' => 'nullable|string', // Validated as JSON in withValidator
             'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
             'videos.*' => 'file|mimes:mp4,mov,avi,m4v|max:51200'

@@ -6,6 +6,7 @@ import { FaArrowLeft, FaArrowRight, FaStar } from 'react-icons/fa';
 import OtpInput from '../components/auth/OtpInput';
 import { auth } from '../firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { normalizePhone, isValidMobile } from '../utils/validation';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -25,14 +26,6 @@ export default function Login() {
     const API_URL = import.meta.env.VITE_API_BASE_URL;
 
     // Detect if input is email or phone
-    // Normalize phone number: remove +91, leading 0, spaces, hyphens
-    const normalizePhone = (phone) => {
-        let normalized = phone.replace(/[\s-]/g, ''); // Remove spaces and hyphens
-        normalized = normalized.replace(/^\+91/, ''); // Remove +91 prefix
-        normalized = normalized.replace(/^0/, ''); // Remove leading 0
-        return normalized;
-    };
-
     const detectIdentifierType = (value) => {
         if (value.includes('@')) {
             return 'email';
@@ -57,12 +50,12 @@ export default function Login() {
                 });
             } else {
                 // Normalize and validate phone
-                const normalizedPhone = normalizePhone(inputIdentifier);
-                if (!/^[0-9]{10}$/.test(normalizedPhone)) {
+                if (!isValidMobile(inputIdentifier)) {
                     setError('Please enter a valid 10-digit mobile number');
                     setLoading(false);
                     return;
                 }
+                const normalizedPhone = normalizePhone(inputIdentifier);
 
                 // Use Firebase for phone OTP
                 const phoneNumber = `+91${normalizedPhone}`;

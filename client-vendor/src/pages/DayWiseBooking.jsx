@@ -146,7 +146,7 @@ export default function DayWiseBooking() {
         const prop = getSelectedPropDetails();
         if (!prop.PropertyId) return;
 
-        const link = `https://resortwala.com/property/${prop.PropertyId}`;
+        const link = `${import.meta.env.VITE_WEBSITE_URL || 'https://beta.resortwala.com'}/property/${prop.PropertyId}`;
         const text = `🏡 *Check out this amazing property: ${prop.Name}*\n📍 ${prop.Location}\n\n🔗 *Book here:* ${link}\n\n✨ Contact us for best rates!`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
@@ -171,7 +171,7 @@ export default function DayWiseBooking() {
             busyDates.forEach(item => text += `• ${item.date}: ${item.status}\n`);
             text += "\n✅ All other dates empty.";
         }
-        text += `\n\n🔗 ${`https://resortwala.com/property/${prop.PropertyId}`}`;
+        text += `\n\n🔗 ${import.meta.env.VITE_WEBSITE_URL || 'https://beta.resortwala.com'}/property/${prop.PropertyId}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 

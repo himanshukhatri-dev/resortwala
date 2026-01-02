@@ -129,8 +129,8 @@ export default function MyProperties() {
 
                                 <div className="absolute top-3 right-3 flex gap-2">
                                     <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-sm ${property.PropertyType === 'Waterpark'
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-purple-500 text-white'
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-purple-500 text-white'
                                         }`}>
                                         {property.PropertyType || 'Villa'}
                                     </span>
@@ -173,7 +173,7 @@ export default function MyProperties() {
                                     </button>
 
                                     <button
-                                        onClick={() => window.open(`http://72.61.242.42/property/${property.PropertyId}`, '_blank')}
+                                        onClick={() => window.open(`${import.meta.env.VITE_WEBSITE_URL || 'https://beta.resortwala.com'}/property/${property.PropertyId}`, '_blank')}
                                         className="bg-green-50 hover:bg-green-100 text-green-700 rounded-xl py-3 px-3 flex items-center justify-center gap-2 transition font-semibold text-sm"
                                     >
                                         <FaEye size={14} /> View

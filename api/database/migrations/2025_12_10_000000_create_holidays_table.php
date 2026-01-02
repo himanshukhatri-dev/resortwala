@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('holidays', function (Blueprint $table) {
             $table->id();
             $table->foreignId('property_id')->nullable()->constrained('property_masters', 'PropertyId')->onDelete('cascade');
+            $table->boolean('approved')->default(0); // Admin approval status
             $table->string('name');
             $table->date('from_date');
             $table->date('to_date');
