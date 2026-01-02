@@ -93,6 +93,39 @@ export default function Holiday() {
         return priceMonThu;
     };
 
+    const [bookings, setBookings] = useState([]); // Add bookings state
+
+    useEffect(() => {
+        if (selectedPropertyId) {
+            fetchBookings();
+        }
+    }, [selectedPropertyId, token]); // Fetch bookings when property changes
+
+    const fetchBookings = async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/vendor/bookings/property/${selectedPropertyId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            // Filter distinct booked dates (Locked/Confirmed)
+            const booked = response.data.filter(b => b.Status === 'confirmed' || b.Status === 'locked');
+            setBookings(booked);
+        } catch (error) {
+            console.error('Error fetching bookings:', error);
+        }
+    };
+
+    // Helper to check if a date is booked
+    const isDateBooked = (date) => {
+        const dStr = format(date, 'yyyy-MM-dd');
+        return bookings.some(b => {
+            const start = b.CheckInDate.substring(0, 10);
+            const end = b.CheckOutDate.substring(0, 10);
+            return dStr >= start && dStr < end; // Exclude checkout day? Typically yes for availability, but for holidays maybe strictly overlap?
+            // User requirement: "if already booked or locked should not be editable"
+            // If someone is staying that night, we shouldn't change the rate (it's locked).
+        });
+    };
+
     // GENERATE CALENDAR EVENTS (RATES)
     useEffect(() => {
         if (!selectedPropertyId || properties.length === 0) return;
@@ -161,17 +194,30 @@ export default function Holiday() {
                 }
             }
 
+            // CHECK FOR BOOKING OVERLAP
+            const isBooked = isDateBooked(d);
+            if (isBooked) {
+                // Determine functionality for booked dates.
+                // We show them as 'booked' and prevent editing.
+                type = 'booked';
+                title = 'Booked'; // or 'Locked'
+                id = `booked-${dateStr}`;
+                // Keep price visible? Maybe, but title usually overrides.
+                // If it's a holiday AND booked, we probably still show 'Booked' as primary status to block edit.
+            }
+
             generatedEvents.push({
                 id: id,
-                title: `₹${price}`,
-                subtitle: title,
+                title: type === 'booked' ? 'Booked' : `₹${price}`,
+                subtitle: type === 'booked' ? (holiday ? holiday.name : '') : title,
                 start: new Date(d),
                 end: new Date(d),
                 allDay: true,
                 price: price,
                 type: type,
                 status: status,
-                resource: resource
+                resource: resource,
+                booked: isBooked // Helper flag
             });
         }
 
@@ -185,6 +231,27 @@ export default function Holiday() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (start < today) {
+            return;
+        }
+
+        // CHECK FOR BOOKING CONFLICT
+        // If any date in range is booked, prevent selection
+        const check = new Date(start);
+        const final = new Date(end);
+        // Normalize final for loop (exclusive)
+        // If end is 00:00 of next day, simple loop works
+
+        let hasBooking = false;
+        while (check < final) {
+            if (isDateBooked(check)) {
+                hasBooking = true;
+                break;
+            }
+            check.setDate(check.getDate() + 1);
+        }
+
+        if (hasBooking) {
+            showInfo("Selected range includes booked dates. Holidays cannot be modified for booked dates.");
             return;
         }
 
@@ -212,6 +279,10 @@ export default function Holiday() {
     };
 
     const handleSelectEvent = (event) => {
+        if (event.booked) {
+            showInfo("This date is booked/locked and cannot be edited.");
+            return;
+        }
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (event.start < today) {
@@ -289,6 +360,7 @@ export default function Holiday() {
             extra_person_price: form.extra_person_price || 0
         };
 
+        setLoading(true);
         try {
             if (editData) {
                 await axios.delete(`${API_BASE_URL}/holidays/${editData.id}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -304,6 +376,8 @@ export default function Holiday() {
         } catch (error) {
             console.error(error);
             showError("Error", "Failed to save rate");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -527,16 +601,28 @@ export default function Holiday() {
                                     {editData && (
                                         <button
                                             onClick={handleDelete}
-                                            className="bg-red-50 text-red-600 px-6 py-3 rounded-xl font-bold hover:bg-red-100 transition flex-1 flex items-center justify-center gap-2"
+                                            disabled={loading}
+                                            className="bg-red-50 text-red-600 px-6 py-3 rounded-xl font-bold hover:bg-red-100 transition flex-1 flex items-center justify-center gap-2 disabled:opacity-50"
                                         >
                                             <FaTrash /> Revert
                                         </button>
                                     )}
                                     <button
                                         onClick={handleSave}
-                                        className="bg-black text-white px-6 py-3 rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition shadow-lg flex-1"
+                                        disabled={loading}
+                                        className="bg-black text-white px-6 py-3 rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition shadow-lg flex-1 disabled:opacity-50 flex items-center justify-center gap-2"
                                     >
-                                        Save Rate
+                                        {loading ? (
+                                            <>
+                                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            'Save Rate'
+                                        )}
                                     </button>
                                 </div>
                             </div>

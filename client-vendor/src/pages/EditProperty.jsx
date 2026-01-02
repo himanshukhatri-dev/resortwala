@@ -806,14 +806,7 @@ export default function EditProperty() {
             <div>
                 <h3 className="text-xl font-bold mb-4">{formData.propertyType === 'Waterpark' ? 'Waterpark Attractions' : 'Features & Amenities'}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {AMENITY_TYPES.filter(item => {
-                        if (formData.propertyType === 'Waterpark') {
-                            // Expanded list for Waterpark
-                            return ['big_pools', 'small_pools', 'big_slides', 'small_slides', 'wavepool', 'rain_dance', 'lazy_river', 'crazy_river', 'kids_area', 'waterfall', 'ice_bucket', 'parking', 'selfie_point', 'dj_system', 'garden', 'dining', 'laundry', 'cctv', 'wheelchair', 'first_aid', 'security', 'restaurant', 'game_room'].includes(item.key);
-                        }
-                        // Hide Waterpark specific items for Villas if needed, or keep them if they might have a pool
-                        return !['big_slides', 'small_slides', 'wavepool', 'lazy_river', 'crazy_river', 'waterfall', 'ice_bucket'].includes(item.key);
-                    }).map(item => (
+                    {AMENITY_TYPES.filter(item => !item.scope || item.scope.includes(formData.propertyType)).map(item => (
                         <div key={item.key} className={`bg-white border rounded-xl p-4 flex items-center justify-between transition-all ${formData.amenities[item.key] ? 'border-primary ring-1 ring-primary shadow-md' : 'border-gray-100 hover:border-gray-200'}`}>
                             <div className="flex items-center gap-3">
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${formData.amenities[item.key] ? 'bg-primary/10' : 'bg-gray-100'}`}>

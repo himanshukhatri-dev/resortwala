@@ -132,6 +132,26 @@ class VendorController extends Controller
         return response()->json($bookings);
     }
 
+    public function getPropertyBookings(Request $request, $id)
+    {
+        $vendor = $request->user();
+
+        // Verify ownership
+        $property = \App\Models\PropertyMaster::where('PropertyId', $id)
+            ->where('vendor_id', $vendor->id)
+            ->first();
+
+        if (!$property) {
+            return response()->json(['message' => 'Unauthorized access to this property'], 403);
+        }
+
+        $bookings = \App\Models\Booking::where('PropertyId', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($bookings);
+    }
+
     public function getStats(Request $request)
     {
         $vendor = $request->user();

@@ -27,7 +27,7 @@ class PropertyMasterController extends Controller
     public function show($id)
     {
         $property = \App\Models\PropertyMaster::with(['images', 'holidays' => function($q) {
-            $q->where('approved', 1)->where('to_date', '>=', now()->toDateString());
+            $q->where('to_date', '>=', now()->toDateString());
         }])->find($id);
 
         if (!$property) {

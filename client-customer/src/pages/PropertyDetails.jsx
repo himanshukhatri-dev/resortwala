@@ -243,19 +243,45 @@ export default function PropertyDetails() {
 
         const isWaterparkProp = property?.PropertyType === 'WaterPark' || property?.PropertyType === 'Waterpark';
 
+        // Helper to check if a specific day is booked (unavailable for Check-In)
+        // But might be available for Check-Out (if it's the day someone checks in)
+        const isBooked = isDateUnavailable(day);
+
         if (isWaterparkProp) {
+            if (isBooked) {
+                toast.error("Date is not available.");
+                return;
+            }
             setDateRange({ from: day, to: day });
             setIsDatePickerOpen(false);
             return;
         }
 
         if ((dateRange.from && dateRange.to) || !dateRange.from) {
+            // Selecting Check-In Date
+            if (isBooked) {
+                toast.error("Selected date is unavailable for Check-In.");
+                return;
+            }
             setDateRange({ from: day, to: undefined });
             return;
         }
+
         if (dateRange.from && !dateRange.to) {
-            if (day < dateRange.from) { setDateRange({ from: day, to: undefined }); }
-            else { setDateRange({ from: dateRange.from, to: day }); setIsDatePickerOpen(false); }
+            // Selecting Check-Out Date
+            if (day < dateRange.from) {
+                if (isBooked) {
+                    toast.error("Selected date is unavailable for Check-In.");
+                    return;
+                }
+                setDateRange({ from: day, to: undefined });
+            } else {
+                // We ALLOW selecting a booked date as Check-Out (provided the range is valid)
+                // The checkRangeAvailability effect will validate if we are crossing unwanted boundaries.
+                // However, strictly speaking, picking a booked date as checkout is valid.
+                setDateRange({ from: dateRange.from, to: day });
+                setIsDatePickerOpen(false);
+            }
         }
     };
 
@@ -319,13 +345,10 @@ export default function PropertyDetails() {
             // 1. Check for Holiday Override
             // We check if this specific date falls into any approved holiday range
             const holiday = property.holidays?.find(h => {
-                const hStart = new Date(h.from_date);
-                const hEnd = new Date(h.to_date);
-                // Adjust hEnd to include the full day or handle timezones strictly? 
-                // DB dates are YYYY-MM-DD. 'd' is YYYY-MM-DD (from loop).
-                // Let's use string comparison for safety
-                const currentStr = format(d, 'yyyy-MM-dd');
-                return currentStr >= h.from_date && currentStr <= h.to_date;
+                const dStr = format(d, 'yyyy-MM-dd');
+                const hStart = h.from_date ? h.from_date.substring(0, 10) : '';
+                const hEnd = h.to_date ? h.to_date.substring(0, 10) : '';
+                return dStr >= hStart && dStr <= hEnd;
             });
 
             let rate = 0; // Declare rate variable
@@ -893,6 +916,17 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
     const getPriceForDate = (date) => {
         const w = date.getDay();
         const p = ob?.pricing || {};
+
+        // Holiday Check
+        const dStr = format(date, 'yyyy-MM-dd');
+        const holiday = property?.holidays?.find(h => {
+            const hStart = h.from_date ? h.from_date.substring(0, 10) : '';
+            const hEnd = h.to_date ? h.to_date.substring(0, 10) : '';
+            return dStr >= hStart && dStr <= hEnd;
+        });
+
+        if (holiday) return parseFloat(holiday.base_price);
+
         const PRICE_WEEKDAY = parseFloat(property?.price_mon_thu || p.weekday || property?.Price || 0);
         const PRICE_FRISUN = parseFloat(property?.price_fri_sun || p.weekend || property?.Price || 0);
         const PRICE_SATURDAY = parseFloat(property?.price_sat || p.saturday || property?.Price || 0);
@@ -942,17 +976,20 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                                 selected={isWaterpark ? dateRange.from : dateRange}
                                 onDayClick={handleDateSelect}
                                 numberOfMonths={1}
-                                disabled={[{ before: startOfDay(new Date()) }, (date) => bookedDates.includes(format(date, 'yyyy-MM-dd'))]}
+                                modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
+                                disabled={[{ before: startOfDay(new Date()) }]}
                                 components={{
                                     DayButton: (props) => {
                                         const { day, children, className, modifiers, ...buttonProps } = props;
                                         const date = day?.date;
                                         if (!date) return <button className={className} {...buttonProps}>{children}</button>;
 
+                                        // Remove bookedDates from disabled prop logic in main component to allow click
+                                        // But style them as disabled here if 'booked' modifier is present
                                         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                                         let price = getPriceForDate(date);
                                         if (!price || isNaN(price)) price = property.Price || 0;
-                                        const isButtonDisabled = buttonProps.disabled;
+                                        const isButtonDisabled = buttonProps.disabled || modifiers.booked;
 
                                         let combinedClassName = `${className || ''} flex flex-col items-center justify-center gap-0.5 h-full w-full py-1 transition-all duration-200`.trim();
 
@@ -1031,6 +1068,17 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
     const getPriceForDate = (date) => {
         const w = date.getDay();
         const p = ob?.pricing || {};
+
+        // Holiday Check
+        const dStr = format(date, 'yyyy-MM-dd');
+        const holiday = property?.holidays?.find(h => {
+            const hStart = h.from_date ? h.from_date.substring(0, 10) : '';
+            const hEnd = h.to_date ? h.to_date.substring(0, 10) : '';
+            return dStr >= hStart && dStr <= hEnd;
+        });
+
+        if (holiday) return parseFloat(holiday.base_price);
+
         // Use pricing.sellingPrice as the base rate instead of raw property data if available
         const baseRate = pricing.sellingPrice || parseFloat(property?.Price || 0);
         const PRICE_WEEKDAY = parseFloat(property?.price_mon_thu || p.weekday || baseRate);
@@ -1091,7 +1139,8 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                     selected={dateRange}
                                     onDayClick={handleDateSelect}
                                     numberOfMonths={1}
-                                    disabled={[{ before: startOfDay(new Date()) }, (date) => bookedDates.includes(format(date, 'yyyy-MM-dd'))]}
+                                    modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
+                                    disabled={[{ before: startOfDay(new Date()) }]}
                                     classNames={{
                                         day: "p-0",
                                         button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
@@ -1105,8 +1154,10 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
 
                                             if (!date) return <button className={className} {...buttonProps}>{children}</button>;
 
+                                            // Remove bookedDates from disabled prop logic in main component to allow click
+                                            // But style them as disabled here if 'booked' modifier is present
                                             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                                            const isButtonDisabled = buttonProps.disabled;
+                                            const isButtonDisabled = buttonProps.disabled || modifiers.booked; // Check modifier
 
                                             let price = getPriceForDate(date);
                                             // Fallback to base rate if specific date price is 0/missing
@@ -1116,11 +1167,9 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                             // Base class for the day button
                                             let combinedClassName = `${className || ''} flex flex-col items-center justify-center gap-0.5 h-full w-full py-1 transition-all duration-200`.trim();
 
-                                            // Add "scratch out" effect for disabled dates using a diagonal red line gradient
+                                            // Add "scratch out" check for disabled
                                             if (isButtonDisabled) {
                                                 combinedClassName += " relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-tr before:from-transparent before:via-red-500/40 before:to-transparent before:z-10 before:pointer-events-none";
-                                                // Optional: Cross line (scratch out)
-                                                // combinedClassName += " relative overflow-hidden before:content-[''] before:absolute before:top-1/2 before:left-0 before:w-full before:h-px before:bg-red-400 before:-rotate-45 before:z-10";
                                             }
 
                                             return (

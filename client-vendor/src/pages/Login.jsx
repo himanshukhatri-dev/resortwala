@@ -106,7 +106,13 @@ export default function Login() {
             setTimer(300); // 5 minutes
             startTimer();
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
+            console.error(err);
+            if (err.code === 'ECONNABORTED' || err.response?.status === 504 || err.message.includes('timeout')) {
+                setError('Request timed out. Please check your email/mobile for the OTP before retrying.');
+                // Optional: setStep('otp') if we are confident? No, safer to ask user or let them retry.
+            } else {
+                setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
+            }
         } finally {
             setLoading(false);
         }

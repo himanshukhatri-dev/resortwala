@@ -13,7 +13,7 @@ import EditProperty from './pages/EditProperty';
 import VendorBookings from './pages/VendorBookings';
 import Holiday from './pages/Holiday';
 import VendorCalendar from './pages/VendorCalendar';
-import VendorCalendar from './pages/VendorCalendar';
+
 import SetPassword from './pages/SetPassword';
 import VerifyInvite from './pages/VerifyInvite';
 import './App.css';

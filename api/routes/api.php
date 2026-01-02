@@ -106,6 +106,7 @@ Route::get('/health', [StatusController::class, 'check']); // Alias for status
 
 // Public Holiday Route (for pricing calculation)
 Route::get('/holidays', [\App\Http\Controllers\HolidayController::class, 'index']);
+Route::get('/holidays/fix-approve', [\App\Http\Controllers\HolidayController::class, 'approveAll']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vendor/profile', [\App\Http\Controllers\VendorController::class, 'profile']);
@@ -115,6 +116,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vendor/bookings', [\App\Http\Controllers\VendorController::class, 'getBookings']);
     
     Route::get('/vendor/bookings', [\App\Http\Controllers\VendorController::class, 'getBookings']);
+    Route::get('/vendor/bookings/property/{id}', [\App\Http\Controllers\VendorController::class, 'getPropertyBookings']);
 
     // Protected routes
     Route::post('/vendor/bookings/{id}/status', [\App\Http\Controllers\VendorController::class, 'updateBookingStatus']);

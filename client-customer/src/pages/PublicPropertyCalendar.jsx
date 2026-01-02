@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -122,11 +123,15 @@ export default function PublicPropertyCalendar() {
                     }
 
                     // Determine label based on booking source
-                    let label = 'Unavailable';
+                    let label = 'ResortWala'; // Default for locked/confirmed
 
-                    if (b.Status === 'locked' || b.booking_source === 'vendor' || b.booking_source === 'admin') {
-                        label = 'Unavailable';
-                    } else if (b.booking_source === 'customer_app') {
+                    if (b.Status === 'pending') {
+                        label = 'Pending';
+                    } else if (b.booking_source === 'customer_app' && (b.Status === 'confirmed' || b.Status === 'locked')) {
+                        // Customer App bookings -> NA (User Request: "RW should be NA")
+                        label = 'NA';
+                    } else if (b.Status === 'confirmed' || b.Status === 'locked') {
+                        // Vendor/Admin/Locked -> ResortWala (User Request: "NA should show complete ResortWala text")
                         label = 'ResortWala';
                     }
 
@@ -160,9 +165,18 @@ export default function PublicPropertyCalendar() {
         let check = new Date(start);
         const final = new Date(end);
 
+        // Loop through days to check for conflict
+        // We want to support "Checkout on Booked Date" logic.
+        // If the user selects 13, 14, 15 (Start 13, End 16). Booked 15. 
+        // 13->OK, 14->OK, 15->Conflict.
+        // If conflict is ONLY on the last day, we can assume they meant checkout on that day.
+
+        let validEnd = new Date(end);
+        let hasConflict = false;
+
+        // Loop from Start to End (Excluded)
         while (check < final) {
             const time = check.getTime();
-            // Check if any booking event falls on this day
             const conflict = events.find(e =>
                 e.type === 'booking' &&
                 e.start.getTime() <= time &&
@@ -170,13 +184,33 @@ export default function PublicPropertyCalendar() {
             );
 
             if (conflict) {
-                alert("Selected dates are not available.");
-                return;
+                // If conflict found, is it the LAST day of selection?
+                // current check date + 1 day should equal final end date?
+                const nextDay = new Date(check);
+                nextDay.setDate(nextDay.getDate() + 1);
+
+                if (nextDay.getTime() === final.getTime()) {
+                    // It's the last day. Auto-trim?
+                    // User selected up to 15th (checkout 16th), but 15th is booked.
+                    // So they can only stay up to 15th (checkout 15th).
+                    // New End should be 'check' (15th 00:00).
+                    validEnd = new Date(check);
+                    alert(`Adjusted checkout date to ${validEnd.toLocaleDateString()} as the following night is booked.`);
+                    break;
+                } else {
+                    alert("Selected dates include booked nights (Red/Yellow blocks). Please select a valid range.");
+                    return;
+                }
             }
             check.setDate(check.getDate() + 1);
         }
 
-        setSelectedSlot({ start, end });
+        // Update end to validEnd if changed
+        if (validEnd.getTime() !== end.getTime()) {
+            // Logic handled above
+        }
+
+        setSelectedSlot({ start, end: validEnd });
         setShowModal(true);
     };
 
@@ -195,12 +229,9 @@ export default function PublicPropertyCalendar() {
             // handleSelectSlot usually gives start 00:00 and end 00:00 of next day for single click.
 
             const start = new Date(event.start);
-            const end = new Date(event.start); // Same day
-            // If we want 1 night, end should be start + 1 day?
-            // For now, let's just use the event's dates. 
-            // In loop: start=d, end=d. 
+            const end = new Date(event.start);
+            end.setDate(end.getDate() + 1); // Select 1 night
 
-            // Fix: UI expects start/end. 
             setSelectedSlot({ start, end });
             setShowModal(true);
         }
@@ -321,10 +352,24 @@ export default function PublicPropertyCalendar() {
         const isBooked = event.type === 'booking';
 
         if (isBooked) {
+            // Differentiate Pending vs NA
+            if (event.status === 'pending') {
+                return (
+                    <div className="relative w-full h-full group flex items-center justify-center">
+                        <div className="w-full h-full bg-yellow-400 border border-yellow-500 rounded-md overflow-hidden relative flex items-center justify-center shadow-sm">
+                            <span className="text-[10px] md:text-[11px] font-bold text-white uppercase tracking-tight drop-shadow-sm">Pending</span>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Adjust Font Size for longer "ResortWala" text
+            const isLongText = event.title.length > 5;
+
             return (
-                <div className="relative w-full h-full group flex items-center justify-center">
+                <div className="relative w-full h-full group flex items-center justify-center pointer-events-none">
                     <div className="w-full h-full bg-red-50 border border-red-100 rounded-md overflow-hidden relative flex items-center justify-center">
-                        <span className="text-[9px] md:text-[10px] font-bold text-red-600 uppercase tracking-tight">{event.title}</span>
+                        <span className={`${isLongText ? 'text-[8px] md:text-[9px]' : 'text-[9px] md:text-[10px]'} font-bold text-red-600 uppercase tracking-tight text-center px-0.5 leading-none`}>{event.title}</span>
                         <div className="absolute inset-0 bg-red-100/10 mix-blend-multiply" />
                     </div>
                 </div>
@@ -467,7 +512,7 @@ export default function PublicPropertyCalendar() {
 
             {/* COMPACT LEGEND */}
             <div className="flex-none pb-2 flex gap-4 text-[10px] md:text-xs justify-center flex-wrap bg-white z-10">
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-50 border border-red-100 rounded flex items-center justify-center text-[8px] font-bold text-red-600">RW</div> ResortWala Booking</div>
+                <div className="flex items-center gap-1.5"><div className="w-fit px-1 h-3 bg-red-50 border border-red-100 rounded flex items-center justify-center text-[7px] font-bold text-red-600">ResortWala</div> ResortWala Booking</div>
                 <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-50 border border-red-100 rounded flex items-center justify-center text-[7px] font-bold text-red-600">NA</div> Unavailable</div>
                 <div className="flex items-center gap-1.5"><span className="w-3 h-3 bg-yellow-500 rounded"></span> Request Pending</div>
                 <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-gray-300 rounded"></div> Available</div>

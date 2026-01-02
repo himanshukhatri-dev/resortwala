@@ -172,20 +172,22 @@ export default function Bookings() {
                                             <td className="px-6 py-5 text-center">{getStatusBadge(booking.Status)}</td>
                                             <td className="px-6 py-5">
                                                 <div className="flex justify-center gap-2">
-                                                    <button
-                                                        onClick={() => handleStatusUpdate(booking.BookingId, 'confirmed')}
-                                                        disabled={booking.Status === 'confirmed'}
-                                                        className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all ${booking.Status === 'confirmed' ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : 'bg-green-50 text-green-700 hover:bg-green-100 hover:scale-105 active:scale-95'}`}
-                                                    >
-                                                        Approve
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleStatusUpdate(booking.BookingId, 'rejected')}
-                                                        disabled={booking.Status === 'rejected'}
-                                                        className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all ${booking.Status === 'rejected' ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : 'bg-red-50 text-red-700 hover:bg-red-100 hover:scale-105 active:scale-95'}`}
-                                                    >
-                                                        Reject
-                                                    </button>
+                                                    {(booking.Status === 'pending') && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleStatusUpdate(booking.BookingId, 'confirmed')}
+                                                                className="px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all bg-green-50 text-green-700 hover:bg-green-100 hover:scale-105 active:scale-95"
+                                                            >
+                                                                Approve
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleStatusUpdate(booking.BookingId, 'rejected')}
+                                                                className="px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all bg-red-50 text-red-700 hover:bg-red-100 hover:scale-105 active:scale-95"
+                                                            >
+                                                                Reject
+                                                            </button>
+                                                        </>
+                                                    )}
                                                     <button
                                                         onClick={() => handleResendEmail(booking.BookingId)}
                                                         className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 hover:scale-105 active:scale-95 shadow-sm transition-all"
@@ -237,20 +239,22 @@ export default function Bookings() {
                                         </div>
 
                                         <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleStatusUpdate(booking.BookingId, 'confirmed')}
-                                                disabled={booking.Status === 'confirmed'}
-                                                className={`flex-1 py-3 rounded-xl text-sm font-bold shadow-sm transition-all ${booking.Status === 'confirmed' ? 'bg-gray-50 text-gray-300' : 'bg-green-500 text-white active:scale-95'}`}
-                                            >
-                                                Approve
-                                            </button>
-                                            <button
-                                                onClick={() => handleStatusUpdate(booking.BookingId, 'rejected')}
-                                                disabled={booking.Status === 'rejected'}
-                                                className={`flex-1 py-3 rounded-xl text-sm font-bold shadow-sm transition-all ${booking.Status === 'rejected' ? 'bg-gray-50 text-gray-300' : 'bg-red-500 text-white active:scale-95'}`}
-                                            >
-                                                Reject
-                                            </button>
+                                            {(booking.Status === 'pending') && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleStatusUpdate(booking.BookingId, 'confirmed')}
+                                                        className="flex-1 py-3 rounded-xl text-sm font-bold shadow-sm transition-all bg-green-500 text-white active:scale-95"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStatusUpdate(booking.BookingId, 'rejected')}
+                                                        className="flex-1 py-3 rounded-xl text-sm font-bold shadow-sm transition-all bg-red-500 text-white active:scale-95"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 ))

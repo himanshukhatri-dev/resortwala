@@ -125,7 +125,9 @@ function Deploy-Component {
     Write-Host "[$Name] Initializing Deployment..." -ForegroundColor Cyan
     
     # Create Temp Directory for Staging
-    $TempDir = Join-Path $Env:TEMP "ResortWalaDeploy_$Name"
+    # Create Temp Directory for Staging (Unique per run to avoid locks)
+    $RandomId = Get-Random
+    $TempDir = Join-Path $Env:TEMP "ResortWalaDeploy_${Name}_${RandomId}"
     if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force }
     New-Item -ItemType Directory -Path $TempDir | Out-Null
     

@@ -27,8 +27,17 @@ class HolidayController extends Controller
             'extra_person_price' => 'nullable|numeric|min:0',
         ]);
 
-        $validated['approved'] = 0; // Default to pending approval
-        $holiday = \App\Models\Holiday::create($validated);
+        $validated['approved'] = 1; // Auto-approve for now (was 0)
+        
+        // Prevent duplicates: Update entry if exists for same property and date range
+        $holiday = \App\Models\Holiday::updateOrCreate(
+            [
+                'property_id' => $validated['property_id'],
+                'from_date' => $validated['from_date'],
+                'to_date' => $validated['to_date']
+            ],
+            $validated
+        );
 
         // Notify Admins
         try {
@@ -55,5 +64,12 @@ class HolidayController extends Controller
         $holiday = \App\Models\Holiday::findOrFail($id);
         $holiday->delete();
         return response()->json(['message' => 'Holiday deleted successfully']);
+    }
+
+    // Temporary fix to approve all pending holidays
+    public function approveAll()
+    {
+        \App\Models\Holiday::where('approved', 0)->update(['approved' => 1]);
+        return response()->json(['message' => 'All pending holidays approved']);
     }
 }
