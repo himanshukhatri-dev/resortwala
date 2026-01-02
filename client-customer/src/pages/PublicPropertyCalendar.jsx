@@ -44,7 +44,7 @@ export default function PublicPropertyCalendar() {
 
     const fetchCalendarData = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL} /public/properties / ${uuid}/calendar`);
+            const res = await fetch(`${API_BASE_URL}/public/properties/${uuid}/calendar`);
             if (!res.ok) throw new Error('Failed to load');
             const data = await res.json();
 
@@ -123,7 +123,10 @@ export default function PublicPropertyCalendar() {
 
                     // Determine label based on booking source
                     let label = 'Unavailable';
-                    if (b.booking_source === 'customer_app') {
+
+                    if (b.Status === 'locked' || b.booking_source === 'vendor' || b.booking_source === 'admin') {
+                        label = 'Unavailable';
+                    } else if (b.booking_source === 'customer_app') {
                         label = 'ResortWala';
                     }
 
@@ -152,6 +155,27 @@ export default function PublicPropertyCalendar() {
             alert("Cannot book past dates.");
             return;
         }
+
+        // Check for conflicts with existing bookings
+        let check = new Date(start);
+        const final = new Date(end);
+
+        while (check < final) {
+            const time = check.getTime();
+            // Check if any booking event falls on this day
+            const conflict = events.find(e =>
+                e.type === 'booking' &&
+                e.start.getTime() <= time &&
+                e.end.getTime() >= time
+            );
+
+            if (conflict) {
+                alert("Selected dates are not available.");
+                return;
+            }
+            check.setDate(check.getDate() + 1);
+        }
+
         setSelectedSlot({ start, end });
         setShowModal(true);
     };
@@ -184,6 +208,9 @@ export default function PublicPropertyCalendar() {
 
     const handleSubmitRequest = async (e) => {
         e.preventDefault();
+
+        console.log("Submitting Request:", { name, mobile });
+
         if (!name || !mobile) {
             alert("Please fill all details");
             return;
@@ -228,8 +255,8 @@ export default function PublicPropertyCalendar() {
             setMobile('');
             fetchCalendarData(); // Refresh immediately
         } catch (error) {
-            console.error(error);
-            alert("Booking Failed: " + (error.response?.data?.message || error.message));
+            console.error("Submission Error:", error);
+            alert("Booking Failed: " + (error.response?.data?.message || "Please check your network connection."));
         }
     };
 
@@ -470,11 +497,19 @@ export default function PublicPropertyCalendar() {
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mobile Number</label>
                                 <input
-                                    type="tel"
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    maxLength="10"
                                     className="w-full p-4 pl-12 border border-gray-200 rounded-xl outline-none focus:border-black transition font-bold text-gray-800"
                                     value={mobile}
-                                    onChange={e => setMobile(e.target.value)}
-                                    placeholder="+91 9999999999"
+                                    onChange={e => {
+                                        const re = /^[0-9\b]+$/;
+                                        if (e.target.value === '' || re.test(e.target.value)) {
+                                            setMobile(e.target.value);
+                                        }
+                                    }}
+                                    placeholder="9999999999"
                                     required
                                 />
                             </div>

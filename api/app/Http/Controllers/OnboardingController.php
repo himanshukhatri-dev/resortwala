@@ -76,9 +76,23 @@ class OnboardingController extends Controller
             'expires_at' => now()->addHours(24)
         ]);
 
-        // 3. Construct Login URL based on role
-        $baseUrl = $this->getFrontendUrl($role);
-        $onboardingUrl = $baseUrl . "/set-password?token=" . $token;
+    // 3. Construct Login URL based on role
+        // Hardcoded to beta.resortwala.com as requested
+        $baseUrl = "https://beta.resortwala.com";
+        
+        if ($role === 'vendor') {
+            // Direct verification endpoint on frontend
+            // e.g. https://beta.resortwala.com/verify-invite?token=...
+            $baseUrl .= "/vendor"; // Adjust if necessary for vendor subdomain/path logic
+        }
+
+        // Using a generic verify route on the frontend that handles the token
+        // For vendor: https://beta.resortwala.com/vendor/verify-invite?token=...
+        $onboardingUrl = "https://beta.resortwala.com/vendor/verify-invite?token=" . $token;
+        
+        if ($role === 'customer') {
+             $onboardingUrl = "https://beta.resortwala.com/verify-invite?token=" . $token;
+        }
 
         // 4. Send Notifications
         if ($email) {
@@ -89,70 +103,37 @@ class OnboardingController extends Controller
             }
         }
 
-        // --- SMS Placeholder ---
-        $smsMessage = "Hello {$name}, welcome to ResortWala! Complete your registration as a " . ucfirst($role) . " here: {$onboardingUrl}";
-        $this->sendSMS($mobile, $smsMessage);
-
         return response()->json([
             'message' => 'User onboarded successfully. Notification sent.',
-            'onboarding_url' => $onboardingUrl // Returning for debugging/manual sharing
+            'onboarding_url' => $onboardingUrl
         ]);
     }
 
     /**
-     * Verify the onboarding token.
+     * Complete onboarding (Direct verification without password).
+     * Returns auth token.
      */
-    public function verifyToken($token)
-    {
-        $onboardingToken = OnboardingToken::where('token', $token)->first();
-
-        if (!$onboardingToken) {
-             \Log::info("VerifyToken: Token not found: " . $token);
-             return response()->json(['message' => 'Invalid token.'], 404);
-        }
-
-        \Log::info("VerifyToken:", [
-            'token_exists' => true,
-            'is_used' => $onboardingToken->is_used,
-            'expires_at' => $onboardingToken->expires_at,
-            'now' => now()->toDateTimeString(),
-            'is_expired' => now()->gt($onboardingToken->expires_at)
-        ]);
-
-        if ($onboardingToken->is_used) {
-             return response()->json(['message' => 'Token already used.'], 404);
-        }
-
-        if (now()->gt($onboardingToken->expires_at)) {
-             return response()->json(['message' => 'Token expired.'], 404);
-        }
-
-        return response()->json([
-            'valid' => true,
-            'role' => $onboardingToken->role
-        ]);
-    }
-
-    /**
-     * User sets their real password.
-     */
-    public function setPassword(Request $request)
+    public function complete(Request $request)
     {
         $request->validate([
             'token' => 'required|string',
-            'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $onboardingToken = OnboardingToken::where('token', $request->token)
-            ->where('is_used', false)
-            ->where('expires_at', '>', now())
-            ->first();
+        $onboardingToken = OnboardingToken::where('token', $request->token)->first();
 
         if (!$onboardingToken) {
-            return response()->json(['message' => 'Invalid or expired token.'], 404);
+             return response()->json(['message' => 'Invalid token.'], 404);
         }
 
-        // Update the actual user password
+        if ($onboardingToken->is_used) {
+             return response()->json(['message' => 'Link already used.'], 400);
+        }
+
+        if (now()->gt($onboardingToken->expires_at)) {
+             return response()->json(['message' => 'Link expired.'], 400);
+        }
+
+        // Retrieve User
         if ($onboardingToken->user_type === 'customer') {
             $user = Customer::find($onboardingToken->user_id);
         } else {
@@ -163,30 +144,40 @@ class OnboardingController extends Controller
             return response()->json(['message' => 'User not found.'], 404);
         }
 
-        $user->password = Hash::make($request->password);
-        $user->save();
-
-        // Mark token as used
+        // Mark verified/approved if needed (User model 'is_approved' defaults to matching logic in onboard)
+        // Mark token used
         $onboardingToken->is_used = true;
         $onboardingToken->save();
 
-        return response()->json(['message' => 'Password set successfully. You can now log in.']);
+        // Generate Auth Token
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Verification successful.',
+            'token' => $token,
+            'user' => $user,
+            'role' => $onboardingToken->role
+        ]);
+    }
+
+    /**
+     * Deprecated: User sets their real password.
+     * Kept for backward compatibility if any old links exist, but loop to complete logic if possible?
+     * Or just leave as is for now in case logic reverts.
+     */
+    public function setPassword(Request $request)
+    {
+        return $this->complete($request);
     }
 
     private function getFrontendUrl($role)
     {
-        return match ($role) {
-            'admin' => env('FRONTEND_ADMIN_URL', 'http://localhost:3004'),
-            'vendor' => env('FRONTEND_VENDOR_URL', 'http://localhost:3002'),
-            default => env('FRONTEND_CUSTOMER_URL', 'http://localhost:3003'),
-        };
+        return "https://beta.resortwala.com";
     }
 
     private function sendSMS($mobile, $message)
     {
         // LOG FOR NOW
         \Log::info("SMS to {$mobile}: {$message}");
-        
-        // Integration Logic for MSG91/Twilio would go here.
     }
 }

@@ -105,7 +105,7 @@
                 </div>
 
                 <div style="text-align: center; margin-top: 30px;">
-                    <a href="{{ config('app.customer_url', 'http://staging.resortwala.com') }}/bookings" class="btn">Manage My Booking</a>
+                    <a href="https://beta.resortwala.com/bookings" class="btn">Manage My Booking</a>
                 </div>
             </div>
 

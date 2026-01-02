@@ -251,7 +251,7 @@ export default function GlobalCalendar() {
         if (!prop) return;
         const token = prop.share_token || prop.id || prop.PropertyId;
         const propertyBase = import.meta.env.VITE_CUSTOMER_APP_URL || 'https://beta.resortwala.com';
-        const finalBase = window.location.hostname.includes('localhost') ? 'http://localhost:5173' : propertyBase;
+        const finalBase = window.location.hostname.includes('localhost') ? 'http://localhost:5173' : window.location.origin;
         const url = `${finalBase}/stay/${token}`;
 
         copyToClipboard(

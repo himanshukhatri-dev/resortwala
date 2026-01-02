@@ -320,7 +320,7 @@ class VendorController extends Controller
             ->first();
 
         if (!$user) {
-            return response()->json(['message' => 'Vendor not found'], 404);
+            return response()->json(['message' => 'Vendor not found with provided details.'], 404);
         }
 
         // Generate 6-digit OTP

@@ -13,7 +13,9 @@ import EditProperty from './pages/EditProperty';
 import VendorBookings from './pages/VendorBookings';
 import Holiday from './pages/Holiday';
 import VendorCalendar from './pages/VendorCalendar';
+import VendorCalendar from './pages/VendorCalendar';
 import SetPassword from './pages/SetPassword';
+import VerifyInvite from './pages/VerifyInvite';
 import './App.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -55,6 +57,7 @@ function App() {
                             <Route path="/forgot-password" element={<ForgotPassword />} />
                             <Route path="/reset-password" element={<ResetPassword />} />
                             <Route path="/set-password" element={<SetPassword />} />
+                            <Route path="/verify-invite" element={<VerifyInvite />} />
 
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 

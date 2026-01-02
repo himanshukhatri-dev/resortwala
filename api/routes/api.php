@@ -238,6 +238,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 // Onboarding Routes (Public for setting password)
+Route::post('/onboard/complete', [\App\Http\Controllers\OnboardingController::class, 'complete']);
 Route::get('/onboard/verify/{token}', [\App\Http\Controllers\OnboardingController::class, 'verifyToken']);
 Route::post('/onboard/set-password', [\App\Http\Controllers\OnboardingController::class, 'setPassword']);
 

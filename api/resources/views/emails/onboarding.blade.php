@@ -22,7 +22,7 @@
         <p>To access your account and start using the platform, please click the button below to set your secure password:</p>
         
         <div style="text-align: center;">
-            <a href="{{ $onboardingUrl }}" class="btn">Set My Password</a>
+            <a href="{{ $onboardingUrl }}" class="btn">Verify & Login</a>
         </div>
         
         <p style="margin-top: 30px;">This link will expire in 24 hours. If you did not expect this email, please ignore it.</p>

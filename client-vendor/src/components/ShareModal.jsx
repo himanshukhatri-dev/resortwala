@@ -37,8 +37,7 @@ export default function ShareModal({ isOpen, onClose }) {
         // In prod: window usually same domain different port or path.
 
         // Better logic: Use the known production customer URL if available, else standard fallback
-        const customerBaseUrl = import.meta.env.VITE_CUSTOMER_URL ||
-            (window.location.hostname === 'localhost' ? 'http://localhost:5173' : window.location.origin.replace(':8081', ''));
+        const customerBaseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5173' : window.location.origin;
 
         const link = `${customerBaseUrl}/stay/${property.share_token || property.PropertyId}`;
         const message = `Check out *${property.Name}* in ${property.Location}!\n\n${property.ShortDescription || 'Beautiful property available for booking.'}\n\nPrice: ₹${property.Price}/night\n\nView Property: ${link}`;
