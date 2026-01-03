@@ -32,6 +32,9 @@ export default function PublicPropertyCalendar() {
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [showMap, setShowMap] = useState(false); // Toggle for map view
 
+    // Error Modal State
+    const [errorModal, setErrorModal] = useState({ open: false, title: '', message: '' });
+
     // Booking Form
     const [name, setName] = useState('');
     const [mobile, setMobile] = useState('');
@@ -57,7 +60,6 @@ export default function PublicPropertyCalendar() {
             const processedEvents = [];
 
             // 1. Generate Rates for the next 6 months (Availability/Price Info)
-            // We'll generate these as background/low-priority events
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const endGen = new Date();
@@ -67,40 +69,6 @@ export default function PublicPropertyCalendar() {
             const priceMonThu = parseFloat(data.property.price_mon_thu || 0);
             const priceFriSun = parseFloat(data.property.price_fri_sun || 0);
 
-            // REMOVED: Rate display as per user request
-            // User requested to remove rates from public calendar
-            /*
-            for (let d = new Date(today); d <= endGen; d.setDate(d.getDate() + 1)) {
-                const dateStr = format(d, 'yyyy-MM-dd');
-                const day = d.getDay();
-            
-                const holiday = holidays.find(h => {
-                    const start = new Date(h.from_date);
-                    const end = new Date(h.to_date);
-                    start.setHours(0, 0, 0, 0); end.setHours(0, 0, 0, 0);
-                    const current = new Date(d);
-                    current.setHours(0, 0, 0, 0);
-                    return current >= start && current <= end;
-                });
-            
-                let price = priceMonThu;
-                if (holiday) {
-                    price = parseFloat(holiday.base_price);
-                } else {
-                    if (day === 0 || day === 5 || day === 6) price = priceFriSun;
-                }
-            
-                processedEvents.push({
-                    title: `₹${price}`,
-                    start: new Date(d),
-                    end: new Date(d),
-                    allDay: true,
-                    type: 'rate',
-                    status: 'available'
-                });
-            }
-            */
-
             // 2. Overlay Bookings (These will visually override rates if we treat them right, or share space)
             data.bookings.forEach(b => {
                 const startDate = parse(b.CheckInDate, 'yyyy-MM-dd', new Date());
@@ -108,14 +76,6 @@ export default function PublicPropertyCalendar() {
 
                 let currentDate = new Date(startDate);
                 while (currentDate < endDate) {
-                    // Find if we already added a rate event for this day and remove it? 
-                    // Or just add booking event. If we add booking, we might want to HIDE the rate or show it crossed out?
-                    // For "Availability Calendar", usually showing "Booked" is enough.
-
-                    // Simple approach: Add booking event. In render, Booking takes specific style.
-                    // If we want to replace the rate event, we can filter processedEvents.
-                    // But simpler: The calendar will render both if they exist.
-                    // We can filter out the 'rate' event for this day to avoid clutter.
                     const dStr = format(currentDate, 'yyyy-MM-dd');
                     const rateIndex = processedEvents.findIndex(e => e.type === 'rate' && format(e.start, 'yyyy-MM-dd') === dStr);
                     if (rateIndex !== -1) {
@@ -128,8 +88,8 @@ export default function PublicPropertyCalendar() {
                     if (b.Status === 'pending') {
                         label = 'Pending';
                     } else if (b.booking_source === 'customer_app' && (b.Status === 'confirmed' || b.Status === 'locked')) {
-                        // Customer App bookings -> NA (User Request: "RW should be NA")
-                        label = 'NA';
+                        // Customer App bookings -> Booked (User Request: "NA should be Booked")
+                        label = 'Booked';
                     } else if (b.Status === 'confirmed' || b.Status === 'locked') {
                         // Vendor/Admin/Locked -> ResortWala (User Request: "NA should show complete ResortWala text")
                         label = 'ResortWala';
@@ -157,24 +117,18 @@ export default function PublicPropertyCalendar() {
 
     const handleSelectSlot = ({ start, end }) => {
         if (new Date(start) < new Date().setHours(0, 0, 0, 0)) {
-            alert("Cannot book past dates.");
+            setErrorModal({
+                open: true,
+                title: 'Invalid Date',
+                message: 'You cannot select dates in the past. Please choose a future date.'
+            });
             return;
         }
 
-        // Check for conflicts with existing bookings
         let check = new Date(start);
         const final = new Date(end);
-
-        // Loop through days to check for conflict
-        // We want to support "Checkout on Booked Date" logic.
-        // If the user selects 13, 14, 15 (Start 13, End 16). Booked 15. 
-        // 13->OK, 14->OK, 15->Conflict.
-        // If conflict is ONLY on the last day, we can assume they meant checkout on that day.
-
-        let validEnd = new Date(end);
         let hasConflict = false;
 
-        // Loop from Start to End (Excluded)
         while (check < final) {
             const time = check.getTime();
             const conflict = events.find(e =>
@@ -184,33 +138,17 @@ export default function PublicPropertyCalendar() {
             );
 
             if (conflict) {
-                // If conflict found, is it the LAST day of selection?
-                // current check date + 1 day should equal final end date?
-                const nextDay = new Date(check);
-                nextDay.setDate(nextDay.getDate() + 1);
-
-                if (nextDay.getTime() === final.getTime()) {
-                    // It's the last day. Auto-trim?
-                    // User selected up to 15th (checkout 16th), but 15th is booked.
-                    // So they can only stay up to 15th (checkout 15th).
-                    // New End should be 'check' (15th 00:00).
-                    validEnd = new Date(check);
-                    alert(`Adjusted checkout date to ${validEnd.toLocaleDateString()} as the following night is booked.`);
-                    break;
-                } else {
-                    alert("Selected dates include booked nights (Red/Yellow blocks). Please select a valid range.");
-                    return;
-                }
+                setErrorModal({
+                    open: true,
+                    title: 'Dates Unavailable',
+                    message: 'Some dates in your selection are already booked. Please choose a different range.'
+                });
+                return;
             }
             check.setDate(check.getDate() + 1);
         }
 
-        // Update end to validEnd if changed
-        if (validEnd.getTime() !== end.getTime()) {
-            // Logic handled above
-        }
-
-        setSelectedSlot({ start, end: validEnd });
+        setSelectedSlot({ start, end });
         setShowModal(true);
     };
 
@@ -220,14 +158,6 @@ export default function PublicPropertyCalendar() {
             if (new Date(event.start) < new Date().setHours(0, 0, 0, 0)) {
                 return;
             }
-            // For single day click, start=event.start, end=event.end (which is same day usually in this view)
-            // BigCalendar ends are exclusive or inclusive depending on view, but for Month view event click:
-            // We want to book just this day? Or let them pick range?
-            // Usually clicking an event implies that single unit. 
-            // Let's set start and end to that day so it pre-selects 1 day.
-            // Adjust end date to be next day for logic or keep same?
-            // handleSelectSlot usually gives start 00:00 and end 00:00 of next day for single click.
-
             const start = new Date(event.start);
             const end = new Date(event.start);
             end.setDate(end.getDate() + 1); // Select 1 night
@@ -293,7 +223,6 @@ export default function PublicPropertyCalendar() {
 
     const eventStyleGetter = (event) => {
         // If it's a rate/available slot, make it transparent (or white)
-        // because CustomEvent handles the rendering
         if (event.type === 'rate' || event.status === 'available') {
             return {
                 style: {
@@ -513,10 +442,31 @@ export default function PublicPropertyCalendar() {
             {/* COMPACT LEGEND */}
             <div className="flex-none pb-2 flex gap-4 text-[10px] md:text-xs justify-center flex-wrap bg-white z-10">
                 <div className="flex items-center gap-1.5"><div className="w-fit px-1 h-3 bg-red-50 border border-red-100 rounded flex items-center justify-center text-[7px] font-bold text-red-600">ResortWala</div> ResortWala Booking</div>
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-50 border border-red-100 rounded flex items-center justify-center text-[7px] font-bold text-red-600">NA</div> Unavailable</div>
+                <div className="flex items-center gap-1.5"><div className="w-fit px-1 h-3 bg-red-50 border border-red-100 rounded flex items-center justify-center text-[7px] font-bold text-red-600">Booked</div> Unavailable</div>
                 <div className="flex items-center gap-1.5"><span className="w-3 h-3 bg-yellow-500 rounded"></span> Request Pending</div>
                 <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-white border border-gray-300 rounded"></div> Available</div>
             </div>
+
+            {/* ERROR MODAL */}
+            {errorModal.open && (
+                <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl scale-100 flex flex-col items-center border border-red-100">
+                        <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-4 text-red-500 text-2xl shadow-sm border border-red-100">
+                            <FaTimes />
+                        </div>
+                        <h2 className="text-xl font-extrabold text-gray-900 mb-2">{errorModal.title}</h2>
+                        <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                            {errorModal.message}
+                        </p>
+                        <button
+                            onClick={() => setErrorModal({ ...errorModal, open: false })}
+                            className="w-full bg-gray-900 hover:bg-black text-white py-3 rounded-xl font-bold shadow-lg transition-transform active:scale-95"
+                        >
+                            Okay, Got it
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Booking Modal */}
             {showModal && (

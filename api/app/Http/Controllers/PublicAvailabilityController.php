@@ -57,6 +57,7 @@ class PublicAvailabilityController extends Controller
         // Check conflicts
         $exists = Booking::where('PropertyId', $request->property_id)
             ->where('Status', '!=', 'cancelled')
+            ->where('Status', '!=', 'rejected') // Fix: Exclude rejected
             ->where(function($q) use ($request) {
                 $q->where('CheckInDate', '<', $request->end_date)
                   ->where('CheckOutDate', '>', $request->start_date);

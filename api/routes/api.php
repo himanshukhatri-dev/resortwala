@@ -144,6 +144,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vendor/properties/{id}/calendar', [App\Http\Controllers\VendorCalendarController::class, 'index']);
     Route::post('/vendor/bookings/lock', [App\Http\Controllers\VendorCalendarController::class, 'lock']);
     Route::post('/vendor/bookings/{id}/approve', [App\Http\Controllers\VendorCalendarController::class, 'approve']);
+    Route::post('/vendor/bookings/{id}/reject', [App\Http\Controllers\VendorCalendarController::class, 'reject']);
 });
 
 Route::post('/vendor/calendar/seed', [App\Http\Controllers\VendorCalendarController::class, 'seed']);

@@ -107,7 +107,13 @@ export default function Holiday() {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Filter distinct booked dates (Locked/Confirmed)
-            const booked = response.data.filter(b => b.Status === 'confirmed' || b.Status === 'locked');
+            console.log("Raw Bookings:", response.data);
+            // Filter distinct booked dates (Locked/Confirmed/Pending) - Case Insensitive
+            const booked = response.data.filter(b => {
+                const status = (b.Status || '').toLowerCase();
+                return status === 'confirmed' || status === 'locked' || status === 'pending';
+            });
+            console.log("Filtered Booked:", booked);
             setBookings(booked);
         } catch (error) {
             console.error('Error fetching bookings:', error);
@@ -223,7 +229,7 @@ export default function Holiday() {
 
         setEvents(generatedEvents);
 
-    }, [currentDate, holidays, selectedPropertyId, properties]);
+    }, [currentDate, holidays, selectedPropertyId, properties, bookings]);
 
 
     const handleSelectSlot = ({ start, end }) => {
@@ -242,16 +248,42 @@ export default function Holiday() {
         // If end is 00:00 of next day, simple loop works
 
         let hasBooking = false;
+        let hasExistingRate = false;
+
         while (check < final) {
+            // 1. Check for Bookings
             if (isDateBooked(check)) {
                 hasBooking = true;
-                break;
             }
+
+            // 2. Check for Existing Custom Rate (Holiday)
+            const dStr = format(check, 'yyyy-MM-dd');
+            // Check computed events (which includes holidays)
+            // Note: 'events' state is derived from holidays, so we can check 'holidays' directly or 'events'.
+            // Checking 'events' is safer as it handles the mapping logic.
+            const dayEvent = events.find(e =>
+                e.start.getDate() === check.getDate() &&
+                e.start.getMonth() === check.getMonth() &&
+                e.start.getFullYear() === check.getFullYear() &&
+                e.type === 'holiday'
+            );
+
+            if (dayEvent) {
+                hasExistingRate = true;
+            }
+
+            if (hasBooking || hasExistingRate) break;
+
             check.setDate(check.getDate() + 1);
         }
 
         if (hasBooking) {
             showInfo("Selected range includes booked dates. Holidays cannot be modified for booked dates.");
+            return;
+        }
+
+        if (hasExistingRate) {
+            showInfo("A custom rate already exists for this period. Please edit the existing rate instead.");
             return;
         }
 
@@ -481,36 +513,51 @@ export default function Holiday() {
                             event: ({ event }) => {
                                 const isHoliday = event.type === 'holiday';
                                 const isWeekend = event.type === 'weekend';
+                                const isBooked = event.type === 'booked';
 
                                 return (
                                     <div className={`
                                         h-full w-full rounded-md md:rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 group relative overflow-hidden px-1
-                                        ${isHoliday ? (event.status === 'pending' ? 'bg-purple-50 border border-purple-200' : 'bg-rose-50 border border-rose-100') :
-                                            isWeekend ? 'bg-blue-50 border border-blue-100' :
-                                                'bg-white border hover:border-gray-300 border-gray-100'}
+                                        ${isBooked ? 'bg-gray-100 border border-gray-200 opacity-80 cursor-not-allowed' :
+                                            isHoliday ? (event.status === 'pending' ? 'bg-purple-50 border border-purple-200' : 'bg-rose-50 border border-rose-100') :
+                                                isWeekend ? 'bg-blue-50 border border-blue-100' :
+                                                    'bg-white border hover:border-gray-300 border-gray-100'}
                                     `}>
                                         {/* Status Indicator Bar */}
-                                        <div className={`absolute top-0 left-0 right-0 h-0.5 md:h-1 ${isHoliday ? (event.status === 'pending' ? 'bg-purple-400' : 'bg-rose-400') :
-                                            isWeekend ? 'bg-blue-400' : 'bg-transparent'
+                                        <div className={`absolute top-0 left-0 right-0 h-0.5 md:h-1 ${isBooked ? 'bg-gray-400' :
+                                            isHoliday ? (event.status === 'pending' ? 'bg-purple-400' : 'bg-rose-400') :
+                                                isWeekend ? 'bg-blue-400' : 'bg-transparent'
                                             }`} />
 
-                                        <span className={`text-[10px] md:text-base font-bold tracking-tight ${isHoliday ? (event.status === 'pending' ? 'text-purple-700' : 'text-rose-700') :
-                                            isWeekend ? 'text-blue-700' :
-                                                'text-gray-700'
+                                        <span className={`text-[10px] md:text-base font-bold tracking-tight ${isBooked ? 'text-gray-500 decoration-2' :
+                                            isHoliday ? (event.status === 'pending' ? 'text-purple-700' : 'text-rose-700') :
+                                                isWeekend ? 'text-blue-700' :
+                                                    'text-gray-700'
                                             } font-mono`}>
                                             {event.title}
                                         </span>
 
                                         {event.subtitle && (
                                             <span className={`text-[8px] md:text-[9px] uppercase font-bold tracking-widest px-1 py-px rounded-full max-w-[90%] truncate hidden md:block
-                                                ${isHoliday ? (event.status === 'pending' ? 'bg-purple-100 text-purple-600' : 'bg-rose-100 text-rose-600') : 'bg-gray-100 text-gray-400'}
+                                                ${isBooked ? 'bg-gray-200 text-gray-600' :
+                                                    isHoliday ? (event.status === 'pending' ? 'bg-purple-100 text-purple-600' : 'bg-rose-100 text-rose-600') : 'bg-gray-100 text-gray-400'}
                                             `}>
                                                 {event.subtitle}
                                             </span>
                                         )}
+
+                                        {/* Lock Icon for Booked */}
+                                        {isBooked && (
+                                            <div className="absolute top-1 right-1 text-gray-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             }
+
                         }}
                     />
                     {!selectedPropertyId && (

@@ -48,6 +48,7 @@ class VendorCalendarController extends Controller
         // Check conflicts
         $exists = Booking::where('PropertyId', $request->property_id)
             ->where('Status', '!=', 'cancelled')
+            ->where('Status', '!=', 'rejected') // Fix: Exclude rejected
             ->where(function($q) use ($request) {
                 $q->where('CheckInDate', '<', $request->end_date)
                   ->where('CheckOutDate', '>', $request->start_date);
@@ -78,6 +79,16 @@ class VendorCalendarController extends Controller
         $booking->save();
         
         return response()->json(['message' => 'Booking confirmed']);
+    }
+
+    // Reject a pending request
+    public function reject($id)
+    {
+        $booking = Booking::findOrFail($id);
+        $booking->Status = 'rejected';
+        $booking->save();
+        
+        return response()->json(['message' => 'Booking rejected']);
     }
 
     // DEBUG: Seed dummy data for testing

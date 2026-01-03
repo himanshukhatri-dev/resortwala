@@ -49,17 +49,17 @@ class BookingController extends Controller
         $property = \App\Models\PropertyMaster::find($validated['PropertyId']);
         
         // Check availability based on property type
-        if ($property && $property->property_type === 'villa') {
-            // For villas, check if dates are already booked
+        // Check availability logic
+        $type = strtolower($property->property_type);
+        $isWaterpark = ($type === 'waterpark' || $type === 'water park');
+
+        if (!$isWaterpark) {
+            // For villas/others, prevent overlap: (StartA < EndB) && (EndA > StartB)
             $existingBooking = Booking::where('PropertyId', $validated['PropertyId'])
-                ->whereIn('Status', ['Confirmed', 'pending'])
+                ->whereIn('Status', ['Confirmed', 'pending', 'locked', 'booked']) // Ensure all status checked
                 ->where(function($q) use ($validated) {
-                    $q->whereBetween('CheckInDate', [$validated['CheckInDate'], $validated['CheckOutDate']])
-                      ->orWhereBetween('CheckOutDate', [$validated['CheckInDate'], $validated['CheckOutDate']])
-                      ->orWhere(function($q2) use ($validated) {
-                          $q2->where('CheckInDate', '<=', $validated['CheckInDate'])
-                             ->where('CheckOutDate', '>=', $validated['CheckOutDate']);
-                      });
+                    $q->where('CheckInDate', '<', $validated['CheckOutDate'])
+                      ->where('CheckOutDate', '>', $validated['CheckInDate']);
                 })
                 ->exists();
                 
@@ -69,7 +69,7 @@ class BookingController extends Controller
                 ], 422);
             }
         }
-        // For waterparks and other types, allow multiple bookings (no check needed)
+        // For waterparks, allow multiple bookings
 
         // Set status based on booking source
         if ($bookingSource === 'public_calendar') {
