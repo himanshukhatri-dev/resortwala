@@ -378,6 +378,20 @@ export default function PublicPropertyCalendar() {
 
                     {/* Right: Actions */}
                     <div className="flex items-center gap-2">
+                        {/* Share Button */}
+                        <a
+                            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Check availability here: ${window.location.href}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => {
+                                const text = `Check availability here: ${window.location.href}`;
+                                navigator.clipboard.writeText(text).catch(e => console.error(e));
+                            }}
+                            className="px-3 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all no-underline"
+                        >
+                            <FaWhatsapp /> <span className="hidden md:inline">Share</span>
+                        </a>
+
                         {/* Map Toggle (Mobile/Desktop) */}
                         <button
                             onClick={() => setShowMap(!showMap)}

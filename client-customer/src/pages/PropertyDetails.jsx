@@ -297,6 +297,15 @@ export default function PropertyDetails() {
     }
 
     const ob = typeof property.onboarding_data === 'string' ? JSON.parse(property.onboarding_data) : (property.onboarding_data || {});
+
+    // Ensure array fields are parsed correctly if stored as strings
+    if (ob.otherAttractions && typeof ob.otherAttractions === 'string') {
+        ob.otherAttractions = ob.otherAttractions.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+    }
+    if (ob.otherRules && typeof ob.otherRules === 'string') {
+        ob.otherRules = ob.otherRules.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+    }
+
     const pricing = ob.pricing || {};
     const roomConfig = ob.roomConfig || { livingRoom: {}, bedrooms: [] };
     const isWaterpark = property.PropertyType === 'Waterpark' || property.PropertyType === 'WaterPark';

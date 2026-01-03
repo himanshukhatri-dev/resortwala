@@ -10,7 +10,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
-import { FaArrowLeft, FaArrowRight, FaFilter, FaShareAlt, FaSearch, FaTimes, FaCheck, FaBan, FaLock } from 'react-icons/fa';
+import { FaArrowLeft, FaArrowRight, FaFilter, FaShareAlt, FaSearch, FaTimes, FaCheck, FaBan, FaLock, FaWhatsapp } from 'react-icons/fa';
 import { useModal } from '../context/ModalContext';
 
 const locales = { 'en-US': enUS };
@@ -238,6 +238,20 @@ export default function GlobalCalendar() {
         } catch (e) { showError('Error', `Failed to ${action} booking.`); }
     };
 
+    // Helper to get Share URL
+    const getShareUrl = (propId) => {
+        const prop = properties.find(p => (p.id || p.PropertyId) == propId);
+        if (!prop) return { text: '', whatsapp: '' };
+
+        const token = prop.share_token || prop.id || prop.PropertyId;
+        // Use logic consistent with existing code
+        const finalBase = window.location.hostname.includes('localhost') ? 'http://localhost:5173' : window.location.origin;
+        const url = `${finalBase}/stay/${token}`;
+        const text = `Check availability for *${prop.Name}* here: ${url}`;
+        const whatsapp = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        return { text, whatsapp, url };
+    };
+
     const handleShareClick = () => {
         if (selectedPropertyId !== 'all') {
             shareProperty(selectedPropertyId);
@@ -395,12 +409,34 @@ export default function GlobalCalendar() {
                             </select>
                         </div>
                     </div>
-                    <button
-                        onClick={handleShareClick}
-                        className="bg-black text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-800 flex items-center justify-center gap-2 w-full sm:w-auto"
-                    >
-                        <FaShareAlt /> Share Link
-                    </button>
+                    {/* Share Button Logic */}
+                    {selectedPropertyId !== 'all' ? (
+                        (() => {
+                            const { whatsapp, text } = getShareUrl(selectedPropertyId);
+                            return (
+                                <a
+                                    href={whatsapp}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(text).then(() => {
+                                            showSuccess('Link Copied', 'Link also copied to clipboard.');
+                                        }).catch(console.error);
+                                    }}
+                                    className="bg-[#25D366] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#20be5c] flex items-center justify-center gap-2 w-full sm:w-auto no-underline transition-all"
+                                >
+                                    <FaWhatsapp size={18} /> Share on WhatsApp
+                                </a>
+                            );
+                        })()
+                    ) : (
+                        <button
+                            onClick={() => setShowShareModal(true)}
+                            className="bg-black text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-800 flex items-center justify-center gap-2 w-full sm:w-auto"
+                        >
+                            <FaShareAlt /> Share Link
+                        </button>
+                    )}
                 </div>
 
                 {/* Calendar Grid */}
@@ -525,17 +561,28 @@ export default function GlobalCalendar() {
                             <button onClick={() => setShowShareModal(false)} className="text-gray-400 hover:text-white"><FaTimes /></button>
                         </div>
                         <div className="p-6 space-y-2 max-h-[60vh] overflow-y-auto">
-                            <p className="text-sm text-gray-500 mb-4">Select a property to copy its public link:</p>
-                            {properties.map(p => (
-                                <button
-                                    key={p.id || p.PropertyId}
-                                    onClick={() => shareProperty(p.id || p.PropertyId)}
-                                    className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-black hover:bg-gray-50 transition-all group"
-                                >
-                                    <span className="font-bold text-gray-700 group-hover:text-black">{p.Name}</span>
-                                    <FaShareAlt className="text-gray-300 group-hover:text-black" />
-                                </button>
-                            ))}
+                            <p className="text-sm text-gray-500 mb-4">Select a property to share via WhatsApp:</p>
+                            {properties.map(p => {
+                                const { whatsapp, text } = getShareUrl(p.id || p.PropertyId);
+                                return (
+                                    <a
+                                        key={p.id || p.PropertyId}
+                                        href={whatsapp}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(text).then(() => {
+                                                showSuccess('Link Copied', 'Link also copied to clipboard.');
+                                                setShowShareModal(false);
+                                            }).catch(console.error);
+                                        }}
+                                        className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-[#25D366] hover:bg-green-50 transition-all group no-underline"
+                                    >
+                                        <span className="font-bold text-gray-700 group-hover:text-green-800">{p.Name}</span>
+                                        <FaWhatsapp className="text-gray-300 group-hover:text-[#25D366]" size={20} />
+                                    </a>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

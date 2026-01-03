@@ -186,7 +186,10 @@ export default function AddProperty() {
 
         // Validation Fixes
         idProofs: [],
-        nearbyAttractions: ''
+        otherAttractions: '',
+        checkInTime: '14:00',
+        checkOutTime: '11:00',
+        otherRules: ''
     });
 
     const [existingImages, setExistingImages] = useState([]);
@@ -639,8 +642,8 @@ export default function AddProperty() {
                 <div className="space-y-2 pt-2 border-t border-green-200 mt-4">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nearby Attractions / Places to Visit</label>
                     <textarea
-                        value={formData.nearbyAttractions || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, nearbyAttractions: e.target.value }))}
+                        value={formData.otherAttractions || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, otherAttractions: e.target.value }))}
                         className="w-full bg-white border border-green-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 outline-none h-24 resize-none"
                         placeholder="List nearby tourist spots, distances, etc..."
                     />
@@ -1174,6 +1177,16 @@ export default function AddProperty() {
             }
         };
 
+        const handleMakeCover = (index) => {
+            if (index === 0) return;
+            setFormData(prev => {
+                const images = [...prev.images];
+                const [selected] = images.splice(index, 1);
+                images.unshift(selected);
+                return { ...prev, images };
+            });
+        };
+
         return (
             <div className="space-y-6 animate-fade-in-up">
                 <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
@@ -1261,12 +1274,28 @@ export default function AddProperty() {
                     {formData.images.length > 0 && (
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                             {formData.images.map((file, idx) => (
-                                <div key={`new-${idx}`} className="relative group rounded-xl overflow-hidden aspect-square shadow-md bg-white">
+                                <div key={`new-${idx}`} className={`relative group rounded-xl overflow-hidden aspect-square shadow-md bg-white ${idx === 0 ? 'ring-4 ring-yellow-400' : ''}`}>
                                     <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
-                                    <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
-                                        NEW
-                                    </div>
+                                    {idx === 0 ? (
+                                        <div className="absolute top-2 left-2 bg-yellow-400 text-black text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
+                                            <FaStar /> Cover
+                                        </div>
+                                    ) : (
+                                        <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                                            NEW
+                                        </div>
+                                    )}
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        {idx !== 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleMakeCover(idx)}
+                                                className="bg-white text-yellow-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
+                                                title="Set as Cover"
+                                            >
+                                                <FaStar />
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={() => handleDeleteNewImage(idx)}

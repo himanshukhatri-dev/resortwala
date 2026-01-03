@@ -11,7 +11,7 @@ import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useModal } from '../context/ModalContext';
 import { API_BASE_URL } from '../config';
-import { FaArrowLeft, FaArrowRight, FaFilter, FaPlus, FaMoneyBillWave, FaTrash } from 'react-icons/fa';
+import { FaArrowLeft, FaArrowRight, FaFilter, FaPlus, FaMoneyBillWave, FaTrash, FaWhatsapp } from 'react-icons/fa';
 
 const locales = { 'en-US': enUS };
 
@@ -435,6 +435,8 @@ export default function Holiday() {
         const goToNext = () => toolbar.onNavigate('NEXT');
         const label = () => <span className="text-lg md:text-xl font-extrabold text-gray-900 capitalize tracking-tight min-w-[150px] md:min-w-[200px] text-center">{format(toolbar.date, 'MMMM yyyy')}</span>;
 
+
+
         return (
             <div className="flex flex-col md:flex-row justify-between items-center mb-4 md:mb-8 gap-4 md:gap-6 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                 <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
@@ -451,6 +453,32 @@ export default function Holiday() {
 
                 {/* Filter & Nav Grouped on Mobile */}
                 <div className="flex w-full md:w-auto items-center justify-between gap-2">
+                    {selectedPropertyId && (() => {
+                        const property = properties.find(p => (p.id || p.PropertyId) == selectedPropertyId);
+                        if (!property) return null;
+
+                        const baseUrl = window.location.hostname.includes('localhost') ? 'http://localhost:5173' : window.location.origin;
+                        const publicUrl = `${baseUrl}/calendar/${property.PropertyId || property.id}`;
+                        const text = `Check availability for *${property.Name || property.ShortName}* here: ${publicUrl}`;
+                        const shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+
+                        return (
+                            <a
+                                href={shareUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(text).then(() => {
+                                        showSuccess('Link Copied', 'Link also copied to clipboard.');
+                                    }).catch(console.error);
+                                }}
+                                className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20be5c] text-white px-3 py-2 rounded-xl font-bold shadow-sm transition-all text-xs md:text-sm whitespace-nowrap no-underline"
+                                title="Share Public Calendar"
+                            >
+                                <FaWhatsapp size={16} /> <span className="hidden md:inline">Share Availability</span>
+                            </a>
+                        );
+                    })()}
                     <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-200 flex-1 md:flex-none">
                         <FaFilter className="text-gray-400 text-xs" />
                         <select

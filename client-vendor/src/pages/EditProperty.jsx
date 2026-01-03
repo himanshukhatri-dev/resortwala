@@ -291,6 +291,7 @@ export default function EditProperty() {
                     latitude: ob.latitude || '',
                     longitude: ob.longitude || '',
                     otherAttractions: ob.otherAttractions || '', // Hydrated Field
+                    otherRules: ob.otherRules || '',
 
                     extraGuestLimit: pricing.extraGuestLimit || '15',
 
@@ -1346,6 +1347,16 @@ export default function EditProperty() {
             }
         };
 
+        const handleMakeCover = (index) => {
+            if (index === 0) return;
+            setFormData(prev => {
+                const images = [...prev.images];
+                const [selected] = images.splice(index, 1);
+                images.unshift(selected);
+                return { ...prev, images };
+            });
+        };
+
         const handleSetPrimary = async (imageId, e) => {
             e.stopPropagation();
             try {
@@ -1552,12 +1563,28 @@ export default function EditProperty() {
                             ))}
 
                             {formData.images.map((file, idx) => (
-                                <div key={`new-${idx}`} className="relative group rounded-xl overflow-hidden aspect-square shadow-md bg-white">
+                                <div key={`new-${idx}`} className={`relative group rounded-xl overflow-hidden aspect-square shadow-md bg-white ${idx === 0 ? 'ring-4 ring-yellow-400' : ''}`}>
                                     <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
-                                    <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
-                                        NEW
-                                    </div>
+                                    {idx === 0 ? (
+                                        <div className="absolute top-2 left-2 bg-yellow-400 text-black text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
+                                            <FaStar /> Cover
+                                        </div>
+                                    ) : (
+                                        <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                                            NEW
+                                        </div>
+                                    )}
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        {idx !== 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleMakeCover(idx)}
+                                                className="bg-white text-yellow-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
+                                                title="Set as Cover"
+                                            >
+                                                <FaStar />
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={() => handleDeleteNewImage(idx)}

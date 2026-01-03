@@ -742,7 +742,6 @@ export default function PropertyApproval() {
                                         <CheckRow label="Smoking" value={obData.rules?.[6]} />
                                         <CheckRow label="Alcohol" value={obData.rules?.[7]} />
                                         <CheckRow label="Pets" value={obData.rules?.[2]} />
-                                        <CheckRow label="Events/Parties" value={obData.rules?.[9]} />
                                     </div>
                                 </div>
                                 <div className="bg-white border p-6 rounded-xl">
