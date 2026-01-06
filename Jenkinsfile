@@ -1,129 +1,116 @@
 pipeline {
     agent any
 
-    parameters {
-        choice(name: 'DEPLOY_ENV', choices: ['Staging', 'Production'], description: 'Select the Environment to Deploy to')
-        booleanParam(name: 'CONFIRM_PROD', defaultValue: false, description: 'Check this to confirm deployment if Production is selected')
-    }
-
     environment {
         REMOTE_USER = 'root'
         REMOTE_HOST = '72.61.242.42'
         SSH_KEY = credentials('resortwala-deploy-key')
         
-        // Path variables will be set dynamically in Initialize stage
+        // Directories
+        BETA_DIR = '/var/www/html/beta.resortwala.com'
+        PROD_DIR = '/var/www/html/resortwala.com'
     }
 
     stages {
-        stage('Initialize') {
-            steps {
-                script {
-                    if (params.DEPLOY_ENV == 'Production') {
-                        if (!params.CONFIRM_PROD) {
-                            error("Production deployment selected but not confirmed! Please check CONFIRM_PROD.")
+        stage('Build') {
+            parallel {
+                stage('Build Customer') {
+                    steps {
+                        dir('client-customer') {
+                            sh 'npm install && npm run build'
                         }
-
-                        // Production Paths
-                        env.CUSTOMER_DIR = '/var/www/html/resortwala.com'
-                        env.ADMIN_DIR    = '/var/www/html/admin.resortwala.com'
-                        env.VENDOR_DIR   = '/var/www/html/vendor.resortwala.com'
-                        env.API_DIR      = '/var/www/html/api.resortwala.com'
-                    } else {
-                        // Staging/Beta Paths
-                        env.CUSTOMER_DIR = '/var/www/html/staging.resortwala.com'
-                        env.ADMIN_DIR    = '/var/www/html/stagingadmin.resortwala.com'
-                        env.VENDOR_DIR   = '/var/www/html/stagingvendor.resortwala.com'
-                        env.API_DIR      = '/var/www/html/stagingapi.resortwala.com'
                     }
-                    
-                    echo "Deploying to ${params.DEPLOY_ENV}"
-                    echo "Customer: ${env.CUSTOMER_DIR}"
-                    echo "Admin:    ${env.ADMIN_DIR}"
-                    echo "Vendor:   ${env.VENDOR_DIR}"
-                    echo "API:      ${env.API_DIR}"
+                }
+                stage('Build Vendor') {
+                    steps {
+                        dir('client-vendor') {
+                            sh 'npm install && npm run build'
+                        }
+                    }
+                }
+                stage('Build Admin') {
+                    steps {
+                        dir('client-admin') {
+                            sh 'npm install && npm run build'
+                        }
+                    }
+                }
+                stage('Build Backend') {
+                    steps {
+                        dir('api') {
+                            sh 'composer install --no-dev --optimize-autoloader'
+                        }
+                    }
                 }
             }
         }
 
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('System Backup (Prod Only)') {
+        // --- STAGING DEPLOYMENT ---
+        stage('Deploy to Staging') {
             when {
-                expression { params.DEPLOY_ENV == 'Production' }
+                branch 'master'
             }
             steps {
                 sshagent(['resortwala-deploy-key']) {
-                    script {
-                        // Assuming backup script is in API dir or central tools dir
-                        def backupScript = "${env.API_DIR}/../dev_tools/ops/backup_db.sh" 
-                        sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'if [ -f ${backupScript} ]; then bash ${backupScript}; else echo \"Backup script not found, skipping...\"; fi'"
-                    }
+                    // Create dir if missing
+                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${BETA_DIR}'"
+                    
+                    // Deploy Frontend (Customer)
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/"
+                    
+                    // Note: Beta API deployment logic (if needed) goes here. 
+                    // Currently assuming Beta frontend connects to existing stagingapi.
                 }
             }
         }
 
-        stage('Build & Prepare') {
+        // --- PRODUCTION DEPLOYMENT ---
+        stage('Production Gate') {
+            when {
+                branch 'release'
+            }
             steps {
-                // Frontends
-                dir('client-customer') {
-                    sh 'npm install && npm run build'
-                }
-                dir('client-vendor') {
-                    sh 'npm install && npm run build'
-                }
-                dir('client-admin') {
-                    sh 'npm install && npm run build'
-                }
-                
-                // Backend
-                dir('api') {
-                    sh 'composer install --no-dev --optimize-autoloader'
-                }
+                input message: 'Deploy to PRODUCTION?', ok: 'Deploy'
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to Production') {
+            when {
+                branch 'release'
+            }
             steps {
                 sshagent(['resortwala-deploy-key']) {
-                     // Ensure Remote Dirs Exist
-                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${env.CUSTOMER_DIR} ${env.ADMIN_DIR} ${env.VENDOR_DIR} ${env.API_DIR}'"
+                    // 1. Deploy API
+                    sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/api/"
+                    
+                    // 2. Deploy Frontends
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/"
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/vendor/"
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/admin/"
 
-                    // Deploy API
-                    // Note: Exclude .env and storage to prevent overwriting config/data
-                    sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${env.API_DIR}/"
-                    
-                    // Deploy Frontends
-                    // Customer App -> CUSTOMER_DIR
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.CUSTOMER_DIR}/"
-                    
-                    // Vendor App -> VENDOR_DIR
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.VENDOR_DIR}/"
-                    
-                    // Admin App -> ADMIN_DIR
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.ADMIN_DIR}/"
-
-                    // Permissions & Commands (API)
+                    // 3. Post-Deploy Commands
                     sh """
                         ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
-                            cd ${env.API_DIR} &&
+                            cd ${PROD_DIR}/api &&
                             php artisan migrate --force &&
                             php artisan config:cache &&
-                            php artisan route:cache
+                            php artisan route:cache &&
+                            php artisan view:clear
                         '
                     """
                 }
             }
         }
         
-        stage('Post-Deploy Check') {
+        stage('Health Check') {
             steps {
                 script {
-                    def checkUrl = (params.DEPLOY_ENV == 'Production') ? 'https://resortwala.com' : 'https://beta.resortwala.com'
-                    sh "curl -f -I ${checkUrl} || echo 'Warning: Site check failed, but deployment completed.'"
+                    if (env.BRANCH_NAME == 'master') {
+                        sh "curl -f -I https://beta.resortwala.com || echo 'Beta verification failed'"
+                    }
+                    if (env.BRANCH_NAME == 'release') {
+                        sh "curl -f -I https://resortwala.com || echo 'Prod verification failed'"
+                    }
                 }
             }
         }
