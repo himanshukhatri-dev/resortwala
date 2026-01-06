@@ -244,7 +244,9 @@ export default function BookingPage() {
             });
         } catch (err) {
             console.error(err);
-            alert("Booking Failed. Please try again.");
+            console.error(error);
+            const errMsg = error.response?.data?.error || error.response?.data?.message || error.message || "Unknown error";
+            alert(`Booking Failed: ${errMsg}`);
             setBookingStatus('idle');
         }
     };

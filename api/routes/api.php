@@ -109,6 +109,34 @@ Route::get('/health', [StatusController::class, 'check']); // Alias for status
 Route::get('/holidays', [\App\Http\Controllers\HolidayController::class, 'index']);
 Route::get('/holidays/fix-approve', [\App\Http\Controllers\HolidayController::class, 'approveAll']);
 
+// DEBUG ROUTE - REMOVE AFTER FIXING 500 ERROR
+Route::get('/debug-db', function() {
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $dbName = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
+        // Try reading a table
+        $count = \App\Models\User::count();
+        return response()->json([
+            'status' => 'success', 
+            'message' => "Connected to database: $dbName",
+            'user_count' => $count,
+            'env_db_host' => env('DB_HOST'),
+            'env_db_name' => env('DB_DATABASE'),
+            'env_db_user' => env('DB_USERNAME'),
+            // Do NOT print password
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'code' => $e->getCode(),
+            'env_db_host' => env('DB_HOST'),
+            'env_db_name' => env('DB_DATABASE'),
+            'env_db_user' => env('DB_USERNAME'),
+        ], 500);
+    }
+});
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vendor/profile', [\App\Http\Controllers\VendorController::class, 'profile']);
     Route::put('/vendor/profile', [\App\Http\Controllers\VendorController::class, 'updateProfile']);
