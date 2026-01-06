@@ -34,6 +34,11 @@ class AdminIntelligenceController extends Controller
 
         return response()->json([
             'success' => true,
+            'connection' => [
+                'host' => env('DB_HOST', '127.0.0.1'),
+                'database' => env('DB_DATABASE'),
+                'username' => env('DB_USERNAME'),
+            ],
             'schema' => $schema
         ]);
     }

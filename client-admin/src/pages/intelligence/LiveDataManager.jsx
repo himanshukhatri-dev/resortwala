@@ -17,6 +17,8 @@ export default function LiveDataManager() {
 
     const [primaryKey, setPrimaryKey] = useState('id');
 
+    const [connectionInfo, setConnectionInfo] = useState(null);
+
     // Fetch Tables List on Mount
     useEffect(() => {
         fetchTables();
@@ -28,9 +30,16 @@ export default function LiveDataManager() {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.success || res.status === 200) {
-                // schema endpoint returns object with keys as table names
-                const tableNames = Object.keys(res.data);
+                // Correctly access the schema object
+                const schemaObj = res.data.schema || res.data;
+                // Filter out non-table keys if the API returns wrapped response
+                const tableNames = Object.keys(schemaObj).filter(k => k !== 'success' && k !== 'connection');
+
                 setTables(tableNames);
+                if (res.data.connection) {
+                    setConnectionInfo(res.data.connection);
+                }
+
                 if (tableNames.length > 0 && !selectedTable) {
                     setSelectedTable(tableNames[0]);
                 }
@@ -40,38 +49,7 @@ export default function LiveDataManager() {
         }
     };
 
-    // Fetch Table Data when selectedTable changes
-    useEffect(() => {
-        if (!selectedTable) return;
-        fetchData();
-        setEdits({});
-    }, [selectedTable]);
-
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            // Build query params
-            const params = new URLSearchParams();
-            if (searchTerm) params.append('search', searchTerm);
-
-            const res = await axios.get(`${API_BASE_URL}/admin/intelligence/data/${selectedTable}?${params.toString()}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (res.data && res.data.data) {
-                setData(res.data.data);
-                setPrimaryKey(res.data.pk || 'id'); // Set dynamic PK
-                if (res.data.data.length > 0) {
-                    setSchema(Object.keys(res.data.data[0]));
-                }
-            }
-        } catch (err) {
-            console.error("Failed to fetch table data", err);
-            setData([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // ... (rest of useEffects and functions)
 
     const handleSearch = (e) => {
         if (e.key === 'Enter') {
@@ -125,6 +103,13 @@ export default function LiveDataManager() {
                     <h3 className="font-bold text-gray-700 flex items-center gap-2">
                         <FaTable className="text-blue-500" /> Database Tables
                     </h3>
+                    {connectionInfo && (
+                        <div className="mt-2 text-xs text-gray-500 bg-white p-2 rounded border border-gray-200 shadow-sm">
+                            <div className="flex justify-between"><span>Host:</span> <span className="font-mono font-bold text-gray-700">{connectionInfo.host}</span></div>
+                            <div className="flex justify-between"><span>DB:</span> <span className="font-mono font-bold text-gray-700">{connectionInfo.database}</span></div>
+                            <div className="flex justify-between"><span>User:</span> <span className="font-mono font-bold text-gray-700">{connectionInfo.username}</span></div>
+                        </div>
+                    )}
                 </div>
                 <div className="flex-1 overflow-y-auto p-2">
                     {tables.map(t => (
