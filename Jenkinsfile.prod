@@ -14,6 +14,9 @@ pipeline {
 
     stages {
         stage('Approval Gate') {
+            when {
+                branch 'release'
+            }
             steps {
                 script {
                     if (!params.CONFIRM_DEPLOY) {
@@ -43,26 +46,42 @@ pipeline {
         }
 
         stage('Build & Prepare') {
-            steps {
-                // Frontends
-                dir('client-customer') {
-                    sh 'npm install && npm run build'
+            parallel {
+                stage('Build Customer') {
+                    steps {
+                        dir('client-customer') {
+                            sh 'npm install && npm run build'
+                        }
+                    }
                 }
-                dir('client-vendor') {
-                    sh 'npm install && npm run build'
+                stage('Build Vendor') {
+                    steps {
+                        dir('client-vendor') {
+                            sh 'npm install && npm run build'
+                        }
+                    }
                 }
-                dir('client-admin') {
-                    sh 'npm install && npm run build'
+                stage('Build Admin') {
+                    steps {
+                        dir('client-admin') {
+                            sh 'npm install && npm run build'
+                        }
+                    }
                 }
-                
-                // Backend
-                dir('api') {
-                    sh 'composer install --no-dev --optimize-autoloader'
+                stage('Build Backend') {
+                    steps {
+                        dir('api') {
+                            sh 'composer install --no-dev --optimize-autoloader'
+                        }
+                    }
                 }
             }
         }
 
         stage('Deploy Production') {
+            when {
+                branch 'release'
+            }
             steps {
                 sshagent(['resortwala-deploy-key']) {
                     // 1. Enter Maintenance Mode (Optional, usually 0 downtime preferred, but safe for major updates)

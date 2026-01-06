@@ -18,24 +18,31 @@ pipeline {
             }
         }
 
-        stage('Build Frontend (Customer)') {
-            steps {
-                dir('client-customer') {
-                    sh 'npm install'
-                    sh 'npm run build'
+        stage('Build') {
+            parallel {
+                stage('Build Frontend (Customer)') {
+                    steps {
+                        dir('client-customer') {
+                            sh 'npm install'
+                            sh 'npm run build'
+                        }
+                    }
                 }
-            }
-        }
 
-        stage('Build Backend (API)') {
-            steps {
-                dir('api') {
-                    sh 'composer install --no-dev --optimize-autoloader'
+                stage('Build Backend (API)') {
+                    steps {
+                        dir('api') {
+                            sh 'composer install --no-dev --optimize-autoloader'
+                        }
+                    }
                 }
             }
         }
 
         stage('Deploy to Beta') {
+            when {
+                branch 'master'
+            }
             steps {
                 sshagent(['resortwala-deploy-key']) {
                     // Create remote dir if not exists
