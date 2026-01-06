@@ -23,7 +23,7 @@ return new class extends Migration
                 $table->timestamp('created_at')->useCurrent()->index();
                 
                 // Foreign key (optional)
-                $table->foreign('user_id')->references('UserID')->on('users')->onDelete('set null');
+                $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
             });
         }
     }
