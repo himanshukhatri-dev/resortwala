@@ -125,40 +125,38 @@ pipeline {
             }
         }
 
+        // --- PRODUCTION DEPLOYMENT (Coming Soon Mode) ---
         stage('Deploy to Production') {
             when {
-                expression { params.DEPLOY_TARGET == 'Production' || (params.DEPLOY_TARGET == 'Auto' && env.BRANCH_NAME == 'release') }
+                anyOf {
+                    branch 'release'
+                    expression { params.DEPLOY_TARGET == 'Production' }
+                }
             }
             steps {
                 sshagent(['resortwala-deploy-key']) {
                      script {
-                        // 1. Prepare & Compress Frontends
-                        // Customer
-                        sh "tar -czf customer.tar.gz -C client-customer/dist ."
-                        // Vendor
-                        sh "tar -czf vendor.tar.gz -C client-vendor/dist ."
-                        // Admin
-                        sh "tar -czf admin.tar.gz -C client-admin/dist ."
-                        // API
+                        // 1. Prepare & Compress
+                        // API (Backend) - Always deploy for data consistency
                         sh "tar -czf api.tar.gz --exclude=.env --exclude=storage --exclude=.git -C api ."
+                        
+                        // Coming Soon Page (Static)
+                        sh "tar -czf coming_soon.tar.gz -C coming_soon ."
 
                         // 2. Upload
-                        sh "scp -o StrictHostKeyChecking=no customer.tar.gz vendor.tar.gz admin.tar.gz api.tar.gz ${REMOTE_USER}@${REMOTE_HOST}:/tmp/"
+                        sh "scp -o StrictHostKeyChecking=no api.tar.gz coming_soon.tar.gz ${REMOTE_USER}@${REMOTE_HOST}:/tmp/"
 
                         // 3. Extract & Setup (Production)
+                        // Deploying Coming Soon to PROD_WEB_DIR
                         sh """
                             ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
-                                # --- Frontend Deployment ---
-                                mkdir -p ${PROD_WEB_DIR}/vendor ${PROD_WEB_DIR}/admin
-                                
-                                # Customer 
-                                tar -xzf /tmp/customer.tar.gz -C ${PROD_WEB_DIR}/
-                                # Vendor
-                                tar -xzf /tmp/vendor.tar.gz -C ${PROD_WEB_DIR}/vendor/
-                                # Admin
-                                tar -xzf /tmp/admin.tar.gz -C ${PROD_WEB_DIR}/admin/
+                                # --- Deploy Coming Soon ---
+                                mkdir -p ${PROD_WEB_DIR}
+                                # Overwrite web dir with Coming Soon files
+                                tar -xzf /tmp/coming_soon.tar.gz -C ${PROD_WEB_DIR}/
+                                chmod -R 755 ${PROD_WEB_DIR}
 
-                                # --- API Deployment ---
+                                # --- API Deployment (Background) ---
                                 mkdir -p ${PROD_API_DIR}
                                 tar -xzf /tmp/api.tar.gz -C ${PROD_API_DIR}/
 
