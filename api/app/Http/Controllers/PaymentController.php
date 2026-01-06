@@ -31,7 +31,7 @@ class PaymentController extends Controller
     public function initiate(Request $request)
     {
         $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
+            'booking_id' => 'required|exists:bookings,BookingId',
             'redirect_url' => 'required|url' // Where frontend wants to return (e.g., /booking/success)
         ]);
 
@@ -41,7 +41,7 @@ class PaymentController extends Controller
         // Ensure total amount is used. Check if partial payment is allowed? assuming full.
         $amountPaise = (int) ($booking->TotalAmount * 100);
 
-        $transactionId = "TXN_" . $booking->id . "_" . time();
+        $transactionId = "TXN_" . $booking->BookingId . "_" . time();
 
         // Save transaction ID to booking for tracking (optional, or use meta column)
         // $booking->transaction_id = $transactionId; 
