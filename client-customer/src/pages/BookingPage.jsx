@@ -232,16 +232,38 @@ export default function BookingPage() {
 
         try {
             const res = await axios.post(`${API_BASE_URL}/bookings`, payload);
-            if (form.CustomerEmail) localStorage.setItem('user_email', form.CustomerEmail);
-            if (form.CustomerMobile) localStorage.setItem('user_mobile', form.CustomerMobile);
-            navigate('/bookings', {
-                state: {
-                    bookingSuccess: true,
-                    message: "Booking Request Sent! Waiting for Approval.",
-                    newBookingId: res.data.bookingId || res.data.id || res.data.booking?.BookingId || null,
-                    property_name: property.Name
+            if (form.payment_method === 'hotel') {
+                // Standard Offline Flow
+                if (form.CustomerEmail) localStorage.setItem('user_email', form.CustomerEmail);
+                if (form.CustomerMobile) localStorage.setItem('user_mobile', form.CustomerMobile);
+                navigate('/bookings', {
+                    state: {
+                        bookingSuccess: true,
+                        message: "Booking Request Sent! Waiting for Approval.",
+                        newBookingId: res.data.bookingId || res.data.id || res.data.booking?.BookingId || null,
+                        property_name: property.Name
+                    }
+                });
+            } else {
+                // Online Payment Flow (PhonePe)
+                const bookingId = res.data.bookingId || res.data.id || res.data.booking?.BookingId || res.data.booking?.id; // Robust ID extraction
+
+                try {
+                    const payRes = await axios.post(`${API_BASE_URL}/payment/initiate`, {
+                        booking_id: bookingId,
+                        redirect_url: window.location.origin + '/booking/success' // Unused by backend currently but good practice
+                    });
+
+                    if (payRes.data.success && payRes.data.redirect_url) {
+                        window.location.href = payRes.data.redirect_url;
+                    } else {
+                        alert("Payment Initiation Failed. Please try again or pay at hotel.");
+                    }
+                } catch (payErr) {
+                    console.error("Payment Error", payErr);
+                    alert("Payment Gateway Error: " + (payErr.response?.data?.message || payErr.message));
                 }
-            });
+            }
         } catch (err) {
             console.error(err);
             console.error(error);

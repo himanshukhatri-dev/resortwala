@@ -79,7 +79,8 @@ class BookingController extends Controller
         }
         
         $validated['booking_source'] = $bookingSource;
-        $validated['payment_status'] = ($validated['payment_method'] === 'hotel') ? 'pending' : 'paid';
+        // Initial payment status is always pending until callback confirms it
+        $validated['payment_status'] = 'pending';
 
         $booking = Booking::create($validated);
 
