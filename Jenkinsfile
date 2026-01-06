@@ -63,6 +63,10 @@ pipeline {
                     // Deploy Frontend (Customer)
                     sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/"
                     
+                    // Deploy Frontend (Vendor & Admin)
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/vendor/"
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/admin/"
+                    
                     // Note: Beta API deployment logic (if needed) goes here. 
                     // Currently assuming Beta frontend connects to existing stagingapi.
                 }
