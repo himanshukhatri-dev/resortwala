@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../../config';
 export default function LiveDataManager() {
     const { token } = useAuth();
     const [selectedTable, setSelectedTable] = useState('');
+    const [targetDb, setTargetDb] = useState('');
     const [tables, setTables] = useState([]);
     const [data, setData] = useState([]);
     const [schema, setSchema] = useState([]);
@@ -49,7 +50,29 @@ export default function LiveDataManager() {
         }
     };
 
-    // ... (rest of useEffects and functions)
+    const fetchData = async () => {
+        if (!selectedTable) return;
+        setLoading(true);
+        try {
+            const res = await axios.get(`${API_BASE_URL}/admin/intelligence/data/${selectedTable}`, {
+                params: { search: searchTerm },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'X-Target-DB': targetDb
+                }
+            });
+            setData(res.data.data || []);
+        } catch (err) {
+            console.error("Failed to fetch data", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Trigger Fetch on selection/search
+    useEffect(() => {
+        fetchData();
+    }, [selectedTable, targetDb]); // Add targetDb dependency
 
     const handleSearch = (e) => {
         if (e.key === 'Enter') {
@@ -103,6 +126,18 @@ export default function LiveDataManager() {
                     <h3 className="font-bold text-gray-700 flex items-center gap-2">
                         <FaTable className="text-blue-500" /> Database Tables
                     </h3>
+                    <div className="mt-3">
+                        <select
+                            value={targetDb}
+                            onChange={(e) => setTargetDb(e.target.value)}
+                            className="w-full text-xs p-1.5 rounded border border-gray-200 bg-white text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                            <option value="">(Default Connection)</option>
+                            <option value="resortwala">ResortWala (Beta/Staging)</option>
+                            <option value="resortwala_prod">ResortWala (Production)</option>
+                            <option value="resortwala_staging">ResortWala (Legacy Staging)</option>
+                        </select>
+                    </div>
                     {connectionInfo && (
                         <div className="mt-2 text-xs text-gray-500 bg-white p-2 rounded border border-gray-200 shadow-sm">
                             <div className="flex justify-between"><span>Host:</span> <span className="font-mono font-bold text-gray-700">{connectionInfo.host}</span></div>

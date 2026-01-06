@@ -12,13 +12,35 @@ class AdminIntelligenceController extends Controller
     /**
      * Get Database Schema for Visualization
      */
+    private function configureConnection(Request $request)
+    {
+        $targetDb = $request->header('X-Target-DB') ?? $request->query('target_db');
+        
+        if ($targetDb && in_array($targetDb, ['resortwala', 'resortwala_prod', 'resortwala_staging', 'resortwala_backup'])) {
+             // Purge previous connection to ensure fresh config
+             DB::purge('mysql');
+             
+             // Update Config
+             config(['database.connections.mysql.database' => $targetDb]);
+             
+             // Reconnect
+             DB::reconnect('mysql');
+        }
+    }
+
+    /**
+     * Get Database Schema for Visualization
+     */
     public function getSchema(Request $request)
     {
+        $this->configureConnection($request);
+
         // Security Check: Ensure only super admins can access
         // if (!$request->user()->isSuperAdmin()) abort(403);
 
         $tables = $this->getAllTables();
         $schema = [];
+
 
         foreach ($tables as $table) {
             $tableName = $table->name;
@@ -95,6 +117,8 @@ class AdminIntelligenceController extends Controller
      */
     public function getTableData(Request $request, $table)
     {
+        $this->configureConnection($request);
+
         // Security: Validate table name against allowlist or schema
         if (!$this->isValidTable($table)) {
             return response()->json(['error' => 'Invalid table'], 400);
@@ -136,6 +160,8 @@ class AdminIntelligenceController extends Controller
      */
     public function updateTableData(Request $request, $table, $id)
     {
+        $this->configureConnection($request);
+
         if (!$this->isValidTable($table)) {
             return response()->json(['error' => 'Invalid table'], 400);
         }
