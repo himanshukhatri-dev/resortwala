@@ -92,11 +92,21 @@ const PublicMasterCalendar = () => {
     const getCustomerUrl = (shareToken, propId) => {
         const hostname = window.location.hostname;
         let baseUrl = 'http://localhost:3002'; // Default Local
-        if (hostname.includes('staging')) {
-            baseUrl = 'http://staging.resortwala.com';
-        } else {
-            // Default production/beta URL
-            baseUrl = 'https://beta.resortwala.com';
+
+        if (hostname !== 'localhost') {
+            // Dynamic Hostname Logic:
+            // Remove 'vendor' from the hostname to get the customer app hostname.
+            // e.g. stagingvendor.resortwala.com -> staging.resortwala.com
+            // e.g. vendor.resortwala.com -> resortwala.com
+            let customerHostname = hostname.replace('vendor', '');
+
+            // Clean up potentially formed double dots or leading dots
+            if (customerHostname.startsWith('.')) {
+                customerHostname = customerHostname.substring(1);
+            }
+            customerHostname = customerHostname.replace('..', '.');
+
+            baseUrl = `https://${customerHostname}`;
         }
 
         // Prioritize Share Token if available

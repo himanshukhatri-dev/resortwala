@@ -34,7 +34,7 @@
         <div class="container">
             <!-- Header with Logo -->
             <div class="header">
-                <img src="http://staging.resortwala.com/resortwala-logo.png" alt="ResortWala" />
+                <img src="{{ env('FRONTEND_URL', 'https://resortwala.com') }}/resortwala-logo.png" alt="ResortWala" />
             </div>
 
             <!-- Hero Section -->
@@ -105,7 +105,7 @@
                 </div>
 
                 <div style="text-align: center; margin-top: 30px;">
-                    <a href="https://beta.resortwala.com/bookings" class="btn">Manage My Booking</a>
+                    <a href="{{ env('FRONTEND_URL', 'https://resortwala.com') }}/bookings" class="btn">Manage My Booking</a>
                 </div>
             </div>
 

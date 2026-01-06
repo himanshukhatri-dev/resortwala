@@ -29,7 +29,7 @@
     <div class="wrapper">
         <div class="container">
             <div class="header">
-                <img src="http://staging.resortwala.com/resortwala-logo.png" alt="ResortWala">
+                <img src="{{ env('FRONTEND_URL', 'https://resortwala.com') }}/resortwala-logo.png" alt="ResortWala">
             </div>
 
             <div class="hero">
@@ -70,15 +70,15 @@
 
                 @if($type === 'request_submitted')
                     <p style="text-align: center;">
-                        <a href="http://stagingadmin.resortwala.com/property-changes/{{ $requestId ?? '' }}" class="btn">Review Changes</a>
+                        <a href="{{ env('ADMIN_URL', 'https://admin.resortwala.com') }}/property-changes/{{ $requestId ?? '' }}" class="btn">Review Changes</a>
                     </p>
                 @elseif($type === 'holiday_submitted')
                     <p style="text-align: center;">
-                        <a href="http://stagingadmin.resortwala.com/admin/approvals" class="btn">Review Holidays</a>
+                        <a href="{{ env('ADMIN_URL', 'https://admin.resortwala.com') }}/admin/approvals" class="btn">Review Holidays</a>
                     </p>
                 @else
                     <p style="text-align: center;">
-                        <a href="http://stagingvendor.resortwala.com/vendor/properties" class="btn">View Property</a>
+                        <a href="{{ env('VENDOR_URL', 'https://vendor.resortwala.com') }}/vendor/properties" class="btn">View Property</a>
                     </p>
                 @endif
             </div>
