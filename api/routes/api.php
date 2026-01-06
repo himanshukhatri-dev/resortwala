@@ -158,9 +158,10 @@ Route::prefix('admin/intelligence')->middleware(['auth:sanctum', 'verified'])->g
     
     // Database Backups
     Route::get('/backups', [App\Http\Controllers\Admin\BackupController::class, 'index']);
-    Route::post('/backups', [App\Http\Controllers\Admin\BackupController::class, 'store']);
-    Route::post('/backups/restore', [App\Http\Controllers\Admin\BackupController::class, 'restore']);
-    Route::delete('/backups/{filename}', [App\Http\Controllers\Admin\BackupController::class, 'destroy']);
+    Route::post('/backups', [App\Http\Controllers\Admin\BackupController::class, 'create']); // Changed from store to create to match controller
+    Route::post('/backups/{filename}/restore', [App\Http\Controllers\Admin\BackupController::class, 'restore']); // Fixed route param
+    Route::get('/backups/{filename}/download', [App\Http\Controllers\Admin\BackupController::class, 'download']); // Added download
+    Route::delete('/backups/{filename}', [App\Http\Controllers\Admin\BackupController::class, 'delete']); // Changed from destroy to delete
 });
 
 // Admin Authentication Routes

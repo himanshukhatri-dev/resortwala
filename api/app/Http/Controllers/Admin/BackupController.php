@@ -7,124 +7,158 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class BackupController extends Controller
 {
-    private $backupDisk = 'local'; // Uses storage/app
-    private $backupFolder = 'backups';
-
+    /**
+     * List all backups
+     */
     public function index()
     {
-        // Ensure directory exists
-        if (!Storage::disk($this->backupDisk)->exists($this->backupFolder)) {
-            Storage::disk($this->backupDisk)->makeDirectory($this->backupFolder);
-        }
-
-        $files = Storage::disk($this->backupDisk)->files($this->backupFolder);
+        $files = Storage::disk('local')->files('resortwala-backups');
         $backups = [];
 
         foreach ($files as $file) {
-            if (pathinfo($file, PATHINFO_EXTENSION) === 'gz') {
+            if (str_ends_with($file, '.sql')) {
                 $backups[] = [
-                    'filename' => basename($file),
-                    'size' => $this->formatSize(Storage::disk($this->backupDisk)->size($file)),
-                    'created_at' => Carbon::createFromTimestamp(Storage::disk($this->backupDisk)->lastModified($file))->toDateTimeString(),
-                    'timestamp' => Storage::disk($this->backupDisk)->lastModified($file) // For sorting
+                    'name' => basename($file),
+                    'size' => $this->formatSize(Storage::disk('local')->size($file)),
+                    'date' => Carbon::createFromTimestamp(Storage::disk('local')->lastModified($file))->toDateTimeString(),
+                    'path' => $file
                 ];
             }
         }
 
-        // Sort by newest first
-        usort($backups, function ($a, $b) {
-            return $b['timestamp'] - $a['timestamp'];
-        });
+        // Sort by date desc
+        usort($backups, fn($a, $b) => strcmp($b['date'], $a['date']));
 
-        return response()->json($backups);
+        return response()->json(['success' => true, 'backups' => $backups]);
     }
 
-    public function store()
+    /**
+     * Create a new backup
+     */
+    public function create()
     {
-        // Create backup
-        $filename = 'db_backup_' . date('Y-m-d_H-i-s') . '.sql.gz';
-        $path = storage_path('app/' . $this->backupFolder . '/' . $filename);
-
-        // Ensure folder exists
-        if (!file_exists(storage_path('app/' . $this->backupFolder))) {
-            mkdir(storage_path('app/' . $this->backupFolder), 0755, true);
+        $filename = 'backup-' . Carbon::now()->format('Y-m-d-H-i-s') . '.sql';
+        $path = storage_path('app/resortwala-backups/' . $filename);
+        
+        // Ensure directory exists
+        if (!Storage::disk('local')->exists('resortwala-backups')) {
+            Storage::disk('local')->makeDirectory('resortwala-backups');
         }
 
-        $dbUser = env('DB_USERNAME');
-        $dbPass = env('DB_PASSWORD');
-        $dbName = env('DB_DATABASE');
-        $dbHost = env('DB_HOST', '127.0.0.1');
+        // Determine DB Config
+        $host = config('database.connections.mysql.host');
+        $username = config('database.connections.mysql.username');
+        $password = config('database.connections.mysql.password');
+        $database = config('database.connections.mysql.database');
 
-        // Construct command (mysqldump | gzip)
-        // Note: Using a shell wrapper to handle the pipe
-        $command = "mysqldump -u '{$dbUser}' -p'{$dbPass}' -h '{$dbHost}' '{$dbName}' | gzip > '{$path}'";
+        // Build command (using mysqldump)
+        // Note: Password usage in command line is visible in process list, but acceptable for this internal tool context.
+        // Better approach: use .my.cnf or env var. For now, direct command.
+        
+        $command = sprintf(
+            'mysqldump --user=%s --password=%s --host=%s %s > %s',
+            escapeshellarg($username),
+            escapeshellarg($password),
+            escapeshellarg($host),
+            escapeshellarg($database),
+            escapeshellarg($path)
+        );
 
-        // Using Process to execute
-        // We use 'bash -c' to handle the pipe logic easily
-        $process = Process::fromShellCommandline($command);
-        $process->setTimeout(300); // 5 minutes
-        $process->run();
+        // Execute
+        try {
+            // Using shell_exec for simplicity with redirection
+            // Symfony Process doesn't handle '>' redirection natively without 'sh -c'
+            $output = null;
+            $resultCode = null;
+            exec($command, $output, $resultCode);
 
-        if (!$process->isSuccessful()) {
+            if ($resultCode !== 0) {
+                 return response()->json(['success' => false, 'error' => 'Backup failed with code ' . $resultCode], 500);
+            }
+
             return response()->json([
-                'error' => 'Backup failed',
-                'details' => $process->getErrorOutput()
-            ], 500);
-        }
+                'success' => true, 
+                'message' => 'Backup created successfully',
+                'file' => $filename
+            ]);
 
-        return response()->json([
-            'message' => 'Backup created successfully',
-            'filename' => $filename
-        ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
     }
 
-    public function restore(Request $request)
+    /**
+     * Download a backup
+     */
+    public function download($filename)
     {
-        $filename = $request->input('filename');
-        if (!$filename) {
-            return response()->json(['error' => 'Filename required'], 400);
+        $path = 'resortwala-backups/' . $filename;
+        if (!Storage::disk('local')->exists($path)) {
+            return response()->json(['error' => 'File not found'], 404);
         }
 
-        $path = storage_path('app/' . $this->backupFolder . '/' . $filename);
+        return Storage::disk('local')->download($path);
+    }
 
+    /**
+     * Restore a backup
+     */
+    public function restore(Request $request, $filename)
+    {
+        $path = storage_path('app/resortwala-backups/' . $filename);
         if (!file_exists($path)) {
-            return response()->json(['error' => 'Backup file not found'], 404);
+            return response()->json(['error' => 'File not found'], 404);
         }
 
-        $dbUser = env('DB_USERNAME');
-        $dbPass = env('DB_PASSWORD');
-        $dbName = env('DB_DATABASE');
-        $dbHost = env('DB_HOST', '127.0.0.1');
+        // Credentials
+        $host = config('database.connections.mysql.host');
+        $username = config('database.connections.mysql.username');
+        $password = config('database.connections.mysql.password');
+        $database = config('database.connections.mysql.database');
 
-        // Command: gunzip < file | mysql ...
-        $command = "gunzip < '{$path}' | mysql -u '{$dbUser}' -p'{$dbPass}' -h '{$dbHost}' '{$dbName}'";
+        // Command: mysql < file
+        $command = sprintf(
+            'mysql --user=%s --password=%s --host=%s %s < %s',
+            escapeshellarg($username),
+            escapeshellarg($password),
+            escapeshellarg($host),
+            escapeshellarg($database),
+            escapeshellarg($path)
+        );
 
-        $process = Process::fromShellCommandline($command);
-        $process->setTimeout(300); // 5 minutes
-        $process->run();
+        try {
+            $output = null;
+            $resultCode = null;
+            exec($command, $output, $resultCode);
 
-        if (!$process->isSuccessful()) {
-            return response()->json([
-                'error' => 'Restore failed',
-                'details' => $process->getErrorOutput()
-            ], 500);
+            if ($resultCode !== 0) {
+                 return response()->json(['success' => false, 'error' => 'Restore failed with code ' . $resultCode], 500);
+            }
+
+            // Clear cache after restore to ensure app sees fresh data
+            \Artisan::call('cache:clear');
+
+            return response()->json(['success' => true, 'message' => 'Database restored successfully']);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-
-        return response()->json([
-            'message' => 'Database restored successfully'
-        ]);
     }
 
-    public function destroy($filename)
+    /**
+     * Delete a backup
+     */
+    public function delete($filename)
     {
-        $file = $this->backupFolder . '/' . $filename;
-        if (Storage::disk($this->backupDisk)->exists($file)) {
-            Storage::disk($this->backupDisk)->delete($file);
-            return response()->json(['message' => 'Backup deleted']);
+        $path = 'resortwala-backups/' . $filename;
+        if (Storage::disk('local')->exists($path)) {
+            Storage::disk('local')->delete($path);
+            return response()->json(['success' => true, 'message' => 'Backup deleted']);
         }
         return response()->json(['error' => 'File not found'], 404);
     }
