@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'DEPLOY_TARGET', choices: ['Auto', 'Beta', 'Production'], description: 'Select the target environment. "Auto" follows branch rules (master->Beta, release->Prod).')
+    }
+
     environment {
         REMOTE_USER = 'root'
         REMOTE_HOST = '72.61.242.42'
@@ -49,7 +53,10 @@ pipeline {
         // --- STAGING DEPLOYMENT ---
         stage('Deploy to Staging') {
             when {
-                branch 'master'
+                anyOf {
+                    branch 'master'
+                    expression { params.DEPLOY_TARGET == 'Beta' }
+                }
             }
             steps {
                 sshagent(['resortwala-deploy-key']) {
@@ -68,7 +75,10 @@ pipeline {
         // --- PRODUCTION DEPLOYMENT ---
         stage('Production Gate') {
             when {
-                branch 'release'
+                anyOf {
+                    branch 'release'
+                    expression { params.DEPLOY_TARGET == 'Production' }
+                }
             }
             steps {
                 input message: 'Deploy to PRODUCTION?', ok: 'Deploy'
@@ -77,7 +87,10 @@ pipeline {
 
         stage('Deploy to Production') {
             when {
-                branch 'release'
+                anyOf {
+                    branch 'release'
+                    expression { params.DEPLOY_TARGET == 'Production' }
+                }
             }
             steps {
                 sshagent(['resortwala-deploy-key']) {
