@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use App\Models\Booking;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
-use PhonePe\PaymentGateway\Node\PaymentRequest;
 
 class PaymentController extends Controller
 {
