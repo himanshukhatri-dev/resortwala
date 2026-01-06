@@ -34,8 +34,9 @@ pipeline {
             steps {
                 sshagent(['resortwala-deploy-key']) {
                     script {
-                        def backupScript = '/var/www/html/dev_tools/ops/backup_db.sh'
-                        sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'bash ${backupScript}'"
+                        def backupScript = "${PROD_DIR}/dev_tools/ops/backup_db.sh"
+                        // Check if script exists before running (handles first deployment)
+                        sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'if [ -f ${backupScript} ]; then bash ${backupScript}; else echo \"Backup script not found, skipping...\"; fi'"
                     }
                 }
             }
@@ -83,7 +84,7 @@ pipeline {
                             php artisan migrate --force &&
                             php artisan config:cache &&
                             php artisan route:cache &&
-                            php artisan view:cache
+
                         '
                     """
                 }
