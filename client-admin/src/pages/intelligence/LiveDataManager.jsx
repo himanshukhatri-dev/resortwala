@@ -58,9 +58,14 @@ export default function LiveDataManager() {
     useEffect(() => {
         if (selectedTable && fullSchema[selectedTable]) {
             const cols = fullSchema[selectedTable].columns || [];
-            const pkCol = cols.find(c => c.primary) || cols.find(c => c.name.toLowerCase() === 'id') || cols.find(c => c.name.toLowerCase().includes('id'));
+            // Safe detection with optional chaining/checks
+            const pkCol = cols.find(c => c.primary)
+                || cols.find(c => c.name && c.name.toLowerCase() === 'id')
+                || cols.find(c => c.name && c.name.toLowerCase().includes('id'))
+                || cols[0]; // Fallback to first column if nothing matches
+
             setPrimaryKey(pkCol ? pkCol.name : 'id');
-            setSchema(cols.map(c => c.name)); // Update column headers
+            setSchema(cols.map(c => c.name || 'Unknown')); // Update column headers safely
         }
     }, [selectedTable, fullSchema]);
 
