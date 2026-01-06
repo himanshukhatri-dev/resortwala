@@ -12,6 +12,16 @@ export default function LiveDataManager() {
     const [data, setData] = useState([]);
     const [fullSchema, setFullSchema] = useState({}); // New state to hold details
 
+    const [schema, setSchema] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [edits, setEdits] = useState({}); // { rowId: { colName: newValue } }
+    const [showImpactModal, setShowImpactModal] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const [primaryKey, setPrimaryKey] = useState('id');
+
+    const [connectionInfo, setConnectionInfo] = useState(null);
+
     // Fetch Tables List on Mount
     useEffect(() => {
         fetchTables();
