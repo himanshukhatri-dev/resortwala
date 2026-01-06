@@ -179,8 +179,10 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/vendor/calendar/seed', [App\Http\Controllers\VendorCalendarController::class, 'seed']);
 
 // --- Payment Gateway Routes (PhonePe) ---
-Route::post('/payment/initiate', [\App\Http\Controllers\PaymentController::class, 'initiate']);
-Route::post('/payment/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]); // Ensure CSRF is disabled for callback if using web middleware, but this is api.php so it's fine.
+Route::post('/payment/initiate', [\App\Http\Controllers\PaymentController::class, 'initiate'])->name('payment.initiate');
+Route::post('/payment/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
+    ->name('payment.callback');
 
 
 // Admin Intelligence
