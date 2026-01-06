@@ -78,7 +78,7 @@ export default function BulkUpload({ onClose, onSuccess }) {
                         </div>
                     </div>
                     <a
-                        href={`${API_BASE_URL.replace('/api', '')}/property_import_template.csv`}
+                        href="/property_import_template.csv"
                         download
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition"
                     >
