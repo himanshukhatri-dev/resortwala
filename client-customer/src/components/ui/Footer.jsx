@@ -50,9 +50,10 @@ export default function Footer() {
                     </div>
                 </div>
 
-                <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center text-xs">
-                    <p>© {new Date().getFullYear()} ResortWala, Inc. All rights reserved.</p>
-                    <div className="flex gap-4 mt-4 md:mt-0">
+                <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
+                    <p>&copy; {new Date().getFullYear()} ResortWala. All rights reserved.</p>
+                    <p className="text-xs mt-2 opacity-50">Version 1.0.0 (Beta)</p>
+                    <div className="flex gap-4 mt-4 md:mt-0 justify-center">
                         <a href="/policy/privacy" className="hover:text-primary transition">Privacy</a>
                         <a href="/policy/terms" className="hover:text-primary transition">Terms</a>
                         <a href="/" className="hover:text-primary transition">Sitemap</a>
