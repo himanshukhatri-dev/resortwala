@@ -144,6 +144,17 @@ export default function LiveDataManager() {
 
     const hasEdits = Object.keys(edits).length > 0;
 
+    // Helper to get value case-insensitively
+    const getValue = (row, colName) => {
+        // 1. Direct match
+        if (row[colName] !== undefined) return row[colName];
+
+        // 2. Case insensitive match
+        const lowerCol = colName.toLowerCase();
+        const key = Object.keys(row).find(k => k.toLowerCase() === lowerCol);
+        return key ? row[key] : undefined;
+    };
+
     return (
         <div className="flex h-full gap-6">
             {/* Sidebar Table List */}
@@ -242,13 +253,21 @@ export default function LiveDataManager() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {data.map(row => {
-                                    const recordId = row[primaryKey];
+                                {data.map((row, idx) => {
+                                    // Use getValue for safe PK access
+                                    const recordId = getValue(row, primaryKey) || `idx-${idx}`;
                                     const rowEdits = edits[recordId] || {};
                                     return (
                                         <tr key={recordId} className="hover:bg-blue-50/30 transition-colors group">
                                             {schema.map(col => {
-                                                const value = rowEdits[col] !== undefined ? rowEdits[col] : row[col];
+                                                const rawVal = getValue(row, col);
+                                                const value = rowEdits[col] !== undefined ? rowEdits[col] : rawVal;
+
+                                                // Handle objects/arrays for display
+                                                const displayValue = (typeof value === 'object' && value !== null)
+                                                    ? JSON.stringify(value)
+                                                    : (value === undefined || value === null ? '' : value);
+
                                                 const isEdited = rowEdits[col] !== undefined;
                                                 const isReadOnly = col === primaryKey || col === 'created_at' || col === 'updated_at'; // Read-only cols
 
@@ -257,11 +276,13 @@ export default function LiveDataManager() {
                                                         ${isEdited ? 'bg-yellow-50 text-amber-700 font-medium' : 'text-gray-600'}
                                                     `}>
                                                         {isReadOnly ? (
-                                                            <span className="text-gray-400 select-none block max-w-[200px] truncate" title={value}>{value}</span>
+                                                            <span className="text-gray-400 select-none block max-w-[200px] truncate" title={String(displayValue)}>
+                                                                {displayValue}
+                                                            </span>
                                                         ) : (
                                                             <input
                                                                 type="text"
-                                                                value={value === null ? '' : value}
+                                                                value={displayValue}
                                                                 onChange={(e) => handleEdit(recordId, col, e.target.value)}
                                                                 className="w-full bg-transparent border-none p-0 focus:ring-0 text-sm font-inherit placeholder-gray-300 min-w-[100px]"
                                                             />
