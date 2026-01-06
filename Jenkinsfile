@@ -8,7 +8,8 @@ pipeline {
         
         // Directories
         BETA_DIR = '/var/www/html/beta.resortwala.com'
-        PROD_DIR = '/var/www/html/resortwala.com'
+        PROD_WEB_DIR = '/var/www/html/resortwala.com'
+        PROD_API_DIR = '/var/www/html/api.resortwala.com'
     }
 
     stages {
@@ -81,17 +82,17 @@ pipeline {
             steps {
                 sshagent(['resortwala-deploy-key']) {
                     // 1. Deploy API
-                    sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/api/"
+                    sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_API_DIR}/"
                     
                     // 2. Deploy Frontends
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/"
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/vendor/"
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/admin/"
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_WEB_DIR}/"
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_WEB_DIR}/vendor/"
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_WEB_DIR}/admin/"
 
                     // 3. Post-Deploy Commands
                     sh """
                         ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
-                            cd ${PROD_DIR}/api &&
+                            cd ${PROD_API_DIR} &&
                             php artisan migrate --force &&
                             php artisan config:cache &&
                             php artisan route:cache &&
