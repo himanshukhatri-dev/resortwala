@@ -11,7 +11,6 @@ pipeline {
         SSH_KEY = credentials('resortwala-deploy-key')
         
         // Directories
-        // Directories
         BETA_DIR = '/var/www/html/beta.resortwala.com'
         BETA_API_DIR = '/var/www/html/stagingapi.resortwala.com'
         PROD_WEB_DIR = '/var/www/html/resortwala.com'
@@ -52,55 +51,74 @@ pipeline {
             }
         }
 
-        // --- STAGING DEPLOYMENT ---
+        // --- STAGING DEPLOYMENT (Using Tar/SCP Strategy) ---
         stage('Deploy to Staging') {
             when {
                 expression { params.DEPLOY_TARGET == 'Beta' || (params.DEPLOY_TARGET == 'Auto' && env.BRANCH_NAME == 'master') }
             }
             steps {
                 sshagent(['resortwala-deploy-key']) {
-                    // Create dir if missing
-                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${BETA_DIR}'"
-                    
-                    // DEBUG: Check Nginx Config to verify Root Dir
-                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'cat /etc/nginx/sites-enabled/* || true'"
-                    
-                    // Deploy Frontend (Customer)
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/"
-                    
-                    // Deploy Frontend (Vendor & Admin)
-                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${BETA_DIR}/vendor ${BETA_DIR}/admin'"
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/vendor/"
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/admin/"
-                    
-                    // DEBUG: List files to verify update
-                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'ls -la ${BETA_DIR}/admin/index.html && ls -la ${BETA_DIR}/admin/assets/ | head -n 5'"
-                    
-                    // Deploy API (Beta)
-                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${BETA_API_DIR}'"
-                    sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_API_DIR}/"
+                    script {
+                        // 1. Prepare & Compress Frontends
+                        // Customer
+                        sh "tar -czf customer.tar.gz -C client-customer/dist ."
+                        // Vendor
+                        sh "tar -czf vendor.tar.gz -C client-vendor/dist ."
+                        // Admin
+                        sh "tar -czf admin.tar.gz -C client-admin/dist ."
+                        // API (Backend)
+                        sh "tar -czf api.tar.gz --exclude=.env --exclude=storage --exclude=.git -C api ."
 
-                    // Post-Deploy (Beta API)
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
-                            cd ${BETA_API_DIR} &&
-                            php artisan migrate --force &&
-                            php artisan config:cache &&
-                            php artisan route:cache &&
-                            php artisan view:clear
-                        '
-                    """
+                        // 2. Upload Archives
+                        sh "scp -o StrictHostKeyChecking=no customer.tar.gz vendor.tar.gz admin.tar.gz api.tar.gz ${REMOTE_USER}@${REMOTE_HOST}:/tmp/"
+
+                        // 3. Extract & cleanup on Remote (Beta)
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
+                                # --- Frontend Deployment ---
+                                mkdir -p ${BETA_DIR}/vendor ${BETA_DIR}/admin
+                                
+                                # Customer
+                                tar -xzf /tmp/customer.tar.gz -C ${BETA_DIR}/
+                                # Vendor
+                                tar -xzf /tmp/vendor.tar.gz -C ${BETA_DIR}/vendor/
+                                # Admin
+                                tar -xzf /tmp/admin.tar.gz -C ${BETA_DIR}/admin/
+
+                                # --- API Deployment ---
+                                mkdir -p ${BETA_API_DIR}
+                                tar -xzf /tmp/api.tar.gz -C ${BETA_API_DIR}/
+
+                                # --- API Permissions & Setup ---
+                                cd ${BETA_API_DIR}
+                                chown -R www-data:www-data .
+                                mkdir -p storage/logs storage/framework/views storage/framework/cache/data storage/framework/sessions bootstrap/cache
+                                chown -R www-data:www-data storage bootstrap/cache public
+                                chmod -R 775 storage bootstrap/cache
+                                chmod -R 755 public
+                                chmod -R 777 storage/logs
+                                
+                                # Commands
+                                export COMPOSER_ALLOW_SUPERUSER=1
+                                composer install --no-dev --optimize-autoloader --no-interaction
+                                php artisan migrate --force
+                                php artisan config:cache
+                                php artisan route:cache
+                                php artisan view:clear
+
+                                # Cleanup
+                                rm /tmp/customer.tar.gz /tmp/vendor.tar.gz /tmp/admin.tar.gz /tmp/api.tar.gz
+                            '
+                        """
+                    }
                 }
             }
         }
 
-        // --- PRODUCTION DEPLOYMENT ---
+        // --- PRODUCTION DEPLOYMENT (Using Tar/SCP Strategy) ---
         stage('Production Gate') {
             when {
-                anyOf {
-                    branch 'release'
-                    expression { params.DEPLOY_TARGET == 'Production' }
-                }
+                expression { params.DEPLOY_TARGET == 'Production' || (params.DEPLOY_TARGET == 'Auto' && env.BRANCH_NAME == 'release') }
             }
             steps {
                 input message: 'Deploy to PRODUCTION?', ok: 'Deploy'
@@ -109,31 +127,63 @@ pipeline {
 
         stage('Deploy to Production') {
             when {
-                anyOf {
-                    branch 'release'
-                    expression { params.DEPLOY_TARGET == 'Production' }
-                }
+                expression { params.DEPLOY_TARGET == 'Production' || (params.DEPLOY_TARGET == 'Auto' && env.BRANCH_NAME == 'release') }
             }
             steps {
                 sshagent(['resortwala-deploy-key']) {
-                    // 1. Deploy API
-                    sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_API_DIR}/"
-                    
-                    // 2. Deploy Frontends
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_WEB_DIR}/"
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_WEB_DIR}/vendor/"
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_WEB_DIR}/admin/"
+                     script {
+                        // 1. Prepare & Compress Frontends
+                        // Customer
+                        sh "tar -czf customer.tar.gz -C client-customer/dist ."
+                        // Vendor
+                        sh "tar -czf vendor.tar.gz -C client-vendor/dist ."
+                        // Admin
+                        sh "tar -czf admin.tar.gz -C client-admin/dist ."
+                        // API
+                        sh "tar -czf api.tar.gz --exclude=.env --exclude=storage --exclude=.git -C api ."
 
-                    // 3. Post-Deploy Commands
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
-                            cd ${PROD_API_DIR} &&
-                            php artisan migrate --force &&
-                            php artisan config:cache &&
-                            php artisan route:cache &&
-                            php artisan view:clear
-                        '
-                    """
+                        // 2. Upload
+                        sh "scp -o StrictHostKeyChecking=no customer.tar.gz vendor.tar.gz admin.tar.gz api.tar.gz ${REMOTE_USER}@${REMOTE_HOST}:/tmp/"
+
+                        // 3. Extract & Setup (Production)
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
+                                # --- Frontend Deployment ---
+                                mkdir -p ${PROD_WEB_DIR}/vendor ${PROD_WEB_DIR}/admin
+                                
+                                # Customer 
+                                tar -xzf /tmp/customer.tar.gz -C ${PROD_WEB_DIR}/
+                                # Vendor
+                                tar -xzf /tmp/vendor.tar.gz -C ${PROD_WEB_DIR}/vendor/
+                                # Admin
+                                tar -xzf /tmp/admin.tar.gz -C ${PROD_WEB_DIR}/admin/
+
+                                # --- API Deployment ---
+                                mkdir -p ${PROD_API_DIR}
+                                tar -xzf /tmp/api.tar.gz -C ${PROD_API_DIR}/
+
+                                # --- API Permissions & Setup ---
+                                cd ${PROD_API_DIR}
+                                chown -R www-data:www-data .
+                                mkdir -p storage/logs storage/framework/views storage/framework/cache/data storage/framework/sessions bootstrap/cache
+                                chown -R www-data:www-data storage bootstrap/cache public
+                                chmod -R 775 storage bootstrap/cache
+                                chmod -R 755 public
+                                chmod -R 777 storage/logs
+                                
+                                # Commands
+                                export COMPOSER_ALLOW_SUPERUSER=1
+                                composer install --no-dev --optimize-autoloader --no-interaction
+                                php artisan migrate --force
+                                php artisan config:cache
+                                php artisan route:cache
+                                php artisan view:clear
+
+                                # Cleanup
+                                rm /tmp/customer.tar.gz /tmp/vendor.tar.gz /tmp/admin.tar.gz /tmp/api.tar.gz
+                            '
+                        """
+                    }
                 }
             }
         }
