@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FaCloudUploadAlt, FaFileExcel, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
-import axios from 'axios';
-import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL } from '../../../config';
+import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 
 export default function BulkUpload({ onClose, onSuccess }) {
     const { token } = useAuth();

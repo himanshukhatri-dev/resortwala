@@ -23,16 +23,6 @@ export default function Properties() {
         fetchProperties();
     }, []);
 
-    // ... existing functions ...
-
-    // ... (keep fetchProperties, handleApprove, etc.) ...
-
-    // Insert Modal at the end of return, and button in header
-
-    // Let's modify the return statement parts implicitly via context or manual placement
-    // Since I can't use "Bottom of file" easily with replace, I will inject the state first (done above)
-    // Now I will inject the button in the header.
-
 
     const fetchProperties = async () => {
         try {
