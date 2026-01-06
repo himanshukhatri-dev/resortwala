@@ -11,11 +11,7 @@ pipeline {
         REMOTE_HOST = '72.61.242.42'
         SSH_KEY = credentials('resortwala-deploy-key')
         
-        // Default Staging Paths (Matches Nginx Config)
-        CUSTOMER_DIR = '/var/www/html/staging.resortwala.com'
-        ADMIN_DIR    = '/var/www/html/stagingadmin.resortwala.com'
-        VENDOR_DIR   = '/var/www/html/stagingvendor.resortwala.com'
-        API_DIR      = '/var/www/html/stagingapi.resortwala.com'
+        // Path variables will be set dynamically in Initialize stage
     }
 
     stages {
@@ -23,17 +19,22 @@ pipeline {
             steps {
                 script {
                     if (params.DEPLOY_ENV == 'Production') {
-                        // Production Paths (To be finalized, assuming standard structure for now or user request)
-                        // For now we error if not explicitly set up, OR we map to expected prod paths
+                        if (!params.CONFIRM_PROD) {
+                            error("Production deployment selected but not confirmed! Please check CONFIRM_PROD.")
+                        }
+
+                        // Production Paths
                         env.CUSTOMER_DIR = '/var/www/html/resortwala.com'
                         env.ADMIN_DIR    = '/var/www/html/admin.resortwala.com'
                         env.VENDOR_DIR   = '/var/www/html/vendor.resortwala.com'
                         env.API_DIR      = '/var/www/html/api.resortwala.com'
-
-                        if (!params.CONFIRM_PROD) {
-                            error("Production deployment selected but not confirmed! Please check CONFIRM_PROD.")
-                        }
-                    } 
+                    } else {
+                        // Staging/Beta Paths
+                        env.CUSTOMER_DIR = '/var/www/html/staging.resortwala.com'
+                        env.ADMIN_DIR    = '/var/www/html/stagingadmin.resortwala.com'
+                        env.VENDOR_DIR   = '/var/www/html/stagingvendor.resortwala.com'
+                        env.API_DIR      = '/var/www/html/stagingapi.resortwala.com'
+                    }
                     
                     echo "Deploying to ${params.DEPLOY_ENV}"
                     echo "Customer: ${env.CUSTOMER_DIR}"
