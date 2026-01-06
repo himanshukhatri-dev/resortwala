@@ -66,8 +66,12 @@ pipeline {
                     sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/"
                     
                     // Deploy Frontend (Vendor & Admin)
+                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${BETA_DIR}/vendor ${BETA_DIR}/admin'"
                     sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/vendor/"
                     sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/admin/"
+                    
+                    // DEBUG: List files to verify update
+                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'ls -la ${BETA_DIR}/admin/index.html && ls -la ${BETA_DIR}/admin/assets/ | head -n 5'"
                     
                     // Deploy API (Beta)
                     sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${BETA_API_DIR}'"
