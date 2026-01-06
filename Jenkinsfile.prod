@@ -9,7 +9,7 @@ pipeline {
         REMOTE_USER = 'root'
         REMOTE_HOST = '72.61.242.42'
         PROD_DIR = '/var/www/html/resortwala.com'
-        SSH_KEY = credentials('resortwala-ssh-key')
+        SSH_KEY = credentials('resortwala-deploy-key')
     }
 
     stages {

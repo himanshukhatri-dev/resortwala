@@ -8,7 +8,7 @@ pipeline {
         REMOTE_DIR = '/var/www/html/beta.resortwala.com'
         
         // Secrets (Managed in Jenkins Credentials)
-        SSH_KEY = credentials('resortwala-ssh-key')
+        SSH_KEY = credentials('resortwala-deploy-key')
     }
 
     stages {
