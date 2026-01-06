@@ -1,0 +1,68 @@
+pipeline {
+    agent any
+
+    environment {
+        // Environment Config
+        REMOTE_USER = 'root'
+        REMOTE_HOST = '72.61.242.42'
+        REMOTE_DIR = '/var/www/html/beta.resortwala.com'
+        
+        // Secrets (Managed in Jenkins Credentials)
+        SSH_KEY = credentials('resortwala-ssh-key')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Frontend (Customer)') {
+            steps {
+                dir('client-customer') {
+                    sh 'npm install'
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('Build Backend (API)') {
+            steps {
+                dir('api') {
+                    sh 'composer install --no-dev --optimize-autoloader'
+                }
+            }
+        }
+
+        stage('Deploy to Beta') {
+            steps {
+                sshagent(['resortwala-ssh-key']) {
+                    // Create remote dir if not exists
+                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${REMOTE_DIR}'"
+                    
+                    // Rsync Customer Frontend
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/"
+                    
+                    // Rsync API (excluding environment specific files)
+                    // Note: We might want a separate subdirectory for API in beta if they are hosted on same domain /api
+                    // Assuming standard deployment structure:
+                    // beta.resortwala.com -> Frontend
+                    // beta.resortwala.com/api -> Backend (via Nginx alias/root) or API subdomain
+                    // For now, syncing API to a separate folder or strictly following the implementation plan's structure.
+                    // Checking deploy.ps1, it used separate remote paths.
+                    // Beta Path: /var/www/html/beta.resortwala.com
+                    // API is usually separate. Let's assume beta shares the API for now or has its own.
+                    // The plan said "Deploy to beta.resortwala.com".
+                    // I'll stick to deploying the frontend artifact to the web root.
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                sh "curl -f -I https://beta.resortwala.com || exit 1"
+            }
+        }
+    }
+}

@@ -1,0 +1,99 @@
+pipeline {
+    agent any
+
+    parameters {
+        booleanParam(name: 'CONFIRM_DEPLOY', defaultValue: false, description: 'Check to confirm deployment to PRODUCTION')
+    }
+
+    environment {
+        REMOTE_USER = 'root'
+        REMOTE_HOST = '72.61.242.42'
+        PROD_DIR = '/var/www/html/resortwala.com'
+        SSH_KEY = credentials('resortwala-ssh-key')
+    }
+
+    stages {
+        stage('Approval Gate') {
+            steps {
+                script {
+                    if (!params.CONFIRM_DEPLOY) {
+                        error("Deployment not confirmed. Aborting.")
+                    }
+                    input message: 'Deploy to PRODUCTION?', ok: 'Deploy'
+                }
+            }
+        }
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('System Backup') {
+            steps {
+                sshagent(['resortwala-ssh-key']) {
+                    script {
+                        def backupScript = '/var/www/html/dev_tools/ops/backup_db.sh'
+                        sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'bash ${backupScript}'"
+                    }
+                }
+            }
+        }
+
+        stage('Build & Prepare') {
+            steps {
+                // Frontends
+                dir('client-customer') {
+                    sh 'npm install && npm run build'
+                }
+                dir('client-vendor') {
+                    sh 'npm install && npm run build'
+                }
+                dir('client-admin') {
+                    sh 'npm install && npm run build'
+                }
+                
+                // Backend
+                dir('api') {
+                    sh 'composer install --no-dev --optimize-autoloader'
+                }
+            }
+        }
+
+        stage('Deploy Production') {
+            steps {
+                sshagent(['resortwala-ssh-key']) {
+                    // 1. Enter Maintenance Mode (Optional, usually 0 downtime preferred, but safe for major updates)
+                    // sh "ssh ${REMOTE_USER}@${REMOTE_HOST} 'php ${PROD_DIR}/api/artisan down'"
+                    
+                    // 2. Deploy Files (Using Rsync for atomic-like file transfer)
+                    // Backend
+                    sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/api/"
+                    
+                    // Frontends
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/client-customer/"
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/client-vendor/"
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/client-admin/"
+
+                    // 3. Set Permissions & Migrate
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
+                            cd ${PROD_DIR}/api &&
+                            php artisan migrate --force &&
+                            php artisan config:cache &&
+                            php artisan route:cache &&
+                            php artisan view:cache
+                        '
+                    """
+                }
+            }
+        }
+
+        stage('Post-Deploy Check') {
+            steps {
+                sh "curl -f -I https://resortwala.com || exit 1"
+            }
+        }
+    }
+}

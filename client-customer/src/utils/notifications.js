@@ -9,7 +9,7 @@ export const requestNotificationPermission = async (userId, token) => {
     try {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            console.log('Notification permission granted.');
+            // console.log('Notification permission granted.');
 
             // Get FCM Token
             // VAPID Key is optional if you haven't generated one, but recommended
@@ -19,7 +19,7 @@ export const requestNotificationPermission = async (userId, token) => {
             });
 
             if (fcmToken) {
-                console.log('FCM Token:', fcmToken);
+                // console.log('FCM Token:', fcmToken);
 
                 // Save token to backend
                 if (userId && token) {
@@ -28,10 +28,10 @@ export const requestNotificationPermission = async (userId, token) => {
 
                 return fcmToken;
             } else {
-                console.log('No registration token available. Request permission to generate one.');
+                // console.log('No registration token available. Request permission to generate one.');
             }
         } else {
-            console.log('Unable to get permission to notify.');
+            // console.log('Unable to get permission to notify.');
         }
     } catch (error) {
         console.error('An error occurred while retrieving token. ', error);
@@ -46,7 +46,7 @@ const saveTokenToBackend = async (fcmToken, authToken) => {
             { fcm_token: fcmToken },
             { headers: { Authorization: `Bearer ${authToken}` } }
         );
-        console.log('Token saved to backend');
+        // console.log('Token saved to backend');
     } catch (error) {
         console.error('Failed to save device token', error);
     }

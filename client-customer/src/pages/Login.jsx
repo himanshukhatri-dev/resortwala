@@ -65,7 +65,7 @@ export default function Login() {
                     window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
                         'size': 'invisible',
                         'callback': (response) => {
-                            console.log('Recaptcha verified');
+                            // Verified
                         }
                     });
                 }

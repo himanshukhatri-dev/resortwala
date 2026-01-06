@@ -113,7 +113,7 @@ export default function Signup() {
                 window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container-signup', {
                     'size': 'invisible',
                     'callback': (response) => {
-                        console.log('Recaptcha verified');
+                        // Verified
                     }
                 });
             }
