@@ -11,7 +11,9 @@ pipeline {
         SSH_KEY = credentials('resortwala-deploy-key')
         
         // Directories
+        // Directories
         BETA_DIR = '/var/www/html/beta.resortwala.com'
+        BETA_API_DIR = '/var/www/html/stagingapi.resortwala.com'
         PROD_WEB_DIR = '/var/www/html/resortwala.com'
         PROD_API_DIR = '/var/www/html/api.resortwala.com'
     }
@@ -67,8 +69,20 @@ pipeline {
                     sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/vendor/"
                     sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/admin/"
                     
-                    // Note: Beta API deployment logic (if needed) goes here. 
-                    // Currently assuming Beta frontend connects to existing stagingapi.
+                    // Deploy API (Beta)
+                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${BETA_API_DIR}'"
+                    sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_API_DIR}/"
+
+                    // Post-Deploy (Beta API)
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
+                            cd ${BETA_API_DIR} &&
+                            php artisan migrate --force &&
+                            php artisan config:cache &&
+                            php artisan route:cache &&
+                            php artisan view:clear
+                        '
+                    """
                 }
             }
         }
