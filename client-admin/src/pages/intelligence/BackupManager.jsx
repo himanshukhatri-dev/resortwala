@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FaDatabase, FaUndo, FaTrash, FaDownload, FaSync, FaExclamationTriangle } from 'react-icons/fa';
-import axios from '../../utils/axios'; // Adjust path based on your setup
+import axios from 'axios';
+import { API_BASE_URL } from '../../config';
 import { toast } from 'react-hot-toast';
 
 export default function BackupManager() {
@@ -16,7 +17,7 @@ export default function BackupManager() {
     const fetchBackups = async () => {
         setLoading(true);
         try {
-            const res = await axios.get('/admin/intelligence/backups');
+            const res = await axios.get(`${API_BASE_URL}/admin/intelligence/backups`);
             setBackups(res.data);
         } catch (error) {
             console.error(error);
@@ -29,7 +30,7 @@ export default function BackupManager() {
     const handleCreateBackup = async () => {
         setCreating(true);
         try {
-            await axios.post('/admin/intelligence/backups');
+            await axios.post(`${API_BASE_URL}/admin/intelligence/backups`);
             toast.success('Backup created successfully!');
             fetchBackups();
         } catch (error) {
@@ -51,7 +52,7 @@ export default function BackupManager() {
 
         setRestoring(filename);
         try {
-            await axios.post('/admin/intelligence/backups/restore', { filename });
+            await axios.post(`${API_BASE_URL}/admin/intelligence/backups/restore`, { filename });
             toast.success('Database restored successfully!');
         } catch (error) {
             console.error(error);
@@ -65,7 +66,7 @@ export default function BackupManager() {
         if (!window.confirm(`Delete backup ${filename}?`)) return;
 
         try {
-            await axios.delete(`/admin/intelligence/backups/${filename}`);
+            await axios.delete(`${API_BASE_URL}/admin/intelligence/backups/${filename}`);
             toast.success('Backup deleted');
             setBackups(prev => prev.filter(b => b.filename !== filename));
         } catch (error) {
