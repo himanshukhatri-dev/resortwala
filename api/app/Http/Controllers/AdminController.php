@@ -440,4 +440,14 @@ class AdminController extends Controller
             'count' => $processedCount
         ]);
     }
+    public function getSystemInfo(Request $request)
+    {
+        return response()->json([
+            'environment' => config('app.env'),
+            'database' => config('database.connections.mysql.database'),
+            'host' => config('database.connections.mysql.host'),
+            'server_ip' => request()->server('SERVER_ADDR'),
+            // Mask host if it's external IP, but show localhost clearly
+        ]);
+    }
 }

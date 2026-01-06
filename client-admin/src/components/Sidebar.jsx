@@ -13,6 +13,22 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
     const { showConfirm } = useModal();
     const [expandedMenu, setExpandedMenu] = useState(null);
     const [isHovered, setIsHovered] = useState(false);
+    const [systemInfo, setSystemInfo] = useState(null);
+
+    useEffect(() => {
+        // Fetch System Info
+        const fetchSystemInfo = async () => {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/admin/system-info`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSystemInfo(response.data);
+            } catch (error) {
+                console.error('Failed to fetch system info:', error);
+            }
+        };
+        if (token) fetchSystemInfo();
+    }, [token]);
 
     // Desktop: Update margin via CSS variable
     useEffect(() => {
@@ -184,6 +200,30 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
                         );
                     })}
                 </nav>
+
+                {/* System Info Widget */}
+                <div className={`mx-3 mb-2 p-3 rounded-xl bg-gray-50 text-xs border border-gray-100 ${!isMobile && !isHovered ? 'hidden' : 'block'}`}>
+                    {systemInfo ? (
+                        <div className="space-y-1">
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-500 font-medium">Env:</span>
+                                <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${systemInfo.environment === 'production' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                    {systemInfo.environment?.toUpperCase()}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-500 font-medium">DB:</span>
+                                <span className="font-mono font-bold text-gray-700 truncate max-w-[100px]" title={systemInfo.database}>
+                                    {systemInfo.database}
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="animate-pulse flex space-x-2">
+                            <div className="h-2 bg-gray-200 rounded w-full"></div>
+                        </div>
+                    )}
+                </div>
 
                 {/* Footer / Logout */}
                 <div className="p-4 border-t border-gray-100 bg-white">

@@ -14,6 +14,7 @@ use App\Http\Controllers\StatusController;
 
 // System Status Route (Public)
 Route::get('/status', [StatusController::class, 'check']);
+Route::get('/admin/system-info', [\App\Http\Controllers\AdminController::class, 'getSystemInfo']);
 
 Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
