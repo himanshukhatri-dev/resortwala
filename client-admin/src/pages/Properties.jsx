@@ -93,7 +93,7 @@ export default function Properties() {
                 {/* Header Stats / Title */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800">Properties</h1>
+                        <h1 className="text-3xl font-bold text-gray-800">Properties <span className="text-sm bg-red-100 text-red-600 px-2 py-1 rounded ml-2">BETA V1</span></h1>
                         <div className="flex items-center gap-3 mt-1">
                             <p className="text-gray-500">Manage all registered properties and approvals</p>
                             <button

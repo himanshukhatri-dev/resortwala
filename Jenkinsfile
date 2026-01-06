@@ -62,6 +62,9 @@ pipeline {
                     // Create dir if missing
                     sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${BETA_DIR}'"
                     
+                    // DEBUG: Check Nginx Config to verify Root Dir
+                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'cat /etc/nginx/sites-enabled/* || true'"
+                    
                     // Deploy Frontend (Customer)
                     sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${BETA_DIR}/"
                     
