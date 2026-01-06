@@ -1,0 +1,4 @@
+Property Name,Owner Email (Optional),Property Type (Villa/Waterpark),Location,Base Price,Description,Bedrooms (Villa Only),Bathrooms (Villa Only),Pool Type (Private/Shared),Waterpark Capacity (If Waterpark)
+Sunset Villa,owner@example.com,Villa,Lonavala,5000,"Beautiful sunset view",3,3,Private,
+Splash Zone,,Waterpark,Khandala,1500,"Fun for family",,,,500
+Mountain Retreat,new_user@gmail.com,Villa,Mahabaleshwar,8000,"Cozy retreat",4,4,Private,

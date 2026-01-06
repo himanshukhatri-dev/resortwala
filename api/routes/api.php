@@ -193,6 +193,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/admin/properties/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectProperty']);
     
     // Change Requests
+    Route::post('/admin/properties/import', [\App\Http\Controllers\Admin\ImportController::class, 'import']);
     Route::get('/admin/property-changes', [\App\Http\Controllers\AdminPropertyController::class, 'getChangeRequests']);
     Route::get('/admin/property-changes/{id}', [\App\Http\Controllers\AdminPropertyController::class, 'getChangeRequest']);
 

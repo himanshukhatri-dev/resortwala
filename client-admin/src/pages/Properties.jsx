@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import Loader from '../components/Loader';
 import { useModal } from '../context/ModalContext';
 import { API_BASE_URL } from '../config';
-import { FaCheck, FaTimes, FaEdit, FaTrash, FaMapMarkerAlt, FaUser, FaPhone, FaBuilding, FaSearch, FaFilter } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaEdit, FaTrash, FaMapMarkerAlt, FaUser, FaPhone, FaBuilding, FaSearch, FaFilter, FaFileImport } from 'react-icons/fa';
+import BulkUpload from '../components/BulkUpload';
 
 export default function Properties() {
     const navigate = useNavigate();
@@ -16,10 +17,22 @@ export default function Properties() {
     const [actionLoading, setActionLoading] = useState(false);
     const [filter, setFilter] = useState('all'); // all, approved, pending, rejected
     const [searchQuery, setSearchQuery] = useState('');
+    const [showImport, setShowImport] = useState(false);
 
     useEffect(() => {
         fetchProperties();
     }, []);
+
+    // ... existing functions ...
+
+    // ... (keep fetchProperties, handleApprove, etc.) ...
+
+    // Insert Modal at the end of return, and button in header
+
+    // Let's modify the return statement parts implicitly via context or manual placement
+    // Since I can't use "Bottom of file" easily with replace, I will inject the state first (done above)
+    // Now I will inject the button in the header.
+
 
     const fetchProperties = async () => {
         try {
@@ -91,7 +104,15 @@ export default function Properties() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-800">Properties</h1>
-                        <p className="text-gray-500 mt-1">Manage all registered properties and approvals</p>
+                        <div className="flex items-center gap-3 mt-1">
+                            <p className="text-gray-500">Manage all registered properties and approvals</p>
+                            <button
+                                onClick={() => setShowImport(true)}
+                                className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 shadow-lg shadow-green-600/20 transition-all"
+                            >
+                                <FaFileImport /> Bulk Import
+                            </button>
+                        </div>
                     </div>
                     <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex gap-4 text-sm font-medium">
                         <div className="text-center">
@@ -316,6 +337,14 @@ export default function Properties() {
                     )}
                 </div>
             </div>
+            {showImport && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+                    <BulkUpload
+                        onClose={() => setShowImport(false)}
+                        onSuccess={() => { setShowImport(false); fetchProperties(); showSuccess('Imported', 'Properties imported successfully!'); }}
+                    />
+                </div>
+            )}
         </div>
     );
 }
