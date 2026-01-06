@@ -11,8 +11,11 @@ pipeline {
         REMOTE_HOST = '72.61.242.42'
         SSH_KEY = credentials('resortwala-deploy-key')
         
-        // Dynamic vars placeholder - will be set in Initialize stage
-        DEPLOY_DIR = '/var/www/html/beta.resortwala.com' 
+        // Default Staging Paths (Matches Nginx Config)
+        CUSTOMER_DIR = '/var/www/html/staging.resortwala.com'
+        ADMIN_DIR    = '/var/www/html/stagingadmin.resortwala.com'
+        VENDOR_DIR   = '/var/www/html/stagingvendor.resortwala.com'
+        API_DIR      = '/var/www/html/stagingapi.resortwala.com'
     }
 
     stages {
@@ -20,14 +23,23 @@ pipeline {
             steps {
                 script {
                     if (params.DEPLOY_ENV == 'Production') {
-                        env.DEPLOY_DIR = '/var/www/html/resortwala.com'
+                        // Production Paths (To be finalized, assuming standard structure for now or user request)
+                        // For now we error if not explicitly set up, OR we map to expected prod paths
+                        env.CUSTOMER_DIR = '/var/www/html/resortwala.com'
+                        env.ADMIN_DIR    = '/var/www/html/admin.resortwala.com'
+                        env.VENDOR_DIR   = '/var/www/html/vendor.resortwala.com'
+                        env.API_DIR      = '/var/www/html/api.resortwala.com'
+
                         if (!params.CONFIRM_PROD) {
                             error("Production deployment selected but not confirmed! Please check CONFIRM_PROD.")
                         }
-                    } else {
-                        env.DEPLOY_DIR = '/var/www/html/beta.resortwala.com'
-                    }
-                    echo "Deploying to: ${params.DEPLOY_ENV} at ${env.DEPLOY_DIR}"
+                    } 
+                    
+                    echo "Deploying to ${params.DEPLOY_ENV}"
+                    echo "Customer: ${env.CUSTOMER_DIR}"
+                    echo "Admin:    ${env.ADMIN_DIR}"
+                    echo "Vendor:   ${env.VENDOR_DIR}"
+                    echo "API:      ${env.API_DIR}"
                 }
             }
         }
@@ -45,8 +57,8 @@ pipeline {
             steps {
                 sshagent(['resortwala-deploy-key']) {
                     script {
-                        def backupScript = "${env.DEPLOY_DIR}/dev_tools/ops/backup_db.sh"
-                        // Check if script exists before running (handles first deployment)
+                        // Assuming backup script is in API dir or central tools dir
+                        def backupScript = "${env.API_DIR}/../dev_tools/ops/backup_db.sh" 
                         sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'if [ -f ${backupScript} ]; then bash ${backupScript}; else echo \"Backup script not found, skipping...\"; fi'"
                     }
                 }
@@ -76,30 +88,30 @@ pipeline {
         stage('Deploy') {
             steps {
                 sshagent(['resortwala-deploy-key']) {
-                     // Ensure Remote Dir Exists (Crucial for Staging/Beta first run)
-                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${env.DEPLOY_DIR}/api'"
+                     // Ensure Remote Dirs Exist
+                    sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${env.CUSTOMER_DIR} ${env.ADMIN_DIR} ${env.VENDOR_DIR} ${env.API_DIR}'"
 
                     // Deploy API
-                    sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${env.DEPLOY_DIR}/api/"
+                    // Note: Exclude .env and storage to prevent overwriting config/data
+                    sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${env.API_DIR}/"
                     
                     // Deploy Frontends
-                    // Customer App (Base: /) -> Root of domain
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.DEPLOY_DIR}/"
+                    // Customer App -> CUSTOMER_DIR
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.CUSTOMER_DIR}/"
                     
-                    // Vendor App (Base: /vendor/)
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.DEPLOY_DIR}/vendor/"
+                    // Vendor App -> VENDOR_DIR
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.VENDOR_DIR}/"
                     
-                    // Admin App (Base: /admin/)
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.DEPLOY_DIR}/admin/"
+                    // Admin App -> ADMIN_DIR
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.ADMIN_DIR}/"
 
-                    // Permissions & Commands
+                    // Permissions & Commands (API)
                     sh """
                         ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
-                            cd ${env.DEPLOY_DIR}/api &&
+                            cd ${env.API_DIR} &&
                             php artisan migrate --force &&
                             php artisan config:cache &&
                             php artisan route:cache
-
                         '
                     """
                 }
