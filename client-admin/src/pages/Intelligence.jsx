@@ -42,6 +42,7 @@ const LiveDataManager = () => (
 */
 
 import BackupManager from './intelligence/BackupManager';
+import ImpactLogs from './intelligence/ImpactLogs';
 
 export default function Intelligence() {
     const [activeTab, setActiveTab] = useState('schema');

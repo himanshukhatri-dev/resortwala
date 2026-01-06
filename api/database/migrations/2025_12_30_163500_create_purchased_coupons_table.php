@@ -14,7 +14,7 @@ return new class extends Migration
         if (!Schema::hasTable('purchased_coupons')) {
             Schema::create('purchased_coupons', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('booking_id')->constrained('bookings')->onDelete('cascade');
+                $table->foreignId('booking_id')->constrained('bookings', 'BookingId')->onDelete('cascade');
                 $table->foreignId('customer_id')->constrained('users', 'id'); // Assuming customers are in users table (or customers table? check schema)
                 // Checking BookingController: Booking has CustomerName etc. but Booking table migration?
                 // Let's check BookingSeeder or Customers table. 
