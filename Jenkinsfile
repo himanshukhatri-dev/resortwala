@@ -53,10 +53,7 @@ pipeline {
         // --- STAGING DEPLOYMENT ---
         stage('Deploy to Staging') {
             when {
-                anyOf {
-                    branch 'master'
-                    expression { params.DEPLOY_TARGET == 'Beta' }
-                }
+                expression { params.DEPLOY_TARGET == 'Beta' || (params.DEPLOY_TARGET == 'Auto' && env.BRANCH_NAME == 'master') }
             }
             steps {
                 sshagent(['resortwala-deploy-key']) {
