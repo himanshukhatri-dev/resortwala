@@ -32,7 +32,7 @@ pipeline {
 
         stage('System Backup') {
             steps {
-                sshagent(['resortwala-ssh-key']) {
+                sshagent(['resortwala-deploy-key']) {
                     script {
                         def backupScript = '/var/www/html/dev_tools/ops/backup_db.sh'
                         sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'bash ${backupScript}'"
@@ -63,7 +63,7 @@ pipeline {
 
         stage('Deploy Production') {
             steps {
-                sshagent(['resortwala-ssh-key']) {
+                sshagent(['resortwala-deploy-key']) {
                     // 1. Enter Maintenance Mode (Optional, usually 0 downtime preferred, but safe for major updates)
                     // sh "ssh ${REMOTE_USER}@${REMOTE_HOST} 'php ${PROD_DIR}/api/artisan down'"
                     
