@@ -41,7 +41,7 @@ const LiveDataManager = () => (
 );
 */
 
-import ImpactLogs from './intelligence/ImpactLogs';
+import BackupManager from './intelligence/BackupManager';
 
 export default function Intelligence() {
     const [activeTab, setActiveTab] = useState('schema');
@@ -51,7 +51,8 @@ export default function Intelligence() {
         { id: 'code', label: 'Code Flow', icon: FaCode, component: CodeFlowVisualizer },
         { id: 'process', label: 'Business Process', icon: FaCogs, component: BusinessProcessVisualizer },
         { id: 'data', label: 'Live Editor', icon: FaTable, component: LiveDataManager },
-        { id: 'logs', label: 'Logs & Impact', icon: FaHistory, component: ImpactLogs },
+        { id: 'backups', label: 'System Backup', icon: FaHistory, component: BackupManager },
+        { id: 'logs', label: 'Logs & Impact', icon: FaNetworkWired, component: ImpactLogs },
     ];
 
     const ActiveComponent = tabs.find(t => t.id === activeTab)?.component || SchemaVisualizer;

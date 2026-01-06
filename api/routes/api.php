@@ -154,6 +154,12 @@ Route::prefix('admin/intelligence')->middleware(['auth:sanctum', 'verified'])->g
     Route::get('/schema', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getSchema']);
     Route::get('/data/{table}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getTableData']);
     Route::put('/data/{table}/{id}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'updateTableData']);
+    
+    // Database Backups
+    Route::get('/backups', [App\Http\Controllers\Admin\BackupController::class, 'index']);
+    Route::post('/backups', [App\Http\Controllers\Admin\BackupController::class, 'store']);
+    Route::post('/backups/restore', [App\Http\Controllers\Admin\BackupController::class, 'restore']);
+    Route::delete('/backups/{filename}', [App\Http\Controllers\Admin\BackupController::class, 'destroy']);
 });
 
 // Admin Authentication Routes
