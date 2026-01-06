@@ -72,10 +72,13 @@ pipeline {
                     // Backend
                     sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/api/"
                     
-                    // Frontends
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/client-customer/"
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/client-vendor/"
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/client-admin/"
+                    // 2. Deploy Frontends to respective directories
+                    // Customer (Root)
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/"
+                    // Vendor (/vendor)
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/vendor/"
+                    // Admin (/admin)
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/admin/"
 
                     // 3. Set Permissions & Migrate
                     sh """

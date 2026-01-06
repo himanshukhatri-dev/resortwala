@@ -83,9 +83,14 @@ pipeline {
                     sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${env.DEPLOY_DIR}/api/"
                     
                     // Deploy Frontends
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.DEPLOY_DIR}/client-customer/"
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.DEPLOY_DIR}/client-vendor/"
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.DEPLOY_DIR}/client-admin/"
+                    // Customer App (Base: /) -> Root of domain
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.DEPLOY_DIR}/"
+                    
+                    // Vendor App (Base: /vendor/)
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.DEPLOY_DIR}/vendor/"
+                    
+                    // Admin App (Base: /admin/)
+                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${env.DEPLOY_DIR}/admin/"
 
                     // Permissions & Commands
                     sh """
