@@ -93,7 +93,7 @@ export default function Properties() {
                 {/* Header Stats / Title */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800">Properties <span className="text-lg bg-red-600 text-white px-4 py-1 rounded-full animate-pulse ml-4">DEBUG MODE ACTIVE</span></h1>
+                        <h1 className="text-3xl font-bold text-gray-800">Properties</h1>
                         <div className="flex items-center gap-3 mt-1">
                             <p className="text-gray-500">Manage all registered properties and approvals</p>
                             <button
