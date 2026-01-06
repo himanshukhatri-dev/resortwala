@@ -10,15 +10,7 @@ export default function LiveDataManager() {
     const [targetDb, setTargetDb] = useState('');
     const [tables, setTables] = useState([]);
     const [data, setData] = useState([]);
-    const [schema, setSchema] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [edits, setEdits] = useState({}); // { rowId: { colName: newValue } }
-    const [showImpactModal, setShowImpactModal] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const [primaryKey, setPrimaryKey] = useState('id');
-
-    const [connectionInfo, setConnectionInfo] = useState(null);
+    const [fullSchema, setFullSchema] = useState({}); // New state to hold details
 
     // Fetch Tables List on Mount
     useEffect(() => {
@@ -33,7 +25,9 @@ export default function LiveDataManager() {
             if (res.data.success || res.status === 200) {
                 // Correctly access the schema object
                 const schemaObj = res.data.schema || res.data;
-                // Filter out non-table keys if the API returns wrapped response
+                setFullSchema(schemaObj); // Store full schema
+
+                // Filter out non-table keys
                 const tableNames = Object.keys(schemaObj).filter(k => k !== 'success' && k !== 'connection');
 
                 setTables(tableNames);
@@ -50,6 +44,16 @@ export default function LiveDataManager() {
         }
     };
 
+    // Detect Primary Key when table changes
+    useEffect(() => {
+        if (selectedTable && fullSchema[selectedTable]) {
+            const cols = fullSchema[selectedTable].columns || [];
+            const pkCol = cols.find(c => c.primary) || cols.find(c => c.name.toLowerCase() === 'id') || cols.find(c => c.name.toLowerCase().includes('id'));
+            setPrimaryKey(pkCol ? pkCol.name : 'id');
+            setSchema(cols.map(c => c.name)); // Update column headers
+        }
+    }, [selectedTable, fullSchema]);
+
     const fetchData = async () => {
         if (!selectedTable) return;
         setLoading(true);
@@ -61,7 +65,14 @@ export default function LiveDataManager() {
                     'X-Target-DB': targetDb
                 }
             });
-            setData(res.data.data || []);
+            // Handle different pagination structures or direct arrays
+            const rawData = res.data.data || res.data;
+            setData(Array.isArray(rawData) ? rawData : []);
+
+            // Fallback PK detection if schema failed (e.g. from data structure)
+            if (res.data.pk) {
+                setPrimaryKey(res.data.pk);
+            }
         } catch (err) {
             console.error("Failed to fetch data", err);
         } finally {
