@@ -60,7 +60,15 @@ class BookingController extends Controller
         if (!$isWaterpark) {
             // For villas/others, prevent overlap
             $existingBooking = Booking::where('PropertyId', $validated['PropertyId'])
-                ->whereIn('Status', ['Confirmed', 'pending', 'locked', 'booked']) 
+                ->where(function($query) {
+                    $query->whereIn('Status', ['Confirmed', 'locked', 'booked'])
+                          ->orWhere(function($q2) {
+                              // Only block for Pending bookings if they are recent (e.g., < 15 mins old)
+                              // This prevents abandoned payment attempts from blocking dates forever
+                              $q2->where('Status', 'Pending')
+                                 ->where('created_at', '>', now()->subMinutes(15));
+                          });
+                })
                 ->where(function($q) use ($validated) {
                     $q->where('CheckInDate', '<', $validated['CheckOutDate'])
                       ->where('CheckOutDate', '>', $validated['CheckInDate']);
