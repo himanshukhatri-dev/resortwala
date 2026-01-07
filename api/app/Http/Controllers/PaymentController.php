@@ -51,6 +51,7 @@ class PaymentController extends Controller
                 // Extract Booking ID from TXN_123_timestamp
                 $parts = explode('_', $merchantTxnId);
                 $bookingId = $parts[1] ?? null;
+                Log::info("Extracted Booking ID", ['txn' => $merchantTxnId, 'id' => $bookingId]);
 
                 if ($bookingId) {
                     $booking = Booking::find($bookingId);
@@ -63,12 +64,17 @@ class PaymentController extends Controller
                             $booking->Status = 'Cancelled';
                         }
                         $booking->save(); 
+                    } else {
+                        Log::error("Booking Not Found for ID: $bookingId");
                     }
                 }
+            } else {
+                Log::error("Callback missing merchantTransactionId");
             }
             
             // Redirect User
-            $frontendUrl = env('FRONTEND_URL', 'https://resortwala.com'); 
+            // Default to beta.resortwala.com if env not parsing correctly
+            $frontendUrl = env('FRONTEND_URL', 'https://beta.resortwala.com'); 
             
             if ($state === 'PAYMENT_SUCCESS') {
                 return redirect()->to("$frontendUrl/booking/success?id=" . ($bookingId ?? ''));
