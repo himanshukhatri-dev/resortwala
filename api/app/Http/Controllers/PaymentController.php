@@ -162,6 +162,10 @@ class PaymentController extends Controller
             return response()->json(['error' => 'Internal Error'], 500);
         }
     }
+
+    /**
+     * Debugging Endpoint for Payment Credentials
+     */
     public function test(Request $request)
     {
         $results = [];
