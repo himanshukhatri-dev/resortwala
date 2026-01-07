@@ -180,6 +180,7 @@ Route::post('/vendor/calendar/seed', [App\Http\Controllers\VendorCalendarControl
 
 // --- Payment Gateway Routes (PhonePe) ---
 Route::post('/payment/initiate', [\App\Http\Controllers\PaymentController::class, 'initiate'])->name('payment.initiate');
+Route::get('/payment/test', [\App\Http\Controllers\PaymentController::class, 'test']); // Debug route
 Route::post('/payment/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
     ->name('payment.callback');

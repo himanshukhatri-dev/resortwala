@@ -19,7 +19,7 @@ class PaymentController extends Controller
     public function __construct()
     {
         $this->merchantId = env('PHONEPE_MERCHANT_ID', 'M223R7WEM0IRX'); // Provided Test ID (Stripped suffix)
-        $this->saltKey = env('PHONEPE_SALT_KEY', '1fd12568-68a2-4103-916d-d620ef215711'); // Decoded from provided secret
+        $this->saltKey = env('PHONEPE_SALT_KEY', 'MWZkMTI1NjgtNjhhMi00MTAzLTkxNmQtZDYyMGVmMjE1NzEx'); // Decoded from provided secret
         $this->saltIndex = env('PHONEPE_SALT_INDEX', '1');
         $this->env = env('PHONEPE_ENV', 'UAT');
         
@@ -160,6 +160,72 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             Log::error("Payment Callback Error", ['e' => $e->getMessage()]);
             return response()->json(['error' => 'Internal Error'], 500);
+        }
+    }
+    public function test(Request $request)
+    {
+        // Debug Tool to test credentials
+        $results = [];
+        
+        // Variation 1: As Configured in ENV
+        $results['env_config'] = $this->runTestTransaction(
+            $this->merchantId,
+            $this->saltKey,
+            $this->saltIndex
+        );
+
+        // Variation 2: Full ID (if current is possibly stripped)
+        $fullId = "M223R7WEM0IRX_2512221801"; // Hardcoded from user report
+        if ($this->merchantId !== $fullId) {
+            $results['variation_full_id'] = $this->runTestTransaction(
+                $fullId,
+                $this->saltKey,
+                $this->saltIndex
+            );
+        }
+
+        // Variation 3: Short ID (if current is full)
+        $shortId = "M223R7WEM0IRX";
+        if ($this->merchantId !== $shortId) {
+            $results['variation_short_id'] = $this->runTestTransaction(
+                $shortId,
+                $this->saltKey,
+                $this->saltIndex
+            );
+        }
+
+        return response()->json($results);
+    }
+
+    private function runTestTransaction($mid, $key, $index)
+    {
+        $payload = [
+            'merchantId' => $mid,
+            'merchantTransactionId' => "TEST_" . time() . "_" . rand(100,999),
+            'merchantUserId' => "TEST_USER",
+            'amount' => 100, // 1 INR
+            'redirectUrl' => 'https://google.com',
+            'redirectMode' => 'POST',
+            'callbackUrl' => 'https://google.com',
+            'paymentInstrument' => ['type' => 'PAY_PAGE']
+        ];
+
+        $base64 = base64_encode(json_encode($payload));
+        $checksum = hash('sha256', $base64 . "/pg/v1/pay" . $key) . "###" . $index;
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'X-VERIFY' => $checksum
+            ])->post($this->baseUrl . "/pg/v1/pay", ['request' => $base64]);
+            
+            return [
+                'status' => $response->status(),
+                'json' => $response->json(),
+                'used_mid' => $mid
+            ];
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage()];
         }
     }
 }
