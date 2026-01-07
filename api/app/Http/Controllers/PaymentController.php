@@ -208,11 +208,11 @@ class PaymentController extends Controller
             'paymentInstrument' => ['type' => 'PAY_PAGE']
         ];
 
-        $jsonPayload = json_encode($payload);
+        // CRITICAL: Use JSON_UNESCAPED_SLASHES to ensure checksum matches
+        $jsonPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
         $base64 = base64_encode($jsonPayload);
         $checksum = hash('sha256', $base64 . "/pg/v1/pay" . $key) . "###" . $index;
 
-        // Force Manual JSON Construction
         $requestBody = json_encode(['request' => $base64]);
 
         try {
@@ -226,7 +226,8 @@ class PaymentController extends Controller
                 'used_mid' => $mid,
                 'used_url' => $url,
                 'json' => $response->json(),
-                // 'sent_body' => $requestBody // Debug if needed
+                'debug_base64' => $base64,
+                'debug_checksum' => $checksum
             ];
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
