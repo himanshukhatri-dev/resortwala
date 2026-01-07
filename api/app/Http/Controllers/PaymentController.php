@@ -18,14 +18,13 @@ class PaymentController extends Controller
 
     public function __construct()
     {
-        $this->merchantId = env('PHONEPE_MERCHANT_ID', 'PGTESTPAYUAT86'); // Confirmed Working Sandbox ID
-        $this->saltKey = env('PHONEPE_SALT_KEY', '96434309-7796-489d-8924-ab56988a6076'); // Confirmed Working Sandbox Key
-        $this->saltIndex = env('PHONEPE_SALT_INDEX', '1');
-        $this->env = env('PHONEPE_ENV', 'UAT');
+        // HARDCODED FOR DEBUGGING: To ensure enviroment variables are not overriding with old keys
+        $this->merchantId = 'PGTESTPAYUAT86'; 
+        $this->saltKey = '96434309-7796-489d-8924-ab56988a6076';
+        $this->saltIndex = '1';
+        $this->env = 'UAT';
         
-        $this->baseUrl = ($this->env === 'PROD') 
-            ? 'https://api.phonepe.com/apis/hermes' 
-            : 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+        $this->baseUrl = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
     }
 
     public function initiate(Request $request)

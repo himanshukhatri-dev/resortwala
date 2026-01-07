@@ -72,6 +72,8 @@ class BookingController extends Controller
         // For waterparks, allow multiple bookings
 
         // Set status based on booking source
+        Log::info("Booking Request", ['source' => $bookingSource, 'method' => $validated['payment_method']]);
+
         if ($bookingSource === 'public_calendar') {
             $validated['Status'] = 'Pending'; // Needs admin approval
             $validated['payment_status'] = 'pending';
