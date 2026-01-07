@@ -170,25 +170,23 @@ class PaymentController extends Controller
     {
         $results = [];
         
-        // Decoded Secret (What we have been trying)
+        // 0. Public Sandbox Defaults (To verify Code/URL is correct)
+        $publicMid = "PGTESTPAYUAT";
+        $publicKey = "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399";
+        $results['public_sandbox_default'] = $this->runTestTransaction($publicMid, $publicKey, 1);
+
+        // Decoded Secret (User Provided)
         $decodedKey = '1fd12568-68a2-4103-916d-d620ef215711';
-        // Raw Secret (Provided by user)
-        $rawSecret = 'MWZkMTI1NjgtNjhhMi00MTAzLTkxNmQtZDYyMGVmMjE1NzEx';
-
         $shortId = "M223R7WEM0IRX";
-        $fullId = "M223R7WEM0IRX_2512221801";
 
-        // 1. Short ID + Decoded Key
-        $results['short_id_decoded_key'] = $this->runTestTransaction($shortId, $decodedKey, 1);
+        // 1. Short ID + Decoded Key (Index 1)
+        $results['short_id_index_1'] = $this->runTestTransaction($shortId, $decodedKey, 1);
 
-        // 2. Short ID + Raw Secret
-        $results['short_id_raw_secret'] = $this->runTestTransaction($shortId, $rawSecret, 1);
+        // 2. Short ID + Decoded Key (Index 2 - just in case)
+        $results['short_id_index_2'] = $this->runTestTransaction($shortId, $decodedKey, 2);
 
-        // 3. Full ID + Decoded Key
-        $results['full_id_decoded_key'] = $this->runTestTransaction($fullId, $decodedKey, 1);
-
-        // 4. Full ID + Raw Secret
-        $results['full_id_raw_secret'] = $this->runTestTransaction($fullId, $rawSecret, 1);
+        // 3. Try Short ID with PUBLIC Sandbox Key (Sometimes keys are shared in UAT)
+        $results['short_id_public_key'] = $this->runTestTransaction($shortId, $publicKey, 1);
 
         return response()->json($results);
     }
