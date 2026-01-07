@@ -33,8 +33,12 @@ class PaymentController extends Controller
     public function callback(Request $request)
     {
         try {
-            if (!$request->has('response')) {
-                return response()->json(['error' => 'Invalid Callback'], 400);
+            Log::info("Payment Callback Hit", $request->all());
+
+            if (!$request->has('response') && !$request->has('code')) {
+                // Fallback: Check if it's a S2S callback or Redirect?
+                Log::error("Callback missing 'response' param", $request->all());
+                return response()->json(['error' => 'Invalid Callback', 'data' => $request->all()], 400);
             }
 
             $base64Response = $request->input('response');
