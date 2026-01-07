@@ -32,58 +32,51 @@ class PaymentController extends Controller
     {
         $request->validate([
             'booking_id' => 'required|exists:bookings,BookingId',
-            'redirect_url' => 'required|url' // Where frontend wants to return (e.g., /booking/success)
+            'redirect_url' => 'required|url' 
         ]);
 
         $booking = Booking::findOrFail($request->booking_id);
 
-        // Calculate amount in PAISE (100 paise = 1 INR)
-        // Ensure total amount is used. Check if partial payment is allowed? assuming full.
         $amountPaise = (int) ($booking->TotalAmount * 100);
-
         $transactionId = "TXN_" . $booking->BookingId . "_" . time();
-
-        // Save transaction ID to booking for tracking (optional, or use meta column)
-        // $booking->transaction_id = $transactionId; 
-        // $booking->save();
 
         $payload = [
             'merchantId' => $this->merchantId,
             'merchantTransactionId' => $transactionId,
             'merchantUserId' => "USER_" . ($booking->vendor_id ?? 'GUEST'),
             'amount' => $amountPaise,
-            'redirectUrl' => route('payment.callback'), // Server-to-Server Callback? Or Redirect?
+            'redirectUrl' => route('payment.callback'), 
             'redirectMode' => 'POST',
-            'callbackUrl' => route('payment.callback'), // Webhook
+            'callbackUrl' => route('payment.callback'), 
             'mobileNumber' => $booking->CustomerMobile,
             'paymentInstrument' => [
                 'type' => 'PAY_PAGE'
             ]
         ];
 
-        // 1. Encode Payload to Base64
-        $base64Payload = base64_encode(json_encode($payload));
+        // 1. Encode Payload (Crucial: JSON_UNESCAPED_SLASHES)
+        $jsonPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        $base64Payload = base64_encode($jsonPayload);
 
-        // 2. Calculate Checksum: SHA256(Base64 + "/pg/v1/pay" + SaltKey) + "###" + SaltIndex
+        // 2. Calculate Checksum
         $stringToHash = $base64Payload . "/pg/v1/pay" . $this->saltKey;
         $checksum = hash('sha256', $stringToHash) . "###" . $this->saltIndex;
 
-        // 3. Make API Call
+        // 3. Make API Call (Manual Body)
+        $requestBody = json_encode(['request' => $base64Payload]);
+
         try {
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'X-VERIFY' => $checksum
-            ])->post($this->baseUrl . "/pg/v1/pay", [
-                'request' => $base64Payload
-            ]);
+            ])->withBody($requestBody, 'application/json')->post($this->baseUrl . "/pg/v1/pay");
 
             $resData = $response->json();
 
             if ($response->successful() && ($resData['success'] ?? false)) {
                 $redirectUrl = $resData['data']['instrumentResponse']['redirectInfo']['url'];
                 
-                // Store temp transaction ID mapping if needed, or rely on callback
-                $booking->transaction_id = $transactionId; // Ensure migration has this OR use a json column
+                $booking->transaction_id = $transactionId; 
                 $booking->save();
 
                 return response()->json([
@@ -104,136 +97,49 @@ class PaymentController extends Controller
 
     public function callback(Request $request)
     {
-        // Handle Server-to-Server Callback from PhonePe
         try {
-            $input = $request->all();
-            
-            // X-VERIFY Header is required for validation
-            // But usually, standard callback payload is base64(body) + checksum
-            // PhonePe sends POST with 'response' (base64) and X-VERIFY header.
-            
             if (!$request->has('response')) {
                 return response()->json(['error' => 'Invalid Callback'], 400);
             }
 
             $base64Response = $request->input('response');
-            // $checksumHeader = $request->header('X-VERIFY');
-
-            // Optionally verify checksum here... logic: SHA256(response + salt) + ### + index
-            
             $resData = json_decode(base64_decode($base64Response), true);
             
-            $merchantTxnId = $resData['data']['merchantTransactionId'];
-            $state = $resData['code']; // PAYMENT_SUCCESS, PAYMENT_ERROR
+            $merchantTxnId = $resData['data']['merchantTransactionId'] ?? null;
+            $state = $resData['code'] ?? 'PAYMENT_ERROR';
 
-            // Extract Booking ID from TXN_123_timestamp
-            $parts = explode('_', $merchantTxnId);
-            $bookingId = $parts[1] ?? null;
+            if ($merchantTxnId) {
+                // Extract Booking ID from TXN_123_timestamp
+                $parts = explode('_', $merchantTxnId);
+                $bookingId = $parts[1] ?? null;
 
-            if ($bookingId) {
-                $booking = Booking::find($bookingId);
-                if ($booking) {
-                    if ($state === 'PAYMENT_SUCCESS') {
-                        $booking->payment_status = 'paid';
-                        $booking->Status = 'Confirmed'; // Auto confirm on payment?
-                    } else {
-                        $booking->payment_status = 'failed';
-                        $booking->Status = 'Cancelled'; // Or Pending Payment?
+                if ($bookingId) {
+                    $booking = Booking::find($bookingId);
+                    if ($booking) {
+                        if ($state === 'PAYMENT_SUCCESS') {
+                            $booking->payment_status = 'paid';
+                            $booking->Status = 'Confirmed'; 
+                        } else {
+                            $booking->payment_status = 'failed';
+                            $booking->Status = 'Cancelled';
+                        }
+                        $booking->save(); 
                     }
-                    $booking->save(); // Save payment metadata if needed
                 }
             }
             
-            // If this is a redirect from the user's browser (RedirectUrl), we should show a UI.
-            // But since we set redirectMode=POST, this endpoint handles it.
-            // We should redirect the USER back to the frontend.
-            
+            // Redirect User
             $frontendUrl = env('FRONTEND_URL', 'https://resortwala.com'); 
-            // Better to dynamic based on env (beta vs prod)
             
             if ($state === 'PAYMENT_SUCCESS') {
-                return redirect()->to("$frontendUrl/booking/success?id=$bookingId");
+                return redirect()->to("$frontendUrl/booking/success?id=" . ($bookingId ?? ''));
             } else {
-                return redirect()->to("$frontendUrl/booking/failed?id=$bookingId");
+                return redirect()->to("$frontendUrl/booking/failed?id=" . ($bookingId ?? ''));
             }
 
         } catch (\Exception $e) {
             Log::error("Payment Callback Error", ['e' => $e->getMessage()]);
             return response()->json(['error' => 'Internal Error'], 500);
-        }
-    }
-
-    /**
-     * Debugging Endpoint for Payment Credentials
-     */
-    public function test(Request $request)
-    {
-        $results = [];
-
-        // 1. Alternate Public Sandbox (Recommended by some docs)
-        // MID: PGTESTPAYUAT86
-        // Key: 96434309-7796-489d-8924-ab56988a6076
-        $altSandboxMid = "PGTESTPAYUAT86";
-        $altSandboxKey = "96434309-7796-489d-8924-ab56988a6076";
-        $results['alt_sandbox_86'] = $this->runTestTransaction($altSandboxMid, $altSandboxKey, 1);
-
-        // 2. Standard Public Sandbox (Retrying just in case)
-        $publicMid = "PGTESTPAYUAT";
-        $publicKey = "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399";
-        $results['public_sandbox'] = $this->runTestTransaction($publicMid, $publicKey, 1);
-
-        // 3. User Credentials - Try PROD URL Variations
-        // If they are Prod keys, one of these URLs should hit.
-        $userMid = "M223R7WEM0IRX";
-        $userKey = "1fd12568-68a2-4103-916d-d620ef215711";
-        
-        // Variation A: /apis/hermes
-        $results['user_prod_hermes'] = $this->runTestTransaction($userMid, $userKey, 1, 'https://api.phonepe.com/apis/hermes');
-        
-        // Variation B: Root domain (Some old integrations)
-        $results['user_prod_root'] = $this->runTestTransaction($userMid, $userKey, 1, 'https://api.phonepe.com');
-
-        return response()->json($results);
-    }
-
-    private function runTestTransaction($mid, $key, $index, $overrideUrl = null)
-    {
-        $url = ($overrideUrl ?? $this->baseUrl) . "/pg/v1/pay";
-
-        $payload = [
-            'merchantId' => $mid,
-            'merchantTransactionId' => "TEST_" . time() . "_" . rand(100,999),
-            'merchantUserId' => "TEST_USER",
-            'amount' => 100, // 1 INR
-            'redirectUrl' => 'https://resortwala.com',
-            'redirectMode' => 'POST',
-            'callbackUrl' => 'https://resortwala.com',
-            'paymentInstrument' => ['type' => 'PAY_PAGE']
-        ];
-
-        // CRITICAL: Use JSON_UNESCAPED_SLASHES to ensure checksum matches
-        $jsonPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
-        $base64 = base64_encode($jsonPayload);
-        $checksum = hash('sha256', $base64 . "/pg/v1/pay" . $key) . "###" . $index;
-
-        $requestBody = json_encode(['request' => $base64]);
-
-        try {
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-                'X-VERIFY' => $checksum
-            ])->withBody($requestBody, 'application/json')->post($url);
-            
-            return [
-                'status' => $response->status(),
-                'used_mid' => $mid,
-                'used_url' => $url,
-                'json' => $response->json(),
-                'debug_base64' => $base64,
-                'debug_checksum' => $checksum
-            ];
-        } catch (\Exception $e) {
-            return ['error' => $e->getMessage()];
         }
     }
 }
