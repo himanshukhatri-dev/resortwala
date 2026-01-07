@@ -231,44 +231,43 @@ export default function BookingPage() {
         };
 
         try {
+            // SINGLE ATOMIC CALL
+            // BookingController now handles Payment Initiation internally
             const res = await axios.post(`${API_BASE_URL}/bookings`, payload);
+
             if (form.payment_method === 'hotel') {
-                // Standard Offline Flow
+                // Offline Flow
                 if (form.CustomerEmail) localStorage.setItem('user_email', form.CustomerEmail);
                 if (form.CustomerMobile) localStorage.setItem('user_mobile', form.CustomerMobile);
                 navigate('/bookings', {
                     state: {
                         bookingSuccess: true,
                         message: "Booking Request Sent! Waiting for Approval.",
-                        newBookingId: res.data.bookingId || res.data.id || res.data.booking?.BookingId || null,
+                        newBookingId: res.data.booking?.BookingId || res.data.booking?.id,
                         property_name: property.Name
                     }
                 });
             } else {
-                // Online Payment Flow (PhonePe)
-                const bookingId = res.data.bookingId || res.data.id || res.data.booking?.BookingId || res.data.booking?.id; // Robust ID extraction
-
-                try {
-                    const payRes = await axios.post(`${API_BASE_URL}/payment/initiate`, {
-                        booking_id: bookingId,
-                        redirect_url: window.location.origin + '/booking/success' // Unused by backend currently but good practice
-                    });
-
-                    if (payRes.data.success && payRes.data.redirect_url) {
-                        window.location.href = payRes.data.redirect_url;
-                    } else {
-                        alert("Payment Initiation Failed. Please try again or pay at hotel.");
-                    }
-                } catch (payErr) {
-                    console.error("Payment Error", payErr);
-                    alert("Payment Gateway Error: " + (payErr.response?.data?.message || payErr.message));
+                // Online Payment Flow
+                // Backend now returns redirect_url directly if successful
+                if (res.data.payment_required && res.data.redirect_url) {
+                    window.location.href = res.data.redirect_url;
+                } else {
+                    // Fallback or specific error case (should be caught by catch block usually)
+                    alert("Unexpected response from server. Please contact support.");
                 }
             }
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
             console.error(error);
-            const errMsg = error.response?.data?.error || error.response?.data?.message || error.message || "Unknown error";
-            alert(`Booking Failed: ${errMsg}`);
+            // Handle specific Payment Gateway Errors (422)
+            const errMsg = error.response?.data?.message || error.message || "Booking Failed";
+            const errCode = error.response?.data?.error_code;
+
+            if (errCode === 'GATEWAY_ERROR') {
+                alert(`Payment Gateway Error: ${errMsg}. Please try again.`);
+            } else {
+                alert(`Booking Failed: ${errMsg}`);
+            }
             setBookingStatus('idle');
         }
     };
