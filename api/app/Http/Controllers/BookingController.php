@@ -74,8 +74,10 @@ class BookingController extends Controller
         // Set status based on booking source
         if ($bookingSource === 'public_calendar') {
             $validated['Status'] = 'Pending'; // Needs admin approval (User Request)
+        } elseif ($validated['payment_method'] !== 'hotel') {
+            $validated['Status'] = 'Pending'; // Wait for payment confirmation
         } else {
-            $validated['Status'] = 'Confirmed';   // Auto-confirm Vendor/Website bookings
+            $validated['Status'] = 'Confirmed';   // Auto-confirm Pay-at-Hotel/Offline
         }
         
         $validated['booking_source'] = $bookingSource;
