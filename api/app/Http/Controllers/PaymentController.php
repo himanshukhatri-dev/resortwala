@@ -170,25 +170,28 @@ class PaymentController extends Controller
     {
         $results = [];
 
-        // 1. Try USER'S LEGACY SNIPPET (from the code they pasted)
-        // MID: TESTVVUAT
-        // Secret: ZTcx... -> e71442f5-f472-422f-839f-1ffed6f7d35b
-        $snippetMid = "TESTVVUAT";
-        $snippetKey = "e71442f5-f472-422f-839f-1ffed6f7d35b";
-        $results['legacy_snippet'] = $this->runTestTransaction($snippetMid, $snippetKey, 1);
+        // 1. Alternate Public Sandbox (Recommended by some docs)
+        // MID: PGTESTPAYUAT86
+        // Key: 96434309-7796-489d-8924-ab56988a6076
+        $altSandboxMid = "PGTESTPAYUAT86";
+        $altSandboxKey = "96434309-7796-489d-8924-ab56988a6076";
+        $results['alt_sandbox_86'] = $this->runTestTransaction($altSandboxMid, $altSandboxKey, 1);
 
-        // 2. Public Sandbox (Standard)
-        // If this fails, my request construction is wrong.
+        // 2. Standard Public Sandbox (Retrying just in case)
         $publicMid = "PGTESTPAYUAT";
         $publicKey = "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399";
         $results['public_sandbox'] = $this->runTestTransaction($publicMid, $publicKey, 1);
 
-        // 3. User's New Credentials (M223...)
-        // Maybe they are PROD credentials?
+        // 3. User Credentials - Try PROD URL Variations
+        // If they are Prod keys, one of these URLs should hit.
         $userMid = "M223R7WEM0IRX";
         $userKey = "1fd12568-68a2-4103-916d-d620ef215711";
-        $results['user_creds_sandbox'] = $this->runTestTransaction($userMid, $userKey, 1);
-        $results['user_creds_prod'] = $this->runTestTransaction($userMid, $userKey, 1, 'https://api.phonepe.com/apis/hermes');
+        
+        // Variation A: /apis/hermes
+        $results['user_prod_hermes'] = $this->runTestTransaction($userMid, $userKey, 1, 'https://api.phonepe.com/apis/hermes');
+        
+        // Variation B: Root domain (Some old integrations)
+        $results['user_prod_root'] = $this->runTestTransaction($userMid, $userKey, 1, 'https://api.phonepe.com');
 
         return response()->json($results);
     }
