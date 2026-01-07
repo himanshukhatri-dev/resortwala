@@ -167,6 +167,8 @@ class PaymentController extends Controller
      * Debugging Endpoint for Payment Credentials
      */
     public function test(Request $request)
+    {
+        $results = []; // Initialize array first
         $results['debug'] = [
             'env_config' => $this->env,
             'base_url' => $this->baseUrl
