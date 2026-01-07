@@ -168,32 +168,27 @@ class PaymentController extends Controller
      */
     public function test(Request $request)
     {
-        $results = []; // Initialize array first
-        $results['debug'] = [
-            'env_config' => $this->env,
-            'base_url' => $this->baseUrl
-        ];
+        $results = [];
 
-        // 0. Public Sandbox Defaults (Result: Should be SUCCESS if URL is Sandbox)
+        // 1. Try USER'S LEGACY SNIPPET (from the code they pasted)
+        // MID: TESTVVUAT
+        // Secret: ZTcx... -> e71442f5-f472-422f-839f-1ffed6f7d35b
+        $snippetMid = "TESTVVUAT";
+        $snippetKey = "e71442f5-f472-422f-839f-1ffed6f7d35b";
+        $results['legacy_snippet'] = $this->runTestTransaction($snippetMid, $snippetKey, 1);
+
+        // 2. Public Sandbox (Standard)
+        // If this fails, my request construction is wrong.
         $publicMid = "PGTESTPAYUAT";
         $publicKey = "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399";
-        
-        // Test A: Using Configured BaseUrl
-        $results['public_sandbox_config_url'] = $this->runTestTransaction($publicMid, $publicKey, 1);
+        $results['public_sandbox'] = $this->runTestTransaction($publicMid, $publicKey, 1);
 
-        // Test B: FORCING Sandbox URL (To check if config is wrong)
-        $sandboxUrl = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
-        $results['public_sandbox_forced_url'] = $this->runTestTransaction($publicMid, $publicKey, 1, $sandboxUrl);
-
-        // Test C: FORCING Production URL (To check if Keys are actually PROD)
-        $prodUrl = 'https://api.phonepe.com/apis/hermes';
-        // Try User's "Test" Credentials against PROD URL (Maybe they are actually live keys?)
-        $merchantId = "M223R7WEM0IRX";
-        // User provided logic implies "Client Secret" might be key.
-        $userKey = "1fd12568-68a2-4103-916d-d620ef215711"; // Decoded
-
-        $results['user_keys_forced_prod'] = $this->runTestTransaction($merchantId, $userKey, 1, $prodUrl);
-        $results['user_keys_forced_sandbox'] = $this->runTestTransaction($merchantId, $userKey, 1, $sandboxUrl);
+        // 3. User's New Credentials (M223...)
+        // Maybe they are PROD credentials?
+        $userMid = "M223R7WEM0IRX";
+        $userKey = "1fd12568-68a2-4103-916d-d620ef215711";
+        $results['user_creds_sandbox'] = $this->runTestTransaction($userMid, $userKey, 1);
+        $results['user_creds_prod'] = $this->runTestTransaction($userMid, $userKey, 1, 'https://api.phonepe.com/apis/hermes');
 
         return response()->json($results);
     }
@@ -213,19 +208,25 @@ class PaymentController extends Controller
             'paymentInstrument' => ['type' => 'PAY_PAGE']
         ];
 
-        $base64 = base64_encode(json_encode($payload));
+        // JSON UNESCAPED SLASHES might be needed?
+        $jsonPayload = json_encode($payload);
+        $base64 = base64_encode($jsonPayload);
         $checksum = hash('sha256', $base64 . "/pg/v1/pay" . $key) . "###" . $index;
 
         try {
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
                 'X-VERIFY' => $checksum
-            ])->post($this->baseUrl . "/pg/v1/pay", ['request' => $base64]);
+            ])->post($url, ['request' => $base64]);
             
             return [
                 'status' => $response->status(),
+                'used_mid' => $mid,
+                'used_url' => $url,
                 'json' => $response->json(),
-                'used_mid' => $mid
+                'debug_checksum' => $checksum,
+                // 'debug_payload' => $jsonPayload // Uncomment to inspect JSON
             ];
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
