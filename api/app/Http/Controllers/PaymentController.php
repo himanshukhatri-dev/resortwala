@@ -18,7 +18,7 @@ class PaymentController extends Controller
 
     public function __construct()
     {
-        $this->merchantId = env('PHONEPE_MERCHANT_ID', 'M223R7WEM0IRX_2512221801'); // Provided Test ID
+        $this->merchantId = env('PHONEPE_MERCHANT_ID', 'M223R7WEM0IRX'); // Provided Test ID (Stripped suffix)
         $this->saltKey = env('PHONEPE_SALT_KEY', '1fd12568-68a2-4103-916d-d620ef215711'); // Decoded from provided secret
         $this->saltIndex = env('PHONEPE_SALT_INDEX', '1');
         $this->env = env('PHONEPE_ENV', 'UAT');
