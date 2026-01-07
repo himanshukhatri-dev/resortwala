@@ -311,7 +311,7 @@ export default function Home() {
                                 ? `Stays in ${searchParams.location}`
                                 : activeCategory !== 'all'
                                     ? `${CATEGORIES.find(c => c.id === activeCategory)?.label || 'Selected'} Stays`
-                                    : "All Propertiess"
+                                    : "All Properties"
                             }
                         </h2>
                         <p className="text-gray-500 mt-1 text-sm">
