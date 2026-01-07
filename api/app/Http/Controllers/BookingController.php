@@ -73,21 +73,25 @@ class BookingController extends Controller
 
         // Set status based on booking source
         if ($bookingSource === 'public_calendar') {
-            $validated['Status'] = 'Pending'; // Needs admin approval (User Request)
-        } elseif ($validated['payment_method'] !== 'hotel') {
-            $validated['Status'] = 'Pending'; // Wait for payment confirmation
+            $validated['Status'] = 'Pending'; // Needs admin approval
+            $validated['payment_status'] = 'pending';
+        } elseif ($validated['payment_method'] === 'online' || $validated['payment_method'] === 'phonepe') {
+            $validated['Status'] = 'Pending'; // STRICTLY Pending until callback
+            $validated['payment_status'] = 'pending';
         } else {
-            $validated['Status'] = 'Confirmed';   // Auto-confirm Pay-at-Hotel/Offline
+            // Pay at Hotel / Offline
+            $validated['Status'] = 'Confirmed'; 
+            $validated['payment_status'] = 'pending'; // Payment collected later
         }
         
         $validated['booking_source'] = $bookingSource;
-        // Initial payment status is always pending until callback confirms it
-        $validated['payment_status'] = 'pending';
 
         $booking = Booking::create($validated);
 
-        // Send confirmation notification
-        $this->notificationService->sendBookingConfirmation($booking);
+        // ONLY send confirmation if actually confirmed (e.g. Pay at Hotel)
+        if ($booking->Status === 'Confirmed') {
+            $this->notificationService->sendBookingConfirmation($booking);
+        }
 
         return response()->json([
             'message' => 'Booking created successfully',
