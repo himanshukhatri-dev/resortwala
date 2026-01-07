@@ -170,23 +170,26 @@ class PaymentController extends Controller
     {
         $results = [];
         
-        // 0. Public Sandbox Defaults (To verify Code/URL is correct)
+        // 0. Public Sandbox Defaults
         $publicMid = "PGTESTPAYUAT";
         $publicKey = "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399";
-        $results['public_sandbox_default'] = $this->runTestTransaction($publicMid, $publicKey, 1);
+        $results['public_sandbox'] = $this->runTestTransaction($publicMid, $publicKey, 1);
 
-        // Decoded Secret (User Provided)
-        $decodedKey = '1fd12568-68a2-4103-916d-d620ef215711';
-        $shortId = "M223R7WEM0IRX";
+        // NEW: From User's Working Snippet
+        // Secret: ZTcxNDQyZjUtZjQ3Mi00MjJmLTgzOWYtMWZmZWQ2ZjdkMzVi (Base64)
+        // Decoded: e71442f5-f472-422f-839f-1ffed6f7d35b
+        $snippetKey = "e71442f5-f472-422f-839f-1ffed6f7d35b"; 
+        $snippetMid = "TESTVVUAT";
+        $snippetGrantTypeMid = "M223R7WEM0IRX";
 
-        // 1. Short ID + Decoded Key (Index 1)
-        $results['short_id_index_1'] = $this->runTestTransaction($shortId, $decodedKey, 1);
+        // 1. Snippet MID + Snippet Key
+        $results['snippet_mid_combo'] = $this->runTestTransaction($snippetMid, $snippetKey, 1);
 
-        // 2. Short ID + Decoded Key (Index 2 - just in case)
-        $results['short_id_index_2'] = $this->runTestTransaction($shortId, $decodedKey, 2);
+        // 2. Snippet 'GrantType' treated as MID + Snippet Key
+        $results['snippet_grant_as_mid'] = $this->runTestTransaction($snippetGrantTypeMid, $snippetKey, 1);
 
-        // 3. Try Short ID with PUBLIC Sandbox Key (Sometimes keys are shared in UAT)
-        $results['short_id_public_key'] = $this->runTestTransaction($shortId, $publicKey, 1);
+        // 3. User Provided 'M223...' with OLD decoded key (Original Attempt)
+        // $results['original_attempt'] = $this->runTestTransaction("M223R7WEM0IRX", "1fd12568-68a2-4103-916d-d620ef215711", 1);
 
         return response()->json($results);
     }
