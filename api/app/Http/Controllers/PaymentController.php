@@ -167,43 +167,47 @@ class PaymentController extends Controller
      * Debugging Endpoint for Payment Credentials
      */
     public function test(Request $request)
-    {
-        $results = [];
-        
-        // 0. Public Sandbox Defaults
+        $results['debug'] = [
+            'env_config' => $this->env,
+            'base_url' => $this->baseUrl
+        ];
+
+        // 0. Public Sandbox Defaults (Result: Should be SUCCESS if URL is Sandbox)
         $publicMid = "PGTESTPAYUAT";
         $publicKey = "099eb0cd-02cf-4e2a-8aca-3e6c6aff0399";
-        $results['public_sandbox'] = $this->runTestTransaction($publicMid, $publicKey, 1);
+        
+        // Test A: Using Configured BaseUrl
+        $results['public_sandbox_config_url'] = $this->runTestTransaction($publicMid, $publicKey, 1);
 
-        // NEW: From User's Working Snippet
-        // Secret: ZTcxNDQyZjUtZjQ3Mi00MjJmLTgzOWYtMWZmZWQ2ZjdkMzVi (Base64)
-        // Decoded: e71442f5-f472-422f-839f-1ffed6f7d35b
-        $snippetKey = "e71442f5-f472-422f-839f-1ffed6f7d35b"; 
-        $snippetMid = "TESTVVUAT";
-        $snippetGrantTypeMid = "M223R7WEM0IRX";
+        // Test B: FORCING Sandbox URL (To check if config is wrong)
+        $sandboxUrl = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+        $results['public_sandbox_forced_url'] = $this->runTestTransaction($publicMid, $publicKey, 1, $sandboxUrl);
 
-        // 1. Snippet MID + Snippet Key
-        $results['snippet_mid_combo'] = $this->runTestTransaction($snippetMid, $snippetKey, 1);
+        // Test C: FORCING Production URL (To check if Keys are actually PROD)
+        $prodUrl = 'https://api.phonepe.com/apis/hermes';
+        // Try User's "Test" Credentials against PROD URL (Maybe they are actually live keys?)
+        $merchantId = "M223R7WEM0IRX";
+        // User provided logic implies "Client Secret" might be key.
+        $userKey = "1fd12568-68a2-4103-916d-d620ef215711"; // Decoded
 
-        // 2. Snippet 'GrantType' treated as MID + Snippet Key
-        $results['snippet_grant_as_mid'] = $this->runTestTransaction($snippetGrantTypeMid, $snippetKey, 1);
-
-        // 3. User Provided 'M223...' with OLD decoded key (Original Attempt)
-        // $results['original_attempt'] = $this->runTestTransaction("M223R7WEM0IRX", "1fd12568-68a2-4103-916d-d620ef215711", 1);
+        $results['user_keys_forced_prod'] = $this->runTestTransaction($merchantId, $userKey, 1, $prodUrl);
+        $results['user_keys_forced_sandbox'] = $this->runTestTransaction($merchantId, $userKey, 1, $sandboxUrl);
 
         return response()->json($results);
     }
 
-    private function runTestTransaction($mid, $key, $index)
+    private function runTestTransaction($mid, $key, $index, $overrideUrl = null)
     {
+        $url = ($overrideUrl ?? $this->baseUrl) . "/pg/v1/pay";
+
         $payload = [
             'merchantId' => $mid,
             'merchantTransactionId' => "TEST_" . time() . "_" . rand(100,999),
             'merchantUserId' => "TEST_USER",
             'amount' => 100, // 1 INR
-            'redirectUrl' => 'https://google.com',
+            'redirectUrl' => 'https://resortwala.com',
             'redirectMode' => 'POST',
-            'callbackUrl' => 'https://google.com',
+            'callbackUrl' => 'https://resortwala.com',
             'paymentInstrument' => ['type' => 'PAY_PAGE']
         ];
 
