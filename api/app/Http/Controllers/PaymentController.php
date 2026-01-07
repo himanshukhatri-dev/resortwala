@@ -163,35 +163,27 @@ class PaymentController extends Controller
         }
         public function test(Request $request)
     {
-        // Debug Tool to test credentials
         $results = [];
         
-        // Variation 1: As Configured in ENV
-        $results['env_config'] = $this->runTestTransaction(
-            $this->merchantId,
-            $this->saltKey,
-            $this->saltIndex
-        );
+        // Decoded Secret (What we have been trying)
+        $decodedKey = '1fd12568-68a2-4103-916d-d620ef215711';
+        // Raw Secret (Provided by user)
+        $rawSecret = 'MWZkMTI1NjgtNjhhMi00MTAzLTkxNmQtZDYyMGVmMjE1NzEx';
 
-        // Variation 2: Full ID (if current is possibly stripped)
-        $fullId = "M223R7WEM0IRX_2512221801"; // Hardcoded from user report
-        if ($this->merchantId !== $fullId) {
-            $results['variation_full_id'] = $this->runTestTransaction(
-                $fullId,
-                $this->saltKey,
-                $this->saltIndex
-            );
-        }
-
-        // Variation 3: Short ID (if current is full)
         $shortId = "M223R7WEM0IRX";
-        if ($this->merchantId !== $shortId) {
-            $results['variation_short_id'] = $this->runTestTransaction(
-                $shortId,
-                $this->saltKey,
-                $this->saltIndex
-            );
-        }
+        $fullId = "M223R7WEM0IRX_2512221801";
+
+        // 1. Short ID + Decoded Key
+        $results['short_id_decoded_key'] = $this->runTestTransaction($shortId, $decodedKey, 1);
+
+        // 2. Short ID + Raw Secret
+        $results['short_id_raw_secret'] = $this->runTestTransaction($shortId, $rawSecret, 1);
+
+        // 3. Full ID + Decoded Key
+        $results['full_id_decoded_key'] = $this->runTestTransaction($fullId, $decodedKey, 1);
+
+        // 4. Full ID + Raw Secret
+        $results['full_id_raw_secret'] = $this->runTestTransaction($fullId, $rawSecret, 1);
 
         return response()->json($results);
     }
