@@ -208,25 +208,25 @@ class PaymentController extends Controller
             'paymentInstrument' => ['type' => 'PAY_PAGE']
         ];
 
-        // JSON UNESCAPED SLASHES might be needed?
         $jsonPayload = json_encode($payload);
         $base64 = base64_encode($jsonPayload);
         $checksum = hash('sha256', $base64 . "/pg/v1/pay" . $key) . "###" . $index;
 
+        // Force Manual JSON Construction
+        $requestBody = json_encode(['request' => $base64]);
+
         try {
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
                 'X-VERIFY' => $checksum
-            ])->post($url, ['request' => $base64]);
+            ])->withBody($requestBody, 'application/json')->post($url);
             
             return [
                 'status' => $response->status(),
                 'used_mid' => $mid,
                 'used_url' => $url,
                 'json' => $response->json(),
-                'debug_checksum' => $checksum,
-                // 'debug_payload' => $jsonPayload // Uncomment to inspect JSON
+                // 'sent_body' => $requestBody // Debug if needed
             ];
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
