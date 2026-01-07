@@ -161,7 +161,8 @@ class PaymentController extends Controller
             Log::error("Payment Callback Error", ['e' => $e->getMessage()]);
             return response()->json(['error' => 'Internal Error'], 500);
         }
-        public function test(Request $request)
+    }
+    public function test(Request $request)
     {
         $results = [];
         
