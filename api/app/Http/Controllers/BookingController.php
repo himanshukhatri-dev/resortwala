@@ -5,14 +5,19 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Booking;
 use App\Services\NotificationService;
+use App\Services\PhonePeService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BookingController extends Controller
 {
     protected $notificationService;
+    protected $phonePeService;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(NotificationService $notificationService, PhonePeService $phonePeService)
     {
         $this->notificationService = $notificationService;
+        $this->phonePeService = $phonePeService;
     }
 
     public function store(Request $request)
@@ -48,15 +53,14 @@ class BookingController extends Controller
         // Get property to check type
         $property = \App\Models\PropertyMaster::find($validated['PropertyId']);
         
-        // Check availability based on property type
         // Check availability logic
         $type = strtolower($property->property_type);
         $isWaterpark = ($type === 'waterpark' || $type === 'water park');
 
         if (!$isWaterpark) {
-            // For villas/others, prevent overlap: (StartA < EndB) && (EndA > StartB)
+            // For villas/others, prevent overlap
             $existingBooking = Booking::where('PropertyId', $validated['PropertyId'])
-                ->whereIn('Status', ['Confirmed', 'pending', 'locked', 'booked']) // Ensure all status checked
+                ->whereIn('Status', ['Confirmed', 'pending', 'locked', 'booked']) 
                 ->where(function($q) use ($validated) {
                     $q->where('CheckInDate', '<', $validated['CheckOutDate'])
                       ->where('CheckOutDate', '>', $validated['CheckInDate']);
@@ -69,38 +73,83 @@ class BookingController extends Controller
                 ], 422);
             }
         }
-        // For waterparks, allow multiple bookings
 
         // Set status based on booking source
         Log::info("Booking Request", ['source' => $bookingSource, 'method' => $validated['payment_method']]);
 
         if ($bookingSource === 'public_calendar') {
-            $validated['Status'] = 'Pending'; // Needs admin approval
+            $validated['Status'] = 'Pending';
             $validated['payment_status'] = 'pending';
-        } elseif ($validated['payment_method'] === 'online' || $validated['payment_method'] === 'phonepe') {
-            $validated['Status'] = 'Pending'; // STRICTLY Pending until callback
+        } elseif ($validated['payment_method'] === 'online' || $validated['payment_method'] === 'phonepe' || $validated['payment_method'] === 'card' || $validated['payment_method'] === 'upi') {
+            $validated['Status'] = 'Pending';
             $validated['payment_status'] = 'pending';
         } else {
             // Pay at Hotel / Offline
             $validated['Status'] = 'Confirmed'; 
-            $validated['payment_status'] = 'pending'; // Payment collected later
+            $validated['payment_status'] = 'pending'; 
         }
         
         $validated['booking_source'] = $bookingSource;
 
-        $booking = Booking::create($validated);
+        // ATOMIC TRANSACTION START
+        DB::beginTransaction();
 
-        // ONLY send confirmation if actually confirmed (e.g. Pay at Hotel)
-        if ($booking->Status === 'Confirmed') {
-            $this->notificationService->sendBookingConfirmation($booking);
+        try {
+            $booking = Booking::create($validated);
+
+            // Handle Online Payment Initiation
+            if (in_array($validated['payment_method'], ['card', 'upi', 'phonepe', 'online'])) {
+                
+                // Use PhonePeService Transactionally
+                $callbackUrl = route('payment.callback');
+                $paymentResult = $this->phonePeService->initiatePayment($booking, $callbackUrl);
+
+                if ($paymentResult['success']) {
+                    $booking->transaction_id = $paymentResult['transaction_id'];
+                    $booking->save();
+                    
+                    DB::commit(); // Commit Booking + Transaction ID
+
+                    return response()->json([
+                        'message' => 'Booking initiated, redirecting to payment',
+                        'booking' => $booking,
+                        'payment_required' => true,
+                        'redirect_url' => $paymentResult['redirect_url']
+                    ], 201);
+                } else {
+                    // Payment Init Failed -> Rollback Booking
+                    DB::rollBack();
+                    Log::error("Payment Init Failed, Rolled Back Booking", ['error' => $paymentResult]);
+                    
+                    return response()->json([
+                        'message' => 'Payment Gateway Error: ' . ($paymentResult['message'] ?? 'Unknown'),
+                        'error_code' => $paymentResult['code'] ?? 'GATEWAY_ERROR'
+                    ], 422); // Unprocessable Entity
+                }
+            }
+
+            // Offline / Pay at Hotel Flow
+            DB::commit();
+
+            // Send confirmation notification if Confirmed
+            if ($booking->Status === 'Confirmed') {
+                $this->notificationService->sendBookingConfirmation($booking);
+            }
+
+            return response()->json([
+                'message' => 'Booking created successfully',
+                'booking' => $booking,
+                'requires_confirmation' => $bookingSource !== 'customer_app',
+                'payment_required' => false
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Booking Creation Exception", ['msg' => $e->getMessage()]);
+            return response()->json(['message' => 'Internal Server Error', 'details' => $e->getMessage()], 500);
         }
-
-        return response()->json([
-            'message' => 'Booking created successfully',
-            'booking' => $booking,
-            'requires_confirmation' => $bookingSource !== 'customer_app'
-        ], 201);
     }
+
     public function search(Request $request)
     {
         $request->validate([
@@ -108,11 +157,9 @@ class BookingController extends Controller
             'mobile' => 'nullable|string'
         ]);
 
-        $query = Booking::query()->with('property'); // Eager load property
+        $query = Booking::query()->with('property'); 
 
-
-
-        // Check for Email OR Mobile match (widest search)
+        // Check for Email OR Mobile match
         if ($request->email || $request->mobile) {
             $query->where(function($q) use ($request) {
                 if ($request->email) $q->orWhere('CustomerEmail', $request->email);
@@ -126,10 +173,9 @@ class BookingController extends Controller
             'bookings' => $query->orderBy('created_at', 'desc')->get()
         ]);
     }
+
     public function cancel(Request $request, $id)
     {
-        // Simple cancellation for now. 
-        // In prod, check if request->email matches booking->CustomerEmail
         $booking = Booking::findOrFail($id);
         $booking->Status = 'Cancelled';
         $booking->save();
@@ -140,10 +186,6 @@ class BookingController extends Controller
     public function resendConfirmation($id)
     {
         $booking = Booking::with('property')->findOrFail($id);
-        
-        // Use existing logic for confirmation email (handles customer/vendor/admin notifications)
-        // or specifically target customer. The prompt says "resend email", usually implying customer confirmation.
-        // Let's force a customer confirmation email.
         
         try {
             $this->notificationService->sendBookingConfirmation($booking);
