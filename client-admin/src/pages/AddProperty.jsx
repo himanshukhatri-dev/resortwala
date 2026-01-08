@@ -398,13 +398,13 @@ export default function AddProperty() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField label="Google Map Link" name="googleMapLink" value={formData.googleMapLink} onChange={handleInputChange} />
-                <div className="flex gap-2">
                     <InputField label="Lat" name="latitude" value={formData.latitude} onChange={handleInputChange} />
                     <InputField label="Lng" name="longitude" value={formData.longitude} onChange={handleInputChange} />
                 </div>
             </div>
-            <InputField label="Description" name="description" value={formData.description} onChange={handleInputChange} />
-        </div>
+            <InputField label="Short Description" name="shortDescription" value={formData.shortDescription} onChange={handleInputChange} placeholder="Brief summary (max 150 chars)" />
+            <InputField label="Long Description" name="description" value={formData.description} onChange={handleInputChange} />
+        </div >
     );
 
     const renderStep2Features = () => (
@@ -750,11 +750,12 @@ export default function AddProperty() {
         // Note: step is the CURRENT step index (0-based) that we are trying to LEAVE.
         // 0: Vendor | 1: Info | 2: Features | 3: Room(V)/Pol(W) | 4: Pol(V)/Pric(W) | 5: Pric(V)/Gal(W) | 6: Gal(V)
 
-        // Step 0: Vendor & Info Check (Simplified)
-        if (step === 0) {
-            if (!formData.name) errors.push('Name is required');
-            if (!formData.location) errors.push('Location is required');
-            if (!formData.mobileNo) errors.push('Mobile Number is required');
+        // Step 1: Basic Info Check (Fixed Index)
+        if (step === 1) {
+            if (!formData.name?.trim()) errors.push('Property Name is required');
+            if (!formData.location?.trim()) errors.push('Location (Landmark) is required');
+            if (!formData.cityName?.trim()) errors.push('City Name is required');
+            if (!formData.mobileNo?.trim()) errors.push('Mobile Number is required');
         }
 
         // Step 3 (Villa): Room Configuration Check
