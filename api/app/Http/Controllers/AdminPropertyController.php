@@ -210,10 +210,32 @@ class AdminPropertyController extends Controller
             'Price' => 'required|numeric',
             'Location' => 'nullable|string',
             'description' => 'nullable|string',
-            // Add other basic fields as needed, can expand later
+            // Allow all other fields
+            'onboarding_data' => 'nullable',
+            'price_mon_thu' => 'nullable',
+            'price_fri_sun' => 'nullable',
+            'price_sat' => 'nullable',
+            'MaxCapacity' => 'nullable',
+            'NoofRooms' => 'nullable',
+            'Occupancy' => 'nullable',
+            'CityName' => 'nullable',
+            'Address' => 'nullable',
+            'ContactPerson' => 'nullable',
+            'MobileNo' => 'nullable',
+            'Email' => 'nullable',
+            'Website' => 'nullable',
+            'ShortDescription' => 'nullable',
         ]);
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $validated) {
+        // Decode JSON string if present
+        $onboardingData = null;
+        if ($request->has('onboarding_data')) {
+             $onboardingData = is_string($request->onboarding_data) 
+                ? json_decode($request->onboarding_data, true) 
+                : $request->onboarding_data;
+        }
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $validated, $onboardingData) {
             
             // 1. Create Property
             $property = PropertyMaster::create([
@@ -228,10 +250,26 @@ class AdminPropertyController extends Controller
                 'PropertyStatus' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
-                // Default Pricing columns sync
-                'price_mon_thu' => $validated['Price'],
-                'price_fri_sun' => $validated['Price'],
-                'price_sat' => $validated['Price'],
+                
+                // Advanced Fields
+                'CityName' => $request->CityName,
+                'Address' => $request->Address,
+                'ContactPerson' => $request->ContactPerson,
+                'MobileNo' => $request->MobileNo,
+                'Email' => $request->Email,
+                'Website' => $request->Website,
+                'ShortDescription' => $request->ShortDescription,
+
+                // Sync Pricing & Capacity
+                'price_mon_thu' => $request->price_mon_thu ?? $validated['Price'],
+                'price_fri_sun' => $request->price_fri_sun ?? $validated['Price'],
+                'price_sat' => $request->price_sat ?? $validated['Price'],
+                'MaxCapacity' => $request->MaxCapacity,
+                'NoofRooms' => $request->NoofRooms,
+                'Occupancy' => $request->Occupancy,
+
+                // JSON Data
+                'onboarding_data' => $onboardingData
             ]);
 
             // 2. Handle Images (if any)
@@ -244,6 +282,20 @@ class AdminPropertyController extends Controller
                         'property_id' => $property->PropertyId,
                         'image_path' => $property->PropertyId . '/' . $filename,
                         'is_primary' => $index === 0,
+                        'display_order' => $index
+                    ]);
+                }
+            }
+            
+            // 3. Handle Videos (if any)
+            if ($request->hasFile('videos')) {
+                foreach ($request->file('videos') as $index => $video) {
+                    $filename = \Illuminate\Support\Str::random(40) . '.' . $video->getClientOriginalExtension();
+                    $video->storeAs('properties/' . $property->PropertyId . '/videos', $filename, 'public');
+                    
+                    \App\Models\PropertyVideo::create([
+                        'property_id' => $property->PropertyId,
+                        'video_path' => $property->PropertyId . '/videos/' . $filename,
                         'display_order' => $index
                     ]);
                 }
