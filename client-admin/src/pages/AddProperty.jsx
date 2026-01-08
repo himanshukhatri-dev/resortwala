@@ -145,6 +145,7 @@ export default function AddProperty() {
                         ac: false,
                         tv: false,
                         geyser: false,
+                        wardrobe: false,
                         bathroom: true,
                         toiletType: 'Western',
                         balcony: false
@@ -483,6 +484,8 @@ export default function AddProperty() {
                             </div>
                             <div className="flex items-center justify-between border p-2 rounded"><span className="text-sm">AC</span> <Toggle active={room.ac} onChange={v => updateRoom(idx, 'ac', v)} /></div>
                             <div className="flex items-center justify-between border p-2 rounded"><span className="text-sm">TV</span> <Toggle active={room.tv} onChange={v => updateRoom(idx, 'tv', v)} /></div>
+                            <div className="flex items-center justify-between border p-2 rounded"><span className="text-sm">Geyser</span> <Toggle active={room.geyser} onChange={v => updateRoom(idx, 'geyser', v)} /></div>
+                            <div className="flex items-center justify-between border p-2 rounded"><span className="text-sm">Wardrobe</span> <Toggle active={room.wardrobe} onChange={v => updateRoom(idx, 'wardrobe', v)} /></div>
                             <div className="flex items-center justify-between border p-2 rounded"><span className="text-sm">Private Bath</span> <Toggle active={room.bathroom} onChange={v => updateRoom(idx, 'bathroom', v)} /></div>
                         </div>
                     </div>
@@ -742,14 +745,48 @@ export default function AddProperty() {
 
     const validateStep = (step) => {
         const isVilla = formData.propertyType === 'Villa';
-        let errors = [];
+        const errors = [];
+
+        // Note: step is the CURRENT step index (0-based) that we are trying to LEAVE.
+        // 0: Vendor | 1: Info | 2: Features | 3: Room(V)/Pol(W) | 4: Pol(V)/Pric(W) | 5: Pric(V)/Gal(W) | 6: Gal(V)
+
+        // Step 0: Vendor & Info Check (Simplified)
         if (step === 0) {
             if (!formData.name) errors.push('Name is required');
             if (!formData.location) errors.push('Location is required');
+            if (!formData.mobileNo) errors.push('Mobile Number is required');
         }
-        if (step === 2 && isVilla && !formData.noofRooms) errors.push('No of Rooms required');
 
-        // Simplified validation for Speed - can be expanded
+        // Step 3 (Villa): Room Configuration Check
+        if (isVilla && step === 3) {
+            const rooms = parseInt(formData.noofRooms || 0);
+            if (rooms < 1) errors.push('Please enter number of rooms.');
+            // We can add check for bedrooms configuration here if needed
+        }
+
+        // Step 4 (Villa) or Step 3 (Waterpark): Policies Check
+        const policiesStep = isVilla ? 4 : 3;
+        if (step === policiesStep) {
+            // Optional: Force ID proofs or timing? 
+            // We can be lenient or strict. Let's strictly require Check In/Out
+            if (!formData.checkInTime) errors.push('Check-in time is required');
+            if (!formData.checkOutTime) errors.push('Check-out time is required');
+        }
+
+        // Step 5 (Villa) or Step 4 (Waterpark): Pricing Check
+        const pricingStep = isVilla ? 5 : 4;
+        if (step === pricingStep) {
+            if (isVilla) {
+                if (!formData.priceMonThu) errors.push('Mon-Thu Price is required.');
+                if (!formData.priceFriSun) errors.push('Fri-Sun Price is required.');
+                if (!formData.priceSaturday) errors.push('Saturday Price is required.');
+                if (!formData.maxCapacity) errors.push('Max Capacity is required.');
+            } else {
+                if (!formData.priceMonThu) errors.push('Adult Mon-Fri Price is required.');
+                if (!formData.priceFriSun) errors.push('Adult Sat-Sun Price is required.');
+            }
+        }
+
         return { valid: errors.length === 0, msgs: errors };
     };
 
