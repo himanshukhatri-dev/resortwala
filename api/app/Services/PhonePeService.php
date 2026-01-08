@@ -33,6 +33,12 @@ class PhonePeService
         $amountPaise = (int) ($booking->TotalAmount * 100);
         $transactionId = "TXN_" . $booking->BookingId . "_" . time();
 
+        Log::info("PhonePe Init: Using MerchantID", [
+            'merchantId' => $this->merchantId, 
+            'env' => $this->env,
+            'amount' => $amountPaise
+        ]);
+
         $payload = [
             'merchantId' => $this->merchantId,
             'merchantTransactionId' => $transactionId,
