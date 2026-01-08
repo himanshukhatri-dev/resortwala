@@ -226,6 +226,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/properties/{id}/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approve']);
     Route::put('/admin/properties/{id}/pricing', [\App\Http\Controllers\AdminPropertyController::class, 'updatePricing']);
     Route::get('/admin/properties/{id}', [\App\Http\Controllers\AdminPropertyController::class, 'show']);
+    Route::post('/admin/properties/{id}/photos', [\App\Http\Controllers\AdminPropertyController::class, 'addPhotos']);
     Route::delete('/admin/properties/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectProperty']);
     
     // Change Requests

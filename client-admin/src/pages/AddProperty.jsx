@@ -310,7 +310,179 @@ export default function AddProperty() {
     };
 
     // --- HELPER LOGIC ---
-    // ... (unchanged)
+    const updateLiving = (key, val) => {
+        setFormData(prev => ({
+            ...prev,
+            roomConfig: {
+                ...prev.roomConfig,
+                livingRoom: { ...prev.roomConfig.livingRoom, [key]: val }
+            }
+        }));
+    };
+
+    const updateRoom = (idx, key, val) => {
+        setFormData(prev => {
+            const updated = [...prev.roomConfig.bedrooms];
+            updated[idx] = { ...updated[idx], [key]: val };
+            return {
+                ...prev,
+                roomConfig: { ...prev.roomConfig, bedrooms: updated }
+            };
+        });
+    };
+
+    const renderVendorSelection = () => {
+        const filteredVendors = vendors.filter(v =>
+            v.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            v.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            v.phone?.includes(searchTerm)
+        );
+
+        return (
+            <div className="max-w-3xl mx-auto py-8 space-y-6 animate-fade-in-up">
+                <div className="text-center">
+                    <h2 className="text-2xl font-black text-gray-900 mb-2">Select Property Owner</h2>
+                    <p className="text-gray-500">Choose the vendor/owner for this property</p>
+                </div>
+
+                <div className="relative">
+                    <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Search by name, business, or phone..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:border-black focus:ring-2 focus:ring-black/10 outline-none transition-all"
+                    />
+                </div>
+
+                {loadingVendors ? (
+                    <div className="text-center py-12">
+                        <Loader />
+                        <p className="text-gray-500 mt-4">Loading vendors...</p>
+                    </div>
+                ) : filteredVendors.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                        <FaUser className="mx-auto text-4xl text-gray-300 mb-3" />
+                        <p className="text-gray-500">No vendors found</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                        {filteredVendors.map((vendor) => (
+                            <button
+                                key={vendor.id}
+                                onClick={() => {
+                                    setSelectedVendor(vendor);
+                                    setStep(1);
+                                }}
+                                className="w-full p-4 bg-white border border-gray-200 rounded-lg hover:border-black hover:shadow-md transition-all text-left group"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-gray-900 group-hover:text-black">
+                                            {vendor.business_name || vendor.name}
+                                        </h3>
+                                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                                            {vendor.phone && <span>📞 {vendor.phone}</span>}
+                                            {vendor.email && <span>📧 {vendor.email}</span>}
+                                        </div>
+                                    </div>
+                                    <FaArrowRight className="text-gray-400 group-hover:text-black transition-colors" />
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderStep1 = () => (
+        <div className="space-y-6 animate-fade-in-up">
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <FaBuilding className="text-blue-500" /> Property Type
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                    <button type="button"
+                        onClick={() => setFormData(p => ({ ...p, propertyType: 'Villa' }))}
+                        className={`p-6 rounded-xl border-2 font-bold text-center transition-all ${formData.propertyType === 'Villa'
+                            ? 'border-blue-600 bg-blue-50 text-blue-700'
+                            : 'border-gray-200 hover:border-blue-300'}`}>
+                        <FaHome className="mx-auto text-3xl mb-2" />
+                        Villa / Resort
+                    </button>
+                    <button type="button"
+                        onClick={() => setFormData(p => ({ ...p, propertyType: 'Waterpark' }))}
+                        className={`p-6 rounded-xl border-2 font-bold text-center transition-all ${formData.propertyType === 'Waterpark'
+                            ? 'border-blue-600 bg-blue-50 text-blue-700'
+                            : 'border-gray-200 hover:border-blue-300'}`}>
+                        <FaWater className="mx-auto text-3xl mb-2" />
+                        Waterpark
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <FaTag className="text-green-500" /> Basic Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Property Name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Ex: Sunset Villa" required />
+                    <InputField label="Display Name" name="displayName" value={formData.displayName} onChange={handleInputChange} placeholder="Ex: Royal Sunset Villa & Resort" />
+                    <InputField label="City/Location" name="location" value={formData.location} onChange={handleInputChange} placeholder="Ex: Ahmedabad" required />
+                    <InputField label="City Name (Search)" name="cityName" value={formData.cityName} onChange={handleInputChange} placeholder="Ex: Ahmedabad" />
+                </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <FaMapMarkerAlt className="text-red-500" /> Address & Location
+                </h3>
+                <div className="space-y-4">
+                    <InputField label="Full Address" name="address" value={formData.address} onChange={handleInputChange} placeholder="Street address, landmark..." />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <InputField label="Google Maps Link" name="googleMapLink" value={formData.googleMapLink} onChange={handleInputChange} placeholder="https://maps.google.com/..." />
+                        <div className="grid grid-cols-2 gap-2">
+                            <InputField label="Latitude" name="latitude" value={formData.latitude} onChange={handleInputChange} placeholder="23.0225" />
+                            <InputField label="Longitude" name="longitude" value={formData.longitude} onChange={handleInputChange} placeholder="72.5714" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <FaUser className="text-purple-500" /> Contact Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Contact Person" name="contactPerson" value={formData.contactPerson} onChange={handleInputChange} placeholder="Manager Name" />
+                    <InputField label="Mobile Number" name="mobileNo" value={formData.mobileNo} onChange={handleInputChange} placeholder="9876543210" required />
+                    <InputField label="Email" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="contact@property.com" />
+                    <InputField label="Website" name="website" value={formData.website} onChange={handleInputChange} placeholder="https://..." />
+                </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Descriptions</h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Short Description</label>
+                        <textarea name="shortDescription" value={formData.shortDescription} onChange={handleInputChange}
+                            className="w-full border border-gray-200 rounded-lg p-3 focus:border-black focus:ring-2 focus:ring-black/10 outline-none h-20 resize-none"
+                            placeholder="Brief tagline or highlight..." />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Long Description</label>
+                        <textarea name="description" value={formData.description} onChange={handleInputChange}
+                            className="w-full border border-gray-200 rounded-lg p-3 focus:border-black focus:ring-2 focus:ring-black/10 outline-none h-32 resize-none"
+                            placeholder="Detailed description of the property..." />
+                    </div>
+                    <InputField label="Other Attractions Nearby" name="otherAttractions" value={formData.otherAttractions} onChange={handleInputChange} placeholder="Parks, malls, temples..." />
+                </div>
+            </div>
+        </div>
+    );
 
     const renderStep2Features = () => (
         <div className="space-y-6 animate-fade-in-up">

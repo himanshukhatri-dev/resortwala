@@ -7,6 +7,27 @@ import { AMENITY_TYPES } from '../constants/propertyConstants';
 import { FaHome, FaWater, FaCheck, FaTimes, FaCamera, FaBed, FaUtensils, FaSwimmingPool, FaChild, FaBan, FaMoneyBillWave, FaArrowRight, FaArrowLeft, FaSave, FaStar, FaParking, FaWifi, FaMusic, FaTree, FaGlassMartiniAlt, FaSnowflake, FaCouch, FaRestroom, FaDoorOpen, FaUsers, FaTshirt, FaVideo, FaWheelchair, FaMedkit, FaUmbrellaBeach, FaChair, FaUserShield, FaConciergeBell, FaHotTub } from 'react-icons/fa';
 import { MdPool, MdWater, MdOutlineDeck, MdChildCare, MdWaterfallChart, MdMusicNote, MdBalcony, MdSportsEsports, MdRestaurant, MdOutlineOutdoorGrill } from 'react-icons/md';
 
+const Toggle = ({ active, onChange, color = "blue" }) => {
+    const activeColor = color === "blue" ? "bg-blue-600" : (color === "green" ? "bg-green-500" : "bg-blue-600");
+    return (
+        <button
+            type="button"
+            onClick={() => onChange(!active)}
+            className={`w-12 h-6 flex items-center rounded-full p-1 duration-300 ${active ? activeColor : 'bg-gray-300'}`}
+        >
+            <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ${active ? 'translate-x-6' : ''}`} />
+        </button>
+    );
+};
+
+const Counter = ({ value = 0, onChange }) => (
+    <div className="flex items-center gap-3 bg-gray-100 rounded-lg p-1">
+        <button type="button" onClick={() => onChange(Math.max(0, parseInt(value || 0) - 1))} className="w-8 h-8 flex items-center justify-center bg-white rounded shadow-sm font-bold">-</button>
+        <span className="w-6 text-center font-bold">{value || 0}</span>
+        <button type="button" onClick={() => onChange(parseInt(value || 0) + 1)} className="w-8 h-8 flex items-center justify-center bg-white rounded shadow-sm font-bold">+</button>
+    </div>
+);
+
 const getAmenityIcon = (key) => {
     switch (key) {
         case 'big_pools': return <FaSwimmingPool className="text-blue-500" />;
@@ -91,6 +112,9 @@ export default function PropertyApproval() {
         child_weekend: { current: 0, discounted: 0, final: 0 }
     });
 
+    // Track deleted images
+    const [deletedImages, setDeletedImages] = useState([]);
+
     useEffect(() => {
         const fetchProperty = async () => {
             try {
@@ -120,6 +144,10 @@ export default function PropertyApproval() {
                     Address: prop.Address || '',
                     PropertyType: prop.PropertyType || '',
                     Website: prop.Website || '',
+                    RoomConfig: {
+                        livingRoom: ob.roomConfig?.livingRoom || { bedType: 'Sofa', ac: false, bathroom: false, toiletType: 'Western' },
+                        bedrooms: ob.roomConfig?.bedrooms || []
+                    },
                 });
                 initializePricing(prop);
                 if (prop.PropertyType === 'Waterpark') {
@@ -427,7 +455,14 @@ export default function PropertyApproval() {
                 checkInTime: formData.checkInTime,
                 checkOutTime: formData.checkOutTime,
                 PropertyRules: formData.PropertyRules,
-                BookingSpecailMessage: formData.BookingSpecailMessage
+                BookingSpecailMessage: formData.BookingSpecailMessage,
+                RoomConfig: formData.RoomConfig,
+                Amenities: formData.Amenities,
+                ContactPerson: formData.ContactPerson,
+                MobileNo: formData.MobileNo,
+                Email: formData.Email,
+                Address: formData.Address,
+                deletedImages: deletedImages,
             };
 
             const res = await axios.put(`${API_BASE_URL}/admin/properties/${id}/approve`, payload, {
@@ -551,48 +586,69 @@ export default function PropertyApproval() {
 
                     {/* Amenities Tab */}
                     {activeTab === 'amenities' && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in pb-10">
                             {AMENITY_TYPES.map(item => {
-                                const val = obData.amenities?.[item.key];
+                                const val = formData.Amenities?.[item.key];
                                 const isActive = !!val && (item.type === 'bool' ? val === true : val > 0);
 
                                 return (
-                                    <div key={item.key} className={`border rounded-xl p-4 flex items-center gap-3 transition-colors ${isActive ? 'bg-white border-blue-100' : 'bg-gray-50 border-gray-100 opacity-60 grayscale'}`}>
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-400'}`}>
-                                            {getAmenityIcon(item.key)}
+                                    <div key={item.key} className={`border rounded-xl p-4 flex items-center justify-between transition-colors ${isActive ? 'bg-white border-blue-100 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60 grayscale'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-400'}`}>
+                                                {getAmenityIcon(item.key)}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-sm leading-tight text-gray-800">{item.label}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-sm leading-tight text-gray-800">{item.label}</p>
-                                            <p className={`text-xs font-bold ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>
-                                                {isActive ? (item.type === 'number' ? `${val} Units` : 'Available') : 'Not Added'}
-                                            </p>
-                                        </div>
+                                        {item.type === 'number' ? (
+                                            <Counter
+                                                value={val}
+                                                onChange={(newVal) => setFormData(prev => ({
+                                                    ...prev,
+                                                    Amenities: { ...prev.Amenities, [item.key]: newVal }
+                                                }))}
+                                            />
+                                        ) : (
+                                            <Toggle
+                                                active={isActive}
+                                                onChange={(newVal) => setFormData(prev => ({
+                                                    ...prev,
+                                                    Amenities: { ...prev.Amenities, [item.key]: newVal }
+                                                }))}
+                                            />
+                                        )}
                                     </div>
                                 );
                             })}
 
-                            {/* Safety & Security manual list */}
-                            {['Fire Extinguisher', 'Security System', 'First Aid Kit', 'Window Guards', 'Caretaker'].map(safety => {
-                                // Check key (removed spaces, lower case for storage key)
-                                const key = safety.toLowerCase().replace(/\s/g, '');
-                                const val = obData.amenities?.[key] || obData.amenities?.[safety];
-                                const isActive = !!val;
-                                return (
-                                    <div key={safety} className={`border rounded-xl p-4 flex items-center gap-3 transition-colors ${isActive ? 'bg-white border-blue-100' : 'bg-gray-50 border-gray-100 opacity-60 grayscale'}`}>
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-400'}`}>
-                                            <FaUserShield />
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-sm leading-tight text-gray-800">{safety}</p>
-                                            <p className={`text-xs font-bold ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>{isActive ? 'Available' : 'Not Added'}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-
-                            <div className="col-span-4 bg-yellow-50 p-4 rounded-xl border border-yellow-100">
-                                <h4 className="font-bold text-yellow-800 text-sm mb-1">Other Attractions</h4>
-                                <p className="text-sm">{obData.otherAttractions || 'None provided'}</p>
+                            <div className="col-span-4 mt-6">
+                                <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><FaUserShield className="text-blue-500" /> Safety & Security</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {['Fire Extinguisher', 'Security System', 'First Aid Kit', 'Window Guards', 'Caretaker'].map(safety => {
+                                        const key = safety.toLowerCase().replace(/\s/g, '');
+                                        const isActive = !!formData.Amenities?.[key];
+                                        return (
+                                            <div key={safety} className={`border rounded-xl p-4 flex items-center justify-between transition-colors ${isActive ? 'bg-white border-blue-100 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60 grayscale'}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-400'}`}>
+                                                        <FaUserShield />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-sm leading-tight text-gray-800">{safety}</p>
+                                                    </div>
+                                                </div>
+                                                <Toggle
+                                                    active={isActive}
+                                                    onChange={(newVal) => setFormData(prev => ({
+                                                        ...prev,
+                                                        Amenities: { ...prev.Amenities, [key]: newVal }
+                                                    }))}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -603,34 +659,134 @@ export default function PropertyApproval() {
                             {/* Living Room */}
                             <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100">
                                 <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2"><FaCouch /> Living Room</h3>
-                                {obData.roomConfig?.livingRoom ? (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <Badge label="Bed Type" value={obData.roomConfig.livingRoom.bedType} />
-                                        <Badge label="AC" value={obData.roomConfig.livingRoom.ac ? 'Yes' : 'No'} />
-                                        <Badge label="Bathroom" value={obData.roomConfig.livingRoom.bathroom ? 'Yes' : 'No'} />
-                                        <Badge label="Toilet" value={obData.roomConfig.livingRoom.toiletType || 'N/A'} />
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-600 mb-1">Bed Type</label>
+                                        <select
+                                            value={formData.RoomConfig?.livingRoom?.bedType || 'Sofa'}
+                                            onChange={(e) => setFormData(prev => ({
+                                                ...prev,
+                                                RoomConfig: {
+                                                    ...prev.RoomConfig,
+                                                    livingRoom: { ...prev.RoomConfig?.livingRoom, bedType: e.target.value }
+                                                }
+                                            }))}
+                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none"
+                                        >
+                                            <option value="Sofa">Sofa</option>
+                                            <option value="Sofa cum Bed">Sofa cum Bed</option>
+                                            <option value="None">None</option>
+                                        </select>
                                     </div>
-                                ) : (
-                                    <div className="text-amber-800 italic">No living room configuration provided.</div>
-                                )}
+                                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                                        <span className="text-sm font-semibold">AC</span>
+                                        <Toggle
+                                            active={!!formData.RoomConfig?.livingRoom?.ac}
+                                            onChange={(val) => setFormData(prev => ({
+                                                ...prev,
+                                                RoomConfig: {
+                                                    ...prev.RoomConfig,
+                                                    livingRoom: { ...prev.RoomConfig?.livingRoom, ac: val }
+                                                }
+                                            }))}
+                                            color="green"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                                        <span className="text-sm font-semibold">Bathroom</span>
+                                        <Toggle
+                                            active={!!formData.RoomConfig?.livingRoom?.bathroom}
+                                            onChange={(val) => setFormData(prev => ({
+                                                ...prev,
+                                                RoomConfig: {
+                                                    ...prev.RoomConfig,
+                                                    livingRoom: { ...prev.RoomConfig?.livingRoom, bathroom: val }
+                                                }
+                                            }))}
+                                            color="green"
+                                        />
+                                    </div>
+                                    {formData.RoomConfig?.livingRoom?.bathroom && (
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Toilet Type</label>
+                                            <select
+                                                value={formData.RoomConfig?.livingRoom?.toiletType || 'Western'}
+                                                onChange={(e) => setFormData(prev => ({
+                                                    ...prev,
+                                                    RoomConfig: {
+                                                        ...prev.RoomConfig,
+                                                        livingRoom: { ...prev.RoomConfig?.livingRoom, toiletType: e.target.value }
+                                                    }
+                                                }))}
+                                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none"
+                                            >
+                                                <option value="Western">Western</option>
+                                                <option value="Indian">Indian</option>
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Bedrooms */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {obData.roomConfig?.bedrooms?.length > 0 ? obData.roomConfig.bedrooms.map((room, idx) => (
-                                    <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition">
+                                {formData.RoomConfig?.bedrooms?.length > 0 ? formData.RoomConfig.bedrooms.map((room, idx) => (
+                                    <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm">
                                         <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
                                             <span className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">{idx + 1}</span>
                                             Bedroom {idx + 1}
                                         </h4>
-                                        <div className="grid grid-cols-2 gap-2 text-sm">
-                                            <div className="flex justify-between border-b pb-1"><span className="text-gray-500">Bed Type</span> <span className="font-medium">{room.bedType}</span></div>
-                                            <div className="flex justify-between border-b pb-1"><span className="text-gray-500">AC</span> <span className="font-medium">{room.ac ? 'Yes' : 'No'}</span></div>
-                                            <div className="flex justify-between border-b pb-1"><span className="text-gray-500">TV</span> <span className="font-medium">{room.tv ? 'Yes' : 'No'}</span></div>
-                                            <div className="flex justify-between border-b pb-1"><span className="text-gray-500">Bathroom</span> <span className="font-medium">{room.bathroom ? 'Yes' : 'No'}</span></div>
-                                            <div className="flex justify-between border-b pb-1"><span className="text-gray-500">Geyser</span> <span className="font-medium">{room.geyser ? 'Yes' : 'No'}</span></div>
-                                            <div className="flex justify-between border-b pb-1"><span className="text-gray-500">Wardrobe</span> <span className="font-medium">{room.wardrobe ? 'Yes' : 'No'}</span></div>
-                                            <div className="flex justify-between border-b pb-1"><span className="text-gray-500">Toilet</span> <span className="font-medium">{room.toiletType || 'N/A'}</span></div>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="block text-xs font-semibold text-gray-600 mb-1">Bed Type</label>
+                                                <select
+                                                    value={room.bedType || 'Queen'}
+                                                    onChange={(e) => {
+                                                        const updated = [...formData.RoomConfig.bedrooms];
+                                                        updated[idx] = { ...updated[idx], bedType: e.target.value };
+                                                        setFormData(prev => ({ ...prev, RoomConfig: { ...prev.RoomConfig, bedrooms: updated } }));
+                                                    }}
+                                                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:border-blue-500 outline-none text-sm"
+                                                >
+                                                    <option value="Single">Single</option>
+                                                    <option value="Double">Double</option>
+                                                    <option value="Queen">Queen</option>
+                                                    <option value="King">King</option>
+                                                </select>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {['ac', 'tv', 'geyser', 'wardrobe', 'bathroom', 'balcony'].map((feature) => (
+                                                    <div key={feature} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
+                                                        <span className="text-xs font-semibold capitalize">{feature}</span>
+                                                        <Toggle
+                                                            active={!!room[feature]}
+                                                            onChange={(val) => {
+                                                                const updated = [...formData.RoomConfig.bedrooms];
+                                                                updated[idx] = { ...updated[idx], [feature]: val };
+                                                                setFormData(prev => ({ ...prev, RoomConfig: { ...prev.RoomConfig, bedrooms: updated } }));
+                                                            }}
+                                                            color="green"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {room.bathroom && (
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Toilet Type</label>
+                                                    <select
+                                                        value={room.toiletType || 'Western'}
+                                                        onChange={(e) => {
+                                                            const updated = [...formData.RoomConfig.bedrooms];
+                                                            updated[idx] = { ...updated[idx], toiletType: e.target.value };
+                                                            setFormData(prev => ({ ...prev, RoomConfig: { ...prev.RoomConfig, bedrooms: updated } }));
+                                                        }}
+                                                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:border-blue-500 outline-none text-sm"
+                                                    >
+                                                        <option value="Western">Western</option>
+                                                        <option value="Indian">Indian</option>
+                                                    </select>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )) : (
@@ -684,101 +840,99 @@ export default function PropertyApproval() {
                         </div>
                     )}
 
-                    {/* Pricing Tab */}
-                    {activeTab === 'pricing' && (
-                        /* ... (pricing code unchanged) ... */
-                        <div className="space-y-8 animate-in fade-in">
-                            {/* ... */}
-                            {property.PropertyType === 'Waterpark' ? (
-                                /* ... */
-                                <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                                    {/* ... */}
-                                </div>
-                            ) : (
-                                ['mon_thu', 'fri_sun', 'sat'].map((day) => {
-                                    const titles = { mon_thu: 'Monday to Thursday', fri_sun: 'Friday & Sunday', sat: 'Saturday' };
-                                    const colors = { mon_thu: 'blue', fri_sun: 'purple', sat: 'orange' };
-                                    const color = colors[day];
-                                    return (
-                                        <div key={day} className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                                            {/* ... */}
-                                            <div className="overflow-x-auto">
-                                                <table className="w-full text-left border-collapse">
-                                                    {/* ... */}
-                                                </table>
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </div>
-                    )}
 
                     {/* Media Tab */}
                     {activeTab === 'media' && (
                         <div className="space-y-8 animate-in fade-in">
                             <div>
-                                <h3 className="font-bold text-gray-800 mb-4">Photos</h3>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-gray-800">Photos</h3>
+                                    <label className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer transition-colors">
+                                        <FaCamera /> Add Photos
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={async (e) => {
+                                                const files = Array.from(e.target.files);
+                                                if (files.length === 0) return;
+
+                                                const uploadFormData = new FormData();
+                                                files.forEach(file => uploadFormData.append('images[]', file));
+
+                                                try {
+                                                    setSaving(true);
+                                                    const res = await axios.post(`${API_BASE_URL}/admin/properties/${id}/photos`, uploadFormData, {
+                                                        headers: {
+                                                            Authorization: `Bearer ${token}`,
+                                                            'Content-Type': 'multipart/form-data'
+                                                        }
+                                                    });
+                                                    // Refresh property data
+                                                    const updatedRes = await axios.get(`${API_BASE_URL}/admin/properties/${id}`, {
+                                                        headers: { Authorization: `Bearer ${token}` }
+                                                    });
+                                                    setProperty(updatedRes.data);
+                                                } catch (err) {
+                                                    console.error("Upload failed", err);
+                                                    alert("Failed to upload photos");
+                                                } finally {
+                                                    setSaving(false);
+                                                }
+                                            }}
+                                        />
+                                    </label>
+                                </div>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {property.images?.length > 0 ? (
-                                        property.images.map(img => (
+                                    {(() => {
+                                        // Deduplicate photos by ID or URL
+                                        const seen = new Set();
+                                        const uniqueImages = (property.images || []).filter(img => {
+                                            const id = img.id || img.image_url;
+                                            if (seen.has(id)) return false;
+                                            seen.add(id);
+                                            return true;
+                                        }).filter(img => !deletedImages.includes(img.id));
+
+                                        if (uniqueImages.length === 0) return <div className="col-span-4 p-10 text-center text-gray-400">No images</div>;
+
+                                        return uniqueImages.map(img => (
                                             <div key={img.id} className="relative group aspect-square rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
                                                 <img src={img.image_url} alt="Property" className="w-full h-full object-cover transition duration-500 group-hover:scale-110" />
                                                 {img.is_primary && <div className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">Cover</div>}
-                                                <button onClick={(e) => { e.preventDefault(); /* Add delete logic if needed here or handle in parent component for manual delete if required */ }} className="absolute top-2 right-2 bg-white text-red-500 p-1 rounded-full shadow hover:scale-110 hidden group-hover:block"><FaTimes /></button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        if (window.confirm("Are you sure you want to delete this photo?")) {
+                                                            setDeletedImages(prev => [...prev, img.id]);
+                                                        }
+                                                    }}
+                                                    className="absolute top-2 right-2 bg-white text-red-500 p-1.5 rounded-full shadow-lg hover:bg-red-50 hover:scale-110 transition-all z-10"
+                                                >
+                                                    <FaTimes />
+                                                </button>
+                                            </div>
+                                        ));
+                                    })()}
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="font-bold text-gray-800 mb-4">Videos</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {property.videos?.length > 0 ? (
+                                        property.videos.map(vid => (
+                                            <div key={vid.id} className="aspect-video rounded-2xl overflow-hidden border border-gray-100 bg-black">
+                                                <video src={vid.video_url} controls className="w-full h-full" />
                                             </div>
                                         ))
-                                    ) : <div className="col-span-4 p-10 text-center text-gray-400">No images</div>}
-                                </div>
-                            </div>
-                            {/* ... (videos unchanged) ... */}
-                        </div>
-                    )}
-
-
-                    {/* Food Tab */}
-                    {activeTab === 'food' && (
-                        <div className="space-y-6 animate-in fade-in">
-                            <div className="bg-white border rounded-xl p-6">
-                                <h3 className="font-bold text-gray-800 mb-4">Meal Plans Offered</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {obData.mealPlans ? Object.entries(obData.mealPlans).map(([key, plan]) => (
-                                        <div key={key} className={`border p-4 rounded-lg ${plan.available ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h4 className="font-bold text-blue-600 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</h4>
-                                                {!plan.available && <span className="text-xs bg-gray-200 px-2 py-0.5 rounded text-gray-600">Unavailable</span>}
-                                            </div>
-                                            {plan.available ? (
-                                                <div className="text-sm space-y-1">
-                                                    {plan.vegRate && <p>Veg: ₹{plan.vegRate}</p>}
-                                                    {plan.nonVegRate && <p>Non-Veg: ₹{plan.nonVegRate}</p>}
-                                                    {plan.rate && <p>Rate: ₹{plan.rate}</p>}
-                                                    {plan.includes?.length > 0 && <p className="text-gray-500 text-xs mt-1">Includes: {plan.includes.join(', ')}</p>}
-                                                </div>
-                                            ) : <p className="text-xs text-gray-400 italic">Vendor has not enabled this plan.</p>}
-                                        </div>
-                                    )) : <div className="text-gray-400">No meal plan data found.</div>}
-                                </div>
-                            </div>
-                            <div className="bg-white border rounded-xl p-6">
-                                <h3 className="font-bold text-gray-800 mb-4">Food Rates (Per Person)</h3>
-                                <div className="flex gap-6">
-                                    <div className="text-center p-4 bg-green-50 rounded-xl border border-green-100">
-                                        <p className="text-xs text-green-600 font-bold uppercase">Veg</p>
-                                        <p className="text-lg font-black">{obData.foodRates?.veg ? `₹${obData.foodRates.veg}` : <span className="text-gray-400 text-sm">--</span>}</p>
-                                    </div>
-                                    <div className="text-center p-4 bg-red-50 rounded-xl border border-red-100">
-                                        <p className="text-xs text-red-600 font-bold uppercase">Non-Veg</p>
-                                        <p className="text-lg font-black">{obData.foodRates?.nonVeg ? `₹${obData.foodRates.nonVeg}` : <span className="text-gray-400 text-sm">--</span>}</p>
-                                    </div>
-                                    <div className="text-center p-4 bg-yellow-50 rounded-xl border border-yellow-100">
-                                        <p className="text-xs text-yellow-600 font-bold uppercase">Jain</p>
-                                        <p className="text-lg font-black">{obData.foodRates?.jain ? `₹${obData.foodRates.jain}` : <span className="text-gray-400 text-sm">--</span>}</p>
-                                    </div>
+                                    ) : <div className="col-span-2 p-10 text-center text-gray-400 bg-gray-50 rounded-2xl border border-dashed">No videos uploaded</div>}
                                 </div>
                             </div>
                         </div>
                     )}
+
 
                     {/* Pricing Tab */}
                     {activeTab === 'pricing' && (
@@ -995,46 +1149,6 @@ export default function PropertyApproval() {
                         </div>
                     )}
 
-                    {/* Media Tab */}
-                    {activeTab === 'media' && (
-                        <div className="space-y-8 animate-in fade-in">
-                            <div>
-                                <h3 className="font-bold text-gray-800 mb-4">Photos</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {property.images?.length > 0 ? (
-                                        property.images.map(img => (
-                                            <div key={img.id} className="relative group aspect-square rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                                                <img src={img.image_url} alt="Property" className="w-full h-full object-cover transition duration-500 group-hover:scale-110" />
-                                                {img.is_primary && <div className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">Cover</div>}
-                                            </div>
-                                        ))
-                                    ) : <div className="col-span-4 p-10 text-center text-gray-400">No images</div>}
-                                </div>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-gray-800 mb-4">Videos</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {property.videos?.length > 0 ? (
-                                        property.videos.map(vid => (
-                                            <div key={vid.id} className="aspect-video bg-black rounded-xl overflow-hidden">
-                                                <video src={vid.video_url} controls className="w-full h-full object-cover" />
-                                            </div>
-                                        ))
-                                    ) : (
-                                        // Fallback for legacy 'video_url' field
-                                        property.video_url ? (
-                                            <div className="aspect-video bg-black rounded-xl overflow-hidden">
-                                                {property.video_url.includes('youtube') || property.video_url.includes('youtu.be') ?
-                                                    <iframe src={property.video_url.replace('watch?v=', 'embed/')} className="w-full h-full" frameBorder="0" allowFullScreen></iframe>
-                                                    : <video src={property.video_url} controls className="w-full h-full object-cover" />
-                                                }
-                                            </div>
-                                        ) : <div className="col-span-3 p-10 text-center text-gray-400 bg-gray-50 border border-dashed rounded-xl">No videos uploaded by vendor</div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Rules Tab */}
                     {activeTab === 'rules' && (

@@ -15,20 +15,30 @@ class AdminPropertyController extends Controller
         return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id) {
             $property = PropertyMaster::findOrFail($id);
 
-            // Update basic fields if provided
-            $data = $request->except(['id', 'vendor_id', 'is_approved', 'PropertyId']);
-            
+            // Initialize/Get existing onboarding data
+            $obData = $property->onboarding_data ?: [];
+
+            // 1. Handle JSON-stored fields (Amenities, RoomConfig, Pricing)
+            if ($request->has('Amenities')) {
+                $obData['Amenities'] = $request->Amenities;
+            }
+            if ($request->has('RoomConfig')) {
+                $obData['RoomConfig'] = $request->RoomConfig;
+            }
+            if ($request->has('waterpark_pricing')) {
+                $obData['pricing'] = $request->waterpark_pricing;
+            }
+            $property->onboarding_data = $obData;
+
+            // 2. Handle Admin Pricing (Villa Matrix)
             if ($request->has('admin_pricing')) {
-                $adminPricing = $request->admin_pricing;
-                
-                // Ensure it's an array (not string)
-                if (is_string($adminPricing)) {
-                    $adminPricing = json_decode($adminPricing, true);
-                }
+                $adminPricing = is_string($request->admin_pricing) 
+                    ? json_decode($request->admin_pricing, true) 
+                    : $request->admin_pricing;
                 
                 $property->admin_pricing = $adminPricing;
                 
-                // Sync Final Prices to columns for display/search consistency
+                // Sync Final Prices for Villa
                 if (isset($adminPricing['mon_thu']['villa']['final'])) {
                     $property->Price = $adminPricing['mon_thu']['villa']['final'];
                     $property->price_mon_thu = $adminPricing['mon_thu']['villa']['final'];
@@ -41,15 +51,25 @@ class AdminPropertyController extends Controller
                 }
             }
 
-            // Apply other manual edits made by admin (filter out null values)
+            // 3. Handle Resource Deletion (Images)
+            if ($request->has('deletedImages') && is_array($request->deletedImages)) {
+                \App\Models\PropertyImage::whereIn('id', $request->deletedImages)
+                    ->where('property_id', $id)
+                    ->delete();
+            }
+
+            // 4. Update standard columns (basic details, contact, etc.)
+            // Exclude non-column fields and internal IDs
+            $exclude = ['id', 'vendor_id', 'is_approved', 'PropertyId', 'admin_pricing', 'waterpark_pricing', 'RoomConfig', 'Amenities', 'deletedImages', 'onboarding_data'];
+            $data = $request->except($exclude);
+            
             foreach ($data as $key => $value) {
-                if ($value !== null && !empty($key) && $key !== 'admin_pricing') {
+                if ($value !== null && !empty($key)) {
                     $property->$key = $value;
                 }
             }
 
             $property->is_approved = true;
-            // Also ensure it is active and status is true
             $property->IsActive = true;
             $property->PropertyStatus = true;
             
@@ -306,5 +326,38 @@ class AdminPropertyController extends Controller
                 'property' => $property
             ], 201);
         });
+    }
+
+    public function addPhotos(Request $request, $id)
+    {
+        $request->validate([
+            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:10240', // 10MB max
+        ]);
+
+        $property = PropertyMaster::findOrFail($id);
+        $uploadedImages = [];
+
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $filename = \Illuminate\Support\Str::random(40) . '.' . $image->getClientOriginalExtension();
+                $image->storeAs('properties/' . $id, $filename, 'public');
+
+                $maxOrder = \App\Models\PropertyImage::where('property_id', $id)->max('display_order') ?? -1;
+
+                $propertyImage = \App\Models\PropertyImage::create([
+                    'property_id' => $id,
+                    'image_path' => $id . '/' . $filename,
+                    'is_primary' => \App\Models\PropertyImage::where('property_id', $id)->count() === 0,
+                    'display_order' => $maxOrder + 1
+                ]);
+
+                $uploadedImages[] = $propertyImage;
+            }
+        }
+
+        return response()->json([
+            'message' => count($uploadedImages) . ' photos added successfully',
+            'images' => $uploadedImages
+        ]);
     }
 }
