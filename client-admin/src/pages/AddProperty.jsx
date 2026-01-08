@@ -197,10 +197,26 @@ export default function AddProperty() {
         setFormData(prev => ({ ...prev, videos: prev.videos.filter((_, i) => i !== idx) }));
     };
 
+    const handleDeleteNewImage = async (idx) => {
+        const isConfirmed = await showConfirm('Remove Photo', 'Remove this new photo from the list?', 'Remove', 'Cancel');
+        if (isConfirmed) {
+            setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }));
+        }
+    };
+
+    const handleMakeCover = (index) => {
+        if (index === 0) return;
+        setFormData(prev => {
+            const images = [...prev.images];
+            const [selected] = images.splice(index, 1);
+            images.unshift(selected);
+            return { ...prev, images };
+        });
+    };
+
     const handleSubmit = async () => {
         if (!selectedVendor) return showError("Error", "Please select a vendor.");
 
-        // Basic Validation check
         const { valid, msgs } = validateStep(step);
         if (!valid) {
             showError('Missing Details', (
@@ -510,17 +526,33 @@ export default function AddProperty() {
                 </div>
             </div>
 
-            <div className="bg-white border rounded-xl p-6">
-                <h4 className="font-bold mb-4">Accepted ID Proofs</h4>
-                <div className="flex flex-wrap gap-3">
-                    {['Passport', 'Driving License', 'PAN Card', 'Aadhar Card'].map(id => (
-                        <button key={id} type="button"
-                            onClick={() => setFormData(p => ({ ...p, idProofs: p.idProofs.includes(id) ? p.idProofs.filter(x => x !== id) : [...p.idProofs, id] }))}
-                            className={`px-4 py-2 rounded-lg border text-sm font-bold ${formData.idProofs.includes(id) ? 'bg-black text-white' : 'bg-white'}`}
-                        >
-                            {id}
-                        </button>
-                    ))}
+            {/* General Rules Loop - Corrected */}
+            <div className="bg-white border rounded-xl p-6 shadow-sm">
+                <h4 className="font-bold text-gray-800 mb-4">General House Rules</h4>
+                <div className="space-y-3">
+                    {PROPERTY_RULES.map((rule, idx) => {
+                        if ([3, 8, 6, 7].includes(idx)) return null; // Skip customized ones
+                        return (
+                            <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                                <span className="font-medium text-gray-600 text-sm">{rule}</span>
+                                <Toggle active={!!formData.rules[idx]} onChange={(val) => setFormData(p => ({ ...p, rules: { ...p.rules, [idx]: val } }))} />
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+                    <h4 className="font-bold mb-2">Accepted ID Proofs</h4>
+                    <div className="flex flex-wrap gap-3">
+                        {['Passport', 'Driving License', 'PAN Card', 'Aadhar Card'].map(id => (
+                            <button key={id} type="button"
+                                onClick={() => setFormData(p => ({ ...p, idProofs: p.idProofs.includes(id) ? p.idProofs.filter(x => x !== id) : [...p.idProofs, id] }))}
+                                className={`px-4 py-2 rounded-lg border text-sm font-bold ${formData.idProofs.includes(id) ? 'bg-black text-white' : 'bg-white'}`}
+                            >
+                                {id}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -693,7 +725,13 @@ export default function AddProperty() {
                             <div key={idx} className={`relative rounded-xl overflow-hidden aspect-square ${idx === 0 ? 'ring-4 ring-yellow-400' : ''}`}>
                                 <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
                                 {idx === 0 && <div className="absolute top-2 left-2 bg-yellow-400 text-black text-[10px] font-bold px-2 py-1 rounded-full"><FaStar /> Cover</div>}
-                                <button onClick={() => setFormData(p => ({ ...p, images: p.images.filter((_, i) => i !== idx) }))} className="absolute top-2 right-2 bg-white text-red-500 p-1 rounded-full shadow"><FaTimes /></button>
+
+                                {/* Make Cover Button */}
+                                {idx !== 0 && (
+                                    <button onClick={(e) => { e.stopPropagation(); handleMakeCover(idx); }} className="absolute top-2 right-10 bg-white text-yellow-500 p-1 rounded-full shadow hover:scale-110" title="Make Cover"><FaStar /></button>
+                                )}
+
+                                <button onClick={() => handleDeleteNewImage(idx)} className="absolute top-2 right-2 bg-white text-red-500 p-1 rounded-full shadow hover:scale-110"><FaTimes /></button>
                             </div>
                         ))}
                     </div>
@@ -744,7 +782,7 @@ export default function AddProperty() {
                                     Owner: {selectedVendor?.business_name || selectedVendor?.name}
                                 </div>
                                 {(formData.propertyType === 'Villa' ? STEPS_VILLA : STEPS_WATERPARK).map((label, i) => (
-                                    <button key={i} onClick={() => setStep(i + 1)} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm transition-all ${step === i + 1 ? 'bg-black text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+                                    <button key={i} onClick={() => setStep(i + 1)} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm transition-all ${step === i + 1 ? 'bg-black text-white' : 'text-gray-500 hover:bg-gray-100 block'}`}>
                                         {i + 1}. {label}
                                     </button>
                                 ))}
@@ -780,6 +818,12 @@ export default function AddProperty() {
                         </div>
                     )}
                 </div>
+
+                {/* Styles for animations */}
+                <style>{`
+                    @keyframes fade-in-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                    .animate-fade-in-up { animation: fade-in-up 0.4s ease-out forwards; }
+                `}</style>
             </div>
         </div>
     );
