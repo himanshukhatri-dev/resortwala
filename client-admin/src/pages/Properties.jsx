@@ -5,8 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import Loader from '../components/Loader';
 import { useModal } from '../context/ModalContext';
 import { API_BASE_URL } from '../config';
-import { FaCheck, FaTimes, FaEdit, FaTrash, FaMapMarkerAlt, FaUser, FaPhone, FaBuilding, FaSearch, FaFilter, FaFileImport } from 'react-icons/fa';
-import BulkUpload from '../components/BulkUpload';
+import { FaCheck, FaTimes, FaEdit, FaTrash, FaMapMarkerAlt, FaUser, FaPhone, FaBuilding, FaSearch, FaFilter } from 'react-icons/fa';
 
 export default function Properties() {
     const navigate = useNavigate();
@@ -17,7 +16,7 @@ export default function Properties() {
     const [actionLoading, setActionLoading] = useState(false);
     const [filter, setFilter] = useState('all'); // all, approved, pending, rejected
     const [searchQuery, setSearchQuery] = useState('');
-    const [showImport, setShowImport] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         fetchProperties();
@@ -101,12 +100,6 @@ export default function Properties() {
                                 className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all"
                             >
                                 <FaBuilding /> Add Property
-                            </button>
-                            <button
-                                onClick={() => setShowImport(true)}
-                                className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 shadow-lg shadow-green-600/20 transition-all"
-                            >
-                                <FaFileImport /> Bulk Import
                             </button>
                         </div>
                     </div>
@@ -333,14 +326,7 @@ export default function Properties() {
                     )}
                 </div>
             </div>
-            {showImport && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-                    <BulkUpload
-                        onClose={() => setShowImport(false)}
-                        onSuccess={() => { setShowImport(false); fetchProperties(); showSuccess('Imported', 'Properties imported successfully!'); }}
-                    />
-                </div>
-            )}
+
         </div>
     );
 }
