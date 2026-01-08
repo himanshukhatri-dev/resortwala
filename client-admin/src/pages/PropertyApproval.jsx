@@ -58,25 +58,28 @@ export default function PropertyApproval() {
     // Editable state for the property details
     const [formData, setFormData] = useState({});
 
+    // Pricing validation errors
+    const [pricingErrors, setPricingErrors] = useState({});
+
     // Pricing Matrix State
     const [pricing, setPricing] = useState({
         mon_thu: {
-            villa: { current: 0, discounted: 0, final: 0 },
-            extra_person: { current: 0, discounted: 0, final: 0 },
-            meal_person: { current: 0, discounted: 0, final: 0 },
-            jain_meal_person: { current: 0, discounted: 0, final: 0 }
+            villa: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 },
+            extra_person: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 },
+            meal_person: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 },
+            jain_meal_person: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 }
         },
         fri_sun: {
-            villa: { current: 0, discounted: 0, final: 0 },
-            extra_person: { current: 0, discounted: 0, final: 0 },
-            meal_person: { current: 0, discounted: 0, final: 0 },
-            jain_meal_person: { current: 0, discounted: 0, final: 0 }
+            villa: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 },
+            extra_person: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 },
+            meal_person: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 },
+            jain_meal_person: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 }
         },
         sat: {
-            villa: { current: 0, discounted: 0, final: 0 },
-            extra_person: { current: 0, discounted: 0, final: 0 },
-            meal_person: { current: 0, discounted: 0, final: 0 },
-            jain_meal_person: { current: 0, discounted: 0, final: 0 }
+            villa: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 },
+            extra_person: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 },
+            meal_person: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 },
+            jain_meal_person: { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 }
         }
     });
 
@@ -115,6 +118,8 @@ export default function PropertyApproval() {
                     MobileNo: prop.MobileNo || '',
                     Email: prop.Email || ob.email || '',
                     Address: prop.Address || '',
+                    PropertyType: prop.PropertyType || '',
+                    Website: prop.Website || '',
                 });
                 initializePricing(prop);
                 if (prop.PropertyType === 'Waterpark') {
@@ -140,6 +145,22 @@ export default function PropertyApproval() {
             // Helper to get existing admin price or empty string (NO PRE-FILL from vendor price)
             const getVal = (day, type, field) => {
                 return existing[day]?.[type]?.[field] ?? '';
+            };
+
+            const getVendorDiscountPercentage = (current, discounted) => {
+                if (!current || !discounted) return 0;
+                const c = parseFloat(current);
+                const d = parseFloat(discounted);
+                if (c === 0) return 0;
+                return (((c - d) / c) * 100).toFixed(2);
+            };
+
+            const getOurMarginPercentage = (discounted, final) => {
+                if (!discounted || !final) return 0;
+                const d = parseFloat(discounted);
+                const f = parseFloat(final);
+                if (d === 0) return 0;
+                return (((f - d) / d) * 100).toFixed(2);
             };
 
             let mt_villa, mt_extra, fs_villa, fs_extra, sat_villa, sat_extra;
@@ -176,22 +197,94 @@ export default function PropertyApproval() {
 
             setPricing({
                 mon_thu: {
-                    villa: { current: mt_villa, discounted: getVal('mon_thu', 'villa', 'discounted'), final: getVal('mon_thu', 'villa', 'final') },
-                    extra_person: { current: mt_extra, discounted: getVal('mon_thu', 'extra_person', 'discounted'), final: getVal('mon_thu', 'extra_person', 'final') },
-                    meal_person: { current: mt_meal, discounted: getVal('mon_thu', 'meal_person', 'discounted'), final: getVal('mon_thu', 'meal_person', 'final') },
-                    jain_meal_person: { current: jain_meal, discounted: getVal('mon_thu', 'jain_meal_person', 'discounted'), final: getVal('mon_thu', 'jain_meal_person', 'final') }
+                    villa: {
+                        current: mt_villa,
+                        discounted: getVal('mon_thu', 'villa', 'discounted'),
+                        final: getVal('mon_thu', 'villa', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(mt_villa, getVal('mon_thu', 'villa', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('mon_thu', 'villa', 'discounted'), getVal('mon_thu', 'villa', 'final'))
+                    },
+                    extra_person: {
+                        current: mt_extra,
+                        discounted: getVal('mon_thu', 'extra_person', 'discounted'),
+                        final: getVal('mon_thu', 'extra_person', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(mt_extra, getVal('mon_thu', 'extra_person', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('mon_thu', 'extra_person', 'discounted'), getVal('mon_thu', 'extra_person', 'final'))
+                    },
+                    meal_person: {
+                        current: mt_meal,
+                        discounted: getVal('mon_thu', 'meal_person', 'discounted'),
+                        final: getVal('mon_thu', 'meal_person', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(mt_meal, getVal('mon_thu', 'meal_person', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('mon_thu', 'meal_person', 'discounted'), getVal('mon_thu', 'meal_person', 'final'))
+                    },
+                    jain_meal_person: {
+                        current: jain_meal,
+                        discounted: getVal('mon_thu', 'jain_meal_person', 'discounted'),
+                        final: getVal('mon_thu', 'jain_meal_person', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(jain_meal, getVal('mon_thu', 'jain_meal_person', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('mon_thu', 'jain_meal_person', 'discounted'), getVal('mon_thu', 'jain_meal_person', 'final'))
+                    }
                 },
                 fri_sun: {
-                    villa: { current: fs_fs_villa, discounted: getVal('fri_sun', 'villa', 'discounted'), final: getVal('fri_sun', 'villa', 'final') },
-                    extra_person: { current: fs_extra, discounted: getVal('fri_sun', 'extra_person', 'discounted'), final: getVal('fri_sun', 'extra_person', 'final') },
-                    meal_person: { current: mt_meal, discounted: getVal('fri_sun', 'meal_person', 'discounted'), final: getVal('fri_sun', 'meal_person', 'final') },
-                    jain_meal_person: { current: jain_meal, discounted: getVal('fri_sun', 'jain_meal_person', 'discounted'), final: getVal('fri_sun', 'jain_meal_person', 'final') }
+                    villa: {
+                        current: fs_fs_villa,
+                        discounted: getVal('fri_sun', 'villa', 'discounted'),
+                        final: getVal('fri_sun', 'villa', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(fs_fs_villa, getVal('fri_sun', 'villa', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'villa', 'discounted'), getVal('fri_sun', 'villa', 'final'))
+                    },
+                    extra_person: {
+                        current: fs_extra,
+                        discounted: getVal('fri_sun', 'extra_person', 'discounted'),
+                        final: getVal('fri_sun', 'extra_person', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(fs_extra, getVal('fri_sun', 'extra_person', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'extra_person', 'discounted'), getVal('fri_sun', 'extra_person', 'final'))
+                    },
+                    meal_person: {
+                        current: mt_meal,
+                        discounted: getVal('fri_sun', 'meal_person', 'discounted'),
+                        final: getVal('fri_sun', 'meal_person', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(mt_meal, getVal('fri_sun', 'meal_person', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'meal_person', 'discounted'), getVal('fri_sun', 'meal_person', 'final'))
+                    },
+                    jain_meal_person: {
+                        current: jain_meal,
+                        discounted: getVal('fri_sun', 'jain_meal_person', 'discounted'),
+                        final: getVal('fri_sun', 'jain_meal_person', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(jain_meal, getVal('fri_sun', 'jain_meal_person', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'jain_meal_person', 'discounted'), getVal('fri_sun', 'jain_meal_person', 'final'))
+                    }
                 },
                 sat: {
-                    villa: { current: sat_sat_villa, discounted: getVal('sat', 'villa', 'discounted'), final: getVal('sat', 'villa', 'final') },
-                    extra_person: { current: sat_extra, discounted: getVal('sat', 'extra_person', 'discounted'), final: getVal('sat', 'extra_person', 'final') },
-                    meal_person: { current: mt_meal, discounted: getVal('sat', 'meal_person', 'discounted'), final: getVal('sat', 'meal_person', 'final') },
-                    jain_meal_person: { current: jain_meal, discounted: getVal('sat', 'jain_meal_person', 'discounted'), final: getVal('sat', 'jain_meal_person', 'final') }
+                    villa: {
+                        current: sat_sat_villa,
+                        discounted: getVal('sat', 'villa', 'discounted'),
+                        final: getVal('sat', 'villa', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(sat_sat_villa, getVal('sat', 'villa', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'villa', 'discounted'), getVal('sat', 'villa', 'final'))
+                    },
+                    extra_person: {
+                        current: sat_extra,
+                        discounted: getVal('sat', 'extra_person', 'discounted'),
+                        final: getVal('sat', 'extra_person', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(sat_extra, getVal('sat', 'extra_person', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'extra_person', 'discounted'), getVal('sat', 'extra_person', 'final'))
+                    },
+                    meal_person: {
+                        current: mt_meal,
+                        discounted: getVal('sat', 'meal_person', 'discounted'),
+                        final: getVal('sat', 'meal_person', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(mt_meal, getVal('sat', 'meal_person', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'meal_person', 'discounted'), getVal('sat', 'meal_person', 'final'))
+                    },
+                    jain_meal_person: {
+                        current: jain_meal,
+                        discounted: getVal('sat', 'jain_meal_person', 'discounted'),
+                        final: getVal('sat', 'jain_meal_person', 'final'),
+                        vendorDiscountPercentage: getVendorDiscountPercentage(jain_meal, getVal('sat', 'jain_meal_person', 'discounted')),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'jain_meal_person', 'discounted'), getVal('sat', 'jain_meal_person', 'final'))
+                    }
                 }
             });
         } catch (e) {
@@ -238,11 +331,70 @@ export default function PropertyApproval() {
 
     const handlePriceChange = (day, type, field, value) => {
         let num = parseFloat(value);
-        if (isNaN(num) || num < 0) num = 0;
-        setPricing(prev => ({
-            ...prev,
-            [day]: { ...prev[day], [type]: { ...prev[day][type], [field]: num } }
-        }));
+        if (isNaN(num)) num = 0;
+
+        setPricing(prev => {
+            const current = parseFloat(prev[day][type].current || 0);
+            let newDiscounted = parseFloat(prev[day][type].discounted || 0);
+            let newFinal = parseFloat(prev[day][type].final || 0);
+            let newVendorDiscountPercentage = parseFloat(prev[day][type].vendorDiscountPercentage || 0);
+            let newOurMarginPercentage = parseFloat(prev[day][type].ourMarginPercentage || 0);
+
+            // Handle vendorDiscountPercentage change: vendor → us
+            if (field === 'vendorDiscountPercentage') {
+                newVendorDiscountPercentage = num;
+                newDiscounted = current - (current * newVendorDiscountPercentage / 100);
+                newFinal = newDiscounted + (newDiscounted * newOurMarginPercentage / 100);
+            }
+            // Handle ourMarginPercentage change: us → customer
+            else if (field === 'ourMarginPercentage') {
+                newOurMarginPercentage = num;
+                newFinal = newDiscounted + (newDiscounted * newOurMarginPercentage / 100);
+            }
+            // Handle discounted (our rate) change
+            else if (field === 'discounted') {
+                newDiscounted = num;
+                if (current !== 0) {
+                    newVendorDiscountPercentage = ((current - newDiscounted) / current * 100);
+                }
+                newFinal = newDiscounted + (newDiscounted * newOurMarginPercentage / 100);
+            }
+            // Handle final (customer price) change
+            else if (field === 'final') {
+                newFinal = num;
+                if (newDiscounted !== 0) {
+                    newOurMarginPercentage = ((newFinal - newDiscounted) / newDiscounted * 100);
+                }
+            }
+
+            // Validation
+            const errorKey = `${day}-${type}`;
+            let error = null;
+            if (newDiscounted >= current && current > 0) {
+                error = 'Our rate must be less than vendor ask';
+            } else if (newFinal <= newDiscounted && newDiscounted > 0) {
+                error = 'Customer price must be more than our rate';
+            }
+
+            setPricingErrors(prevErrors => ({
+                ...prevErrors,
+                [errorKey]: error
+            }));
+
+            return {
+                ...prev,
+                [day]: {
+                    ...prev[day],
+                    [type]: {
+                        ...prev[day][type],
+                        discounted: newDiscounted,
+                        final: newFinal,
+                        vendorDiscountPercentage: newVendorDiscountPercentage,
+                        ourMarginPercentage: newOurMarginPercentage
+                    }
+                }
+            };
+        });
     };
 
     const handleWaterparkPriceChange = (ticketType, field, value) => {
@@ -263,6 +415,8 @@ export default function PropertyApproval() {
         try {
             const payload = {
                 admin_pricing: pricing,
+                PropertyType: formData.PropertyType,
+                Website: formData.Website,
                 Name: formData.Name,
                 Location: formData.Location,
                 ShortDescription: formData.ShortDescription,
@@ -347,10 +501,10 @@ export default function PropertyApproval() {
                             <div className="bg-white border border-gray-200 rounded-xl p-6">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4 pb-3 border-b">Property Details</h3>
                                 <div className="space-y-0">
-                                    <InputGroup label="Property Type" value={property.PropertyType} readOnly />
+                                    <InputGroup label="Property Type" value={formData.PropertyType} onChange={(e) => setFormData({ ...formData, PropertyType: e.target.value })} />
                                     <InputGroup label="Property Name" value={formData.Name} onChange={(e) => setFormData({ ...formData, Name: e.target.value })} />
                                     <InputGroup label="Location / City" value={formData.Location} onChange={(e) => setFormData({ ...formData, Location: e.target.value })} />
-                                    <InputGroup label="Website" value={property.Website || 'N/A'} readOnly />
+                                    <InputGroup label="Website" value={formData.Website} onChange={(e) => setFormData({ ...formData, Website: e.target.value })} />
                                 </div>
                             </div>
 
@@ -741,8 +895,10 @@ export default function PropertyApproval() {
                                                         <tr className={`border-b border-${color}-100 bg-${color}-50/30 text-xs uppercase tracking-wider text-${color}-800/60 font-bold`}>
                                                             <th className="px-6 py-4 rounded-tl-lg">Service Type</th>
                                                             <th className="px-6 py-4 text-right">Vendor Ask</th>
-                                                            <th className="px-6 py-4 text-right">Our Discounted</th>
-                                                            <th className="px-6 py-4 text-right rounded-tr-lg">Final Customer Price</th>
+                                                            <th className="px-6 py-4 text-right">Vendor Disc %</th>
+                                                            <th className="px-6 py-4 text-right">Our Rate</th>
+                                                            <th className="px-6 py-4 text-right">Our Margin %</th>
+                                                            <th className="px-6 py-4 text-right rounded-tr-lg">Customer Price</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-50">
@@ -751,45 +907,84 @@ export default function PropertyApproval() {
                                                             { label: 'Extra Person', type: 'extra_person', icon: '👤' },
                                                             { label: 'Meal per Person', type: 'meal_person', icon: '🍽️' },
                                                             { label: 'Jain Meal per Person', type: 'jain_meal_person', icon: '🥕' }
-                                                        ].map((item) => (
-                                                            <tr key={item.type} className={`group hover:bg-${color}-50/30 transition-colors duration-200`}>
-                                                                <td className="px-6 py-4 font-bold text-gray-700 flex items-center gap-3">
-                                                                    <span className={`w-8 h-8 rounded-full bg-${color}-50 flex items-center justify-center text-lg shadow-sm border border-${color}-100 text-${color}-600`}>
-                                                                        {item.icon}
-                                                                    </span>
-                                                                    {item.label}
-                                                                </td>
-                                                                <td className="px-6 py-4 text-right tabular-nums text-gray-500 font-medium">
-                                                                    {pricing[day][item.type].current ? `₹${pricing[day][item.type].current.toLocaleString()}` : '--'}
-                                                                </td>
-                                                                <td className="px-6 py-4 text-right">
-                                                                    <div className="flex justify-end">
-                                                                        <div className="relative w-32 group-hover:w-36 transition-all duration-300">
-                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
-                                                                            <input type="number"
-                                                                                className={`w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300`}
-                                                                                value={pricing[day][item.type].discounted || ''}
-                                                                                onChange={(e) => handlePriceChange(day, item.type, 'discounted', e.target.value)}
-                                                                                placeholder="0"
-                                                                            />
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-6 py-4 text-right">
-                                                                    <div className="flex justify-end">
-                                                                        <div className="relative w-32 group-hover:w-36 transition-all duration-300">
-                                                                            <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-${color}-500 font-bold pointer-events-none`}>₹</span>
-                                                                            <input type="number"
-                                                                                className={`w-full pl-7 pr-3 py-2 bg-${color}-50/50 border border-${color}-200 rounded-lg outline-none focus:border-${color}-500 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-black text-${color}-700 placeholder-${color}-300 shadow-sm`}
-                                                                                value={pricing[day][item.type].final || ''}
-                                                                                onChange={(e) => handlePriceChange(day, item.type, 'final', e.target.value)}
-                                                                                placeholder="0"
-                                                                            />
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
+                                                        ].map((item) => {
+                                                            const errorKey = `${day}-${item.type}`;
+                                                            const hasError = pricingErrors[errorKey];
+                                                            return (
+                                                                <React.Fragment key={item.type}>
+                                                                    <tr className={`group hover:bg-${color}-50/30 transition-colors duration-200 ${hasError ? 'bg-red-50' : ''}`}>
+                                                                        <td className="px-6 py-4 font-bold text-gray-700 flex items-center gap-3">
+                                                                            <span className={`w-8 h-8 rounded-full bg-${color}-50 flex items-center justify-center text-lg shadow-sm border border-${color}-100 text-${color}-600`}>
+                                                                                {item.icon}
+                                                                            </span>
+                                                                            {item.label}
+                                                                        </td>
+                                                                        <td className="px-6 py-4 text-right tabular-nums text-gray-500 font-medium">
+                                                                            {pricing[day][item.type].current ? `₹${pricing[day][item.type].current.toLocaleString()}` : '--'}
+                                                                        </td>
+                                                                        <td className="px-6 py-4 text-right">
+                                                                            <div className="flex justify-end">
+                                                                                <div className="relative w-20 group-hover:w-24 transition-all duration-300">
+                                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">%</span>
+                                                                                    <input type="number"
+                                                                                        className={`w-full pr-7 pl-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
+                                                                                        value={pricing[day][item.type].vendorDiscountPercentage || ''}
+                                                                                        onChange={(e) => handlePriceChange(day, item.type, 'vendorDiscountPercentage', e.target.value)}
+                                                                                        placeholder="0"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 text-right">
+                                                                            <div className="flex justify-end">
+                                                                                <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
+                                                                                    <input type="number"
+                                                                                        className={`w-full pl-7 pr-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
+                                                                                        value={pricing[day][item.type].discounted || ''}
+                                                                                        onChange={(e) => handlePriceChange(day, item.type, 'discounted', e.target.value)}
+                                                                                        placeholder="0"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 text-right">
+                                                                            <div className="flex justify-end">
+                                                                                <div className="relative w-20 group-hover:w-24 transition-all duration-300">
+                                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">%</span>
+                                                                                    <input type="number"
+                                                                                        className={`w-full pr-7 pl-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
+                                                                                        value={pricing[day][item.type].ourMarginPercentage || ''}
+                                                                                        onChange={(e) => handlePriceChange(day, item.type, 'ourMarginPercentage', e.target.value)}
+                                                                                        placeholder="0"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 text-right">
+                                                                            <div className="flex justify-end">
+                                                                                <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                                    <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-${color}-500 font-bold pointer-events-none`}>₹</span>
+                                                                                    <input type="number"
+                                                                                        className={`w-full pl-7 pr-3 py-2 bg-${color}-50/50 border rounded-lg outline-none focus:border-${color}-500 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-black text-${color}-700 placeholder-${color}-300 shadow-sm ${hasError ? 'border-red-400' : `border-${color}-200`}`}
+                                                                                        value={pricing[day][item.type].final || ''}
+                                                                                        onChange={(e) => handlePriceChange(day, item.type, 'final', e.target.value)}
+                                                                                        placeholder="0"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                    {hasError && (
+                                                                        <tr>
+                                                                            <td colSpan="6" className="px-6 py-2 text-right">
+                                                                                <span className="text-xs text-red-600 font-medium">{hasError}</span>
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                </React.Fragment>
+                                                            );
+                                                        })}
                                                     </tbody>
                                                 </table>
                                             </div>
