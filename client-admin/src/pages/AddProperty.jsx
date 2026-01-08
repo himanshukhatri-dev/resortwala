@@ -398,26 +398,58 @@ export default function AddProperty() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField label="Google Map Link" name="googleMapLink" value={formData.googleMapLink} onChange={handleInputChange} />
+                <div className="flex gap-2">
                     <InputField label="Lat" name="latitude" value={formData.latitude} onChange={handleInputChange} />
                     <InputField label="Lng" name="longitude" value={formData.longitude} onChange={handleInputChange} />
                 </div>
             </div>
+
+            {/* Nearby Attractions */}
+            <div className="space-y-2 pt-2 border-t border-gray-200 mt-4">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nearby Attractions / Places to Visit</label>
+                <textarea
+                    value={formData.otherAttractions || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, otherAttractions: e.target.value }))}
+                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-blue-500 outline-none h-24 resize-none"
+                    placeholder="List nearby tourist spots, distances, etc..."
+                />
+            </div>
+
             <InputField label="Short Description" name="shortDescription" value={formData.shortDescription} onChange={handleInputChange} placeholder="Brief summary (max 150 chars)" />
             <InputField label="Long Description" name="description" value={formData.description} onChange={handleInputChange} />
-        </div >
+        </div>
     );
 
     const renderStep2Features = () => (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {AMENITY_TYPES.filter(a => !a.scope || a.scope.includes(formData.propertyType)).map(item => (
-                <div key={item.key} className="p-3 border rounded-lg flex items-center justify-between">
-                    <span className="text-sm font-bold">{item.label}</span>
-                    {item.type === 'number'
-                        ? <Counter value={formData.amenities[item.key]} onChange={v => handleAmenityChange(item.key, 'number', v)} />
-                        : <Toggle active={!!formData.amenities[item.key]} onChange={v => handleAmenityChange(item.key, 'bool', v)} />
-                    }
+        <div className="space-y-6 animate-fade-in-up">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {AMENITY_TYPES.filter(a => !a.scope || a.scope.includes(formData.propertyType)).map(item => (
+                    <div key={item.key} className="p-3 border rounded-lg flex items-center justify-between">
+                        <span className="text-sm font-bold">{item.label}</span>
+                        {item.type === 'number'
+                            ? <Counter value={formData.amenities[item.key]} onChange={v => handleAmenityChange(item.key, 'number', v)} />
+                            : <Toggle active={!!formData.amenities[item.key]} onChange={v => handleAmenityChange(item.key, 'bool', v)} />
+                        }
+                    </div>
+                ))}
+            </div>
+
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-6">
+                <h4 className="font-bold text-blue-900 mb-4 flex items-center gap-2"><FaUserShield /> Safety & Security (Other Amenities)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {['Fire Extinguisher', 'Security System', 'First Aid Kit', 'Window Guards', 'Parking', 'Caretaker', 'Power Backup'].map(safety => (
+                        <label key={safety} className="flex items-center gap-2 bg-white p-3 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-50 transition-colors">
+                            <input
+                                type="checkbox"
+                                checked={formData.amenities[safety?.toLowerCase().replace(/\s/g, '')] || formData.amenities[safety] || false}
+                                onChange={(e) => handleAmenityChange(safety, 'bool', e.target.checked)}
+                                className="w-5 h-5 accent-blue-600"
+                            />
+                            <span className="text-sm font-bold text-gray-700">{safety}</span>
+                        </label>
+                    ))}
                 </div>
-            ))}
+            </div>
         </div>
     );
 
@@ -454,6 +486,10 @@ export default function AddProperty() {
                         <span className="font-bold text-sm">Bathroom</span>
                         <Toggle active={formData.roomConfig.livingRoom.bathroom} onChange={(v) => updateLiving('bathroom', v)} />
                     </div>
+                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                        <span className="font-bold text-sm">Balcony</span>
+                        <Toggle active={formData.roomConfig.livingRoom.balcony} onChange={(v) => updateLiving('balcony', v)} />
+                    </div>
                     {formData.roomConfig.livingRoom.bathroom && (
                         <div>
                             <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Toilet Style</label>
@@ -486,6 +522,7 @@ export default function AddProperty() {
                             <div className="flex items-center justify-between border p-2 rounded"><span className="text-sm">TV</span> <Toggle active={room.tv} onChange={v => updateRoom(idx, 'tv', v)} /></div>
                             <div className="flex items-center justify-between border p-2 rounded"><span className="text-sm">Geyser</span> <Toggle active={room.geyser} onChange={v => updateRoom(idx, 'geyser', v)} /></div>
                             <div className="flex items-center justify-between border p-2 rounded"><span className="text-sm">Wardrobe</span> <Toggle active={room.wardrobe} onChange={v => updateRoom(idx, 'wardrobe', v)} /></div>
+                            <div className="flex items-center justify-between border p-2 rounded"><span className="text-sm">Balcony</span> <Toggle active={room.balcony} onChange={v => updateRoom(idx, 'balcony', v)} /></div>
                             <div className="flex items-center justify-between border p-2 rounded"><span className="text-sm">Private Bath</span> <Toggle active={room.bathroom} onChange={v => updateRoom(idx, 'bathroom', v)} /></div>
                         </div>
                     </div>
@@ -768,7 +805,7 @@ export default function AddProperty() {
         // Step 4 (Villa) or Step 3 (Waterpark): Policies Check
         const policiesStep = isVilla ? 4 : 3;
         if (step === policiesStep) {
-            // Optional: Force ID proofs or timing? 
+            // Optional: Force ID proofs or timing?
             // We can be lenient or strict. Let's strictly require Check In/Out
             if (!formData.checkInTime) errors.push('Check-in time is required');
             if (!formData.checkOutTime) errors.push('Check-out time is required');
