@@ -197,4 +197,62 @@ class AdminPropertyController extends Controller
 
         return response()->json(['message' => 'Changes rejected']);
     }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'Name' => 'required|string|max:255',
+            'vendor_id' => 'required|exists:users,id',
+            'PropertyType' => 'required|string',
+            'Price' => 'required|numeric',
+            'Location' => 'nullable|string',
+            'description' => 'nullable|string',
+            // Add other basic fields as needed, can expand later
+        ]);
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $validated) {
+            
+            // 1. Create Property
+            $property = PropertyMaster::create([
+                'Name' => $validated['Name'],
+                'vendor_id' => $validated['vendor_id'],
+                'PropertyType' => $validated['PropertyType'],
+                'Price' => $validated['Price'],
+                'Location' => $validated['Location'] ?? null,
+                'Description' => $validated['description'] ?? null,
+                'is_approved' => true, // Admin created = Auto Approved
+                'IsActive' => true,
+                'PropertyStatus' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+                // Default Pricing columns sync
+                'price_mon_thu' => $validated['Price'],
+                'price_fri_sun' => $validated['Price'],
+                'price_sat' => $validated['Price'],
+            ]);
+
+            // 2. Handle Images (if any)
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $index => $image) {
+                    $filename = \Illuminate\Support\Str::random(40) . '.' . $image->getClientOriginalExtension();
+                    $image->storeAs('properties/' . $property->PropertyId, $filename, 'public');
+                    
+                    \App\Models\PropertyImage::create([
+                        'property_id' => $property->PropertyId,
+                        'image_path' => $property->PropertyId . '/' . $filename,
+                        'is_primary' => $index === 0,
+                        'display_order' => $index
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'message' => 'Property created successfully',
+                'property' => $property
+            ], 201);
+        });
+    }
 }

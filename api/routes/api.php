@@ -214,6 +214,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/admin/vendors/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectVendor']);
     
     // Admin Property Management
+    Route::post('/admin/properties', [\App\Http\Controllers\AdminPropertyController::class, 'store']);
     Route::get('/admin/properties', [\App\Http\Controllers\AdminController::class, 'getAllProperties']);
     Route::get('/admin/properties/pending', [\App\Http\Controllers\AdminController::class, 'getPendingProperties']);
     Route::get('/admin/properties/{id}/calendar', [\App\Http\Controllers\AdminPropertyController::class, 'getCalendar']);
