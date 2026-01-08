@@ -97,6 +97,12 @@ export default function Properties() {
                         <div className="flex items-center gap-3 mt-1">
                             <p className="text-gray-500">Manage all registered properties and approvals</p>
                             <button
+                                onClick={() => navigate('/properties/add')} // Changed from setShowImport
+                                className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all"
+                            >
+                                <FaBuilding /> Add Property
+                            </button>
+                            <button
                                 onClick={() => setShowImport(true)}
                                 className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 shadow-lg shadow-green-600/20 transition-all"
                             >

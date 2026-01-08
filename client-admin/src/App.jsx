@@ -9,9 +9,17 @@ import Bookings from './pages/Bookings';
 import Layout from './Layout';
 import Vendors from './pages/Vendors';
 import Properties from './pages/Properties';
+import AddProperty from './pages/AddProperty'; // Import New Page
 import Settings from './pages/Settings';
 import Customers from './pages/Customers';
 import PropertyApproval from './pages/PropertyApproval';
+
+// ... (Inside Routes)
+
+              <Route path="/analytics" element={<AdminEventLogs />} />
+              <Route path="/properties" element={<Properties />} />
+              <Route path="/properties/add" element={<AddProperty />} /> {/* New Route */ }
+<Route path="/properties/:id/approve" element={<PropertyApproval />} />
 import VendorDetails from './pages/VendorDetails';
 import PropertyChangeRequests from './pages/PropertyChangeRequests';
 import ReviewPropertyChange from './pages/ReviewPropertyChange';
