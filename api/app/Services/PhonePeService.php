@@ -15,14 +15,14 @@ class PhonePeService
 
     public function __construct()
     {
-        // HARDCODED FOR DEBUGGING (As per previous successful test)
-        // To ensure enviroment variables are not overriding with old keys
-        $this->merchantId = 'PGTESTPAYUAT86'; 
-        $this->saltKey = '96434309-7796-489d-8924-ab56988a6076';
-        $this->saltIndex = '1';
-        $this->env = 'UAT';
+        $this->merchantId = config('phonepe.merchant_id');
+        $this->saltKey = config('phonepe.salt_key');
+        $this->saltIndex = config('phonepe.salt_index');
+        $this->env = config('phonepe.env');
         
-        $this->baseUrl = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+        $this->baseUrl = ($this->env === 'PROD') 
+            ? 'https://api.phonepe.com/apis/hermes' 
+            : 'https://api-preprod.phonepe.com/apis/pg-sandbox';
     }
 
     /**

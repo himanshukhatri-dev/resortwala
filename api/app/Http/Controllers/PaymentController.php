@@ -18,13 +18,10 @@ class PaymentController extends Controller
 
     public function __construct()
     {
-        // HARDCODED FOR DEBUGGING: To ensure enviroment variables are not overriding with old keys
-        $this->merchantId = 'PGTESTPAYUAT86'; 
-        $this->saltKey = '96434309-7796-489d-8924-ab56988a6076';
-        $this->saltIndex = '1';
-        $this->env = 'UAT';
-        
-        $this->baseUrl = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+        $this->merchantId = config('phonepe.merchant_id');
+        $this->saltKey = config('phonepe.salt_key');
+        $this->saltIndex = config('phonepe.salt_index');
+        $this->env = config('phonepe.env');
     }
 
     // Initiate method moved to BookingController (via PhonePeService) for atomic transaction.
