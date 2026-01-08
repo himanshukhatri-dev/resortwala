@@ -16,7 +16,6 @@ export default function Properties() {
     const [actionLoading, setActionLoading] = useState(false);
     const [filter, setFilter] = useState('all'); // all, approved, pending, rejected
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         fetchProperties();
