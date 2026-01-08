@@ -13,13 +13,6 @@ import AddProperty from './pages/AddProperty'; // Import New Page
 import Settings from './pages/Settings';
 import Customers from './pages/Customers';
 import PropertyApproval from './pages/PropertyApproval';
-
-// ... (Inside Routes)
-
-              <Route path="/analytics" element={<AdminEventLogs />} />
-              <Route path="/properties" element={<Properties />} />
-              <Route path="/properties/add" element={<AddProperty />} /> {/* New Route */ }
-<Route path="/properties/:id/approve" element={<PropertyApproval />} />
 import VendorDetails from './pages/VendorDetails';
 import PropertyChangeRequests from './pages/PropertyChangeRequests';
 import ReviewPropertyChange from './pages/ReviewPropertyChange';
@@ -32,6 +25,8 @@ import Intelligence from './pages/Intelligence';
 import VendorPresentation from './pages/VendorPresentation';
 import InvestorPresentation from './pages/InvestorPresentation';
 import './App.css';
+
+
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -68,6 +63,7 @@ function App() {
               <Route path="/calendar" element={<AdminCalendar />} />
               <Route path="/analytics" element={<AdminEventLogs />} />
               <Route path="/properties" element={<Properties />} />
+              <Route path="/properties/add" element={<AddProperty />} />
               <Route path="/properties/:id/approve" element={<PropertyApproval />} />
               <Route path="/property-changes" element={<PropertyChangeRequests />} />
               <Route path="/properties/:id/changes/:requestId" element={<ReviewPropertyChange />} />
