@@ -60,7 +60,7 @@ class AdminPropertyController extends Controller
 
             // 4. Update standard columns (basic details, contact, etc.)
             // Exclude non-column fields and internal IDs
-            $exclude = ['id', 'vendor_id', 'is_approved', 'PropertyId', 'admin_pricing', 'waterpark_pricing', 'RoomConfig', 'Amenities', 'deletedImages', 'onboarding_data'];
+            $exclude = ['id', 'vendor_id', 'is_approved', 'PropertyId', 'admin_pricing', 'waterpark_pricing', 'RoomConfig', 'Amenities', 'deletedImages', 'onboarding_data', 'otherAmenities'];
             $data = $request->except($exclude);
             
             foreach ($data as $key => $value) {
