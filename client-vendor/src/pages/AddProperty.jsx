@@ -189,7 +189,8 @@ export default function AddProperty() {
         otherAttractions: [],
         checkInTime: '14:00',
         checkOutTime: '11:00',
-        otherRules: ''
+        otherRules: '',
+        otherAmenities: ''
     });
 
     const [existingImages, setExistingImages] = useState([]);
@@ -494,7 +495,8 @@ export default function AddProperty() {
                 googleMapLink: formData.googleMapLink,
                 latitude: formData.latitude,
                 longitude: formData.longitude,
-                otherAttractions: formData.otherAttractions // Persisted Field
+                otherAttractions: formData.otherAttractions, // Persisted Field
+                otherAmenities: formData.otherAmenities ? formData.otherAmenities.split(',').map(s => s.trim()).filter(Boolean) : [] // New Field
             };
 
             apiData.append('onboarding_data', JSON.stringify(onboardingData));
@@ -600,52 +602,11 @@ export default function AddProperty() {
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Google Map Link</label>
                     <input
-                        type="text"
+                        type="url"
                         name="googleMapLink"
-                        value={formData.googleMapLink || ''}
-                        onChange={(e) => {
-                            const val = e.target.value;
-                            setFormData(prev => ({ ...prev, googleMapLink: val }));
-
-                            // Try extract coords from various Google Maps URL formats
-                            let lat = '', lng = '';
-
-                            // 1. @lat,lng
-                            const atRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
-                            const atMatch = val.match(atRegex);
-                            if (atMatch) { lat = atMatch[1]; lng = atMatch[2]; }
-
-                            // 2. q=lat,lng
-                            if (!lat) {
-                                const qRegex = /q=(-?\d+\.\d+),(-?\d+\.\d+)/;
-                                const qMatch = val.match(qRegex);
-                                if (qMatch) { lat = qMatch[1]; lng = qMatch[2]; }
-                            }
-
-                            // 3. ?ll=lat,lng
-                            if (!lat) {
-                                const llRegex = /[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/;
-                                const llMatch = val.match(llRegex);
-                                if (llMatch) { lat = llMatch[1]; lng = llMatch[2]; }
-                            }
-
-                            // 4. search/lat,lng
-                            if (!lat) {
-                                const searchRegex = /search\/(-?\d+\.\d+),\s*(-?\d+\.\d+)/;
-                                const searchMatch = val.match(searchRegex);
-                                if (searchMatch) { lat = searchMatch[1]; lng = searchMatch[2]; }
-                            }
-
-                            if (lat && lng) {
-                                console.log("Auto-detected Coords:", lat, lng);
-                                setFormData(prev => ({
-                                    ...prev,
-                                    googleMapLink: val,
-                                    latitude: lat,
-                                    longitude: lng
-                                }));
-                            }
-                        }}
+                        value={formData.googleMapLink}
+                        onChange={handleInputChange}
+                        onBlur={handleMapLinkBlur}
                         className="w-full bg-white border border-green-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 outline-none"
                         placeholder="Paste Google Maps Link here (e.g. from WhatsApp or Maps)"
                     />
@@ -727,6 +688,16 @@ export default function AddProperty() {
                             </div>
                         </div>
                     ))}
+                </div>
+
+                <div className="mt-6">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Additional Amenities (Comma Separated)</label>
+                    <textarea
+                        value={formData.otherAmenities || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, otherAmenities: e.target.value }))}
+                        className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-black outline-none h-24 resize-none"
+                        placeholder="E.g. Gym, Spa, Yoga Center..."
+                    />
                 </div>
 
                 <div className="mt-6">
@@ -1451,6 +1422,30 @@ export default function AddProperty() {
             if (!hasPayment) errors.push('Please select at least one Accepted Payment Method.');
         }
         return { valid: errors.length === 0, msgs: errors };
+    };
+
+    const handleMapLinkBlur = (e) => {
+        const url = e.target.value;
+        if (!url) return;
+
+        // Regex for @lat,long
+        const atRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+        // Regex for search/lat,long
+        const searchRegex = /search\/(-?\d+\.\d+),\s*(-?\d+\.\d+)/;
+
+        // Regex for q=lat,long (e.g. shared location)
+        const qRegex = /q=(-?\d+\.\d+),(-?\d+\.\d+)/;
+
+        let match = url.match(atRegex) || url.match(searchRegex) || url.match(qRegex);
+
+        if (match) {
+            const [_, lat, long] = match;
+            setFormData(prev => ({
+                ...prev,
+                latitude: lat,
+                longitude: long
+            }));
+        }
     };
 
     const handleNext = () => {

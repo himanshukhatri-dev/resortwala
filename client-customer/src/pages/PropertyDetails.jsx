@@ -635,6 +635,20 @@ export default function PropertyDetails() {
                                     })}
                                 </div>
                             ) : null}
+                            {/* Additional Amenities */}
+                            {Array.isArray(ob.otherAmenities) && ob.otherAmenities.length > 0 && (
+                                <div className="mt-6 mb-6">
+                                    <h3 className="font-bold text-gray-900 mb-3">Additional Amenities</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {ob.otherAmenities.map((amenity, idx) => (
+                                            <span key={idx} className="bg-gray-100 text-gray-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-gray-200 capitalize">
+                                                {amenity}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Other Attractions */}
                             {Array.isArray(ob.otherAttractions) && ob.otherAttractions.length > 0 && (
                                 <div className="mt-4">

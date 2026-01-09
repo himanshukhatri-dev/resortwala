@@ -31,7 +31,7 @@ const PROPERTY_RULES = [
 ];
 
 // Reuse Vendor Components
-const InputField = ({ label, name, type = "text", placeholder, className, value, onChange, required }) => (
+const InputField = ({ label, name, type = "text", placeholder, className, value, onChange, onBlur, required }) => (
     <div className={`space-y-1.5 group ${className}`}>
         <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 group-focus-within:text-black transition-colors">
             {label}
@@ -42,6 +42,7 @@ const InputField = ({ label, name, type = "text", placeholder, className, value,
             name={name}
             value={value !== undefined ? value : ''}
             onChange={onChange}
+            onBlur={onBlur}
             className={`w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm font-medium focus:bg-white focus:border-black outline-none transition-all ${required && !value ? 'border-orange-100' : ''}`}
             placeholder={placeholder}
         />
@@ -119,7 +120,7 @@ export default function AddProperty() {
         videoUrl: '', images: [], videos: [],
         googleMapLink: '', latitude: '', longitude: '',
 
-        idProofs: [], otherAttractions: '', otherRules: '',
+        idProofs: [], otherAttractions: '', otherRules: '', otherAmenities: '',
         checkInTime: '14:00', checkOutTime: '11:00'
     });
 
@@ -284,6 +285,7 @@ export default function AddProperty() {
                 latitude: formData.latitude,
                 longitude: formData.longitude,
                 otherAttractions: formData.otherAttractions,
+                otherAmenities: formData.otherAmenities ? formData.otherAmenities.split(',').map(s => s.trim()).filter(Boolean) : [], // New
                 shortDescription: formData.shortDescription, // Ensure backup
                 description: formData.description // Ensure backup
             };
@@ -310,6 +312,26 @@ export default function AddProperty() {
     };
 
     // --- HELPER LOGIC ---
+    const handleMapLinkBlur = (e) => {
+        const url = e.target.value;
+        if (!url) return;
+
+        const atRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+        const searchRegex = /search\/(-?\d+\.\d+),\s*(-?\d+\.\d+)/;
+        const qRegex = /q=(-?\d+\.\d+),(-?\d+\.\d+)/;
+
+        let match = url.match(atRegex) || url.match(searchRegex) || url.match(qRegex);
+
+        if (match) {
+            const [_, lat, long] = match;
+            setFormData(prev => ({
+                ...prev,
+                latitude: lat,
+                longitude: long
+            }));
+        }
+    };
+
     const updateLiving = (key, val) => {
         setFormData(prev => ({
             ...prev,
@@ -442,7 +464,7 @@ export default function AddProperty() {
                 <div className="space-y-4">
                     <InputField label="Full Address" name="address" value={formData.address} onChange={handleInputChange} placeholder="Street address, landmark..." />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <InputField label="Google Maps Link" name="googleMapLink" value={formData.googleMapLink} onChange={handleInputChange} placeholder="https://maps.google.com/..." />
+                        <InputField label="Google Maps Link" name="googleMapLink" value={formData.googleMapLink} onChange={handleInputChange} onBlur={handleMapLinkBlur} placeholder="https://maps.google.com/..." />
                         <div className="grid grid-cols-2 gap-2">
                             <InputField label="Latitude" name="latitude" value={formData.latitude} onChange={handleInputChange} placeholder="23.0225" />
                             <InputField label="Longitude" name="longitude" value={formData.longitude} onChange={handleInputChange} placeholder="72.5714" />
@@ -513,6 +535,16 @@ export default function AddProperty() {
                         </label>
                     ))}
                 </div>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Additional Amenities (Comma Separated)</label>
+                <textarea
+                    value={formData.otherAmenities}
+                    onChange={(e) => setFormData(prev => ({ ...prev, otherAmenities: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-black outline-none h-24 resize-none"
+                    placeholder="E.g. Gym, Spa, Yoga Center..."
+                />
             </div>
         </div>
     );

@@ -145,6 +145,9 @@ export default function PropertyApproval() {
                     PropertyType: prop.PropertyType || '',
                     Website: prop.Website || '',
                     GoogleMapLink: prop.GoogleMapLink || '',
+                    latitude: ob.latitude || '',
+                    longitude: ob.longitude || '',
+                    otherAmenities: (Array.isArray(ob.otherAmenities) ? ob.otherAmenities : (ob.otherAmenities ? [ob.otherAmenities] : [])).join(', '), // Hydrate
                     RoomConfig: {
                         livingRoom: ob.roomConfig?.livingRoom || { bedType: 'Sofa', ac: false, bathroom: false, toiletType: 'Western' },
                         bedrooms: ob.roomConfig?.bedrooms || []
@@ -194,35 +197,40 @@ export default function PropertyApproval() {
 
             let mt_villa, mt_extra, fs_villa, fs_extra, sat_villa, sat_extra;
 
-            mt_villa = parseFloat(prop.price_mon_thu || prop.Price || 0);
+            mt_villa = parseFloat(getVal('mon_thu', 'villa', 'current') || prop.price_mon_thu || prop.Price || 0);
 
             // Logic to extract Extra Guest Charges
+            // Use saved current if available, else fallback to vendor price/criteria
             if (pricingData.extraGuestLimit && pricingData.extraGuestCharge) {
                 if (typeof pricingData.extraGuestCharge === 'object') {
-                    mt_extra = parseFloat(pricingData.extraGuestCharge.week || 0);
-                    fs_extra = parseFloat(pricingData.extraGuestCharge.weekend || 0);
-                    sat_extra = parseFloat(pricingData.extraGuestCharge.saturday || 0);
+                    mt_extra = parseFloat(getVal('mon_thu', 'extra_person', 'current') || pricingData.extraGuestCharge.week || 0);
+                    fs_extra = parseFloat(getVal('fri_sun', 'extra_person', 'current') || pricingData.extraGuestCharge.weekend || 0);
+                    sat_extra = parseFloat(getVal('sat', 'extra_person', 'current') || pricingData.extraGuestCharge.saturday || 0);
                 } else {
                     const val = parseFloat(pricingData.extraGuestCharge || 0);
-                    mt_extra = val; fs_extra = val; sat_extra = val;
+                    mt_extra = parseFloat(getVal('mon_thu', 'extra_person', 'current') || val);
+                    fs_extra = parseFloat(getVal('fri_sun', 'extra_person', 'current') || val);
+                    sat_extra = parseFloat(getVal('sat', 'extra_person', 'current') || val);
                 }
             } else if (pricingData.extraGuestCharge) {
                 if (typeof pricingData.extraGuestCharge === 'object') {
-                    mt_extra = parseFloat(pricingData.extraGuestCharge.week || pricingData.extraGuestCharge.weekday || 0);
-                    fs_extra = parseFloat(pricingData.extraGuestCharge.weekend || 0);
-                    sat_extra = parseFloat(pricingData.extraGuestCharge.saturday || 0);
+                    mt_extra = parseFloat(getVal('mon_thu', 'extra_person', 'current') || pricingData.extraGuestCharge.week || pricingData.extraGuestCharge.weekday || 0);
+                    fs_extra = parseFloat(getVal('fri_sun', 'extra_person', 'current') || pricingData.extraGuestCharge.weekend || 0);
+                    sat_extra = parseFloat(getVal('sat', 'extra_person', 'current') || pricingData.extraGuestCharge.saturday || 0);
                 } else {
                     const val = parseFloat(pricingData.extraGuestCharge || 0);
-                    mt_extra = val; fs_extra = val; sat_extra = val;
+                    mt_extra = parseFloat(getVal('mon_thu', 'extra_person', 'current') || val);
+                    fs_extra = parseFloat(getVal('fri_sun', 'extra_person', 'current') || val);
+                    sat_extra = parseFloat(getVal('sat', 'extra_person', 'current') || val);
                 }
             }
 
             const foodRates = ob.foodRates || {};
-            const mt_meal = parseFloat(foodRates.veg || foodRates.nonVeg || 0);
-            const jain_meal = parseFloat(foodRates.jain || 0); // Extract Jain
+            const mt_meal = parseFloat(getVal('mon_thu', 'meal_person', 'current') || foodRates.veg || foodRates.nonVeg || 0);
+            const jain_meal = parseFloat(getVal('mon_thu', 'jain_meal_person', 'current') || foodRates.jain || 0); // Extract Jain
 
-            const fs_fs_villa = parseFloat(prop.price_fri_sun || 0);
-            const sat_sat_villa = parseFloat(prop.price_sat || 0);
+            const fs_fs_villa = parseFloat(getVal('fri_sun', 'villa', 'current') || prop.price_fri_sun || 0);
+            const sat_sat_villa = parseFloat(getVal('sat', 'villa', 'current') || prop.price_sat || 0);
 
             setPricing({
                 mon_thu: {
@@ -375,6 +383,26 @@ export default function PropertyApproval() {
                 newDiscounted = current - (current * newVendorDiscountPercentage / 100);
                 newFinal = newDiscounted + (newDiscounted * newOurMarginPercentage / 100);
             }
+            // Handle current (Vendor Ask) change: recalculate discounted/final based on EXISTING percentages
+            else if (field === 'current') {
+                const newCurrent = num;
+                // If vendor ask changes, we keep percentages same and update downstream values
+                newDiscounted = newCurrent - (newCurrent * newVendorDiscountPercentage / 100);
+                newFinal = newDiscounted + (newDiscounted * newOurMarginPercentage / 100);
+
+                return {
+                    ...prev,
+                    [day]: {
+                        ...prev[day],
+                        [type]: {
+                            ...prev[day][type],
+                            current: newCurrent,
+                            discounted: newDiscounted,
+                            final: newFinal
+                        }
+                    }
+                };
+            }
             // Handle ourMarginPercentage change: us → customer
             else if (field === 'ourMarginPercentage') {
                 newOurMarginPercentage = num;
@@ -438,6 +466,26 @@ export default function PropertyApproval() {
         }));
     };
 
+    const handleMapLinkBlur = (e) => {
+        const url = e.target.value;
+        if (!url) return;
+
+        const atRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+        const searchRegex = /search\/(-?\d+\.\d+),\s*(-?\d+\.\d+)/;
+        const qRegex = /q=(-?\d+\.\d+),(-?\d+\.\d+)/;
+
+        let match = url.match(atRegex) || url.match(searchRegex) || url.match(qRegex);
+
+        if (match) {
+            const [_, lat, long] = match;
+            setFormData(prev => ({
+                ...prev,
+                latitude: lat,
+                longitude: long
+            }));
+        }
+    };
+
     const handleApprove = async () => {
         if (saving) return;
         setSaving(true);
@@ -463,7 +511,11 @@ export default function PropertyApproval() {
                 ContactPerson: formData.ContactPerson,
                 MobileNo: formData.MobileNo,
                 Email: formData.Email,
+
                 Address: formData.Address,
+                otherAmenities: formData.otherAmenities ? formData.otherAmenities.split(',').map(s => s.trim()).filter(Boolean) : [], // Submit
+                latitude: formData.latitude,
+                longitude: formData.longitude,
                 deletedImages: deletedImages,
             };
 
@@ -542,7 +594,11 @@ export default function PropertyApproval() {
                                     <InputGroup label="Property Name" value={formData.Name} onChange={(e) => setFormData({ ...formData, Name: e.target.value })} />
                                     <InputGroup label="Location / City" value={formData.Location} onChange={(e) => setFormData({ ...formData, Location: e.target.value })} />
                                     <InputGroup label="Website" value={formData.Website} onChange={(e) => setFormData({ ...formData, Website: e.target.value })} />
-                                    <InputGroup label="Google Map Link" value={formData.GoogleMapLink} onChange={(e) => setFormData({ ...formData, GoogleMapLink: e.target.value })} />
+                                    <InputGroup label="Google Map Link" value={formData.GoogleMapLink} onChange={(e) => setFormData({ ...formData, GoogleMapLink: e.target.value })} onBlur={handleMapLinkBlur} />
+                                    <div className="flex gap-4">
+                                        <InputGroup label="Latitude" value={formData.latitude} onChange={(e) => setFormData({ ...formData, latitude: e.target.value })} />
+                                        <InputGroup label="Longitude" value={formData.longitude} onChange={(e) => setFormData({ ...formData, longitude: e.target.value })} />
+                                    </div>
                                 </div>
                             </div>
 
@@ -652,6 +708,16 @@ export default function PropertyApproval() {
                                         );
                                     })}
                                 </div>
+                            </div>
+
+                            <div className="col-span-4 mt-6">
+                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Additional Amenities (Other)</label>
+                                <textarea
+                                    value={formData.otherAmenities || ''}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, otherAmenities: e.target.value }))}
+                                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-blue-500 outline-none h-24 resize-none"
+                                    placeholder="E.g. Gym, Spa, Yoga Center..."
+                                />
                             </div>
                         </div>
                     )}
@@ -1100,7 +1166,18 @@ export default function PropertyApproval() {
                                                                             {item.label}
                                                                         </td>
                                                                         <td className="px-6 py-4 text-right tabular-nums text-gray-500 font-medium">
-                                                                            {pricing[day][item.type].current ? `₹${pricing[day][item.type].current.toLocaleString()}` : '--'}
+                                                                            <div className="flex justify-end">
+                                                                                <div className="relative w-24">
+                                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        className="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300"
+                                                                                        value={pricing[day][item.type].current ?? ''}
+                                                                                        onChange={(e) => handlePriceChange(day, item.type, 'current', e.target.value)}
+                                                                                        placeholder="0"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
                                                                         </td>
                                                                         <td className="px-6 py-4 text-right">
                                                                             <div className="flex justify-end">
@@ -1245,13 +1322,14 @@ export default function PropertyApproval() {
     );
 }
 
-const InputGroup = ({ label, value, onChange, type = 'text', readOnly = false, placeholder }) => (
+const InputGroup = ({ label, value, onChange, type = 'text', readOnly = false, placeholder, onBlur }) => (
     <div className="flex items-center gap-4 py-3 border-b border-gray-100 last:border-0">
         <label className="text-sm font-semibold text-gray-600 w-40 flex-shrink-0">{label}</label>
         <input
             type={type}
             value={value || ''}
             onChange={onChange}
+            onBlur={onBlur}
             readOnly={readOnly}
             placeholder={placeholder}
             className={`flex-1 px-4 py-2 rounded-lg border transition-all ${readOnly

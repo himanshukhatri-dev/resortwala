@@ -176,9 +176,27 @@ class AdminController extends Controller
             'Occupancy', 'MaxCapacity', 'NoofRooms', 
             'checkInTime', 'checkOutTime', 
             'PropertyRules', 'BookingSpecailMessage',
-            'admin_pricing'
+            'admin_pricing',
+            'GoogleMapLink', 'Website', 'Address', 'ContactPerson', 'MobileNo', 'Email', 'PropertyType'
         ]));
+
+        // Merge Admin updates into onboarding_data
+        $obData = $property->onboarding_data ?? [];
+        if ($request->has('Amenities')) $obData['amenities'] = $request->Amenities;
+        if ($request->has('RoomConfig')) $obData['roomConfig'] = $request->RoomConfig;
+        if ($request->has('otherAmenities')) $obData['otherAmenities'] = $request->otherAmenities;
         
+        // Save Lat/Long to onboarding_data (since columns might not exist or be preferred source)
+        if ($request->has('latitude')) $obData['latitude'] = $request->latitude;
+        if ($request->has('longitude')) $obData['longitude'] = $request->longitude;
+
+        $property->onboarding_data = $obData;
+
+        // Explicitly unset non-column attributes to prevent SQL errors
+        unset($property->otherAmenities);
+        unset($property->Amenities);
+        unset($property->RoomConfig);
+
         $property->is_approved = true;
         \App\Helpers\Profiler::checkpoint('After setting is_approved');
         
