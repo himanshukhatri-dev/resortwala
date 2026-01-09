@@ -28,6 +28,7 @@ import Policy from './pages/Policy';
 import SetPassword from './pages/SetPassword';
 import BookingSuccess from './pages/BookingSuccess';
 import BookingFailed from './pages/BookingFailed';
+import BookingPending from './pages/BookingPending';
 
 import ErrorBoundary from './components/common/ErrorBoundary';
 import CompareFloatingBar from './components/features/CompareFloatingBar';
@@ -56,6 +57,7 @@ function App() {
                     <Route path="/bookings" element={<UserBookings />} />
                     <Route path="/booking/success" element={<BookingSuccess />} />
                     <Route path="/booking/failed" element={<BookingFailed />} />
+                    <Route path="/booking/pending" element={<BookingPending />} />
 
                     <Route path="/wishlist" element={<Wishlist />} />
                     <Route path="/profile" element={<Profile />} />

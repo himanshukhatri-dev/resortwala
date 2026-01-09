@@ -144,6 +144,7 @@ export default function PropertyApproval() {
                     Address: prop.Address || '',
                     PropertyType: prop.PropertyType || '',
                     Website: prop.Website || '',
+                    GoogleMapLink: prop.GoogleMapLink || '',
                     RoomConfig: {
                         livingRoom: ob.roomConfig?.livingRoom || { bedType: 'Sofa', ac: false, bathroom: false, toiletType: 'Western' },
                         bedrooms: ob.roomConfig?.bedrooms || []
@@ -398,10 +399,10 @@ export default function PropertyApproval() {
             // Validation
             const errorKey = `${day}-${type}`;
             let error = null;
-            if (newDiscounted >= current && current > 0) {
-                error = 'Our rate must be less than vendor ask';
-            } else if (newFinal <= newDiscounted && newDiscounted > 0) {
-                error = 'Customer price must be more than our rate';
+            if (false) {
+                // Validation removed
+            } else if (false) {
+                // Validation removed
             }
 
             setPricingErrors(prevErrors => ({
@@ -445,6 +446,7 @@ export default function PropertyApproval() {
                 admin_pricing: pricing,
                 PropertyType: formData.PropertyType,
                 Website: formData.Website,
+                GoogleMapLink: formData.GoogleMapLink,
                 Name: formData.Name,
                 Location: formData.Location,
                 ShortDescription: formData.ShortDescription,
@@ -540,6 +542,7 @@ export default function PropertyApproval() {
                                     <InputGroup label="Property Name" value={formData.Name} onChange={(e) => setFormData({ ...formData, Name: e.target.value })} />
                                     <InputGroup label="Location / City" value={formData.Location} onChange={(e) => setFormData({ ...formData, Location: e.target.value })} />
                                     <InputGroup label="Website" value={formData.Website} onChange={(e) => setFormData({ ...formData, Website: e.target.value })} />
+                                    <InputGroup label="Google Map Link" value={formData.GoogleMapLink} onChange={(e) => setFormData({ ...formData, GoogleMapLink: e.target.value })} />
                                 </div>
                             </div>
 
@@ -626,7 +629,7 @@ export default function PropertyApproval() {
                                 <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><FaUserShield className="text-blue-500" /> Safety & Security</h4>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {['Fire Extinguisher', 'Security System', 'First Aid Kit', 'Window Guards', 'Caretaker'].map(safety => {
-                                        const key = safety.toLowerCase().replace(/\s/g, '');
+                                        const key = safety; // Use exact key as stored in Vendor
                                         const isActive = !!formData.Amenities?.[key];
                                         return (
                                             <div key={safety} className={`border rounded-xl p-4 flex items-center justify-between transition-colors ${isActive ? 'bg-white border-blue-100 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60 grayscale'}`}>
@@ -656,77 +659,100 @@ export default function PropertyApproval() {
                     {/* Rooms Tab */}
                     {activeTab === 'rooms' && property.PropertyType === 'Villa' && (
                         <div className="space-y-6 animate-in fade-in">
-                            {/* Living Room */}
-                            <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100">
-                                <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2"><FaCouch /> Living Room</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-600 mb-1">Bed Type</label>
-                                        <select
-                                            value={formData.RoomConfig?.livingRoom?.bedType || 'Sofa'}
-                                            onChange={(e) => setFormData(prev => ({
-                                                ...prev,
-                                                RoomConfig: {
-                                                    ...prev.RoomConfig,
-                                                    livingRoom: { ...prev.RoomConfig?.livingRoom, bedType: e.target.value }
-                                                }
-                                            }))}
-                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none"
-                                        >
-                                            <option value="Sofa">Sofa</option>
-                                            <option value="Sofa cum Bed">Sofa cum Bed</option>
-                                            <option value="None">None</option>
-                                        </select>
-                                    </div>
-                                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
-                                        <span className="text-sm font-semibold">AC</span>
-                                        <Toggle
-                                            active={!!formData.RoomConfig?.livingRoom?.ac}
-                                            onChange={(val) => setFormData(prev => ({
-                                                ...prev,
-                                                RoomConfig: {
-                                                    ...prev.RoomConfig,
-                                                    livingRoom: { ...prev.RoomConfig?.livingRoom, ac: val }
-                                                }
-                                            }))}
-                                            color="green"
-                                        />
-                                    </div>
-                                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
-                                        <span className="text-sm font-semibold">Bathroom</span>
-                                        <Toggle
-                                            active={!!formData.RoomConfig?.livingRoom?.bathroom}
-                                            onChange={(val) => setFormData(prev => ({
-                                                ...prev,
-                                                RoomConfig: {
-                                                    ...prev.RoomConfig,
-                                                    livingRoom: { ...prev.RoomConfig?.livingRoom, bathroom: val }
-                                                }
-                                            }))}
-                                            color="green"
-                                        />
-                                    </div>
-                                    {formData.RoomConfig?.livingRoom?.bathroom && (
+                            {/* Living Rooms */}
+                            {(formData.RoomConfig?.livingRooms || (formData.RoomConfig?.livingRoom ? [formData.RoomConfig.livingRoom] : [])).map((room, idx) => (
+                                <div key={idx} className="bg-amber-50 p-6 rounded-2xl border border-amber-100 mb-6">
+                                    <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2">
+                                        <FaCouch /> Living Room {idx + 1}
+                                    </h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <div>
-                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Toilet Type</label>
+                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Bed Type</label>
                                             <select
-                                                value={formData.RoomConfig?.livingRoom?.toiletType || 'Western'}
-                                                onChange={(e) => setFormData(prev => ({
-                                                    ...prev,
-                                                    RoomConfig: {
-                                                        ...prev.RoomConfig,
-                                                        livingRoom: { ...prev.RoomConfig?.livingRoom, toiletType: e.target.value }
-                                                    }
-                                                }))}
+                                                value={room.bedType || 'Sofa'}
+                                                onChange={(e) => {
+                                                    const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])];
+                                                    updatedRooms[idx] = { ...updatedRooms[idx], bedType: e.target.value };
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms } // Always save as livingRooms array
+                                                    }));
+                                                }}
                                                 className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none"
                                             >
-                                                <option value="Western">Western</option>
-                                                <option value="Indian">Indian</option>
+                                                <option value="Sofa">Sofa</option>
+                                                <option value="Sofa cum Bed">Sofa cum Bed</option>
+                                                <option value="None">None</option>
                                             </select>
                                         </div>
-                                    )}
+                                        <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                                            <span className="text-sm font-semibold">AC</span>
+                                            <Toggle
+                                                active={!!room.ac}
+                                                onChange={(val) => {
+                                                    const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])];
+                                                    updatedRooms[idx] = { ...updatedRooms[idx], ac: val };
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms }
+                                                    }));
+                                                }}
+                                                color="green"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                                            <span className="text-sm font-semibold">TV</span>
+                                            <Toggle
+                                                active={!!room.tv}
+                                                onChange={(val) => {
+                                                    const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])];
+                                                    updatedRooms[idx] = { ...updatedRooms[idx], tv: val };
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms }
+                                                    }));
+                                                }}
+                                                color="green"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                                            <span className="text-sm font-semibold">Bathroom</span>
+                                            <Toggle
+                                                active={!!room.bathroom}
+                                                onChange={(val) => {
+                                                    const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])];
+                                                    updatedRooms[idx] = { ...updatedRooms[idx], bathroom: val };
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms }
+                                                    }));
+                                                }}
+                                                color="green"
+                                            />
+                                        </div>
+                                        {room.bathroom && (
+                                            <div>
+                                                <label className="block text-xs font-semibold text-gray-600 mb-1">Toilet Type</label>
+                                                <select
+                                                    value={room.toiletType || 'Western'}
+                                                    onChange={(e) => {
+                                                        const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])];
+                                                        updatedRooms[idx] = { ...updatedRooms[idx], toiletType: e.target.value };
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms }
+                                                        }));
+                                                    }}
+                                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none"
+                                                >
+                                                    <option value="Western">Western</option>
+                                                    <option value="Indian">Indian</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            ))}
 
                             {/* Bedrooms */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1078,7 +1104,7 @@ export default function PropertyApproval() {
                                                                         </td>
                                                                         <td className="px-6 py-4 text-right">
                                                                             <div className="flex justify-end">
-                                                                                <div className="relative w-20 group-hover:w-24 transition-all duration-300">
+                                                                                <div className="relative w-24">
                                                                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">%</span>
                                                                                     <input type="number"
                                                                                         className={`w-full pr-7 pl-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
@@ -1091,7 +1117,7 @@ export default function PropertyApproval() {
                                                                         </td>
                                                                         <td className="px-6 py-4 text-right">
                                                                             <div className="flex justify-end">
-                                                                                <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                                <div className="relative w-36">
                                                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
                                                                                     <input type="number"
                                                                                         className={`w-full pl-7 pr-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
@@ -1104,7 +1130,7 @@ export default function PropertyApproval() {
                                                                         </td>
                                                                         <td className="px-6 py-4 text-right">
                                                                             <div className="flex justify-end">
-                                                                                <div className="relative w-20 group-hover:w-24 transition-all duration-300">
+                                                                                <div className="relative w-24">
                                                                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">%</span>
                                                                                     <input type="number"
                                                                                         className={`w-full pr-7 pl-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
@@ -1117,7 +1143,7 @@ export default function PropertyApproval() {
                                                                         </td>
                                                                         <td className="px-6 py-4 text-right">
                                                                             <div className="flex justify-end">
-                                                                                <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                                <div className="relative w-36">
                                                                                     <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-${color}-500 font-bold pointer-events-none`}>₹</span>
                                                                                     <input type="number"
                                                                                         className={`w-full pl-7 pr-3 py-2 bg-${color}-50/50 border rounded-lg outline-none focus:border-${color}-500 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-black text-${color}-700 placeholder-${color}-300 shadow-sm ${hasError ? 'border-red-400' : `border-${color}-200`}`}

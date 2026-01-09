@@ -184,6 +184,8 @@ Route::post('/payment/callback', [\App\Http\Controllers\PaymentController::class
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
     ->name('payment.callback');
 
+Route::post('/payment/simulate', [\App\Http\Controllers\PaymentSimulationController::class, 'simulate']);
+
 
 // Admin Intelligence
 Route::prefix('admin/intelligence')->middleware(['auth:sanctum', 'verified'])->group(function () {

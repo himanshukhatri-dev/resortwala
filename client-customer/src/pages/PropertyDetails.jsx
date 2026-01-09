@@ -433,7 +433,18 @@ export default function PropertyDetails() {
         };
     };
     const priceBreakdown = calculateBreakdown();
-    const googleMapSrc = property.GoogleMapLink?.match(/src="([^"]+)"/)?.[1] || property.GoogleMapLink;
+
+    // Improved Google Map Link Handling
+    let googleMapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(property.Location || property.Address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    if (property.GoogleMapLink) {
+        if (property.GoogleMapLink.includes('iframe')) {
+            googleMapSrc = property.GoogleMapLink.match(/src="([^"]+)"/)?.[1] || googleMapSrc;
+        } else if (property.GoogleMapLink.includes('embed')) {
+            googleMapSrc = property.GoogleMapLink;
+        }
+        // If standard link, we stick to query fallback for iframe to avoid X-Frame-Options deny, 
+        // but the "Open in Maps" button will use the specific link.
+    }
 
     const getYouTubeId = (url) => {
         if (!url) return null;
@@ -641,35 +652,7 @@ export default function PropertyDetails() {
 
 
 
-                        <section ref={sections.policies} className="scroll-mt-32 pb-8 border-b border-gray-100">
-                            <h2 className="text-xl font-bold text-gray-900 mb-6 font-serif">House Rules & Policies</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-blue-600 shadow-sm"><FaClock /></div>
-                                    <div><p className="text-xs text-gray-500 uppercase font-bold">Check-in</p><p className="font-bold text-lg">{ob.checkInTime ? format(new Date(`2000-01-01T${ob.checkInTime}`), 'h:mm a') : '2:00 PM'}</p></div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-orange-600 shadow-sm"><FaClock /></div>
-                                    <div><p className="text-xs text-gray-500 uppercase font-bold">Check-out</p><p className="font-bold text-lg">{ob.checkOutTime ? format(new Date(`2000-01-01T${ob.checkOutTime}`), 'h:mm a') : '11:00 AM'}</p></div>
-                                </div>
-                            </div>
 
-                            {/* Other Rules */}
-                            {((ob.otherRules && ob.otherRules.length > 0) || property.PropertyRules) && (
-                                <div className="space-y-3">
-                                    <h3 className="font-bold text-gray-900">Additional Rules</h3>
-                                    <ul className="list-disc list-inside text-gray-700 space-y-2">
-                                        {ob.otherRules && ob.otherRules.map((rule, idx) => (
-                                            <li key={idx}>{rule}</li>
-                                        ))}
-                                        {/* Fallback to legacy PropertyRules string if array is empty */}
-                                        {(!ob.otherRules || ob.otherRules.length === 0) && property.PropertyRules && (
-                                            <li>{property.PropertyRules}</li>
-                                        )}
-                                    </ul>
-                                </div>
-                            )}
-                        </section>
 
 
 
@@ -678,7 +661,14 @@ export default function PropertyDetails() {
                                 <h2 className="text-xl font-bold text-gray-900 mb-6 font-serif">Room Details</h2>
                                 {roomConfig.bedrooms?.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <RoomCard name="Living Room" details={roomConfig.livingRoom} icon={<FaCouch />} />
+                                        {(roomConfig.livingRooms || (roomConfig.livingRoom ? [roomConfig.livingRoom] : [])).map((room, idx) => (
+                                            <RoomCard
+                                                key={`living-${idx}`}
+                                                name={(roomConfig.livingRooms?.length > 1) ? `Living Room ${idx + 1}` : "Living Room"}
+                                                details={room}
+                                                icon={<FaCouch />}
+                                            />
+                                        ))}
                                         {roomConfig.bedrooms?.map((room, idx) => <RoomCard key={idx} name={`Bedroom ${idx + 1}`} details={room} icon={<FaBed />} />)}
                                     </div>
                                 ) : <div className="p-8 border-2 border-dashed border-gray-200 rounded-xl text-center text-gray-400">Room configuration not specified.</div>}
@@ -797,7 +787,7 @@ export default function PropertyDetails() {
                                 </div>
                                 <div className="rounded-2xl overflow-hidden shadow-lg border-4 border-white ring-1 ring-gray-100 h-[300px] bg-gray-100 relative group">
                                     <iframe
-                                        src={property.GoogleMapLink || `https://maps.google.com/maps?q=${encodeURIComponent(property.Location || property.Address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                                        src={googleMapSrc}
                                         width="100%"
                                         height="100%"
                                         style={{ border: 0 }}

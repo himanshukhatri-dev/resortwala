@@ -56,6 +56,9 @@ class PaymentController extends Controller
                         if ($state === 'PAYMENT_SUCCESS') {
                             $booking->payment_status = 'paid';
                             $booking->Status = 'Confirmed'; 
+                        } elseif ($state === 'PAYMENT_PENDING') {
+                            $booking->payment_status = 'pending';
+                            $booking->Status = 'Pending';
                         } else {
                             $booking->payment_status = 'failed';
                             $booking->Status = 'Cancelled';
@@ -70,11 +73,12 @@ class PaymentController extends Controller
             }
             
             // Redirect User
-            // Default to beta.resortwala.com if env not parsing correctly
             $frontendUrl = env('FRONTEND_URL', 'https://beta.resortwala.com'); 
             
             if ($state === 'PAYMENT_SUCCESS') {
                 return redirect()->to("$frontendUrl/booking/success?id=" . ($bookingId ?? ''));
+            } elseif ($state === 'PAYMENT_PENDING') {
+                return redirect()->to("$frontendUrl/booking/pending?id=" . ($bookingId ?? ''));
             } else {
                 return redirect()->to("$frontendUrl/booking/failed?id=" . ($bookingId ?? ''));
             }
