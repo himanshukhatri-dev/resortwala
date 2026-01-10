@@ -228,7 +228,9 @@ export default function PropertyApproval() {
                     GoogleMapLink: prop.GoogleMapLink || '',
                     latitude: ob.latitude || '',
                     longitude: ob.longitude || '',
-                    otherAmenities: (Array.isArray(ob.otherAmenities) ? ob.otherAmenities : (ob.otherAmenities ? [ob.otherAmenities] : [])).join(', '), // Hydrate
+                    otherAmenities: Array.isArray(ob.otherAmenities) ? ob.otherAmenities : (ob.otherAmenities ? ob.otherAmenities.split(/,\s*/) : []), // Hydrate as Array
+                    otherAttractions: Array.isArray(ob.otherAttractions) ? ob.otherAttractions : (ob.otherAttractions ? [ob.otherAttractions] : []), // Hydrate as Array
+                    otherRules: Array.isArray(ob.otherRules) ? ob.otherRules : (ob.otherRules ? ob.otherRules.split(',') : []), // Hydrate as Array
                     RoomConfig: {
                         livingRoom: ob.roomConfig?.livingRoom || { bedType: 'Sofa', ac: false, bathroom: false, toiletType: 'Western' },
                         bedrooms: ob.roomConfig?.bedrooms || []
@@ -594,7 +596,9 @@ export default function PropertyApproval() {
                 Email: formData.Email,
 
                 Address: formData.Address,
-                otherAmenities: formData.otherAmenities ? formData.otherAmenities.split(',').map(s => s.trim()).filter(Boolean) : [], // Submit
+                otherAmenities: formData.otherAmenities || [], // Submit
+                otherAttractions: formData.otherAttractions || [], // Submit
+                otherRules: formData.otherRules || [], // Submit
                 latitude: formData.latitude,
                 longitude: formData.longitude,
                 deletedImages: deletedImages,
@@ -816,13 +820,78 @@ export default function PropertyApproval() {
                             </div>
 
                             <div className="col-span-4 mt-6">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Additional Amenities (Other)</label>
-                                <textarea
-                                    value={formData.otherAmenities || ''}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, otherAmenities: e.target.value }))}
-                                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-blue-500 outline-none h-24 resize-none"
-                                    placeholder="E.g. Gym, Spa, Yoga Center..."
-                                />
+                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Additional Amenities</label>
+                                <div className="space-y-3">
+                                    {Array.isArray(formData.otherAmenities) && formData.otherAmenities.map((amenity, idx) => (
+                                        <div key={idx} className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={amenity}
+                                                onChange={(e) => {
+                                                    const newAmenities = [...formData.otherAmenities];
+                                                    newAmenities[idx] = e.target.value;
+                                                    setFormData(prev => ({ ...prev, otherAmenities: newAmenities }));
+                                                }}
+                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:border-black outline-none"
+                                                placeholder="Enter amenity..."
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newAmenities = formData.otherAmenities.filter((_, i) => i !== idx);
+                                                    setFormData(prev => ({ ...prev, otherAmenities: newAmenities }));
+                                                }}
+                                                className="p-3 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
+                                            >
+                                                <FaTrash size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, otherAmenities: [...(formData.otherAmenities || []), ''] }))}
+                                        className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-2 mt-2 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors w-max"
+                                    >
+                                        <span className="text-lg">+</span> Add Amenity
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="col-span-4 mt-6">
+                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Other Attractions Nearby</label>
+                                <div className="space-y-3">
+                                    {Array.isArray(formData.otherAttractions) && formData.otherAttractions.map((attraction, idx) => (
+                                        <div key={idx} className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={attraction}
+                                                onChange={(e) => {
+                                                    const newAttractions = [...formData.otherAttractions];
+                                                    newAttractions[idx] = e.target.value;
+                                                    setFormData(prev => ({ ...prev, otherAttractions: newAttractions }));
+                                                }}
+                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:border-black outline-none"
+                                                placeholder="Enter attraction..."
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newAttractions = formData.otherAttractions.filter((_, i) => i !== idx);
+                                                    setFormData(prev => ({ ...prev, otherAttractions: newAttractions }));
+                                                }}
+                                                className="p-3 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
+                                            >
+                                                <FaTrash size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, otherAttractions: [...(formData.otherAttractions || []), ''] }))}
+                                        className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-2 mt-2 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors w-max"
+                                    >
+                                        <span className="text-lg">+</span> Add Attraction
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1087,6 +1156,57 @@ export default function PropertyApproval() {
                                             />
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+
+                            <div className="bg-white border border-gray-200 rounded-xl p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4 pb-3 border-b">Custom Rules</h3>
+                                <div className="flex gap-2 mb-4">
+                                    <input
+                                        type="text"
+                                        id="new-rule-input"
+                                        placeholder="Add a new rule..."
+                                        className="flex-1 px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-blue-500"
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                const val = e.target.value.trim();
+                                                if (val) {
+                                                    setFormData(prev => ({ ...prev, otherRules: [...(prev.otherRules || []), val] }));
+                                                    e.target.value = '';
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            const input = document.getElementById('new-rule-input');
+                                            const val = input.value.trim();
+                                            if (val) {
+                                                setFormData(prev => ({ ...prev, otherRules: [...(prev.otherRules || []), val] }));
+                                                input.value = '';
+                                            }
+                                        }}
+                                        className="bg-black text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-800 transition"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                                <div className="space-y-2">
+                                    {formData.otherRules && formData.otherRules.map((rule, idx) => (
+                                        <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                            <span className="text-sm font-medium text-gray-700">{rule}</span>
+                                            <button
+                                                onClick={() => setFormData(prev => ({ ...prev, otherRules: prev.otherRules.filter((_, i) => i !== idx) }))}
+                                                className="text-red-500 hover:text-red-700 p-1"
+                                            >
+                                                <FaTrash size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {(!formData.otherRules || formData.otherRules.length === 0) && (
+                                        <p className="text-sm text-gray-400 italic text-center">No custom rules added.</p>
+                                    )}
                                 </div>
                             </div>
                             {/* Other Rules (already handled in Basic Info, but duplicating or moving logic might be confusing. User asked for control. The 'PropertyRules' textarea logic is in Basic Info. We could move it here or keep it there.) */}

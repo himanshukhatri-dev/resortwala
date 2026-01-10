@@ -19,6 +19,7 @@ import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { format, differenceInDays, isWithinInterval, parseISO, parse, startOfDay } from 'date-fns';
 import toast from 'react-hot-toast';
+import RoomCard from '../components/RoomCard';
 
 const PROPERTY_RULES = [
     "Primary guest must be 18+",
@@ -572,9 +573,12 @@ export default function PropertyDetails() {
                                 </div>
                             )}
                             <div className="py-10 border-b border-gray-100">
-                                <h3 className="text-2xl font-bold text-gray-900 mb-6 font-sans text-left">About this property</h3>
+                                <h3 className="text-3xl font-bold text-gray-900 mb-6 font-serif relative inline-block">
+                                    About this property
+                                    <span className="absolute -bottom-2 left-0 w-1/3 h-1 bg-gradient-to-r from-yellow-400 to-transparent rounded-full"></span>
+                                </h3>
                                 {property.LongDescription ? (
-                                    <div className="text-gray-800 text-lg leading-8 font-sans whitespace-pre-line">
+                                    <div className="text-gray-600 text-lg leading-9 font-serif tracking-wide whitespace-pre-line text-justify">
                                         {property.LongDescription}
                                     </div>
                                 ) : (
@@ -629,13 +633,17 @@ export default function PropertyDetails() {
                             ) : null}
                             {/* Additional Amenities */}
                             {((Array.isArray(ob.otherAmenities) && ob.otherAmenities.length > 0) || (typeof ob.otherAmenities === 'string' && ob.otherAmenities.trim().length > 0)) && (
-                                <div className="mt-6 mb-6">
-                                    <h3 className="font-bold text-gray-900 mb-3">Additional Amenities</h3>
+                                <div className="mt-8">
+                                    <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                        <div className="bg-purple-100 p-1.5 rounded-lg text-purple-600"><FaStar size={14} /></div>
+                                        Exclusive Amenities
+                                    </h3>
                                     <div className="flex flex-wrap gap-2">
                                         {(Array.isArray(ob.otherAmenities) ? ob.otherAmenities : ob.otherAmenities.split(',')).map((amenity, idx) => (
-                                            <span key={idx} className="bg-gray-100 text-gray-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-gray-200 capitalize">
+                                            <div key={idx} className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm font-medium text-gray-700 hover:bg-white hover:shadow-sm hover:border-gray-200 transition-all">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>
                                                 {amenity.trim()}
-                                            </span>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
@@ -643,13 +651,18 @@ export default function PropertyDetails() {
 
                             {/* Other Attractions */}
                             {Array.isArray(ob.otherAttractions) && ob.otherAttractions.length > 0 && (
-                                <div className="mt-4">
-                                    <h3 className="font-bold text-gray-900 mb-3">Other Attractions</h3>
-                                    <ul className="list-disc list-inside text-gray-700 space-y-1">
+                                <div className="mt-8 bg-blue-50/50 rounded-2xl p-6 border border-blue-100">
+                                    <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2 font-serif text-lg">
+                                        <FaMapMarkerAlt className="text-blue-600" /> Nearby Attractions
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {ob.otherAttractions.map((attr, idx) => (
-                                            <li key={idx}>{attr}</li>
+                                            <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-blue-50 shadow-sm hover:shadow-md transition cursor-default">
+                                                <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0 ml-1"></div>
+                                                <span className="text-gray-800 font-medium text-sm">{attr}</span>
+                                            </div>
                                         ))}
-                                    </ul>
+                                    </div>
                                 </div>
                             )}
                         </section>
@@ -688,8 +701,50 @@ export default function PropertyDetails() {
                                     Food & Dining
                                 </h3>
 
+                                <div className="bg-orange-50/50 rounded-xl p-6 border border-orange-100 mb-6">
+                                    <h4 className="font-bold text-gray-900 mb-2 text-lg">🍴 Dining Made Just for You ❤️</h4>
+                                    <p className="text-gray-700 leading-relaxed mb-4">
+                                        Indulge in freshly prepared meals made with care and local flavours 😋. From comforting home-style dishes to regional specialties, enjoy delicious food without stepping out of your villa.
+                                    </p>
+                                    <div className="mb-4">
+                                        <p className="font-bold text-gray-800 mb-2">What to expect:</p>
+                                        <ul className="list-disc list-inside text-gray-700 space-y-1 ml-1">
+                                            <li>Fresh, seasonal ingredients</li>
+                                            <li>Authentic local recipes</li>
+                                            <li>Customisable menu on request</li>
+                                            <li>Flexible meal timings</li>
+                                        </ul>
+                                    </div>
+                                    <p className="text-xs text-gray-400 italic mb-4">Prices may vary based on season and availability.</p>
+
+                                    {/* Fallback Rates Display Merged Here */}
+                                    {(!ob.mealPlans || !Object.values(ob.mealPlans).some(m => m.available)) && (
+                                        <div className="pt-4 border-t border-orange-200/50">
+                                            <h4 className="font-bold text-gray-900 mb-2 text-sm">Dining Packages Available</h4>
+                                            <p className="text-sm text-gray-600 mb-3">We offer delicious home-style meals. Detailed menu available on request.</p>
+                                            <div className="flex flex-wrap gap-2 text-sm">
+                                                {ob.foodRates?.veg && (
+                                                    <div className="bg-green-50 px-4 py-2 rounded-lg border border-green-100 text-center">
+                                                        <div className="text-[10px] font-bold text-green-700 uppercase tracking-wider">Veg</div>
+                                                    </div>
+                                                )}
+                                                {(ob.foodRates?.nonVeg || ob.foodRates?.nonveg) && (
+                                                    <div className="bg-red-50 px-4 py-2 rounded-lg border border-red-100 text-center">
+                                                        <div className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Non-Veg</div>
+                                                    </div>
+                                                )}
+                                                {ob.foodRates?.jain && (
+                                                    <div className="bg-yellow-50 px-4 py-2 rounded-lg border border-yellow-100 text-center">
+                                                        <div className="text-[10px] font-bold text-yellow-700 uppercase tracking-wider">Jain</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Individual Meal Plans */}
-                                {ob.mealPlans && Object.values(ob.mealPlans).some(m => m.available) ? (
+                                {ob.mealPlans && Object.values(ob.mealPlans).some(m => m.available) && (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {[
                                             { name: 'Breakfast', key: 'breakfast', icon: <FaSun className="text-yellow-500" />, bg: 'bg-yellow-50/50', border: 'border-yellow-100' },
@@ -731,25 +786,6 @@ export default function PropertyDetails() {
                                             )
                                         })}
                                     </div>
-                                ) : (
-                                    /* Fallback: General Rates if detailed plans missing */
-                                    <div className="bg-white border text-center rounded-2xl p-6 border-dashed border-gray-200">
-                                        <div className="bg-orange-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 text-orange-500"><FaUtensils /></div>
-                                        <h4 className="font-bold text-gray-900 mb-2">Dining Packages Available</h4>
-                                        <p className="text-sm text-gray-500 mb-4">We offer delicious home-style meals. Detailed menu available on request.</p>
-                                        <div className="flex justify-center gap-4">
-                                            {ob.foodRates?.veg && (
-                                                <div className="bg-green-50 px-4 py-2 rounded-lg border border-green-100">
-                                                    <div className="text-[10px] font-bold text-green-700 uppercase tracking-wider">Veg</div>
-                                                </div>
-                                            )}
-                                            {ob.foodRates?.nonVeg && (
-                                                <div className="bg-red-50 px-4 py-2 rounded-lg border border-red-100">
-                                                    <div className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Non-Veg</div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
                                 )}
                             </section>
                         )}
@@ -770,13 +806,13 @@ export default function PropertyDetails() {
                             {/* Other Rules */}
                             {((ob.otherRules && ob.otherRules.length > 0) || property.PropertyRules) && (
                                 <div className="space-y-3">
-                                    <h3 className="font-bold text-gray-900">Additional Rules</h3>
-                                    <ul className="list-disc list-inside text-gray-700 space-y-2">
+                                    <h3 className="font-bold text-gray-900">Important Information</h3>
+                                    <ul className="list-disc list-outside ml-5 text-gray-700 space-y-2">
                                         {ob.otherRules && ob.otherRules.map((rule, idx) => (
-                                            <li key={idx}>{rule}</li>
+                                            <li key={idx} className="pl-1">{rule}</li>
                                         ))}
                                         {(!ob.otherRules || ob.otherRules.length === 0) && property.PropertyRules && (
-                                            <li>{property.PropertyRules}</li>
+                                            <li className="pl-1">{property.PropertyRules}</li>
                                         )}
                                     </ul>
                                 </div>
@@ -787,11 +823,7 @@ export default function PropertyDetails() {
                         {(property.GoogleMapLink || property.Location || property.Address) && (
                             <section ref={sections.location} className="scroll-mt-32 pb-8">
                                 <h2 className="text-xl font-bold text-gray-900 mb-6 font-serif">Location</h2>
-                                <div className="mb-4 bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-start gap-4">
-                                    <FaMapMarkerAlt className="text-red-500 mt-1" />
-                                    <div><p className="font-bold text-gray-900">{property.Address}</p><p className="text-sm text-gray-500">{property.CityName}, {property.Location}</p></div>
-                                </div>
-                                <div className="rounded-2xl overflow-hidden shadow-lg border-4 border-white ring-1 ring-gray-100 h-[300px] bg-gray-100 relative group">
+                                <div className="rounded-3xl overflow-hidden shadow-md border border-gray-100 h-[400px] bg-gray-100 relative group">
                                     <iframe
                                         src={googleMapSrc}
                                         width="100%"
@@ -800,13 +832,13 @@ export default function PropertyDetails() {
                                         allowFullScreen=""
                                         loading="lazy"
                                         referrerPolicy="no-referrer-when-downgrade"
-                                        className="grayscale group-hover:grayscale-0 transition duration-700"
+                                        className="transition duration-700 opacity-90 group-hover:opacity-100"
                                     ></iframe>
                                     <a
                                         href={property.GoogleMapLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.Location || property.Address)}`}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-lg shadow-md text-sm font-bold text-gray-900 flex items-center gap-2 hover:bg-black hover:text-white transition"
+                                        className="absolute bottom-4 right-4 bg-white px-5 py-2.5 rounded-xl shadow-lg text-sm font-bold text-gray-900 flex items-center gap-2 hover:bg-black hover:text-white transition transform hover:scale-105"
                                     >
                                         <FaMapMarkerAlt /> Open in Maps
                                     </a>
@@ -907,16 +939,7 @@ const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navi
     </div>
 );
 
-const RoomCard = ({ name, details, icon }) => (
-    <div className="p-5 border border-gray-100 rounded-2xl hover:shadow-lg transition bg-white group">
-        <div className="flex items-center gap-3 mb-3 text-gray-900 group-hover:text-black transition">{icon}<h3 className="font-bold text-base">{name}</h3></div>
-        <ul className="text-sm text-gray-600 space-y-2.5 font-medium">
-            <li className="flex items-center gap-2.5"><FaBed className="text-gray-400" size={14} /> {details?.bedType || 'Sofa/Standard'}</li>
-            {details?.ac && <li className="flex items-center gap-2.5"><FaSnowflake className="text-gray-400" size={14} /> AC Available</li>}
-            {details?.bathroom && <li className="flex items-center gap-2.5"><FaRestroom className="text-gray-400" size={14} /> Ensuite ({details?.toiletType})</li>}
-        </ul>
-    </div>
-);
+
 
 const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, dateRange, priceBreakdown, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, datePickerRef, bookedDates = [], isWaterpark }) => {
     const getPriceForDate = (date) => {

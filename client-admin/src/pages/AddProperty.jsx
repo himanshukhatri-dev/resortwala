@@ -120,7 +120,7 @@ export default function AddProperty() {
         videoUrl: '', images: [], videos: [],
         googleMapLink: '', latitude: '', longitude: '',
 
-        idProofs: [], otherAttractions: '', otherRules: '', otherAmenities: '',
+        idProofs: [], otherAttractions: [], otherRules: '', otherAmenities: [],
         checkInTime: '14:00', checkOutTime: '11:00'
     });
 
@@ -285,7 +285,7 @@ export default function AddProperty() {
                 latitude: formData.latitude,
                 longitude: formData.longitude,
                 otherAttractions: formData.otherAttractions,
-                otherAmenities: formData.otherAmenities ? formData.otherAmenities.split(',').map(s => s.trim()).filter(Boolean) : [], // New
+                otherAmenities: formData.otherAmenities || [], // New
                 shortDescription: formData.shortDescription, // Ensure backup
                 description: formData.description // Ensure backup
             };
@@ -500,7 +500,43 @@ export default function AddProperty() {
                             className="w-full border border-gray-200 rounded-lg p-3 focus:border-black focus:ring-2 focus:ring-black/10 outline-none h-32 resize-none"
                             placeholder="Detailed description of the property..." />
                     </div>
-                    <InputField label="Other Attractions Nearby" name="otherAttractions" value={formData.otherAttractions} onChange={handleInputChange} placeholder="Parks, malls, temples..." />
+                    <div className="md:col-span-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Other Attractions Nearby</label>
+                        <div className="space-y-3">
+                            {Array.isArray(formData.otherAttractions) && formData.otherAttractions.map((attraction, idx) => (
+                                <div key={idx} className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={attraction}
+                                        onChange={(e) => {
+                                            const newAttractions = [...formData.otherAttractions];
+                                            newAttractions[idx] = e.target.value;
+                                            setFormData(prev => ({ ...prev, otherAttractions: newAttractions }));
+                                        }}
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:border-black outline-none"
+                                        placeholder="Enter attraction..."
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newAttractions = formData.otherAttractions.filter((_, i) => i !== idx);
+                                            setFormData(prev => ({ ...prev, otherAttractions: newAttractions }));
+                                        }}
+                                        className="p-3 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
+                                    >
+                                        <FaTrash size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, otherAttractions: [...(formData.otherAttractions || []), ''] }))}
+                                className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-2 mt-2 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors w-max"
+                            >
+                                <span className="text-lg">+</span> Add Attraction
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -538,13 +574,41 @@ export default function AddProperty() {
             </div>
 
             <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Additional Amenities (Comma Separated)</label>
-                <textarea
-                    value={formData.otherAmenities}
-                    onChange={(e) => setFormData(prev => ({ ...prev, otherAmenities: e.target.value }))}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-black outline-none h-24 resize-none"
-                    placeholder="E.g. Gym, Spa, Yoga Center..."
-                />
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Additional Amenities</label>
+                <div className="space-y-3">
+                    {Array.isArray(formData.otherAmenities) && formData.otherAmenities.map((amenity, idx) => (
+                        <div key={idx} className="flex gap-2">
+                            <input
+                                type="text"
+                                value={amenity}
+                                onChange={(e) => {
+                                    const newAmenities = [...formData.otherAmenities];
+                                    newAmenities[idx] = e.target.value;
+                                    setFormData(prev => ({ ...prev, otherAmenities: newAmenities }));
+                                }}
+                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:border-black outline-none"
+                                placeholder="Enter amenity..."
+                            />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const newAmenities = formData.otherAmenities.filter((_, i) => i !== idx);
+                                    setFormData(prev => ({ ...prev, otherAmenities: newAmenities }));
+                                }}
+                                className="p-3 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
+                            >
+                                <FaTrash size={14} />
+                            </button>
+                        </div>
+                    ))}
+                    <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, otherAmenities: [...(prev.otherAmenities || []), ''] }))}
+                        className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-2 mt-2 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors w-max"
+                    >
+                        <span className="text-lg">+</span> Add Amenity
+                    </button>
+                </div>
             </div>
         </div>
     );

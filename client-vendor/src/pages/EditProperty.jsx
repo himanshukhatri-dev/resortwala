@@ -7,7 +7,8 @@ import {
     FaHome, FaWater, FaCheck, FaTimes, FaCamera, FaBed, FaUtensils,
     FaSwimmingPool, FaChild, FaBan, FaMoneyBillWave, FaArrowRight, FaArrowLeft, FaSave, FaStar,
     FaParking, FaWifi, FaMusic, FaTree, FaGlassMartiniAlt, FaSnowflake, FaCouch, FaRestroom, FaDoorOpen, FaUsers,
-    FaTshirt, FaVideo, FaWheelchair, FaMedkit, FaUmbrellaBeach, FaChair, FaUserShield, FaConciergeBell, FaHotTub
+    FaTshirt, FaVideo, FaWheelchair, FaMedkit, FaUmbrellaBeach, FaChair, FaUserShield, FaConciergeBell, FaHotTub,
+    FaTv, FaPlus, FaTrash
 } from 'react-icons/fa';
 import { MdPool, MdWater, MdOutlineDeck, MdChildCare, MdWaterfallChart, MdMusicNote, MdBalcony, MdSportsEsports, MdRestaurant, MdOutlineOutdoorGrill } from 'react-icons/md';
 import { STEPS_VILLA, STEPS_WATERPARK, AMENITY_TYPES } from '../constants/propertyConstants';
@@ -297,8 +298,8 @@ export default function EditProperty() {
                     latitude: ob.latitude || '',
                     longitude: ob.longitude || '',
                     otherAttractions: Array.isArray(ob.otherAttractions) ? ob.otherAttractions : (ob.otherAttractions ? [ob.otherAttractions] : []), // Hydrated Field
-                    otherAmenities: (Array.isArray(ob.otherAmenities) ? ob.otherAmenities : (ob.otherAmenities ? [ob.otherAmenities] : [])).join(', '), // Hydrate as String
-                    otherRules: ob.otherRules || '',
+                    otherAmenities: Array.isArray(ob.otherAmenities) ? ob.otherAmenities : (ob.otherAmenities ? ob.otherAmenities.split(',') : []), // Hydrate as Array
+                    otherRules: Array.isArray(ob.otherRules) ? ob.otherRules : (ob.otherRules ? ob.otherRules.split(',') : []),
 
                     extraGuestLimit: pricing.extraGuestLimit || '15',
 
@@ -614,7 +615,7 @@ export default function EditProperty() {
                 latitude: formData.latitude,
                 longitude: formData.longitude,
                 otherAttractions: formData.otherAttractions, // Persisted Field
-                otherAmenities: formData.otherAmenities ? formData.otherAmenities.split(',').map(s => s.trim()).filter(Boolean) : [] // New Field
+                otherAmenities: formData.otherAmenities || [] // New Field
             };
 
             console.log("Submitting Onboarding Data:", onboardingData); // DEBUG LOG
@@ -666,49 +667,53 @@ export default function EditProperty() {
     // --- STEPS ---
     const renderStep0 = () => (
         <div className="space-y-6 animate-fade-in-up">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
                     type="button"
                     disabled={!!id}
                     onClick={() => setFormData({ ...formData, propertyType: 'Villa' })}
-                    className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${!!id ? 'opacity-50 cursor-not-allowed' : ''} ${formData.propertyType === 'Villa' ? 'bg-purple-600 border-purple-600 text-white shadow-xl scale-105 ring-2 ring-purple-200' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
+                    className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${!!id ? 'opacity-60 cursor-not-allowed' : ''} ${formData.propertyType === 'Villa' ? 'bg-purple-600 border-purple-600 text-white shadow-lg ring-2 ring-purple-200' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
                 >
-                    <FaHome size={32} />
-                    <span className="font-bold text-lg">Villa / Resort</span>
+                    <FaHome size={24} />
+                    <span className="font-bold text-sm">Villa / Resort</span>
                 </button>
                 <button
                     type="button"
                     disabled={!!id}
                     onClick={() => setFormData({ ...formData, propertyType: 'Waterpark' })}
-                    className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${!!id ? 'opacity-50 cursor-not-allowed' : ''} ${formData.propertyType === 'Waterpark' ? 'bg-blue-600 border-blue-600 text-white shadow-xl scale-105 ring-2 ring-blue-200' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
+                    className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${!!id ? 'opacity-60 cursor-not-allowed' : ''} ${formData.propertyType === 'Waterpark' ? 'bg-blue-600 border-blue-600 text-white shadow-lg ring-2 ring-blue-200' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 hover:bg-gray-50'}`}
                 >
-                    <FaWater size={32} />
-                    <span className="font-bold text-lg">Waterpark</span>
+                    <FaWater size={24} />
+                    <span className="font-bold text-sm">Waterpark</span>
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InputField label="Property Name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
-                <InputField label="Display Name" name="displayName" value={formData.displayName} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
-                <InputField label="City" name="cityName" value={formData.cityName} onChange={handleInputChange} placeholder="Ex: Lonavala" />
-                <InputField label="Location (Nearest Landmark)" name="location" value={formData.location} onChange={handleInputChange} placeholder="Ex: Near Lonavala Station" />
-            </div>
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="Property Name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
+                    <InputField label="Display Name" name="displayName" value={formData.displayName} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InputField label="City" name="cityName" value={formData.cityName} onChange={handleInputChange} placeholder="Ex: Lonavala" />
+                    <InputField label="Location (Nearest Landmark)" name="location" value={formData.location} onChange={handleInputChange} placeholder="Ex: Near Lonavala Station" />
+                </div>
 
-            <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Full Address</label>
-                <textarea
-                    name="address"
-                    value={formData.address || ''}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 font-medium focus:bg-white focus:border-black outline-none transition-all h-24 resize-none"
-                    placeholder="Enter complete address..."
-                />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InputField label="Contact Person" name="contactPerson" value={formData.contactPerson} onChange={handleInputChange} />
                 <div className="space-y-1">
-                    <label className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 group-focus-within:text-black transition-colors">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Full Address</label>
+                    <textarea
+                        name="address"
+                        value={formData.address || ''}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 font-medium focus:bg-white focus:border-black outline-none transition-all h-20 resize-none"
+                        placeholder="Enter complete address..."
+                    />
+                </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField label="Contact Person" name="contactPerson" value={formData.contactPerson} onChange={handleInputChange} />
+                <div className="space-y-1.5">
+                    <label className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
                         Mobile Number
                         <span className="text-red-500 animate-pulse text-lg">*</span>
                     </label>
@@ -719,7 +724,7 @@ export default function EditProperty() {
                         onChange={handlePhoneChange}
                         pattern="[0-9\\s\\-\\+]{10,}"
                         title="Please enter a valid 10-digit mobile number"
-                        className={`w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-3 text-sm md:text-base text-gray-800 font-medium focus:bg-white focus:border-black focus:ring-2 focus:ring-black/5 outline-none transition-all peer ${!formData.mobileNo ? 'border-orange-100' : ''}`}
+                        className={`w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-3 text-sm md:text-base text-gray-800 font-medium focus:bg-white focus:border-black focus:ring-2 focus:ring-black/5 outline-none transition-all ${!formData.mobileNo ? 'border-orange-100' : ''}`}
                         placeholder="9876543210"
                         required
                     />
@@ -729,151 +734,177 @@ export default function EditProperty() {
             </div>
 
             {/* Map Location Section */}
-            <div className="bg-green-50/50 p-6 rounded-2xl border border-green-100 space-y-4">
-                <h4 className="font-bold text-green-900 flex items-center gap-2">
+            <div className="bg-green-50/30 p-5 rounded-xl border border-green-100 space-y-4">
+                <h4 className="font-bold text-green-900 flex items-center gap-2 text-sm">
                     <FaHome className="text-green-600" /> Map Location
                 </h4>
-                <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Google Map Link</label>
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-green-700 uppercase tracking-wider">Google Map Link</label>
                     <input
                         type="url"
                         name="googleMapLink"
                         value={formData.googleMapLink || ''}
                         onChange={handleInputChange}
                         onBlur={handleMapLinkBlur}
-                        className="w-full bg-white border border-green-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 outline-none"
-                        placeholder="Paste Google Maps Link here (e.g. from WhatsApp or Maps)"
+                        className="w-full bg-white border border-green-200 rounded-lg px-3 py-2 text-sm focus:border-green-500 outline-none placeholder-green-200/50"
+                        placeholder="Paste Google Maps Link here..."
                     />
-                    <p className="text-[10px] text-green-600 italic">We'll try to auto-detect Latitude & Longitude from the link.</p>
+                    <p className="text-[10px] text-green-600 italic">Auto-detects Latitude & Longitude.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <InputField
-                        label="Latitude"
-                        name="latitude"
-                        value={formData.latitude}
-                        onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                        placeholder="Ex: 18.1234"
-                        className="bg-white"
-                    />
-                    <InputField
-                        label="Longitude"
-                        name="longitude"
-                        value={formData.longitude}
-                        onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                        placeholder="Ex: 73.5678"
-                        className="bg-white"
-                    />
+                    <InputField label="Latitude" name="latitude" value={formData.latitude} onChange={(e) => setFormData({ ...formData, latitude: e.target.value })} placeholder="18.1234" className="bg-white" />
+                    <InputField label="Longitude" name="longitude" value={formData.longitude} onChange={(e) => setFormData({ ...formData, longitude: e.target.value })} placeholder="73.5678" className="bg-white" />
                 </div>
 
-                {/* Other Attractions */}
-                <div className="space-y-2 pt-2 border-t border-green-200 mt-4">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nearby Attractions / Places to Visit</label>
+                <div className="space-y-1.5 pt-2 border-t border-green-200/50 mt-2">
+                    <label className="text-[10px] font-bold text-green-700 uppercase tracking-wider">Nearby Attractions</label>
                     <textarea
                         value={formData.nearbyAttractions || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, nearbyAttractions: e.target.value }))}
-                        className="w-full bg-white border border-green-200 rounded-lg px-4 py-3 text-sm focus:border-green-500 outline-none h-24 resize-none"
-                        placeholder="List nearby tourist spots, distances, etc..."
+                        className="w-full bg-white border border-green-200 rounded-lg px-3 py-2 text-sm focus:border-green-500 outline-none h-16 resize-none placeholder-green-200/50"
+                        placeholder="List nearby tourist spots..."
                     />
                 </div>
             </div>
 
-            <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Short Description</label>
-                <textarea
-                    name="shortDescription"
-                    value={formData.shortDescription || ''}
-                    onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 font-medium focus:bg-white focus:border-black outline-none transition-all h-20 resize-none"
-                    placeholder="Brief summary for listings..."
-                />
-            </div>
-
-            <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Description</label>
-                <textarea
-                    name="description"
-                    value={formData.description || ''}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 font-medium focus:bg-white focus:border-black outline-none transition-all h-32 resize-none"
-                    placeholder="Tell guests what makes your place special..."
-                />
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Short Description</label>
+                    <textarea
+                        name="shortDescription"
+                        value={formData.shortDescription || ''}
+                        onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 font-medium focus:bg-white focus:border-black outline-none transition-all h-16 resize-none"
+                        placeholder="Brief summary for listings..."
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Description</label>
+                    <textarea
+                        name="description"
+                        value={formData.description || ''}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 font-medium focus:bg-white focus:border-black outline-none transition-all h-24 resize-none"
+                        placeholder="Tell guests what makes your place special..."
+                    />
+                </div>
             </div>
         </div>
     );
 
     const renderStep1 = () => (
-        <div className="space-y-8 animate-fade-in-up">
+        <div className="space-y-6 animate-fade-in-up">
             <div>
-                <h3 className="text-xl font-bold mb-4">{formData.propertyType === 'Waterpark' ? 'Waterpark Attractions' : 'Features & Amenities'}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <h3 className="text-lg font-bold mb-4 text-gray-800">{formData.propertyType === 'Waterpark' ? 'Waterpark Attractions' : 'Features & Amenities'}</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {AMENITY_TYPES.filter(item => !item.scope || item.scope.includes(formData.propertyType)).map(item => (
-                        <div key={item.key} className={`bg-white border rounded-xl p-4 flex items-center justify-between transition-all ${formData.amenities[item.key] ? 'border-primary ring-1 ring-primary shadow-md' : 'border-gray-100 hover:border-gray-200'}`}>
-                            <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${formData.amenities[item.key] ? 'bg-primary/10' : 'bg-gray-100'}`}>
+                        <div key={item.key} onClick={() => {
+                            if (item.type !== 'number') handleAmenityChange(item.key, 'bool', !formData.amenities[item.key]);
+                        }} className={`bg-white border rounded-xl p-3 flex flex-col justify-between transition-all cursor-pointer h-full ${formData.amenities[item.key] ? 'border-black ring-1 ring-black bg-gray-50' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'}`}>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${formData.amenities[item.key] ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'}`}>
                                     {getAmenityIcon(item.key)}
                                 </div>
                                 <div>
-                                    <p className="font-bold text-sm leading-tight pr-2">{item.label}</p>
-                                    {item.subtitle && <p className="text-[10px] text-gray-400">{item.subtitle}</p>}
+                                    <p className={`font-bold text-xs leading-tight ${formData.amenities[item.key] ? 'text-black' : 'text-gray-600'}`}>{item.label}</p>
+                                    {item.subtitle && <p className="text-[9px] text-gray-400 leading-none mt-0.5">{item.subtitle}</p>}
                                 </div>
                             </div>
-                            <div className="flex-shrink-0">
-                                {item.type === 'number' ? <Counter value={formData.amenities[item.key]} onChange={(val) => handleAmenityChange(item.key, 'number', val)} /> : <Toggle active={!!formData.amenities[item.key]} onChange={(val) => handleAmenityChange(item.key, 'bool', val)} />}
+                            <div className="flex justify-end mt-auto">
+                                {item.type === 'number' ? (
+                                    <div onClick={(e) => e.stopPropagation()}>
+                                        <Counter value={formData.amenities[item.key]} onChange={(val) => handleAmenityChange(item.key, 'number', val)} />
+                                    </div>
+                                ) : (
+                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${formData.amenities[item.key] ? 'bg-black border-black text-white' : 'border-gray-300'}`}>
+                                        {formData.amenities[item.key] && <FaCheck size={10} />}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
                 </div>
 
-                <div className="mt-6">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Additional Amenities (Comma Separated)</label>
-                    <textarea
-                        value={formData.otherAmenities || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, otherAmenities: e.target.value }))}
-                        className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm focus:border-black outline-none h-24 resize-none"
-                        placeholder="E.g. Gym, Spa, Yoga Center..."
-                    />
-                </div>
-
-                <div className="mt-6">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Add Other Attractions (Optional)</label>
-                    <div className="space-y-2">
-                        {formData.otherAttractions.map((attr, idx) => (
-                            <div key={idx} className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={attr}
-                                    onChange={(e) => {
-                                        const newAttrs = [...formData.otherAttractions];
-                                        newAttrs[idx] = e.target.value;
-                                        setFormData(prev => ({ ...prev, otherAttractions: newAttrs }));
-                                    }}
-                                    className="w-full p-3 rounded-xl border border-gray-200 focus:border-black outline-none"
-                                    placeholder="Enter attraction..."
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const newAttrs = formData.otherAttractions.filter((_, i) => i !== idx);
-                                        setFormData(prev => ({ ...prev, otherAttractions: newAttrs }));
-                                    }}
-                                    className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100"
-                                >
-                                    <FaTimes />
-                                </button>
-                            </div>
-                        ))}
-                        <button
-                            type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, otherAttractions: [...prev.otherAttractions, ''] }))}
-                            className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-2"
-                        >
-                            + Add Another Attraction
-                        </button>
+                <div className="mt-6 space-y-4">
+                    <div className="bg-white p-4 rounded-xl border border-gray-200">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Additional Amenities</label>
+                        <div className="space-y-2">
+                            {Array.isArray(formData.otherAmenities) && formData.otherAmenities.map((amenity, idx) => (
+                                <div key={idx} className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={amenity}
+                                        onChange={(e) => {
+                                            const newAmenities = [...formData.otherAmenities];
+                                            newAmenities[idx] = e.target.value;
+                                            setFormData(prev => ({ ...prev, otherAmenities: newAmenities }));
+                                        }}
+                                        className="w-full bg-gray-50 border-b-2 border-transparent border-gray-100 focus:border-black outline-none py-2 text-sm font-medium transition-colors"
+                                        placeholder="Enter amenity..."
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newAmenities = formData.otherAmenities.filter((_, i) => i !== idx);
+                                            setFormData(prev => ({ ...prev, otherAmenities: newAmenities }));
+                                        }}
+                                        className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition"
+                                    >
+                                        <FaTimes size={12} />
+                                    </button>
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, otherAmenities: [...(formData.otherAmenities || []), ''] }))}
+                                className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-2"
+                            >
+                                <span className="bg-blue-50 p-1 rounded">+</span> Add Amenity
+                            </button>
+                        </div>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-2 italic">* Extra charges may apply and vary depending on property policy.</p>
+
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Other Attractions (Optional)</label>
+                        <div className="space-y-2">
+                            {formData.otherAttractions.map((attr, idx) => (
+                                <div key={idx} className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={attr}
+                                        onChange={(e) => {
+                                            const newAttrs = [...formData.otherAttractions];
+                                            newAttrs[idx] = e.target.value;
+                                            setFormData(prev => ({ ...prev, otherAttractions: newAttrs }));
+                                        }}
+                                        className="w-full p-2 rounded-lg border border-gray-200 focus:border-black outline-none text-sm"
+                                        placeholder="Enter attraction..."
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newAttrs = formData.otherAttractions.filter((_, i) => i !== idx);
+                                            setFormData(prev => ({ ...prev, otherAttractions: newAttrs }));
+                                        }}
+                                        className="p-2 bg-white text-red-500 rounded-lg border border-gray-200 hover:bg-red-50 transition"
+                                    >
+                                        <FaTimes size={12} />
+                                    </button>
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, otherAttractions: [...prev.otherAttractions, ''] }))}
+                                className="text-xs font-bold text-black border border-black px-3 py-1.5 rounded-lg hover:bg-black hover:text-white transition flex items-center gap-2 w-max"
+                            >
+                                <div className="w-4 h-4 bg-gray-200 rounded-full flex items-center justify-center text-black group-hover:bg-white group-hover:text-black transition-colors">+</div>
+                                Add Attraction
+                            </button>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-2 italic">* Extra charges may apply and vary depending on property policy.</p>
+                    </div>
                 </div>
             </div>
-
             {/* Payment Methods Moved to Pricing Step */}
         </div>
     );
@@ -883,28 +914,26 @@ export default function EditProperty() {
             <h3 className="text-xl font-bold">Rules and Policies</h3>
 
             {/* Check-in / Out */}
-            <div className="grid grid-cols-2 gap-6 bg-gray-50 p-6 rounded-2xl">
+            <div className="grid grid-cols-2 gap-6 bg-gray-50 p-5 rounded-xl border border-gray-100">
                 <div>
                     <label className="text-xs font-bold text-gray-500 uppercase">Check-in Time</label>
-                    <input type="time" value={formData.checkInTime} onChange={(e) => setFormData({ ...formData, checkInTime: e.target.value })} className="w-full p-3 rounded-lg border mt-1" />
+                    <input type="time" value={formData.checkInTime} onChange={(e) => setFormData({ ...formData, checkInTime: e.target.value })} className="w-full p-2 rounded-lg border border-gray-200 mt-1 bg-white text-sm" />
                 </div>
                 <div>
                     <label className="text-xs font-bold text-gray-500 uppercase">Check-out Time</label>
-                    <input type="time" value={formData.checkOutTime} onChange={(e) => setFormData({ ...formData, checkOutTime: e.target.value })} className="w-full p-3 rounded-lg border mt-1" />
+                    <input type="time" value={formData.checkOutTime} onChange={(e) => setFormData({ ...formData, checkOutTime: e.target.value })} className="w-full p-2 rounded-lg border border-gray-200 mt-1 bg-white text-sm" />
                 </div>
             </div>
 
-
-
             {/* Grouped Rules */}
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 {/* Food Policy */}
-                <div className="bg-white border rounded-xl p-6 shadow-sm">
-                    <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><FaUtensils className="text-orange-500" /> Food & Dietary Policies</h4>
+                <div className="bg-white border rounded-xl p-5 shadow-sm h-full">
+                    <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-sm"><FaUtensils className="text-orange-500" /> Food & Dietary Policies</h4>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <span className="font-medium text-gray-700">Outside food allowed?</span>
+                            <span className="font-medium text-gray-700 text-xs">Outside food allowed?</span>
                             <Toggle active={!!formData.rules[3]} onChange={(val) => {
                                 const newRules = { ...formData.rules, [3]: val };
                                 if (!val) newRules[8] = false; // Disable non-veg if outside food blocked
@@ -912,8 +941,8 @@ export default function EditProperty() {
                             }} />
                         </div>
                         {formData.rules[3] && (
-                            <div className="ml-6 pl-4 border-l-2 border-gray-100 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                                <span className="font-medium text-gray-700 text-sm">Non-veg food allowed?</span>
+                            <div className="ml-4 pl-4 border-l-2 border-orange-100 flex items-center justify-between bg-orange-50/50 p-2 rounded-lg">
+                                <span className="font-medium text-orange-900 text-xs">Non-veg food allowed?</span>
                                 <Toggle active={!!formData.rules[8]} onChange={(val) => setFormData({ ...formData, rules: { ...formData.rules, [8]: val } })} />
                             </div>
                         )}
@@ -921,87 +950,128 @@ export default function EditProperty() {
                 </div>
 
                 {/* Habits */}
-                <div className="bg-white border rounded-xl p-6 shadow-sm">
-                    <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><FaGlassMartiniAlt className="text-purple-500" /> Smoking & Alcohol</h4>
+                <div className="bg-white border rounded-xl p-5 shadow-sm h-full">
+                    <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-sm"><FaGlassMartiniAlt className="text-purple-500" /> Smoking & Alcohol</h4>
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                            <span className="font-medium text-gray-700">Smoking allowed within premises?</span>
+                        <div className="flex items-center justify-between border-b border-gray-50 pb-2">
+                            <span className="font-medium text-gray-700 text-xs">Smoking allowed within premises?</span>
                             <Toggle active={!!formData.rules[6]} onChange={(val) => setFormData({ ...formData, rules: { ...formData.rules, [6]: val } })} />
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="font-medium text-gray-700">Alcohol consumption allowed?</span>
+                            <span className="font-medium text-gray-700 text-xs">Alcohol consumption allowed?</span>
                             <Toggle active={!!formData.rules[7]} onChange={(val) => setFormData({ ...formData, rules: { ...formData.rules, [7]: val } })} />
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* General Rules */}
-                <div className="bg-white border rounded-xl p-6 shadow-sm">
-                    <h4 className="font-bold text-gray-800 mb-4">General House Rules</h4>
-                    <div className="space-y-3">
-                        {PROPERTY_RULES.map((rule, idx) => {
-                            if ([3, 8, 6, 7].includes(idx)) return null; // Skip extracted rules
-                            return (
-                                <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                                    <span className="font-medium text-gray-600 text-sm">{rule}</span>
-                                    <Toggle active={!!formData.rules[idx]} onChange={(val) => setFormData({ ...formData, rules: { ...formData.rules, [idx]: val } })} />
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* ID Proofs (Moved Here) */}
-                    <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
-                        <label className="text-xs font-bold text-gray-500 uppercase">Accepted ID Proofs</label>
-                        <div className="flex flex-wrap gap-3">
-                            {['Passport', 'Driving License', 'PAN Card', 'Aadhar Card'].map(id => (
-                                <button
-                                    key={id}
-                                    type="button"
-                                    onClick={() => {
-                                        const newIds = formData.idProofs.includes(id) ? formData.idProofs.filter(i => i !== id) : [...formData.idProofs, id];
-                                        setFormData({ ...formData, idProofs: newIds });
-                                    }}
-                                    className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${formData.idProofs.includes(id) ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200'}`}
-                                >
-                                    {formData.idProofs.includes(id) && <FaCheck className="inline mr-2" />} {id}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+            {/* General Rules */}
+            <div className="bg-white border rounded-xl p-5 shadow-sm">
+                <h4 className="font-bold text-gray-800 mb-4 text-sm">General House Rules</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-8">
+                    {PROPERTY_RULES.map((rule, idx) => {
+                        if ([3, 8, 6, 7].includes(idx)) return null; // Skip extracted rules
+                        return (
+                            <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 hover:bg-gray-50 px-2 rounded transition-colors">
+                                <span className="font-medium text-gray-600 text-xs">{rule}</span>
+                                <Toggle active={!!formData.rules[idx]} onChange={(val) => setFormData({ ...formData, rules: { ...formData.rules, [idx]: val } })} />
+                            </div>
+                        );
+                    })}
                 </div>
 
-                {/* Safety Features */}
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-6">
-                    <h4 className="font-bold text-blue-900 mb-4 flex items-center gap-2"><FaUserShield /> Safety & Security</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {['Fire Extinguisher', 'Security System', 'First Aid Kit', 'Window Guards'].map(safety => (
-                            <label key={safety} className="flex items-center gap-2 bg-white p-3 rounded-lg border border-blue-100 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={formData.amenities[safety] || false} // Store in amenities
-                                    onChange={(e) => handleAmenityChange(safety, 'bool', e.target.checked)}
-                                    className="w-5 h-5 accent-blue-600"
-                                />
-                                <span className="text-sm font-bold text-gray-700">{safety}</span>
-                            </label>
+                {/* ID Proofs */}
+                <div className="mt-6 pt-4 border-t border-gray-100 space-y-2">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Accepted ID Proofs</label>
+                    <div className="flex flex-wrap gap-2">
+                        {['Passport', 'Driving License', 'PAN Card', 'Aadhar Card'].map(id => (
+                            <button
+                                key={id}
+                                type="button"
+                                onClick={() => {
+                                    const newIds = formData.idProofs.includes(id) ? formData.idProofs.filter(i => i !== id) : [...formData.idProofs, id];
+                                    setFormData({ ...formData, idProofs: newIds });
+                                }}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${formData.idProofs.includes(id) ? 'bg-black text-white border-black shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}
+                            >
+                                {formData.idProofs.includes(id) && <FaCheck className="inline mr-1.5" />} {id}
+                            </button>
                         ))}
                     </div>
                 </div>
+            </div>
 
-                {/* Other Rules */}
-                <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Add Other Rules</label>
-                    <textarea
-                        value={formData.otherRules}
-                        onChange={(e) => setFormData(prev => ({ ...prev, otherRules: e.target.value }))}
-                        placeholder="Enter any additional rules or policies..."
-                        className="w-full p-4 rounded-xl border border-gray-200 focus:border-black outline-none h-24 resize-none"
+            {/* Safety Features */}
+            <div className="bg-blue-50/30 border border-blue-100 rounded-xl p-5">
+                <h4 className="font-bold text-blue-900 mb-4 flex items-center gap-2 text-sm"><FaUserShield /> Safety & Security</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {['Fire Extinguisher', 'Security System', 'First Aid Kit', 'Window Guards'].map(safety => (
+                        <label key={safety} className="flex items-center gap-2 bg-white p-2.5 rounded-lg border border-blue-100 cursor-pointer shadow-sm hover:border-blue-300 transition-all">
+                            <input
+                                type="checkbox"
+                                checked={formData.amenities[safety] || false} // Store in amenities
+                                onChange={(e) => handleAmenityChange(safety, 'bool', e.target.checked)}
+                                className="w-4 h-4 accent-blue-600"
+                            />
+                            <span className="text-xs font-bold text-gray-700">{safety}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+
+            {/* Other Rules */}
+            <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-2">Custom Rules</label>
+                <div className="flex gap-2 mb-3">
+                    <input
+                        type="text"
+                        id="new-rule-input"
+                        placeholder="Add a new rule (e.g. No loud music after 10PM)"
+                        className="flex-1 p-3 rounded-xl border border-gray-200 text-sm focus:border-black outline-none bg-gray-50 focus:bg-white transition-colors"
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const val = e.target.value.trim();
+                                if (val) {
+                                    setFormData(prev => ({ ...prev, otherRules: [...prev.otherRules, val] }));
+                                    e.target.value = '';
+                                }
+                            }
+                        }}
                     />
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const input = document.getElementById('new-rule-input');
+                            const val = input.value.trim();
+                            if (val) {
+                                setFormData(prev => ({ ...prev, otherRules: [...prev.otherRules, val] }));
+                                input.value = '';
+                            }
+                        }}
+                        className="bg-black text-white px-4 rounded-xl hover:bg-gray-800 transition"
+                    >
+                        <FaPlus />
+                    </button>
+                </div>
+                <div className="space-y-2">
+                    {formData.otherRules && formData.otherRules.map((rule, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100 group hover:border-gray-200 transition-all">
+                            <span className="text-sm font-medium text-gray-700">{rule}</span>
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, otherRules: prev.otherRules.filter((_, i) => i !== idx) }))}
+                                className="text-gray-400 hover:text-red-500 transition p-1"
+                            >
+                                <FaTrash size={12} />
+                            </button>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
     );
+
     const renderStepRoomConfig = () => {
         const updateRoom = (index, field, value) => {
             const newRooms = [...formData.roomConfig.bedrooms];
@@ -1013,64 +1083,99 @@ export default function EditProperty() {
             }));
         };
 
+        const updateLivingRoom = (index, field, value) => {
+            const newLivingRooms = [...formData.roomConfig.livingRooms];
+            if (!newLivingRooms[index]) newLivingRooms[index] = {};
+            newLivingRooms[index][field] = value;
+            setFormData(prev => ({
+                ...prev,
+                roomConfig: { ...prev.roomConfig, livingRooms: newLivingRooms }
+            }));
+        };
 
+        const addLivingRoom = () => {
+            setFormData(prev => ({
+                ...prev,
+                roomConfig: { ...prev.roomConfig, livingRooms: [...prev.roomConfig.livingRooms, { bedType: 'None', ac: false, tv: false, bathroom: false, toiletType: '', balcony: false }] }
+            }));
+        };
+
+        const removeLivingRoom = (index) => {
+            const newLivingRooms = formData.roomConfig.livingRooms.filter((_, i) => i !== index);
+            setFormData(prev => ({
+                ...prev,
+                roomConfig: { ...prev.roomConfig, livingRooms: newLivingRooms }
+            }));
+        };
 
         return (
-            <div className="space-y-8 animate-fade-in-up">
-                <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                    <h3 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2"><FaBed /> Room Configuration</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6 animate-fade-in-up">
+                <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-blue-900 flex items-center gap-2"><FaBed /> Room Configuration</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                         {formData.propertyType === 'Villa' && (
-                            <InputField label="No. of Rooms" name="noofRooms" value={formData.noofRooms} onChange={handleInputChange} placeholder="Ex: 3" type="number" className="bg-white" />
+                            <InputField
+                                label="No. of Rooms"
+                                name="noofRooms"
+                                value={formData.noofRooms}
+                                onChange={handleInputChange}
+                                placeholder="Ex: 3"
+                                type="number"
+                                className="bg-white"
+                            />
                         )}
-                        <div className="flex items-center text-sm text-blue-800 bg-blue-100/50 p-2 rounded-lg">
-                            Please set the number of rooms to configure bedroom details below.
+                        <div className="flex items-center text-xs text-blue-700 bg-blue-100/50 p-3 rounded-lg border border-blue-100">
+                            Set the number of rooms above to configure details for each bedroom below.
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100">
+                {/* Living Room Section */}
+                <div className="bg-amber-50/50 rounded-2xl p-5 border border-amber-100">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold flex items-center gap-2 text-amber-900"><FaCouch /> Living Room Configuration</h3>
-                        <button type="button" onClick={addLivingRoom} className="text-sm bg-white border border-amber-200 text-amber-900 px-3 py-1 rounded-lg font-bold hover:bg-amber-100 transition shadow-sm">+ Add Living Room</button>
+                        <h3 className="text-lg font-bold flex items-center gap-2 text-amber-900"><FaCouch /> Living Room</h3>
+                        <button type="button" onClick={addLivingRoom} className="text-xs bg-white border border-amber-200 text-amber-800 px-3 py-1.5 rounded-lg font-bold hover:bg-amber-100 transition shadow-sm">+ Add Living Room</button>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {formData.roomConfig.livingRooms.map((room, idx) => (
-                            <div key={idx} className="bg-white p-4 rounded-xl border border-amber-200 shadow-sm relative">
+                            <div key={idx} className="bg-white p-4 rounded-xl border border-amber-200 shadow-sm relative group">
                                 {formData.roomConfig.livingRooms.length > 1 && (
-                                    <button type="button" onClick={() => removeLivingRoom(idx)} className="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1"><FaTimes /></button>
+                                    <button type="button" onClick={() => removeLivingRoom(idx)} className="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 transition-colors"><FaTimes size={12} /></button>
                                 )}
-                                <h4 className="text-xs font-bold text-amber-800 uppercase mb-2">Living Room {idx + 1}</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <div>
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Bed Type</label>
-                                        <select className="w-full p-2 text-sm rounded border bg-gray-50" value={room.bedType} onChange={(e) => updateLivingRoom(idx, 'bedType', e.target.value)}>
+                                <h4 className="text-[10px] font-bold text-amber-800 uppercase mb-3 tracking-wider">Living Room {idx + 1}</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                    <div className="col-span-2 md:col-span-1">
+                                        <label className="text-[9px] font-bold text-gray-400 uppercase block mb-1">Bed Type</label>
+                                        <select className="w-full p-1.5 text-xs rounded border bg-gray-50 border-gray-200 focus:border-amber-400 outline-none" value={room.bedType} onChange={(e) => updateLivingRoom(idx, 'bedType', e.target.value)}>
                                             <option value="Sofa">Sofa</option>
                                             <option value="Sofa cum Bed">Sofa cum Bed</option>
                                             <option value="None">None</option>
                                         </select>
                                     </div>
-                                    <div className="flex items-center justify-between bg-gray-50 p-2 rounded-lg border">
-                                        <span className="font-bold text-xs">AC</span>
+                                    <div className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                                        <span className="font-bold text-[10px] text-gray-600">AC</span>
                                         <Toggle active={room.ac} onChange={(v) => updateLivingRoom(idx, 'ac', v)} />
                                     </div>
-                                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
-                                        <span className="font-bold text-sm">TV</span>
+                                    <div className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                                        <span className="font-bold text-[10px] text-gray-600">TV</span>
                                         <Toggle active={room.tv} onChange={(v) => updateLivingRoom(idx, 'tv', v)} />
                                     </div>
-                                    <div className="flex items-center justify-between bg-gray-50 p-2 rounded-lg border">
-                                        <span className="font-bold text-xs">Bathroom</span>
+                                    <div className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                                        <span className="font-bold text-[10px] text-gray-600">Bath</span>
                                         <Toggle active={room.bathroom} onChange={(v) => updateLivingRoom(idx, 'bathroom', v)} />
                                     </div>
-                                    <div className="flex items-center justify-between bg-gray-50 p-2 rounded-lg border">
-                                        <span className="font-bold text-xs">Balcony</span>
+                                    <div className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                                        <span className="font-bold text-[10px] text-gray-600">Balcony</span>
                                         <Toggle active={room.balcony} onChange={(v) => updateLivingRoom(idx, 'balcony', v)} />
                                     </div>
                                     {room.bathroom && (
-                                        <div>
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Toilet Style</label>
-                                            <select className="w-full p-2 text-sm rounded border bg-gray-50" value={room.toiletType} onChange={(e) => updateLivingRoom(idx, 'toiletType', e.target.value)}>
+                                        <div className="col-span-2 md:col-span-1">
+                                            <label className="text-[9px] font-bold text-gray-400 uppercase block mb-1">Toilet</label>
+                                            <select className="w-full p-1.5 text-xs rounded border bg-gray-50 border-gray-200 focus:border-amber-400 outline-none" value={room.toiletType} onChange={(e) => updateLivingRoom(idx, 'toiletType', e.target.value)}>
                                                 <option value="">Select</option>
                                                 <option value="Western">Western</option>
                                                 <option value="Indian">Indian</option>
@@ -1085,108 +1190,91 @@ export default function EditProperty() {
 
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                        <h3 className="text-xl font-bold flex items-center gap-2"><FaBed /> Bedrooms ({formData.noofRooms || 0})</h3>
+                        <h3 className="text-lg font-bold flex items-center gap-2 text-gray-800"><FaBed /> Bedrooms ({formData.noofRooms || 0})</h3>
                     </div>
 
-                    {formData.roomConfig.bedrooms.map((room, idx) => (
-                        <div key={idx} className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border-2 border-gray-200 hover:border-blue-300 transition-all shadow-sm hover:shadow-md relative group">
-                            {/* Bedroom Number Badge */}
-                            <div className="absolute -top-3 -left-3 bg-gradient-to-br from-blue-600 to-purple-600 text-white w-10 h-10 flex items-center justify-center rounded-full font-bold text-lg shadow-lg ring-4 ring-white">
-                                {idx + 1}
-                            </div>
-
-                            <div className="space-y-6 mt-2">
-                                {/* Bed Type Selection */}
-                                <div className="bg-white rounded-xl p-4 border border-gray-200">
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Bed Type</label>
-                                    <select
-                                        className="w-full p-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm font-medium bg-white"
-                                        value={room.bedType}
-                                        onChange={(e) => updateRoom(idx, 'bedType', e.target.value)}
-                                    >
-                                        <option value="King">👑 King Size</option>
-                                        <option value="Queen">👸 Queen Size</option>
-                                        <option value="Double">🛏️ Double Bed</option>
-                                        <option value="Single">🛌 Single Bed</option>
-                                    </select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {formData.roomConfig.bedrooms.map((room, idx) => (
+                            <div key={idx} className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all shadow-sm relative group hover:shadow-md">
+                                <div className="absolute -top-2 -left-2 bg-black text-white w-6 h-6 flex items-center justify-center rounded-full font-bold text-xs ring-2 ring-white shadow-sm z-10">
+                                    {idx + 1}
                                 </div>
 
-                                {/* Amenities Grid */}
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                    {/* AC Toggle */}
-                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
-                                        <label className="flex items-center justify-between cursor-pointer group">
-                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">❄️ AC</span>
+                                <div className="mt-2 space-y-3">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Bed Type</label>
+                                        <select
+                                            className="w-full p-2 rounded border border-gray-200 focus:border-black outline-none text-xs font-bold bg-gray-50"
+                                            value={room.bedType}
+                                            onChange={(e) => updateRoom(idx, 'bedType', e.target.value)}
+                                        >
+                                            <option value="King">👑 King Size</option>
+                                            <option value="Queen">👸 Queen Size</option>
+                                            <option value="Double">🛏️ Double Bed</option>
+                                            <option value="Single">🛌 Single Bed</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-100">
+                                            <span className="font-bold text-[10px] text-gray-600">AC</span>
                                             <Toggle active={room.ac} onChange={(v) => updateRoom(idx, 'ac', v)} />
-                                        </label>
-                                    </div>
-
-                                    {/* TV Toggle */}
-                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
-                                        <label className="flex items-center justify-between cursor-pointer group">
-                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">📺 TV</span>
+                                        </div>
+                                        <div className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-100">
+                                            <span className="font-bold text-[10px] text-gray-600">TV</span>
                                             <Toggle active={room.tv} onChange={(v) => updateRoom(idx, 'tv', v)} />
-                                        </label>
-                                    </div>
-
-                                    {/* Geyser Toggle */}
-                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
-                                        <label className="flex items-center justify-between cursor-pointer group">
-                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">🚿 Geyser</span>
+                                        </div>
+                                        <div className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-100">
+                                            <span className="font-bold text-[10px] text-gray-600">Geyser</span>
                                             <Toggle active={room.geyser} onChange={(v) => updateRoom(idx, 'geyser', v)} />
-                                        </label>
-                                    </div>
-
-                                    {/* Balcony Toggle */}
-                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all">
-                                        <label className="flex items-center justify-between cursor-pointer group">
-                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">🌅 Balcony</span>
+                                        </div>
+                                        <div className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-100">
+                                            <span className="font-bold text-[10px] text-gray-600">Balcony</span>
                                             <Toggle active={room.balcony} onChange={(v) => updateRoom(idx, 'balcony', v)} />
-                                        </label>
+                                        </div>
                                     </div>
 
-                                    {/* Private Bathroom Toggle */}
-                                    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all col-span-2 md:col-span-1">
-                                        <label className="flex items-center justify-between cursor-pointer group">
-                                            <span className="font-bold text-sm text-gray-700 group-hover:text-blue-600 transition-colors">🚽 Private Bath</span>
+                                    <div className="pt-2 border-t border-gray-50">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="font-bold text-[10px] text-gray-600">Private Bathroom</span>
                                             <Toggle active={room.bathroom} onChange={(v) => updateRoom(idx, 'bathroom', v)} />
-                                        </label>
+                                        </div>
                                         {room.bathroom && (
                                             <select
-                                                className="mt-3 w-full p-2 text-xs rounded-lg border-2 border-blue-200 focus:border-blue-500 outline-none bg-blue-50 font-medium"
+                                                className="w-full p-1.5 text-[10px] rounded border border-gray-200 focus:border-black outline-none bg-gray-50"
                                                 value={room.toiletType}
                                                 onChange={(e) => updateRoom(idx, 'toiletType', e.target.value)}
                                             >
-                                                <option value="Western">Western</option>
-                                                <option value="Indian">Indian</option>
+                                                <option value="Western">Western Toilet</option>
+                                                <option value="Indian">Indian Toilet</option>
                                             </select>
                                         )}
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </div>
         );
     };
 
     const renderStep3 = () => (
-        <div className="space-y-8 animate-fade-in-up">
+        <div className="space-y-6 animate-fade-in-up">
 
             {formData.propertyType === 'Villa' && (
                 <>
-                    {/* Capacity Section Moved Here */}
-                    <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                        <h3 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2"><FaUsers /> Capacity & Usage</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Capacity Section */}
+                    <div className="bg-blue-50/50 p-5 rounded-xl border border-blue-100/50">
+                        <h3 className="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2"><FaUsers /> Capacity & Usage</h3>
+                        <div className="grid grid-cols-2 gap-6">
                             <InputField label="Standard Occupancy (Base)" name="occupancy" value={formData.occupancy} onChange={handleInputChange} placeholder="Ex: 10" type="number" className="bg-white" required />
                             <InputField label="Max Capacity (Total)" name="maxCapacity" value={formData.maxCapacity} onChange={handleInputChange} placeholder="Ex: 20" type="number" className="bg-white" required />
                         </div>
                     </div>
 
-                    <div className="border border-orange-100 p-6 rounded-2xl bg-orange-50">
-                        <h4 className="flex items-center gap-2 mb-4 font-bold text-orange-800">
+                    <div className="border border-orange-100 p-5 rounded-xl bg-orange-50/50">
+                        <h4 className="flex items-center gap-2 mb-4 font-bold text-orange-800 text-sm">
                             <FaMoneyBillWave /> Base Pricing
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1197,32 +1285,32 @@ export default function EditProperty() {
                     </div>
 
                     {/* Extra Person Policy */}
-                    <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100">
-                        <h4 className="font-bold text-purple-800 mb-4 flex items-center gap-2"><FaChild /> Extra Person Policy</h4>
+                    <div className="bg-purple-50/50 p-5 rounded-xl border border-purple-100">
+                        <h4 className="font-bold text-purple-800 mb-4 flex items-center gap-2 text-sm"><FaChild /> Extra Person Policy</h4>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <InputField label="Mon-Thu (Per Person)" name="extraGuestPriceMonThu" value={formData.extraGuestPriceMonThu} onChange={handleInputChange} placeholder="₹ Rate" type="number" className="bg-white" />
                             <InputField label="Fri & Sun (Per Person)" name="extraGuestPriceFriSun" value={formData.extraGuestPriceFriSun} onChange={handleInputChange} placeholder="₹ Rate" type="number" className="bg-white" />
                             <InputField label="Saturday (Per Person)" name="extraGuestPriceSaturday" value={formData.extraGuestPriceSaturday} onChange={handleInputChange} placeholder="₹ Rate" type="number" className="bg-white" />
                         </div>
-                        <p className="text-xs text-gray-500 mt-2 font-medium">
+                        <p className="text-[10px] text-gray-500 mt-2 font-medium ml-1">
                             * Charge applicable for guests exceeding Standard Occupancy (includes extra mattress).
                         </p>
                     </div>
 
-                    {/* Meal Configuration - Simplified Package Style */}
-                    <div className="border border-green-100 p-6 rounded-2xl bg-green-50/50">
-                        <h4 className="flex items-center gap-2 mb-4 font-bold text-green-800"><FaUtensils /> Meal Configuration</h4>
+                    {/* Meal Configuration */}
+                    <div className="border border-green-100 p-5 rounded-xl bg-green-50/50">
+                        <h4 className="flex items-center gap-2 mb-4 font-bold text-green-800 text-sm"><FaUtensils /> Meal Configuration</h4>
 
-                        <div className="bg-white p-4 rounded-xl border border-green-100 mb-4">
-                            <p className="text-sm text-gray-700 font-medium leading-relaxed">
-                                Veg, Non veg, Jain food. Meal Includes lunch, evening snacks, dinner and Next morning break fast. Meal Price Per person
+                        <div className="bg-white p-3 rounded-lg border border-green-100 mb-4 shadow-sm">
+                            <p className="text-xs text-gray-600 font-medium leading-relaxed">
+                                Defines the per-person rate for the full day meal package (Lunch, High Tea, Dinner, Breakfast).
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <InputField label="Veg Package (Per Person)" name="foodRateVeg" value={formData.foodRates?.veg || ''} onChange={(e) => handleNestedChange('foodRates', 'veg', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
-                            <InputField label="Non-Veg Package (Per Person)" name="foodRateNonVeg" value={formData.foodRates?.nonVeg || ''} onChange={(e) => handleNestedChange('foodRates', 'nonVeg', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
-                            <InputField label="Jain Package (Per Person)" name="foodRateJain" value={formData.foodRates?.jain || ''} onChange={(e) => handleNestedChange('foodRates', 'jain', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <InputField label="Veg Package" name="foodRateVeg" value={formData.foodRates?.veg || ''} onChange={(e) => handleNestedChange('foodRates', 'veg', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
+                            <InputField label="Non-Veg Package" name="foodRateNonVeg" value={formData.foodRates?.nonVeg || ''} onChange={(e) => handleNestedChange('foodRates', 'nonVeg', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
+                            <InputField label="Jain Package" name="foodRateJain" value={formData.foodRates?.jain || ''} onChange={(e) => handleNestedChange('foodRates', 'jain', e.target.value)} placeholder="₹ Rate" type="number" className="bg-white" />
                         </div>
                     </div>
                 </>
@@ -1230,87 +1318,91 @@ export default function EditProperty() {
 
             {formData.propertyType === 'Waterpark' && (
                 <>
-                    <div className="border border-blue-100 p-6 rounded-2xl bg-blue-50">
-                        <h4 className="flex items-center gap-2 mb-4 font-bold text-blue-800">
+                    <div className="border border-blue-100 p-5 rounded-xl bg-blue-50/50">
+                        <h4 className="flex items-center gap-2 mb-4 font-bold text-blue-800 text-sm">
                             <FaMoneyBillWave /> Ticket Pricing
                         </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <div className="space-y-3">
-                                <h5 className="font-bold text-sm">Adult Tickets</h5>
-                                <InputField label="Mon-Fri Rate" name="priceMonThu" value={formData.priceMonThu} onChange={handleInputChange} placeholder="₹ 1000" className="bg-white" required />
-                                <InputField label="Sat-Sun Rate" name="priceFriSun" value={formData.priceFriSun} onChange={handleInputChange} placeholder="₹ 1200" className="bg-white" required />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-3 bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
+                                <h5 className="font-bold text-xs uppercase text-blue-900 tracking-wider mb-2">Adult Tickets</h5>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <InputField label="Mon-Fri" name="priceMonThu" value={formData.priceMonThu} onChange={handleInputChange} placeholder="₹ Rate" className="bg-gray-50" required />
+                                    <InputField label="Sat-Sun" name="priceFriSun" value={formData.priceFriSun} onChange={handleInputChange} placeholder="₹ Rate" className="bg-gray-50" required />
+                                </div>
                             </div>
-                            <div className="space-y-3">
-                                <h5 className="font-bold text-sm">Child Tickets</h5>
-                                <InputField label="Mon-Fri Rate" name="childPriceMonFri" value={formData.childCriteria?.monFriPrice || ''} onChange={(e) => handleNestedChange('childCriteria', 'monFriPrice', e.target.value)} placeholder="₹ 800" className="bg-white" required />
-                                <InputField label="Sat-Sun Rate" name="childPriceSatSun" value={formData.childCriteria?.satSunPrice || ''} onChange={(e) => handleNestedChange('childCriteria', 'satSunPrice', e.target.value)} placeholder="₹ 1000" className="bg-white" required />
+                            <div className="space-y-3 bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
+                                <h5 className="font-bold text-xs uppercase text-blue-900 tracking-wider mb-2">Child Tickets</h5>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <InputField label="Mon-Fri" name="childPriceMonFri" value={formData.childCriteria?.monFriPrice || ''} onChange={(e) => handleNestedChange('childCriteria', 'monFriPrice', e.target.value)} placeholder="₹ Rate" className="bg-gray-50" required />
+                                    <InputField label="Sat-Sun" name="childPriceSatSun" value={formData.childCriteria?.satSunPrice || ''} onChange={(e) => handleNestedChange('childCriteria', 'satSunPrice', e.target.value)} placeholder="₹ Rate" className="bg-gray-50" required />
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Child Criteria & Policy - Standard Waterpark Format */}
-                    <div className="bg-white p-6 rounded-2xl border border-gray-200">
-                        <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    {/* Child Criteria & Policy */}
+                    <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-sm">
                             <FaChild className="text-blue-500" /> Child Pricing Policy
-                            <span className="text-red-500 animate-pulse">*</span>
+                            <span className="text-red-500 animate-pulse text-xs">*</span>
                         </h4>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Free Tier */}
-                            <div className="bg-green-50/50 p-4 rounded-xl border border-green-100">
+                            <div className="bg-green-50/30 p-4 rounded-xl border border-green-100">
                                 <h5 className="text-[10px] font-bold text-green-600 uppercase mb-3 tracking-widest">FREE ENTRY (Infants)</h5>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="text-[10px] block text-gray-400 uppercase font-bold mb-1">Max Height (FT)</label>
-                                        <input type="number" step="0.1" min="0" onKeyDown={(e) => ["-", "e", "E"].includes(e.key) && e.preventDefault()} value={formData.childCriteria?.freeHeight || ''} onChange={(e) => handleNestedChange('childCriteria', 'freeHeight', e.target.value)} className="w-full font-bold border-b-2 border-green-200 bg-transparent outline-none py-1 focus:border-green-500 transition-colors" placeholder="3.0" />
+                                        <label className="text-[9px] block text-gray-400 uppercase font-bold mb-1">Max Height (FT)</label>
+                                        <input type="number" step="0.1" min="0" onKeyDown={(e) => ["-", "e", "E"].includes(e.key) && e.preventDefault()} value={formData.childCriteria?.freeHeight || ''} onChange={(e) => handleNestedChange('childCriteria', 'freeHeight', e.target.value)} className="w-full text-sm font-bold border-b border-green-200 bg-transparent outline-none py-1 focus:border-green-500 transition-colors" placeholder="3.0" />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] block text-gray-400 uppercase font-bold mb-1">Max Age (Yrs)</label>
-                                        <input type="number" min="0" onKeyDown={(e) => ["-", "e", "E", "."].includes(e.key) && e.preventDefault()} value={formData.childCriteria?.freeAge || ''} onChange={(e) => handleNestedChange('childCriteria', 'freeAge', e.target.value)} className="w-full font-bold border-b-2 border-green-200 bg-transparent outline-none py-1 focus:border-green-500 transition-colors" placeholder="3" />
+                                        <label className="text-[9px] block text-gray-400 uppercase font-bold mb-1">Max Age (Yrs)</label>
+                                        <input type="number" min="0" onKeyDown={(e) => ["-", "e", "E", "."].includes(e.key) && e.preventDefault()} value={formData.childCriteria?.freeAge || ''} onChange={(e) => handleNestedChange('childCriteria', 'freeAge', e.target.value)} className="w-full text-sm font-bold border-b border-green-200 bg-transparent outline-none py-1 focus:border-green-500 transition-colors" placeholder="3" />
                                     </div>
                                 </div>
-                                <p className="text-[10px] text-green-600 mt-2 italic">Entry is free for guests below these limits.</p>
+                                <p className="text-[9px] text-green-600 mt-2 italic">Entry is free for guests below these limits.</p>
                             </div>
 
                             {/* Charge Tier */}
-                            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                            <div className="bg-blue-50/30 p-4 rounded-xl border border-blue-100">
                                 <h5 className="text-[10px] font-bold text-blue-600 uppercase mb-3 tracking-widest">CHILD RATE APPLICABLE</h5>
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-[10px] block text-gray-400 uppercase font-bold mb-1">Height Range (FT)</label>
+                                        <label className="text-[9px] block text-gray-400 uppercase font-bold mb-1">Height From - To (FT)</label>
                                         <div className="flex items-center gap-2">
-                                            <input type="number" step="0.1" className="w-full border-b-2 border-blue-200 bg-transparent py-1 font-bold outline-none focus:border-blue-500" placeholder="3.0" value={formData.childCriteria?.heightFrom || ''} onChange={(e) => handleNestedChange('childCriteria', 'heightFrom', e.target.value)} />
-                                            <span className="text-gray-400">to</span>
-                                            <input type="number" step="0.1" className="w-full border-b-2 border-blue-200 bg-transparent py-1 font-bold outline-none focus:border-blue-500" placeholder="4.5" value={formData.childCriteria?.heightTo || ''} onChange={(e) => handleNestedChange('childCriteria', 'heightTo', e.target.value)} />
+                                            <input type="number" step="0.1" className="w-full border-b border-blue-200 bg-transparent py-1 text-sm font-bold outline-none focus:border-blue-500" placeholder="3.0" value={formData.childCriteria?.heightFrom || ''} onChange={(e) => handleNestedChange('childCriteria', 'heightFrom', e.target.value)} />
+                                            <span className="text-gray-300 text-xs">-</span>
+                                            <input type="number" step="0.1" className="w-full border-b border-blue-200 bg-transparent py-1 text-sm font-bold outline-none focus:border-blue-500" placeholder="4.5" value={formData.childCriteria?.heightTo || ''} onChange={(e) => handleNestedChange('childCriteria', 'heightTo', e.target.value)} />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] block text-gray-400 uppercase font-bold mb-1">Age Range (Yrs)</label>
+                                        <label className="text-[9px] block text-gray-400 uppercase font-bold mb-1">Age From - To (Yrs)</label>
                                         <div className="flex items-center gap-2">
-                                            <input type="number" className="w-full border-b-2 border-blue-200 bg-transparent py-1 font-bold outline-none focus:border-blue-500" onKeyDown={(e) => ["-", "e", "E", "."].includes(e.key) && e.preventDefault()} placeholder="3" value={formData.childCriteria?.ageFrom || ''} onChange={(e) => handleNestedChange('childCriteria', 'ageFrom', e.target.value)} />
-                                            <span className="text-gray-400">to</span>
-                                            <input type="number" className="w-full border-b-2 border-blue-200 bg-transparent py-1 font-bold outline-none focus:border-blue-500" onKeyDown={(e) => ["-", "e", "E", "."].includes(e.key) && e.preventDefault()} placeholder="12" value={formData.childCriteria?.ageTo || ''} onChange={(e) => handleNestedChange('childCriteria', 'ageTo', e.target.value)} />
+                                            <input type="number" className="w-full border-b border-blue-200 bg-transparent py-1 text-sm font-bold outline-none focus:border-blue-500" onKeyDown={(e) => ["-", "e", "E", "."].includes(e.key) && e.preventDefault()} placeholder="3" value={formData.childCriteria?.ageFrom || ''} onChange={(e) => handleNestedChange('childCriteria', 'ageFrom', e.target.value)} />
+                                            <span className="text-gray-300 text-xs">-</span>
+                                            <input type="number" className="w-full border-b border-blue-200 bg-transparent py-1 text-sm font-bold outline-none focus:border-blue-500" onKeyDown={(e) => ["-", "e", "E", "."].includes(e.key) && e.preventDefault()} placeholder="12" value={formData.childCriteria?.ageTo || ''} onChange={(e) => handleNestedChange('childCriteria', 'ageTo', e.target.value)} />
                                         </div>
                                     </div>
                                 </div>
-                                <p className="text-[10px] text-blue-600 mt-2 italic">Standard adult rates apply above these limits.</p>
+                                <p className="text-[9px] text-blue-600 mt-2 italic">Standard adult rates apply above these limits.</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-white border p-6 rounded-2xl">
-                        <h4 className="font-bold mb-4">Ticket Inclusions (Food)</h4>
-                        <div className="space-y-4">
+                    <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+                        <h4 className="font-bold mb-4 text-sm text-gray-800">Ticket Inclusions (Food)</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {['Breakfast', 'Lunch', 'Tea and coffee'].map(meal => (
-                                <div key={meal} className="flex items-center justify-between border-b pb-2 last:border-0 hover:bg-gray-50 p-2 rounded">
-                                    <span className="font-medium text-gray-700">{meal === 'Tea and coffee' ? 'Tea & Coffee' : meal}</span>
-                                    <div className="flex gap-2">
+                                <div key={meal} className="bg-gray-50/50 p-3 rounded-lg border border-gray-100">
+                                    <span className="font-bold text-xs text-gray-700 block mb-2">{meal === 'Tea and coffee' ? 'Tea & Coffee' : meal}</span>
+                                    <div className="flex flex-wrap gap-1.5">
                                         {['Not Included', 'Veg', 'Non-Veg', 'Both'].map(opt => (
                                             <button
                                                 key={opt}
                                                 type="button"
                                                 onClick={() => handleNestedChange('inclusions', meal.toLowerCase(), opt)}
-                                                className={`px-3 py-1 text-xs rounded-full border ${formData.inclusions?.[meal.toLowerCase()] === opt ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500'}`}
+                                                className={`px-2 py-1 text-[10px] rounded border transition-all ${formData.inclusions?.[meal.toLowerCase()] === opt ? 'bg-black text-white border-black shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}
                                             >
                                                 {opt}
                                             </button>
@@ -1321,26 +1413,26 @@ export default function EditProperty() {
                         </div>
                     </div>
                 </>
-            )
-            }
+            )}
 
-            {/* Payment Methods - Moved to Bottom */}
-            <div className="border border-gray-200 p-6 rounded-2xl bg-white mt-8 group transition-colors">
-                <h4 className="font-bold mb-4 flex items-center gap-2 group-focus-within:text-black">
-                    <FaMoneyBillWave className="text-green-600" /> Accepted Payment Methods
-                    <span className="text-red-500 animate-pulse">*</span>
+            {/* Payment Methods */}
+            <div className="border border-gray-100 p-5 rounded-xl bg-white shadow-sm hover:border-gray-300 transition-colors">
+                <h4 className="font-bold mb-4 flex items-center gap-2 text-sm text-gray-800">
+                    <FaMoneyBillWave className="text-gray-400" /> Accepted Payment Methods
+                    <span className="text-red-500 animate-pulse font-normal">*</span>
                 </h4>
-                <div className="flex gap-4 flex-wrap">
+                <div className="flex gap-2.5 flex-wrap">
                     {['Cash', 'UPI', 'Debit Card', 'Credit Card'].map(method => {
-                        const key = method.toLowerCase().replace(' card', ''); // 'debit card' -> 'debit'
+                        const key = method.toLowerCase().replace(' card', '');
+                        const isActive = formData.paymentMethods?.[key];
                         return (
                             <button
                                 key={method}
                                 type="button"
-                                onClick={() => handleNestedChange('paymentMethods', key, !formData.paymentMethods?.[key])}
-                                className={`px-6 py-3 rounded-lg font-bold border-2 transition-all ${formData.paymentMethods?.[key] ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                                onClick={() => handleNestedChange('paymentMethods', key, !isActive)}
+                                className={`px-4 py-2 rounded-lg font-bold text-xs border transition-all ${isActive ? 'bg-black text-white border-black shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}
                             >
-                                {formData.paymentMethods?.[key] && <FaCheck className="inline mr-2" />}
+                                {isActive && <FaCheck className="inline mr-1.5 text-[10px]" />}
                                 {method}
                             </button>
                         )
@@ -1348,23 +1440,23 @@ export default function EditProperty() {
                 </div>
             </div>
 
-            {/* What's Included? - HIDDEN for Villa per user request, only for Waterpark */}
+            {/* What's Included? (Waterpark) */}
             {
                 formData.propertyType === 'Waterpark' && (
-                    <div className="mt-8">
-                        <h4 className="font-bold mb-4 flex items-center gap-2">
+                    <div className="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
+                        <h4 className="font-bold mb-4 flex items-center gap-2 text-sm">
                             What's Included? (Facilities)
-                            <span className="text-red-500 animate-pulse text-lg">*</span>
+                            <span className="text-red-500 animate-pulse text-lg leading-none">*</span>
                         </h4>
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-2">
                             {INCLUSIONS.map(inc => (
                                 <button
                                     key={inc}
                                     type="button"
                                     onClick={() => handleNestedChange('inclusions', inc, !formData.inclusions?.[inc])}
-                                    className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${formData.inclusions?.[inc] ? 'bg-green-100 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${formData.inclusions?.[inc] ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
                                 >
-                                    {formData.inclusions?.[inc] && <FaCheck className="inline mr-2 text-xs" />}
+                                    {formData.inclusions?.[inc] ? <FaCheck className="inline mr-1.5" /> : <FaPlus className="inline mr-1.5 text-gray-300" />}
                                     {inc}
                                 </button>
                             ))}
@@ -1461,8 +1553,8 @@ export default function EditProperty() {
 
         return (
             <div className="space-y-6 animate-fade-in-up">
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                    <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><FaVideo className="text-red-500" /> Property Video</h4>
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-sm"><FaVideo className="text-red-500" /> Property Video</h4>
                     <div className="space-y-4">
                         <InputField
                             label="YouTube URL (Optional)"
@@ -1470,12 +1562,13 @@ export default function EditProperty() {
                             value={formData.videoUrl}
                             onChange={handleInputChange}
                             placeholder="https://www.youtube.com/watch?v=..."
+                            className="bg-gray-50"
                         />
                         {formData.videoUrl && !/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/.test(formData.videoUrl) && (
-                            <p className="text-red-500 text-xs mt-1">Please enter a valid YouTube URL (including Shorts).</p>
+                            <p className="text-red-500 text-[10px] mt-1 font-bold">Please enter a valid YouTube URL.</p>
                         )}
 
-                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-white transition-colors cursor-pointer"
+                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer group"
                             onClick={() => videoInputRef.current?.click()}
                         >
                             <input
@@ -1485,39 +1578,41 @@ export default function EditProperty() {
                                 onChange={handleVideoUpload}
                                 className="hidden"
                             />
-                            <FaVideo className="mx-auto text-3xl text-gray-400 mb-2" />
-                            <p className="text-sm font-bold text-gray-600">Upload New Video</p>
-                            <p className="text-xs text-gray-400">MP4, MOV up to 50MB</p>
+                            <div className="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+                                <FaVideo />
+                            </div>
+                            <p className="text-sm font-bold text-gray-700">Upload New Video</p>
+                            <p className="text-[10px] text-gray-400">MP4, MOV up to 50MB</p>
                         </div>
 
                         {(existingVideos.length > 0 || formData.videos.length > 0) && (
                             <div className="flex flex-wrap gap-4 mt-4">
                                 {existingVideos.map((video, idx) => (
-                                    <div key={`existing-${idx}`} className="relative w-32 h-32 bg-black rounded-lg overflow-hidden group border-2 border-blue-400">
-                                        <video src={video.video_url} className="w-full h-full object-cover" />
-                                        <div className="absolute top-1 right-1 bg-blue-500 text-white text-[8px] px-1 rounded">EXISTING</div>
+                                    <div key={`existing-${idx}`} className="relative w-32 h-20 bg-black rounded-lg overflow-hidden group border-2 border-blue-400 shadow-md">
+                                        <video src={video.video_url} className="w-full h-full object-cover opacity-80" />
+                                        <div className="absolute top-1 right-1 bg-blue-500 text-white text-[8px] px-1.5 py-0.5 rounded font-bold">EXISTING</div>
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <button
                                                 type="button"
                                                 onClick={() => handleDeleteExistingVideo(video.id || video.PropertyVideoId)}
                                                 className="bg-white text-red-500 p-1.5 rounded-full hover:scale-110 transition shadow-lg"
                                             >
-                                                <FaTimes size={12} />
+                                                <FaTimes size={10} />
                                             </button>
                                         </div>
                                     </div>
                                 ))}
                                 {formData.videos.map((file, idx) => (
-                                    <div key={`new-${idx}`} className="relative w-32 h-32 bg-black rounded-lg overflow-hidden group">
-                                        <video src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
-                                        <div className="absolute top-1 right-1 bg-green-500 text-white text-[8px] px-1 rounded">NEW</div>
+                                    <div key={`new-${idx}`} className="relative w-32 h-20 bg-black rounded-lg overflow-hidden group shadow-md">
+                                        <video src={URL.createObjectURL(file)} className="w-full h-full object-cover opacity-80" />
+                                        <div className="absolute top-1 right-1 bg-green-500 text-white text-[8px] px-1.5 py-0.5 rounded font-bold">NEW</div>
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <button
                                                 type="button"
                                                 onClick={() => handleDeleteVideo(idx)}
                                                 className="bg-white text-red-500 p-1.5 rounded-full hover:scale-110 transition shadow-lg"
                                             >
-                                                <FaTimes size={12} />
+                                                <FaTimes size={10} />
                                             </button>
                                         </div>
                                     </div>
@@ -1527,14 +1622,14 @@ export default function EditProperty() {
                     </div>
                 </div>
 
-                <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                     <div className="flex justify-between items-center mb-4">
-                        <h4 className="font-bold text-blue-900 flex items-center gap-2"><FaCamera className="text-blue-500" /> Property Photos (Min 5)</h4>
+                        <h4 className="font-bold text-gray-800 flex items-center gap-2 text-sm"><FaCamera className="text-blue-500" /> Property Photos (Min 5)</h4>
                         {selectedImages.length > 0 && (
                             <button
                                 type="button"
                                 onClick={handleBulkDelete}
-                                className="text-xs bg-red-100 text-red-600 px-3 py-1.5 rounded-lg font-bold hover:bg-red-200 transition"
+                                className="text-[10px] bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-bold hover:bg-red-100 transition border border-red-100"
                             >
                                 Delete Selected ({selectedImages.length})
                             </button>
@@ -1556,54 +1651,56 @@ export default function EditProperty() {
                             e.stopPropagation();
                             fileInputRef.current?.click();
                         }}
-                        className="border-3 border-dashed border-blue-200 rounded-3xl p-12 text-center hover:bg-white transition-colors cursor-pointer relative group"
+                        className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:bg-blue-50/30 transition-colors cursor-pointer relative group"
                     >
-                        <div className="flex flex-col items-center gap-4 transition-transform group-hover:scale-110 duration-300">
-                            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl mb-2">
+                        <div className="flex flex-col items-center gap-3 transition-transform group-hover:scale-105 duration-300">
+                            <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center text-xl mb-1">
                                 <FaCamera />
                             </div>
                             <div>
-                                <p className="font-bold text-xl text-gray-800">Add Property Photos</p>
-                                <p className="text-gray-400">Click to browse or drop photos</p>
+                                <p className="font-bold text-sm text-gray-800">Click to upload photos</p>
+                                <p className="text-[10px] text-gray-400">or drag and drop</p>
                             </div>
                         </div>
                     </div>
 
                     {(existingImages.length > 0 || formData.images.length > 0) && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-6">
                             {existingImages.map((img) => (
                                 <div
                                     key={img.id}
                                     onClick={() => setSelectedImages(prev => prev.includes(img.id) ? prev.filter(x => x !== img.id) : [...prev, img.id])}
-                                    className={`relative group rounded-xl overflow-hidden aspect-square shadow-md cursor-pointer border-2 ${selectedImages.includes(img.id) ? 'border-blue-500 ring-2 ring-blue-200' : 'border-transparent'} ${img.is_primary ? 'ring-4 ring-yellow-400 bg-yellow-400' : 'bg-white'}`}
+                                    className={`relative group rounded-lg overflow-hidden aspect-square shadow-sm cursor-pointer border-2 transition-all ${selectedImages.includes(img.id) ? 'border-blue-500 ring-2 ring-blue-100' : 'border-transparent'} ${img.is_primary ? 'ring-2 ring-yellow-400' : 'bg-gray-100'}`}
                                 >
                                     <img src={img.image_url} alt="Property" className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
+                                    <div className={`absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors ${selectedImages.includes(img.id) ? 'bg-blue-500/20' : ''}`} />
 
                                     {selectedImages.includes(img.id) && (
-                                        <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-1 shadow-lg">
-                                            <FaCheck size={10} />
+                                        <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-0.5 shadow-sm z-10">
+                                            <FaCheck size={8} />
                                         </div>
                                     )}
 
-                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                    <div className="absolute inset-x-0 bottom-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 bg-gradient-to-t from-black/60 to-transparent">
                                         <button
                                             type="button"
                                             onClick={(e) => handleSetPrimary(img.id, e)}
-                                            className={`p-2 rounded-full shadow-lg transition-all ${img.is_primary ? 'bg-yellow-400 text-white' : 'bg-white text-gray-400 hover:text-yellow-400'}`}
+                                            className={`p-1.5 rounded-full shadow-sm transition-all ${img.is_primary ? 'bg-yellow-400 text-white' : 'bg-white text-gray-400 hover:text-yellow-400'}`}
+                                            title="Set as Main Photo"
                                         >
-                                            <FaStar />
+                                            <FaStar size={10} />
                                         </button>
                                         <button
                                             type="button"
                                             onClick={(e) => handleDeleteExisting(img.id, e)}
-                                            className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
+                                            className="bg-white text-red-500 p-1.5 rounded-full hover:scale-110 transition shadow-sm"
+                                            title="Delete Photo"
                                         >
-                                            <FaTimes />
+                                            <FaTimes size={10} />
                                         </button>
                                     </div>
                                     {img.is_primary && (
-                                        <div className="absolute top-2 left-2 bg-yellow-400 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                                        <div className="absolute top-1 left-1 bg-yellow-400 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">
                                             MAIN
                                         </div>
                                     )}
@@ -1611,106 +1708,32 @@ export default function EditProperty() {
                             ))}
 
                             {formData.images.map((file, idx) => (
-                                <div key={`new-${idx}`} className={`relative group rounded-xl overflow-hidden aspect-square shadow-md bg-white ${idx === 0 ? 'ring-4 ring-yellow-400' : ''}`}>
+                                <div key={`new-${idx}`} className={`relative group rounded-lg overflow-hidden aspect-square shadow-sm bg-gray-100 ${idx === 0 && existingImages.length === 0 ? 'ring-2 ring-yellow-400' : ''}`}>
                                     <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
-                                    {idx === 0 ? (
-                                        <div className="absolute top-2 left-2 bg-yellow-400 text-black text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
-                                            <FaStar /> Cover
-                                        </div>
-                                    ) : (
-                                        <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
-                                            NEW
-                                        </div>
-                                    )}
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+
+                                    <div className="absolute top-1 right-1 bg-green-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                                        NEW
+                                    </div>
+
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+
+                                    <div className="absolute inset-x-0 bottom-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 bg-gradient-to-t from-black/60 to-transparent">
                                         {idx !== 0 && (
                                             <button
                                                 type="button"
                                                 onClick={() => handleMakeCover(idx)}
-                                                className="bg-white text-yellow-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
-                                                title="Set as Cover"
+                                                className="bg-white text-yellow-500 p-1.5 rounded-full hover:scale-110 transition shadow-sm"
+                                                title="Set as First"
                                             >
-                                                <FaStar />
+                                                <FaStar size={10} />
                                             </button>
                                         )}
                                         <button
                                             type="button"
                                             onClick={() => handleDeleteNewImage(idx)}
-                                            className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
+                                            className="bg-white text-red-500 p-1.5 rounded-full hover:scale-110 transition shadow-sm"
                                         >
-                                            <FaTimes />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Video Upload Section */}
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-8 rounded-3xl border-2 border-purple-100">
-                    <h4 className="font-bold text-purple-900 flex items-center gap-2 mb-6">
-                        <FaVideo className="text-purple-500" /> Property Videos (Optional)
-                    </h4>
-
-                    <input
-                        type="file"
-                        multiple
-                        accept="video/*"
-                        ref={videoInputRef}
-                        onChange={handleVideoUpload}
-                        className="hidden"
-                        style={{ display: 'none' }}
-                    />
-
-                    <div
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            videoInputRef.current?.click();
-                        }}
-                        className="border-3 border-dashed border-purple-200 rounded-3xl p-12 text-center hover:bg-white transition-colors cursor-pointer relative group"
-                    >
-                        <div className="flex flex-col items-center gap-4 transition-transform group-hover:scale-110 duration-300">
-                            <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-3xl mb-2">
-                                <FaVideo />
-                            </div>
-                            <div>
-                                <p className="font-bold text-xl text-gray-800">Add Property Videos</p>
-                                <p className="text-gray-400">Click to browse or drop videos (Max 50MB each)</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {(existingVideos.length > 0 || formData.videos.length > 0) && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                            {existingVideos.map((vid) => (
-                                <div key={vid.id} className="relative group rounded-xl overflow-hidden aspect-video shadow-md bg-black">
-                                    <video src={vid.video_url} className="w-full h-full object-cover" controls />
-                                    <div className="absolute top-2 right-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteExistingVideo(vid.id)}
-                                            className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
-                                        >
-                                            <FaTimes />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-
-                            {formData.videos.map((file, idx) => (
-                                <div key={`new-video-${idx}`} className="relative group rounded-xl overflow-hidden aspect-video shadow-md bg-black">
-                                    <video src={URL.createObjectURL(file)} className="w-full h-full object-cover" controls />
-                                    <div className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
-                                        NEW
-                                    </div>
-                                    <div className="absolute top-2 right-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteVideo(idx)}
-                                            className="bg-white text-red-500 p-2 rounded-full hover:scale-110 transition shadow-lg"
-                                        >
-                                            <FaTimes />
+                                            <FaTimes size={10} />
                                         </button>
                                     </div>
                                 </div>
