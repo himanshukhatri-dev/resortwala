@@ -4,8 +4,20 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { AMENITY_TYPES } from '../constants/propertyConstants';
-import { FaHome, FaWater, FaCheck, FaTimes, FaCamera, FaBed, FaUtensils, FaSwimmingPool, FaChild, FaBan, FaMoneyBillWave, FaArrowRight, FaArrowLeft, FaSave, FaStar, FaParking, FaWifi, FaMusic, FaTree, FaGlassMartiniAlt, FaSnowflake, FaCouch, FaRestroom, FaDoorOpen, FaUsers, FaTshirt, FaVideo, FaWheelchair, FaMedkit, FaUmbrellaBeach, FaChair, FaUserShield, FaConciergeBell, FaHotTub } from 'react-icons/fa';
+import { FaHome, FaWater, FaCheck, FaTimes, FaCamera, FaBed, FaUtensils, FaSwimmingPool, FaChild, FaBan, FaMoneyBillWave, FaArrowRight, FaArrowLeft, FaSave, FaStar, FaParking, FaWifi, FaMusic, FaTree, FaGlassMartiniAlt, FaSnowflake, FaCouch, FaRestroom, FaDoorOpen, FaUsers, FaTshirt, FaVideo, FaWheelchair, FaMedkit, FaUmbrellaBeach, FaChair, FaUserShield, FaConciergeBell, FaHotTub, FaTrash, FaPlus, FaTv } from 'react-icons/fa';
 import { MdPool, MdWater, MdOutlineDeck, MdChildCare, MdWaterfallChart, MdMusicNote, MdBalcony, MdSportsEsports, MdRestaurant, MdOutlineOutdoorGrill } from 'react-icons/md';
+
+const PROPERTY_RULES = [
+    "Primary guest must be 18+",
+    "Valid ID proof required",
+    "Pets allowed",
+    "Outside food allowed",
+    "No show no refund",
+    "Offers cannot be combined",
+    "Smoking allowed",
+    "Alcohol allowed",
+    "Non-veg food allowed"
+];
 
 const Toggle = ({ active, onChange, color = "blue" }) => {
     const activeColor = color === "blue" ? "bg-blue-600" : (color === "green" ? "bg-green-500" : "bg-blue-600");
@@ -66,6 +78,39 @@ const getAmenityIcon = (key) => {
     }
 };
 
+const ConfirmationModal = ({ isOpen, title, message, type = 'confirm', onConfirm, onCancel, confirmText = 'Confirm', cancelText = 'Cancel', isDanger = false }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 scale-100">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 mx-auto ${isDanger ? 'bg-red-100 text-red-600' : (type === 'success' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600')}`}>
+                    {isDanger ? <FaTrash /> : (type === 'success' ? <FaCheck /> : <FaTv />)}
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 text-center mb-2">{title}</h3>
+                <p className="text-gray-500 text-center mb-6 text-sm">{message}</p>
+
+                <div className="flex gap-3 justify-center">
+                    {type === 'confirm' && (
+                        <button
+                            onClick={onCancel}
+                            className="px-5 py-2.5 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-colors flex-1"
+                        >
+                            {cancelText}
+                        </button>
+                    )}
+                    <button
+                        onClick={onConfirm}
+                        className={`px-5 py-2.5 rounded-xl font-bold text-white shadow-lg flex-1 ${isDanger ? 'bg-red-500 hover:bg-red-600 shadow-red-200' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'}`}
+                    >
+                        {confirmText}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function PropertyApproval() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -115,6 +160,41 @@ export default function PropertyApproval() {
     // Track deleted images
     const [deletedImages, setDeletedImages] = useState([]);
 
+    // Modal State
+    const [modalConfig, setModalConfig] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'confirm', // confirm, alert, success
+        isDanger: false,
+        onConfirm: () => { },
+        onCancel: () => setModalConfig(prev => ({ ...prev, isOpen: false }))
+    });
+
+    const showModal = ({ title, message, type = 'confirm', isDanger = false, onConfirm }) => {
+        setModalConfig({
+            isOpen: true,
+            title,
+            message,
+            type,
+            isDanger,
+            onConfirm: () => {
+                if (onConfirm) onConfirm();
+                setModalConfig(prev => ({ ...prev, isOpen: false }));
+            },
+            onCancel: () => setModalConfig(prev => ({ ...prev, isOpen: false }))
+        });
+    };
+
+    const showAlert = (message, title = "Notice") => {
+        showModal({
+            title,
+            message,
+            type: 'alert',
+            confirmText: 'OK'
+        });
+    };
+
     useEffect(() => {
         const fetchProperty = async () => {
             try {
@@ -135,7 +215,8 @@ export default function PropertyApproval() {
                     NoofRooms: prop.NoofRooms || 0,
                     checkInTime: prop.checkInTime || ob.checkInTime || '',
                     checkOutTime: prop.checkOutTime || ob.checkOutTime || '',
-                    PropertyRules: prop.PropertyRules || '',
+                    rules: ob.rules || {}, // Hydrate structured rules
+                    PropertyRules: prop.PropertyRules || prop.rules?.custom || ob.rules?.custom || '', // Try to find legacy or custom rules text
                     BookingSpecailMessage: prop.BookingSpecailMessage || '',
                     Amenities: ob.amenities || {},
                     ContactPerson: prop.ContactPerson || '',
@@ -159,7 +240,7 @@ export default function PropertyApproval() {
                 }
             } catch (err) {
                 console.error(err);
-                alert("Failed to load property");
+                showAlert("Failed to load property details. Please try again.", "Error");
             } finally {
                 setLoading(false);
             }
@@ -528,7 +609,7 @@ export default function PropertyApproval() {
         } catch (err) {
             console.error(err);
             const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message;
-            alert('Approval Failed: ' + errorMsg);
+            showAlert('Approval Failed: ' + errorMsg, "Approval Error");
         } finally {
             setSaving(false);
         }
@@ -541,6 +622,7 @@ export default function PropertyApproval() {
 
     return (
         <div className="p-4 md:p-8 bg-gray-50 min-h-screen pb-20">
+            <ConfirmationModal {...modalConfig} />
             <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
                 {/* Header */}
                 <div className="p-6 bg-white border-b flex flex-col md:flex-row justify-between items-start gap-4">
@@ -639,7 +721,30 @@ export default function PropertyApproval() {
                                 </div>
                             </div>
 
-
+                            {/* Rules & Policies Card */}
+                            <div className="bg-white border border-gray-200 rounded-xl p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4 pb-3 border-b">Rules & Policies</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-600 mb-2">Property Rules</label>
+                                        <textarea
+                                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition h-32 resize-none"
+                                            value={formData.PropertyRules || ''}
+                                            onChange={(e) => setFormData({ ...formData, PropertyRules: e.target.value })}
+                                            placeholder="No rules provided"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-600 mb-2">Booking Special Message</label>
+                                        <textarea
+                                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition h-20 resize-none"
+                                            value={formData.BookingSpecailMessage || ''}
+                                            onChange={(e) => setFormData({ ...formData, BookingSpecailMessage: e.target.value })}
+                                            placeholder="No special message"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -726,99 +831,134 @@ export default function PropertyApproval() {
                     {activeTab === 'rooms' && property.PropertyType === 'Villa' && (
                         <div className="space-y-6 animate-in fade-in">
                             {/* Living Rooms */}
+                            {/* Living Rooms */}
                             {(formData.RoomConfig?.livingRooms || (formData.RoomConfig?.livingRoom ? [formData.RoomConfig.livingRoom] : [])).map((room, idx) => (
-                                <div key={idx} className="bg-amber-50 p-6 rounded-2xl border border-amber-100 mb-6">
-                                    <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2">
-                                        <FaCouch /> Living Room {idx + 1}
-                                    </h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Bed Type</label>
-                                            <select
-                                                value={room.bedType || 'Sofa'}
-                                                onChange={(e) => {
-                                                    const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])];
-                                                    updatedRooms[idx] = { ...updatedRooms[idx], bedType: e.target.value };
-                                                    setFormData(prev => ({
-                                                        ...prev,
-                                                        RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms } // Always save as livingRooms array
-                                                    }));
-                                                }}
-                                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none"
-                                            >
-                                                <option value="Sofa">Sofa</option>
-                                                <option value="Sofa cum Bed">Sofa cum Bed</option>
-                                                <option value="None">None</option>
-                                            </select>
-                                        </div>
-                                        <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
-                                            <span className="text-sm font-semibold">AC</span>
-                                            <Toggle
-                                                active={!!room.ac}
-                                                onChange={(val) => {
-                                                    const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])];
-                                                    updatedRooms[idx] = { ...updatedRooms[idx], ac: val };
-                                                    setFormData(prev => ({
-                                                        ...prev,
-                                                        RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms }
-                                                    }));
-                                                }}
-                                                color="green"
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
-                                            <span className="text-sm font-semibold">TV</span>
-                                            <Toggle
-                                                active={!!room.tv}
-                                                onChange={(val) => {
-                                                    const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])];
-                                                    updatedRooms[idx] = { ...updatedRooms[idx], tv: val };
-                                                    setFormData(prev => ({
-                                                        ...prev,
-                                                        RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms }
-                                                    }));
-                                                }}
-                                                color="green"
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
-                                            <span className="text-sm font-semibold">Bathroom</span>
-                                            <Toggle
-                                                active={!!room.bathroom}
-                                                onChange={(val) => {
-                                                    const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])];
-                                                    updatedRooms[idx] = { ...updatedRooms[idx], bathroom: val };
-                                                    setFormData(prev => ({
-                                                        ...prev,
-                                                        RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms }
-                                                    }));
-                                                }}
-                                                color="green"
-                                            />
-                                        </div>
-                                        {room.bathroom && (
+                                <div key={idx} className="bg-white border border-amber-100 rounded-xl p-4 shadow-sm mb-4 group hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-gray-50">
+                                        <h3 className="font-bold text-gray-800 flex items-center gap-2 text-sm">
+                                            <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs"><FaCouch /></span>
+                                            Living Room {idx + 1}
+                                        </h3>
+                                        <button
+                                            onClick={() => {
+                                                showModal({
+                                                    title: 'Remove Living Room?',
+                                                    message: 'Are you sure you want to remove this living room?',
+                                                    isDanger: true,
+                                                    confirmText: 'Remove',
+                                                    onConfirm: () => {
+                                                        const updated = [...(formData.RoomConfig?.livingRooms || [])];
+                                                        updated.splice(idx, 1);
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            RoomConfig: { ...prev.RoomConfig, livingRooms: updated }
+                                                        }));
+                                                    }
+                                                });
+                                            }}
+                                            className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-all"
+                                            title="Remove Living Room"
+                                        >
+                                            <FaTrash className="text-sm" />
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <div>
-                                                <label className="block text-xs font-semibold text-gray-600 mb-1">Toilet Type</label>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Bed Type</label>
                                                 <select
-                                                    value={room.toiletType || 'Western'}
+                                                    value={room.bedType || 'Sofa'}
                                                     onChange={(e) => {
-                                                        const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])];
-                                                        updatedRooms[idx] = { ...updatedRooms[idx], toiletType: e.target.value };
+                                                        const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])].filter(Boolean);
+                                                        if (!formData.RoomConfig?.livingRooms && updatedRooms.length === 0) updatedRooms[0] = formData.RoomConfig.livingRoom;
+
+                                                        updatedRooms[idx] = { ...updatedRooms[idx], bedType: e.target.value };
                                                         setFormData(prev => ({
                                                             ...prev,
                                                             RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms }
                                                         }));
                                                     }}
-                                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-100 outline-none"
+                                                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium focus:border-amber-500 focus:bg-white outline-none transition-colors"
                                                 >
-                                                    <option value="Western">Western</option>
-                                                    <option value="Indian">Indian</option>
+                                                    <option value="Sofa">Sofa</option>
+                                                    <option value="Sofa cum Bed">Sofa cum Bed</option>
+                                                    <option value="None">None</option>
                                                 </select>
                                             </div>
-                                        )}
+
+                                            {room.bathroom && (
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Toilet Type</label>
+                                                    <select
+                                                        value={room.toiletType || 'Western'}
+                                                        onChange={(e) => {
+                                                            const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])].filter(Boolean);
+                                                            updatedRooms[idx] = { ...updatedRooms[idx], toiletType: e.target.value };
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms }
+                                                            }));
+                                                        }}
+                                                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium focus:border-amber-500 focus:bg-white outline-none transition-colors"
+                                                    >
+                                                        <option value="Western">Western</option>
+                                                        <option value="Indian">Indian</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2">
+                                            {[
+                                                { key: 'ac', label: 'AC', icon: <FaSnowflake /> },
+                                                { key: 'tv', label: 'TV', icon: <FaTv /> },
+                                                { key: 'bathroom', label: 'Private Bathroom', icon: <FaRestroom /> }
+                                            ].map(feat => {
+                                                const isActive = !!room[feat.key];
+                                                return (
+                                                    <button
+                                                        key={feat.key}
+                                                        onClick={() => {
+                                                            const updatedRooms = [...(formData.RoomConfig?.livingRooms || [formData.RoomConfig?.livingRoom])].filter(Boolean);
+                                                            updatedRooms[idx] = { ...updatedRooms[idx], [feat.key]: !isActive };
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                RoomConfig: { ...prev.RoomConfig, livingRooms: updatedRooms }
+                                                            }));
+                                                        }}
+                                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all ${isActive
+                                                            ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm'
+                                                            : 'bg-gray-50 border-gray-100 text-gray-400 hover:bg-gray-100'
+                                                            }`}
+                                                    >
+                                                        <span className={isActive ? 'text-amber-500' : 'text-gray-400'}>{feat.icon}</span>
+                                                        {feat.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
+                            <button
+                                onClick={() => {
+                                    const currentRooms = formData.RoomConfig?.livingRooms || (formData.RoomConfig?.livingRoom ? [formData.RoomConfig.livingRoom] : []);
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        RoomConfig: {
+                                            ...prev.RoomConfig,
+                                            livingRooms: [
+                                                ...currentRooms,
+                                                { bedType: 'Sofa', ac: false, tv: false, bathroom: false, toiletType: 'Western' }
+                                            ]
+                                        }
+                                    }));
+                                }}
+                                className="w-full py-4 border-2 border-dashed border-amber-300 rounded-2xl text-amber-600 font-bold hover:bg-amber-50 hover:border-amber-400 transition flex items-center justify-center gap-2"
+                            >
+                                <FaPlus /> Add Another Living Room
+                            </button>
 
                             {/* Bedrooms */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -848,7 +988,7 @@ export default function PropertyApproval() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-2">
                                                 {['ac', 'tv', 'geyser', 'wardrobe', 'bathroom', 'balcony'].map((feature) => (
-                                                    <div key={feature} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
+                                                    <div key={feature} className={`flex items-center justify-between p-2 rounded border ${!!room[feature] ? 'bg-white border-blue-100' : 'bg-gray-50'}`}>
                                                         <span className="text-xs font-semibold capitalize">{feature}</span>
                                                         <Toggle
                                                             active={!!room[feature]}
@@ -923,387 +1063,420 @@ export default function PropertyApproval() {
                                         <p className="text-xs text-red-600 font-bold uppercase">Non-Veg</p>
                                         <p className="text-lg font-black">{obData.foodRates?.nonVeg ? `₹${obData.foodRates.nonVeg}` : <span className="text-gray-400 text-sm">--</span>}</p>
                                     </div>
-                                    <div className="text-center p-4 bg-yellow-50 rounded-xl border border-yellow-100">
-                                        <p className="text-xs text-yellow-600 font-bold uppercase">Jain</p>
-                                        <p className="text-lg font-black">{obData.foodRates?.jain ? `₹${obData.foodRates.jain}` : <span className="text-gray-400 text-sm">--</span>}</p>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     )}
-
-
-                    {/* Media Tab */}
-                    {activeTab === 'media' && (
-                        <div className="space-y-8 animate-in fade-in">
-                            <div>
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-bold text-gray-800">Photos</h3>
-                                    <label className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer transition-colors">
-                                        <FaCamera /> Add Photos
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={async (e) => {
-                                                const files = Array.from(e.target.files);
-                                                if (files.length === 0) return;
-
-                                                const uploadFormData = new FormData();
-                                                files.forEach(file => uploadFormData.append('images[]', file));
-
-                                                try {
-                                                    setSaving(true);
-                                                    const res = await axios.post(`${API_BASE_URL}/admin/properties/${id}/photos`, uploadFormData, {
-                                                        headers: {
-                                                            Authorization: `Bearer ${token}`,
-                                                            'Content-Type': 'multipart/form-data'
-                                                        }
-                                                    });
-                                                    // Refresh property data
-                                                    const updatedRes = await axios.get(`${API_BASE_URL}/admin/properties/${id}`, {
-                                                        headers: { Authorization: `Bearer ${token}` }
-                                                    });
-                                                    setProperty(updatedRes.data);
-                                                } catch (err) {
-                                                    console.error("Upload failed", err);
-                                                    alert("Failed to upload photos");
-                                                } finally {
-                                                    setSaving(false);
-                                                }
-                                            }}
-                                        />
-                                    </label>
-                                </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {(() => {
-                                        // Deduplicate photos by ID or URL
-                                        const seen = new Set();
-                                        const uniqueImages = (property.images || []).filter(img => {
-                                            const id = img.id || img.image_url;
-                                            if (seen.has(id)) return false;
-                                            seen.add(id);
-                                            return true;
-                                        }).filter(img => !deletedImages.includes(img.id));
-
-                                        if (uniqueImages.length === 0) return <div className="col-span-4 p-10 text-center text-gray-400">No images</div>;
-
-                                        return uniqueImages.map(img => (
-                                            <div key={img.id} className="relative group aspect-square rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                                                <img src={img.image_url} alt="Property" className="w-full h-full object-cover transition duration-500 group-hover:scale-110" />
-                                                {img.is_primary && <div className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">Cover</div>}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        if (window.confirm("Are you sure you want to delete this photo?")) {
-                                                            setDeletedImages(prev => [...prev, img.id]);
-                                                        }
-                                                    }}
-                                                    className="absolute top-2 right-2 bg-white text-red-500 p-1.5 rounded-full shadow-lg hover:bg-red-50 hover:scale-110 transition-all z-10"
-                                                >
-                                                    <FaTimes />
-                                                </button>
-                                            </div>
-                                        ));
-                                    })()}
-                                </div>
-                            </div>
-
-                            <div>
-                                <h3 className="font-bold text-gray-800 mb-4">Videos</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {property.videos?.length > 0 ? (
-                                        property.videos.map(vid => (
-                                            <div key={vid.id} className="aspect-video rounded-2xl overflow-hidden border border-gray-100 bg-black">
-                                                <video src={vid.video_url} controls className="w-full h-full" />
-                                            </div>
-                                        ))
-                                    ) : <div className="col-span-2 p-10 text-center text-gray-400 bg-gray-50 rounded-2xl border border-dashed">No videos uploaded</div>}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-
-                    {/* Pricing Tab */}
-                    {activeTab === 'pricing' && (
-                        <div className="space-y-8 animate-in fade-in">
-                            {/* What's Included Section (for Waterparks) */}
-                            {property.PropertyType === 'Waterpark' && obData.inclusions && (
-                                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 rounded-2xl p-6">
-                                    <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                        <span className="text-blue-600">✓</span> What's Included
-                                    </h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                        {Object.entries(obData.inclusions).map(([key, value]) => value && (
-                                            <div key={key} className="flex items-center gap-2 bg-white/60 px-3 py-2 rounded-lg border border-blue-100">
-                                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                                <span className="text-sm font-medium text-gray-700 capitalize">{key.replace(/_/g, ' ')}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {property.PropertyType === 'Waterpark' ? (
-                                /* Waterpark Ticket Pricing - Editable Table */
-                                <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                                    <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 flex items-center gap-3">
-                                        <span className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></span>
-                                        <h3 className="font-black text-sm uppercase tracking-widest text-blue-800">Waterpark Ticket Pricing</h3>
-                                    </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="border-b border-gray-100 bg-gray-50/50 text-xs uppercase tracking-wider text-gray-400 font-bold">
-                                                    <th className="px-6 py-4 rounded-tl-lg">Ticket Type</th>
-                                                    <th className="px-6 py-4 text-right">Vendor Ask</th>
-                                                    <th className="px-6 py-4 text-right">Our Discounted</th>
-                                                    <th className="px-6 py-4 text-right rounded-tr-lg">Final Price</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50">
-                                                {[
-                                                    { label: 'Adult - Weekday', type: 'adult_weekday', icon: '👨' },
-                                                    { label: 'Adult - Weekend', type: 'adult_weekend', icon: '👨' },
-                                                    { label: 'Child - Weekday', type: 'child_weekday', icon: '👶' },
-                                                    { label: 'Child - Weekend', type: 'child_weekend', icon: '👶' }
-                                                ].map((item) => (
-                                                    <tr key={item.type} className="group hover:bg-blue-50/30 transition-colors duration-200">
-                                                        <td className="px-6 py-4 font-bold text-gray-700 flex items-center gap-3">
-                                                            <span className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-lg shadow-sm border border-blue-100">
-                                                                {item.icon}
-                                                            </span>
-                                                            {item.label}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-right tabular-nums text-gray-500 font-medium">
-                                                            {waterparkPricing[item.type].current ? `₹${waterparkPricing[item.type].current.toLocaleString()}` : '--'}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <div className="flex justify-end">
-                                                                <div className="relative w-32 group-hover:w-36 transition-all duration-300">
-                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
-                                                                    <input
-                                                                        type="number"
-                                                                        className="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300"
-                                                                        value={waterparkPricing[item.type].discounted}
-                                                                        onChange={(e) => handleWaterparkPriceChange(item.type, 'discounted', e.target.value)}
-                                                                        placeholder="0"
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <div className="flex justify-end">
-                                                                <div className="relative w-32 group-hover:w-36 transition-all duration-300">
-                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500 font-bold pointer-events-none">₹</span>
-                                                                    <input
-                                                                        type="number"
-                                                                        className="w-full pl-7 pr-3 py-2 bg-blue-50/50 border border-blue-200 rounded-lg outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-right font-black text-blue-700 placeholder-blue-300 shadow-sm"
-                                                                        value={waterparkPricing[item.type].final}
-                                                                        onChange={(e) => handleWaterparkPriceChange(item.type, 'final', e.target.value)}
-                                                                        placeholder="0"
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    {obData.childCriteria && (
-                                        <div className="p-6 bg-yellow-50 border-t border-yellow-100">
-                                            <h5 className="font-bold text-yellow-800 text-sm mb-2">Child Ticket Criteria</h5>
-                                            <div className="text-sm text-gray-700 space-y-1">
-                                                <p>✓ Free Entry: Age ≤ {obData.childCriteria.freeAge} years or Height ≤ {obData.childCriteria.freeHeight} ft</p>
-                                                <p>✓ Child Rate: Age {obData.childCriteria.chargeAgeFrom}-{obData.childCriteria.chargeAgeTo} years or Height {obData.childCriteria.chargeHeightFrom}-{obData.childCriteria.chargeHeightTo} ft</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                /* Villa Pricing Matrix */
-                                ['mon_thu', 'fri_sun', 'sat'].map((day) => {
-                                    const titles = { mon_thu: 'Monday to Thursday', fri_sun: 'Friday & Sunday', sat: 'Saturday' };
-                                    const colors = { mon_thu: 'blue', fri_sun: 'purple', sat: 'orange' };
-                                    const color = colors[day];
-                                    return (
-                                        <div key={day} className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                                            <div className={`bg-${color}-50 px-6 py-4 border-b border-${color}-100 flex items-center gap-3`}>
-                                                <span className={`w-3 h-3 rounded-full bg-${color}-500 animate-pulse`}></span>
-                                                <h3 className={`font-black text-sm uppercase tracking-widest text-${color}-800`}>{titles[day]}</h3>
-                                            </div>
-                                            <div className="overflow-x-auto">
-                                                <table className="w-full text-left border-collapse">
-                                                    <thead>
-                                                        <tr className={`border-b border-${color}-100 bg-${color}-50/30 text-xs uppercase tracking-wider text-${color}-800/60 font-bold`}>
-                                                            <th className="px-6 py-4 rounded-tl-lg">Service Type</th>
-                                                            <th className="px-6 py-4 text-right">Vendor Ask</th>
-                                                            <th className="px-6 py-4 text-right">Vendor Disc %</th>
-                                                            <th className="px-6 py-4 text-right">Our Rate</th>
-                                                            <th className="px-6 py-4 text-right">Our Margin %</th>
-                                                            <th className="px-6 py-4 text-right rounded-tr-lg">Customer Price</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-50">
-                                                        {[
-                                                            { label: 'Villa Base Price', type: 'villa', icon: '🏡' },
-                                                            { label: 'Extra Person', type: 'extra_person', icon: '👤' },
-                                                            { label: 'Meal per Person', type: 'meal_person', icon: '🍽️' },
-                                                            { label: 'Jain Meal per Person', type: 'jain_meal_person', icon: '🥕' }
-                                                        ].map((item) => {
-                                                            const errorKey = `${day}-${item.type}`;
-                                                            const hasError = pricingErrors[errorKey];
-                                                            return (
-                                                                <React.Fragment key={item.type}>
-                                                                    <tr className={`group hover:bg-${color}-50/30 transition-colors duration-200 ${hasError ? 'bg-red-50' : ''}`}>
-                                                                        <td className="px-6 py-4 font-bold text-gray-700 flex items-center gap-3">
-                                                                            <span className={`w-8 h-8 rounded-full bg-${color}-50 flex items-center justify-center text-lg shadow-sm border border-${color}-100 text-${color}-600`}>
-                                                                                {item.icon}
-                                                                            </span>
-                                                                            {item.label}
-                                                                        </td>
-                                                                        <td className="px-6 py-4 text-right tabular-nums text-gray-500 font-medium">
-                                                                            <div className="flex justify-end">
-                                                                                <div className="relative w-24">
-                                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
-                                                                                    <input
-                                                                                        type="number"
-                                                                                        className="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300"
-                                                                                        value={pricing[day][item.type].current ?? ''}
-                                                                                        onChange={(e) => handlePriceChange(day, item.type, 'current', e.target.value)}
-                                                                                        placeholder="0"
-                                                                                    />
-                                                                                </div>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td className="px-6 py-4 text-right">
-                                                                            <div className="flex justify-end">
-                                                                                <div className="relative w-24">
-                                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">%</span>
-                                                                                    <input type="number"
-                                                                                        className={`w-full pr-7 pl-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
-                                                                                        value={pricing[day][item.type].vendorDiscountPercentage || ''}
-                                                                                        onChange={(e) => handlePriceChange(day, item.type, 'vendorDiscountPercentage', e.target.value)}
-                                                                                        placeholder="0"
-                                                                                    />
-                                                                                </div>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td className="px-6 py-4 text-right">
-                                                                            <div className="flex justify-end">
-                                                                                <div className="relative w-36">
-                                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
-                                                                                    <input type="number"
-                                                                                        className={`w-full pl-7 pr-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
-                                                                                        value={pricing[day][item.type].discounted || ''}
-                                                                                        onChange={(e) => handlePriceChange(day, item.type, 'discounted', e.target.value)}
-                                                                                        placeholder="0"
-                                                                                    />
-                                                                                </div>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td className="px-6 py-4 text-right">
-                                                                            <div className="flex justify-end">
-                                                                                <div className="relative w-24">
-                                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">%</span>
-                                                                                    <input type="number"
-                                                                                        className={`w-full pr-7 pl-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
-                                                                                        value={pricing[day][item.type].ourMarginPercentage || ''}
-                                                                                        onChange={(e) => handlePriceChange(day, item.type, 'ourMarginPercentage', e.target.value)}
-                                                                                        placeholder="0"
-                                                                                    />
-                                                                                </div>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td className="px-6 py-4 text-right">
-                                                                            <div className="flex justify-end">
-                                                                                <div className="relative w-36">
-                                                                                    <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-${color}-500 font-bold pointer-events-none`}>₹</span>
-                                                                                    <input type="number"
-                                                                                        className={`w-full pl-7 pr-3 py-2 bg-${color}-50/50 border rounded-lg outline-none focus:border-${color}-500 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-black text-${color}-700 placeholder-${color}-300 shadow-sm ${hasError ? 'border-red-400' : `border-${color}-200`}`}
-                                                                                        value={pricing[day][item.type].final || ''}
-                                                                                        onChange={(e) => handlePriceChange(day, item.type, 'final', e.target.value)}
-                                                                                        placeholder="0"
-                                                                                    />
-                                                                                </div>
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                    {hasError && (
-                                                                        <tr>
-                                                                            <td colSpan="6" className="px-6 py-2 text-right">
-                                                                                <span className="text-xs text-red-600 font-medium">{hasError}</span>
-                                                                            </td>
-                                                                        </tr>
-                                                                    )}
-                                                                </React.Fragment>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </div>
-                    )}
-
 
                     {/* Rules Tab */}
                     {activeTab === 'rules' && (
                         <div className="space-y-6 animate-in fade-in">
-                            <div className="bg-gray-50 p-6 rounded-2xl grid grid-cols-2 gap-6">
-                                <InputGroup label="Check-in Time" value={formData.checkInTime} onChange={(e) => setFormData({ ...formData, checkInTime: e.target.value })} />
-                                <InputGroup label="Check-out Time" value={formData.checkOutTime} onChange={(e) => setFormData({ ...formData, checkOutTime: e.target.value })} />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-white border p-6 rounded-xl">
-                                    <h3 className="font-bold text-gray-800 mb-4">Allowed</h3>
-                                    <div className="space-y-2">
-                                        <CheckRow label="Outside Food" value={obData.rules?.[3]} />
-                                        <CheckRow label="Non-Veg Food" value={obData.rules?.[8]} />
-                                        <CheckRow label="Smoking" value={obData.rules?.[6]} />
-                                        <CheckRow label="Alcohol" value={obData.rules?.[7]} />
-                                        <CheckRow label="Pets" value={obData.rules?.[2]} />
-                                    </div>
-                                </div>
-                                <div className="bg-white border p-6 rounded-xl">
-                                    <h3 className="font-bold text-gray-800 mb-4">General House Rules</h3>
-                                    <div className="space-y-2">
-                                        <CheckRow label="Primary guest must be 18+" value={obData.rules?.[0]} />
-                                        <CheckRow label="Valid ID proof required" value={obData.rules?.[1]} />
-                                        <CheckRow label="No show no refund" value={obData.rules?.[4]} />
-                                        <CheckRow label="Offers cannot be combined" value={obData.rules?.[5]} />
-                                        <CheckRow label="Wheelchair accessible" value={!obData.rules?.[10]} />
-                                    </div>
+                            <div className="bg-white border border-gray-200 rounded-xl p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4 pb-3 border-b">Standard Rules</h3>
+                                <div className="space-y-2">
+                                    {PROPERTY_RULES.map((rule, idx) => (
+                                        <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 px-2 rounded-lg transition-colors">
+                                            <span className="font-medium text-gray-700 text-sm">{rule}</span>
+                                            <Toggle
+                                                active={!!formData.rules[idx]}
+                                                onChange={(val) => setFormData(prev => ({
+                                                    ...prev,
+                                                    rules: { ...prev.rules, [idx]: val }
+                                                }))}
+                                                color="green"
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                                <div className="bg-white border p-6 rounded-xl">
-                                    <h3 className="font-bold text-gray-800 mb-4">Documents Required</h3>
-                                    <div className="flex flex-wrap gap-2">
-                                        {obData.idProofs?.map(id => (
-                                            <span key={id} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium border border-blue-100">{id}</span>
-                                        ))}
-                                        {(!obData.idProofs || obData.idProofs.length === 0) && <span className="text-gray-400 text-sm">No ID proofs specified</span>}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-white border p-6 rounded-xl">
-                                <h3 className="font-bold text-gray-800 mb-4">Other Rules & Policies</h3>
-                                <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-700 whitespace-pre-wrap">
-                                    {obData.otherRules || obData.policies || obData.policy || 'No additional rules providing.'}
-                                </div>
-                            </div>
+                            {/* Other Rules (already handled in Basic Info, but duplicating or moving logic might be confusing. User asked for control. The 'PropertyRules' textarea logic is in Basic Info. We could move it here or keep it there.) */}
                         </div>
-                    )
+                    )}
+
+                    {/* Pricing Matrix Tab */}
+
+
+
+                    {/* Media Tab */}
+                    {
+                        activeTab === 'media' && (
+                            <div className="space-y-8 animate-in fade-in">
+                                <div>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="font-bold text-gray-800">Photos</h3>
+                                        <label className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer transition-colors">
+                                            <FaCamera /> Add Photos
+                                            <input
+                                                type="file"
+                                                multiple
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={async (e) => {
+                                                    const files = Array.from(e.target.files);
+                                                    if (files.length === 0) return;
+
+                                                    const uploadFormData = new FormData();
+                                                    files.forEach(file => uploadFormData.append('images[]', file));
+
+                                                    try {
+                                                        setSaving(true);
+                                                        const res = await axios.post(`${API_BASE_URL}/admin/properties/${id}/photos`, uploadFormData, {
+                                                            headers: {
+                                                                Authorization: `Bearer ${token}`,
+                                                                'Content-Type': 'multipart/form-data'
+                                                            }
+                                                        });
+                                                        // Refresh property data
+                                                        const updatedRes = await axios.get(`${API_BASE_URL}/admin/properties/${id}`, {
+                                                            headers: { Authorization: `Bearer ${token}` }
+                                                        });
+                                                        setProperty(updatedRes.data);
+                                                    } catch (err) {
+                                                        console.error("Upload failed", err);
+                                                        alert("Failed to upload photos");
+                                                    } finally {
+                                                        setSaving(false);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {(() => {
+                                            // Deduplicate photos by ID or URL
+                                            const seen = new Set();
+                                            const uniqueImages = (property.images || []).filter(img => {
+                                                const id = img.id || img.image_url;
+                                                if (seen.has(id)) return false;
+                                                seen.add(id);
+                                                return true;
+                                            }).filter(img => !deletedImages.includes(img.id));
+
+                                            if (uniqueImages.length === 0) return <div className="col-span-4 p-10 text-center text-gray-400">No images</div>;
+
+                                            return uniqueImages.map(img => (
+                                                <div key={img.id} className="relative group aspect-square rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                                                    <img src={img.image_url} alt="Property" className="w-full h-full object-cover transition duration-500 group-hover:scale-110" />
+                                                    {img.is_primary && <div className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">Cover</div>}
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            showModal({
+                                                                title: 'Delete Photo?',
+                                                                message: 'Are you sure you want to remove this photo? It will be deleted upon approval.',
+                                                                isDanger: true,
+                                                                confirmText: 'Delete',
+                                                                onConfirm: () => setDeletedImages(prev => [...prev, img.id])
+                                                            });
+                                                        }}
+                                                        className="absolute top-2 right-2 bg-white text-red-500 p-1.5 rounded-full shadow-lg hover:bg-red-50 hover:scale-110 transition-all z-10"
+                                                    >
+                                                        <FaTimes />
+                                                    </button>
+                                                </div>
+                                            ));
+                                        })()}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="font-bold text-gray-800 mb-4">Videos</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {property.videos?.length > 0 ? (
+                                            property.videos.map(vid => (
+                                                <div key={vid.id} className="aspect-video rounded-2xl overflow-hidden border border-gray-100 bg-black">
+                                                    <video src={vid.video_url} controls className="w-full h-full" />
+                                                </div>
+                                            ))
+                                        ) : <div className="col-span-2 p-10 text-center text-gray-400 bg-gray-50 rounded-2xl border border-dashed">No videos uploaded</div>}
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+
+
+                    {/* Pricing Tab */}
+                    {
+                        activeTab === 'pricing' && (
+                            <div className="space-y-8 animate-in fade-in">
+                                {/* What's Included Section (for Waterparks) */}
+                                {property.PropertyType === 'Waterpark' && obData.inclusions && (
+                                    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 rounded-2xl p-6">
+                                        <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                            <span className="text-blue-600">✓</span> What's Included
+                                        </h3>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                            {Object.entries(obData.inclusions).map(([key, value]) => value && (
+                                                <div key={key} className="flex items-center gap-2 bg-white/60 px-3 py-2 rounded-lg border border-blue-100">
+                                                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                                    <span className="text-sm font-medium text-gray-700 capitalize">{key.replace(/_/g, ' ')}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {property.PropertyType === 'Waterpark' ? (
+                                    /* Waterpark Ticket Pricing - Editable Table */
+                                    <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                                        <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 flex items-center gap-3">
+                                            <span className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></span>
+                                            <h3 className="font-black text-sm uppercase tracking-widest text-blue-800">Waterpark Ticket Pricing</h3>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead>
+                                                    <tr className="border-b border-gray-100 bg-gray-50/50 text-xs uppercase tracking-wider text-gray-400 font-bold">
+                                                        <th className="px-6 py-4 rounded-tl-lg">Ticket Type</th>
+                                                        <th className="px-6 py-4 text-right">Vendor Ask</th>
+                                                        <th className="px-6 py-4 text-right">Our Discounted</th>
+                                                        <th className="px-6 py-4 text-right rounded-tr-lg">Final Price</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-50">
+                                                    {[
+                                                        { label: 'Adult - Weekday', type: 'adult_weekday', icon: '👨' },
+                                                        { label: 'Adult - Weekend', type: 'adult_weekend', icon: '👨' },
+                                                        { label: 'Child - Weekday', type: 'child_weekday', icon: '👶' },
+                                                        { label: 'Child - Weekend', type: 'child_weekend', icon: '👶' }
+                                                    ].map((item) => (
+                                                        <tr key={item.type} className="group hover:bg-blue-50/30 transition-colors duration-200">
+                                                            <td className="px-6 py-4 font-bold text-gray-700 flex items-center gap-3">
+                                                                <span className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-lg shadow-sm border border-blue-100">
+                                                                    {item.icon}
+                                                                </span>
+                                                                {item.label}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right tabular-nums text-gray-500 font-medium">
+                                                                {waterparkPricing[item.type].current ? `₹${waterparkPricing[item.type].current.toLocaleString()}` : '--'}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <div className="flex justify-end">
+                                                                    <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            className="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300"
+                                                                            value={waterparkPricing[item.type].discounted}
+                                                                            onChange={(e) => handleWaterparkPriceChange(item.type, 'discounted', e.target.value)}
+                                                                            placeholder="0"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <div className="flex justify-end">
+                                                                    <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500 font-bold pointer-events-none">₹</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            className="w-full pl-7 pr-3 py-2 bg-blue-50/50 border border-blue-200 rounded-lg outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-right font-black text-blue-700 placeholder-blue-300 shadow-sm"
+                                                                            value={waterparkPricing[item.type].final}
+                                                                            onChange={(e) => handleWaterparkPriceChange(item.type, 'final', e.target.value)}
+                                                                            placeholder="0"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {obData.childCriteria && (
+                                            <div className="p-6 bg-yellow-50 border-t border-yellow-100">
+                                                <h5 className="font-bold text-yellow-800 text-sm mb-2">Child Ticket Criteria</h5>
+                                                <div className="text-sm text-gray-700 space-y-1">
+                                                    <p>✓ Free Entry: Age ≤ {obData.childCriteria.freeAge} years or Height ≤ {obData.childCriteria.freeHeight} ft</p>
+                                                    <p>✓ Child Rate: Age {obData.childCriteria.chargeAgeFrom}-{obData.childCriteria.chargeAgeTo} years or Height {obData.childCriteria.chargeHeightFrom}-{obData.childCriteria.chargeHeightTo} ft</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    /* Villa Pricing Matrix */
+                                    ['mon_thu', 'fri_sun', 'sat'].map((day) => {
+                                        const titles = { mon_thu: 'Monday to Thursday', fri_sun: 'Friday & Sunday', sat: 'Saturday' };
+                                        const colors = { mon_thu: 'blue', fri_sun: 'purple', sat: 'orange' };
+                                        const color = colors[day];
+                                        return (
+                                            <div key={day} className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                                                <div className={`bg-${color}-50 px-6 py-4 border-b border-${color}-100 flex items-center gap-3`}>
+                                                    <span className={`w-3 h-3 rounded-full bg-${color}-500 animate-pulse`}></span>
+                                                    <h3 className={`font-black text-sm uppercase tracking-widest text-${color}-800`}>{titles[day]}</h3>
+                                                </div>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-left border-collapse">
+                                                        <thead>
+                                                            <tr className={`border-b border-${color}-100 bg-${color}-50/30 text-xs uppercase tracking-wider text-${color}-800/60 font-bold`}>
+                                                                <th className="px-6 py-4 rounded-tl-lg">Service Type</th>
+                                                                <th className="px-6 py-4 text-right">Vendor Ask</th>
+                                                                <th className="px-6 py-4 text-right">Vendor Disc %</th>
+                                                                <th className="px-6 py-4 text-right">Our Rate</th>
+                                                                <th className="px-6 py-4 text-right">Our Margin %</th>
+                                                                <th className="px-6 py-4 text-right rounded-tr-lg">Customer Price</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-50">
+                                                            {[
+                                                                { label: 'Villa Base Price', type: 'villa', icon: '🏡' },
+                                                                { label: 'Extra Person', type: 'extra_person', icon: '👤' },
+                                                                { label: 'Meal per Person', type: 'meal_person', icon: '🍽️' },
+                                                                { label: 'Jain Meal per Person', type: 'jain_meal_person', icon: '🥕' }
+                                                            ].map((item) => {
+                                                                const errorKey = `${day}-${item.type}`;
+                                                                const hasError = pricingErrors[errorKey];
+                                                                return (
+                                                                    <React.Fragment key={item.type}>
+                                                                        <tr className={`group hover:bg-${color}-50/30 transition-colors duration-200 ${hasError ? 'bg-red-50' : ''}`}>
+                                                                            <td className="px-6 py-4 font-bold text-gray-700 flex items-center gap-3">
+                                                                                <span className={`w-8 h-8 rounded-full bg-${color}-50 flex items-center justify-center text-lg shadow-sm border border-${color}-100 text-${color}-600`}>
+                                                                                    {item.icon}
+                                                                                </span>
+                                                                                {item.label}
+                                                                            </td>
+                                                                            <td className="px-6 py-4 text-right tabular-nums text-gray-500 font-medium">
+                                                                                <div className="flex justify-end">
+                                                                                    <div className="relative w-24">
+                                                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
+                                                                                        <input
+                                                                                            type="number"
+                                                                                            className="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300"
+                                                                                            value={pricing[day][item.type].current ?? ''}
+                                                                                            onChange={(e) => handlePriceChange(day, item.type, 'current', e.target.value)}
+                                                                                            placeholder="0"
+                                                                                        />
+                                                                                    </div>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="px-6 py-4 text-right">
+                                                                                <div className="flex justify-end">
+                                                                                    <div className="relative w-24">
+                                                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">%</span>
+                                                                                        <input type="number"
+                                                                                            className={`w-full pr-7 pl-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
+                                                                                            value={pricing[day][item.type].vendorDiscountPercentage || ''}
+                                                                                            onChange={(e) => handlePriceChange(day, item.type, 'vendorDiscountPercentage', e.target.value)}
+                                                                                            placeholder="0"
+                                                                                        />
+                                                                                    </div>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="px-6 py-4 text-right">
+                                                                                <div className="flex justify-end">
+                                                                                    <div className="relative w-36">
+                                                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
+                                                                                        <input type="number"
+                                                                                            className={`w-full pl-7 pr-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
+                                                                                            value={pricing[day][item.type].discounted || ''}
+                                                                                            onChange={(e) => handlePriceChange(day, item.type, 'discounted', e.target.value)}
+                                                                                            placeholder="0"
+                                                                                        />
+                                                                                    </div>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="px-6 py-4 text-right">
+                                                                                <div className="flex justify-end">
+                                                                                    <div className="relative w-24">
+                                                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">%</span>
+                                                                                        <input type="number"
+                                                                                            className={`w-full pr-7 pl-3 py-2 bg-gray-50 border rounded-lg outline-none focus:border-${color}-400 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300 ${hasError ? 'border-red-300' : 'border-gray-200'}`}
+                                                                                            value={pricing[day][item.type].ourMarginPercentage || ''}
+                                                                                            onChange={(e) => handlePriceChange(day, item.type, 'ourMarginPercentage', e.target.value)}
+                                                                                            placeholder="0"
+                                                                                        />
+                                                                                    </div>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="px-6 py-4 text-right">
+                                                                                <div className="flex justify-end">
+                                                                                    <div className="relative w-36">
+                                                                                        <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-${color}-500 font-bold pointer-events-none`}>₹</span>
+                                                                                        <input type="number"
+                                                                                            className={`w-full pl-7 pr-3 py-2 bg-${color}-50/50 border rounded-lg outline-none focus:border-${color}-500 focus:bg-white focus:ring-4 focus:ring-${color}-100 transition-all text-right font-black text-${color}-700 placeholder-${color}-300 shadow-sm ${hasError ? 'border-red-400' : `border-${color}-200`}`}
+                                                                                            value={pricing[day][item.type].final || ''}
+                                                                                            onChange={(e) => handlePriceChange(day, item.type, 'final', e.target.value)}
+                                                                                            placeholder="0"
+                                                                                        />
+                                                                                    </div>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                        {hasError && (
+                                                                            <tr>
+                                                                                <td colSpan="6" className="px-6 py-2 text-right">
+                                                                                    <span className="text-xs text-red-600 font-medium">{hasError}</span>
+                                                                                </td>
+                                                                            </tr>
+                                                                        )}
+                                                                    </React.Fragment>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        )
+                    }
+
+
+                    {/* Rules Tab */}
+                    {
+                        activeTab === 'rules' && (
+                            <div className="space-y-6 animate-in fade-in">
+                                <div className="bg-gray-50 p-6 rounded-2xl grid grid-cols-2 gap-6">
+                                    <InputGroup label="Check-in Time" value={formData.checkInTime} onChange={(e) => setFormData({ ...formData, checkInTime: e.target.value })} />
+                                    <InputGroup label="Check-out Time" value={formData.checkOutTime} onChange={(e) => setFormData({ ...formData, checkOutTime: e.target.value })} />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-white border p-6 rounded-xl">
+                                        <h3 className="font-bold text-gray-800 mb-4">Allowed</h3>
+                                        <div className="space-y-2">
+                                            <CheckRow label="Outside Food" value={obData.rules?.[3]} />
+                                            <CheckRow label="Non-Veg Food" value={obData.rules?.[8]} />
+                                            <CheckRow label="Smoking" value={obData.rules?.[6]} />
+                                            <CheckRow label="Alcohol" value={obData.rules?.[7]} />
+                                            <CheckRow label="Pets" value={obData.rules?.[2]} />
+                                        </div>
+                                    </div>
+                                    <div className="bg-white border p-6 rounded-xl">
+                                        <h3 className="font-bold text-gray-800 mb-4">General House Rules</h3>
+                                        <div className="space-y-2">
+                                            <CheckRow label="Primary guest must be 18+" value={obData.rules?.[0]} />
+                                            <CheckRow label="Valid ID proof required" value={obData.rules?.[1]} />
+                                            <CheckRow label="No show no refund" value={obData.rules?.[4]} />
+                                            <CheckRow label="Offers cannot be combined" value={obData.rules?.[5]} />
+                                            <CheckRow label="Wheelchair accessible" value={!obData.rules?.[10]} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                    <div className="bg-white border p-6 rounded-xl">
+                                        <h3 className="font-bold text-gray-800 mb-4">Documents Required</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {obData.idProofs?.map(id => (
+                                                <span key={id} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium border border-blue-100">{id}</span>
+                                            ))}
+                                            {(!obData.idProofs || obData.idProofs.length === 0) && <span className="text-gray-400 text-sm">No ID proofs specified</span>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white border p-6 rounded-xl">
+                                    <h3 className="font-bold text-gray-800 mb-4">Other Rules & Policies</h3>
+                                    <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-700 whitespace-pre-wrap">
+                                        {obData.otherRules || obData.policies || obData.policy || 'No additional rules providing.'}
+                                    </div>
+                                </div>
+                            </div>
+                        )
                     }
                 </div >
             </div >

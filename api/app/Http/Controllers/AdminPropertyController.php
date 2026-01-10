@@ -25,6 +25,9 @@ class AdminPropertyController extends Controller
             if ($request->has('RoomConfig')) {
                 $obData['RoomConfig'] = $request->RoomConfig;
             }
+            if ($request->has('otherAmenities')) {
+                $obData['otherAmenities'] = $request->otherAmenities;
+            }
             if ($request->has('waterpark_pricing')) {
                 $obData['pricing'] = $request->waterpark_pricing;
             }

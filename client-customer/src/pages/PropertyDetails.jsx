@@ -571,22 +571,14 @@ export default function PropertyDetails() {
                                     <p className="text-gray-700 italic text-lg leading-relaxed">{ob.shortDescription}</p>
                                 </div>
                             )}
-                            <div className="py-8 border-b border-gray-100">
-                                <h3 className="text-xl font-bold text-gray-900 mb-4 font-serif flex items-center gap-2">
-                                    <FaInfoCircle className="text-gray-400" /> About this property
-                                </h3>
+                            <div className="py-10 border-b border-gray-100">
+                                <h3 className="text-2xl font-bold text-gray-900 mb-6 font-sans text-left">About this property</h3>
                                 {property.LongDescription ? (
-                                    <div className="relative group">
-                                        <div className="absolute -inset-1 bg-gradient-to-r from-blue-100 to-purple-100 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                                        <div className="relative bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
-                                            <FaQuoteLeft className="text-gray-200 text-4xl mb-4 absolute top-6 left-6 -z-0 opacity-50" />
-                                            <p className="text-gray-700 leading-loose whitespace-pre-line text-lg font-light relative z-10 font-sans">
-                                                {property.LongDescription}
-                                            </p>
-                                        </div>
+                                    <div className="text-gray-800 text-lg leading-8 font-sans whitespace-pre-line">
+                                        {property.LongDescription}
                                     </div>
                                 ) : (
-                                    <div className="p-8 border-2 border-dashed border-gray-200 rounded-xl text-center text-gray-400">Description not provided.</div>
+                                    <div className="text-gray-400 italic">No description provided for this property.</div>
                                 )}
                             </div>
                             {isWaterpark && (
@@ -636,13 +628,13 @@ export default function PropertyDetails() {
                                 </div>
                             ) : null}
                             {/* Additional Amenities */}
-                            {Array.isArray(ob.otherAmenities) && ob.otherAmenities.length > 0 && (
+                            {((Array.isArray(ob.otherAmenities) && ob.otherAmenities.length > 0) || (typeof ob.otherAmenities === 'string' && ob.otherAmenities.trim().length > 0)) && (
                                 <div className="mt-6 mb-6">
                                     <h3 className="font-bold text-gray-900 mb-3">Additional Amenities</h3>
                                     <div className="flex flex-wrap gap-2">
-                                        {ob.otherAmenities.map((amenity, idx) => (
+                                        {(Array.isArray(ob.otherAmenities) ? ob.otherAmenities : ob.otherAmenities.split(',')).map((amenity, idx) => (
                                             <span key={idx} className="bg-gray-100 text-gray-800 px-3 py-1.5 rounded-lg text-sm font-bold border border-gray-200 capitalize">
-                                                {amenity}
+                                                {amenity.trim()}
                                             </span>
                                         ))}
                                     </div>
