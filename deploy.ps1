@@ -65,6 +65,19 @@ $Paths = @{
         "RemotePath"  = "$RemoteBasePath/resortwala.com"
         "Type"        = "Static"
     }
+    "Production" = @{
+        "LocalSource" = "$PSScriptRoot/client-customer"
+        "DistDir"     = "dist"
+        "RemotePath"  = "$RemoteBasePath/resortwala.com"
+        "Type"        = "React"
+    }
+    "ProdAPI"    = @{
+        "LocalSource" = "$PSScriptRoot/api"
+        "DistDir"     = "." 
+        "RemotePath"  = "$RemoteBasePath/api.resortwala.com"
+        "Type"        = "Laravel"
+        "Excludes"    = @(".env", "node_modules", "vendor", ".git", "storage/*.key", "tests")
+    }
 }
 
 function Build-ReactApp {
@@ -285,6 +298,8 @@ Write-Host "4. Deploy Vendor App (React)"
 Write-Host "5. Deploy ALL Staging"
 Write-Host "6. Deploy Beta (beta.resortwala.com)"
 Write-Host "7. Deploy Coming Soon (resortwala.com)"
+Write-Host "8. Deploy Customer App to WWW (resortwala.com)"
+Write-Host "9. Promote Beta to Live (API + Frontend)"
 Write-Host "Q. Quit"
 Write-Host "=========================================="
 
@@ -318,6 +333,22 @@ switch ($Selection) {
     "7" {
         Deploy-Component "ComingSoon" $Paths.ComingSoon
         Write-Host "NOTE: Ensure 'resortwala.com' points to $ServerIP" -ForegroundColor Cyan
+    }
+    "8" {
+        if (Build-ReactApp "Production" $Paths.Production) { 
+            Deploy-Component "Production" $Paths.Production 
+            Write-Host "NOTE: Customer App is now LIVE on www.resortwala.com" -ForegroundColor Cyan
+        }
+    }
+    "9" {
+        Write-Host "⚠️ PROMOTING BETA TO LIVE (PRODUCTION) ⚠️" -ForegroundColor Yellow
+        if (Build-ReactApp "Production" $Paths.Production) { 
+            Deploy-Component "Production" $Paths.Production 
+        }
+        if (Build-Laravel "ProdAPI" $Paths.ProdAPI) { 
+            Deploy-Component "ProdAPI" $Paths.ProdAPI 
+        }
+        Write-Host "✅ LIVE DEPLOYMENT COMPLETE" -ForegroundColor Green
     }
     "Q" { exit }
     Default { Write-Host "Invalid Selection" -ForegroundColor Red }

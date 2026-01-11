@@ -180,7 +180,24 @@ Route::post('/vendor/calendar/seed', [App\Http\Controllers\VendorCalendarControl
 
 // --- Payment Gateway Routes (PhonePe) ---
 // Route::post('/payment/initiate', [\App\Http\Controllers\PaymentController::class, 'initiate'])->name('payment.initiate'); // Deprecated: Handled by BookingController
-Route::post('/payment/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])
+Route::get('/debug-sdk', function () {
+    $path = base_path('vendor/phonepe');
+    if (!is_dir($path)) {
+        return "Path not found: $path";
+    }
+    
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+    
+    $files = [];
+    foreach ($iterator as $file) {
+        $files[] = $file->getPathname();
+    }
+    return $files;
+});
+Route::match(['get', 'post'], '/payment/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
     ->name('payment.callback');
 

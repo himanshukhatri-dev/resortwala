@@ -501,7 +501,7 @@ export default function BookingPage() {
                             </button>
 
                             <div className="text-center text-xs text-gray-400 flex items-center justify-center gap-1 mt-2">
-                                <FaShieldAlt /> Secure Payment via Razorpay/UPI
+                                <FaShieldAlt /> Secure Payment via PhonePe/UPI
                             </div>
 
                         </div>

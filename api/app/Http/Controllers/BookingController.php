@@ -131,7 +131,8 @@ class BookingController extends Controller
                     
                     return response()->json([
                         'message' => 'Payment Gateway Error: ' . ($paymentResult['message'] ?? 'Unknown'),
-                        'error_code' => $paymentResult['code'] ?? 'GATEWAY_ERROR'
+                        'error_code' => $paymentResult['code'] ?? 'GATEWAY_ERROR',
+                        'debug_details' => $paymentResult['debug'] ?? [] // Exposed for debugging
                     ], 422); // Unprocessable Entity
                 }
             }
