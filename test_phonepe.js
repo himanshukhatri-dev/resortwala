@@ -92,6 +92,10 @@ console.log(`  -d "{\\"response\\": \\"${base64Payload}\\"}"`);
 if (process.argv.includes('--send')) {
     console.log(`\n--- Sending Request to ${TARGET_URL} ---`);
     axios.post(TARGET_URL, { response: base64Payload }, {
+        maxRedirects: 0, // Disable following redirects to debug 3xx responses
+        validateStatus: function (status) {
+            return status >= 200 && status < 500; // Resolve promise for 3xx/4xx too
+        },
         headers: {
             'Content-Type': 'application/json',
             'X-VERIFY': checksum
@@ -99,7 +103,11 @@ if (process.argv.includes('--send')) {
     })
         .then(res => {
             console.log("Response Status:", res.status);
-            console.log("Response Data:", res.data);
+            if (res.status >= 300 && res.status < 400) {
+                console.log("Redirect Location:", res.headers.location);
+            }
+            console.log("Response Headers:", res.headers);
+            console.log("Response Data Preview:", typeof res.data === 'string' ? res.data.substring(0, 200) : res.data);
         })
         .catch(err => {
             console.error("Request Failed:");

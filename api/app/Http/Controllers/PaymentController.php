@@ -25,7 +25,46 @@ class PaymentController extends Controller
             Log::info("Payment Callback Hit", $request->all());
 
             // 1. Basic Validation
-            if (!$request->has('response')) {
+            $base64Response = $request->input('response');
+
+            // Fallback: Check for Form POST (Redirect Mode)
+            if (!$base64Response && $request->has('code') && $request->has('merchantId')) {
+                // This is a browser redirect (Form POST)
+                $status = $request->input('code');
+                $merchantTxnId = $request->input('merchantTransactionId') ?? $request->input('transactionId'); // PhonePe sends transactionId in form sometimes
+                
+                // Extract Booking ID (Format: TXN_{BookingId}_{Time})
+                $bookingId = null;
+                if ($merchantTxnId) {
+                    $parts = explode('_', $merchantTxnId);
+                    // TXN, ID, Time
+                    if (count($parts) >= 2) {
+                        $bookingId = $parts[1];
+                    }
+                }
+
+                Log::info("Handling PhonePe Redirect-POST for Booking #$bookingId Status: $status");
+
+                // Redirect immediately based on status code
+                if ($status === 'PAYMENT_SUCCESS') {
+                    return redirect()->to("{$this->frontEndUrl}/booking/success?id=" . ($bookingId ?? ''));
+                } elseif ($status === 'PAYMENT_PENDING') {
+                    return redirect()->to("{$this->frontEndUrl}/booking/pending?id=" . ($bookingId ?? ''));
+                } else {
+                    return redirect()->to("{$this->frontEndUrl}/booking/failed?id=" . ($bookingId ?? ''));
+                }
+            }
+
+            // Fallback: Manual JSON Decode (for S2S JSON)
+            if (!$base64Response) {
+                $rawContent = $request->getContent();
+                $json = json_decode($rawContent, true);
+                if (isset($json['response'])) {
+                    $base64Response = $json['response'];
+                }
+            }
+
+            if (!$base64Response) {
                 Log::error("Callback missing 'response' param", $request->all());
                 return response()->json([
                     'error' => 'Invalid Callback',
@@ -36,7 +75,8 @@ class PaymentController extends Controller
             }
 
             $xVerify = $request->header('X-VERIFY') ?? $request->header('X-Verify');
-            $base64Response = $request->input('response');
+            // $base64Response is already set above
+
 
             // 2. Delegate Processing to Service
             $result = $this->phonePeService->processCallback($base64Response, $xVerify);
