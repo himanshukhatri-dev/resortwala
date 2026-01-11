@@ -20,10 +20,12 @@ class AdminPropertyController extends Controller
 
             // 1. Handle JSON-stored fields (Amenities, RoomConfig, Pricing)
             if ($request->has('Amenities')) {
-                $obData['Amenities'] = $request->Amenities;
+                $obData['amenities'] = $request->Amenities; // Standardize to lowercase
+                $obData['Amenities'] = $request->Amenities; // Keep uppercase for safety
             }
             if ($request->has('RoomConfig')) {
-                $obData['RoomConfig'] = $request->RoomConfig;
+                $obData['roomConfig'] = $request->RoomConfig; // Standardize to lowercase
+                $obData['RoomConfig'] = $request->RoomConfig; // Keep uppercase for safety
             }
             if ($request->has('otherAmenities')) {
                 $obData['otherAmenities'] = $request->otherAmenities;
@@ -41,10 +43,14 @@ class AdminPropertyController extends Controller
                 
                 $property->admin_pricing = $adminPricing;
                 
-                // Sync Final Prices for Villa
+                // Sync Prices: Price = Vendor Ask, ResortWalaRate = Customer Price
+                if (isset($adminPricing['mon_thu']['villa']['current'])) {
+                    $property->Price = $adminPricing['mon_thu']['villa']['current'];
+                }
                 if (isset($adminPricing['mon_thu']['villa']['final'])) {
-                    $property->Price = $adminPricing['mon_thu']['villa']['final'];
+                    $property->ResortWalaRate = $adminPricing['mon_thu']['villa']['final'];
                     $property->price_mon_thu = $adminPricing['mon_thu']['villa']['final'];
+                    $property->DealPrice = $adminPricing['mon_thu']['villa']['final']; // Sync DealPrice
                 }
                 if (isset($adminPricing['fri_sun']['villa']['final'])) {
                     $property->price_fri_sun = $adminPricing['fri_sun']['villa']['final'];
@@ -101,10 +107,14 @@ class AdminPropertyController extends Controller
 
         $property->admin_pricing = $validated['admin_pricing'];
         
-        // Optional: Update main price columns to match Mon-Thu Final Price for directory listing consistency
+        // Update main price columns
+        if (isset($validated['admin_pricing']['mon_thu']['villa']['current'])) {
+            $property->Price = $validated['admin_pricing']['mon_thu']['villa']['current'];
+        }
         if (isset($validated['admin_pricing']['mon_thu']['villa']['final'])) {
-            $property->Price = $validated['admin_pricing']['mon_thu']['villa']['final']; // DealPrice?
+            $property->ResortWalaRate = $validated['admin_pricing']['mon_thu']['villa']['final'];
             $property->price_mon_thu = $validated['admin_pricing']['mon_thu']['villa']['final'];
+            $property->DealPrice = $validated['admin_pricing']['mon_thu']['villa']['final']; // Sync DealPrice
         }
         if (isset($validated['admin_pricing']['fri_sun']['villa']['final'])) {
             $property->price_fri_sun = $validated['admin_pricing']['fri_sun']['villa']['final'];

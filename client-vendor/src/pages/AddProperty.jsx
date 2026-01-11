@@ -190,7 +190,6 @@ export default function AddProperty() {
         otherAttractions: [],
         checkInTime: '14:00',
         checkOutTime: '11:00',
-        otherRules: '',
         otherAmenities: [],
         otherRules: []
     });
@@ -884,56 +883,42 @@ export default function AddProperty() {
                 </div>
             </div>
 
-            <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-2">Custom Rules</label>
-                <div className="flex gap-2 mb-3">
-                    <input
-                        type="text"
-                        id="new-rule-input"
-                        placeholder="Add a new rule (e.g. No loud music after 10PM)"
-                        className="flex-1 p-3 rounded-xl border border-gray-200 text-sm focus:border-black outline-none bg-gray-50 focus:bg-white transition-colors"
-                        onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const val = e.target.value.trim();
-                                if (val) {
-                                    setFormData(prev => ({ ...prev, otherRules: [...prev.otherRules, val] }));
-                                    e.target.value = '';
-                                }
-                            }
-                        }}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const input = document.getElementById('new-rule-input');
-                            const val = input.value.trim();
-                            if (val) {
-                                setFormData(prev => ({ ...prev, otherRules: [...prev.otherRules, val] }));
-                                input.value = '';
-                            }
-                        }}
-                        className="bg-black text-white px-4 rounded-xl hover:bg-gray-800 transition"
-                    >
-                        <FaPlus />
-                    </button>
-                </div>
+            {/* Other Rules */}
+            <div className="bg-white border rounded-xl p-5 shadow-sm">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Custom Rules</label>
                 <div className="space-y-2">
                     {formData.otherRules.map((rule, idx) => (
-                        <div key={idx} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100 group hover:border-gray-200 transition-all">
-                            <span className="text-sm font-medium text-gray-700">{rule}</span>
+                        <div key={idx} className="flex gap-2">
+                            <input
+                                type="text"
+                                value={rule}
+                                onChange={(e) => {
+                                    const newRules = [...formData.otherRules];
+                                    newRules[idx] = e.target.value;
+                                    setFormData(prev => ({ ...prev, otherRules: newRules }));
+                                }}
+                                className="w-full bg-gray-50 border-b-2 border-transparent border-gray-100 focus:border-black outline-none py-2 text-sm font-medium transition-colors"
+                                placeholder="Enter rule..."
+                            />
                             <button
                                 type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, otherRules: prev.otherRules.filter((_, i) => i !== idx) }))}
-                                className="text-gray-400 hover:text-red-500 transition p-1"
+                                onClick={() => {
+                                    const newRules = formData.otherRules.filter((_, i) => i !== idx);
+                                    setFormData(prev => ({ ...prev, otherRules: newRules }));
+                                }}
+                                className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition"
                             >
-                                <FaTrash size={12} />
+                                <FaTimes size={12} />
                             </button>
                         </div>
                     ))}
-                    {formData.otherRules.length === 0 && (
-                        <p className="text-xs text-center text-gray-400 italic py-2">No custom rules added yet.</p>
-                    )}
+                    <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, otherRules: [...formData.otherRules, ''] }))}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-2"
+                    >
+                        <span className="bg-blue-50 p-1 rounded">+</span> Add Rule
+                    </button>
                 </div>
             </div>
         </div>

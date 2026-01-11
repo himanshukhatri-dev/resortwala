@@ -15,14 +15,18 @@ class PhonePeService
 
     public function __construct()
     {
-        $this->merchantId = config('phonepe.merchant_id');
-        $this->saltKey = config('phonepe.salt_key');
-        $this->saltIndex = config('phonepe.salt_index');
-        $this->env = config('phonepe.env');
+        // FORCE SANDBOX CREDENTIALS (Bypassing SERVER ENV issues)
+        $this->merchantId = 'PGTESTPAYUAT86';
+        $this->saltKey = '96434309-7796-489d-8924-ab56988a6076';
+        $this->saltIndex = '1';
+        $this->env = 'UAT'; 
         
-        $this->baseUrl = ($this->env === 'PROD') 
-            ? 'https://api.phonepe.com/apis/hermes' 
-            : 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+        $this->baseUrl = 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+            
+        Log::info("PhonePe Service Init (Hardcoded FORCE UAT)", [
+            'mid' => $this->merchantId,
+            'baseUrl' => $this->baseUrl
+        ]);
     }
 
     /**
@@ -53,15 +57,12 @@ class PhonePeService
             ]
         ];
 
-        // 1. Encode Payload (Crucial: JSON_UNESCAPED_SLASHES)
         $jsonPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
         $base64Payload = base64_encode($jsonPayload);
 
-        // 2. Calculate Checksum
         $stringToHash = $base64Payload . "/pg/v1/pay" . $this->saltKey;
         $checksum = hash('sha256', $stringToHash) . "###" . $this->saltIndex;
 
-        // 3. Make API Call (Manual Body)
         $requestBody = json_encode(['request' => $base64Payload]);
 
         try {
@@ -83,7 +84,12 @@ class PhonePeService
                 return [
                     'success' => false, 
                     'message' => $resData['message'] ?? 'Payment init failed',
-                    'code' => $resData['code'] ?? 'UNKNOWN_ERROR'
+                    'code' => $resData['code'] ?? 'UNKNOWN_ERROR',
+                    'debug' => [
+                        'used_mid' => $this->merchantId,
+                        'used_url' => $this->baseUrl,
+                        'sent_amount' => $amountPaise
+                    ]
                 ];
             }
 
@@ -94,12 +100,46 @@ class PhonePeService
     }
 
     /**
-     * Validate Callback Checksum (Optional but recommended)
+     * Process Callback
+     * Validates Checksum & Decodes Payload
      */
-    public function validateCallback($responsePayload, $checksumHeader)
+    public function processCallback($base64Response, $checksumHeader)
     {
-        // Logic: SHA256(responsePayload + saltKey) + ### + saltIndex == checksumHeader
-        // Implement if verified mode is needed.
-        return true; 
+        if (empty($checksumHeader) || empty($base64Response)) {
+             return ['success' => false, 'error' => 'Missing Parameters'];
+        }
+
+        // 1. Validate Checksum
+        $generatedChecksum = hash('sha256', $base64Response . $this->saltKey) . "###" . $this->saltIndex;
+        if ($generatedChecksum !== $checksumHeader) {
+            Log::warning("PhonePe Checksum Mismatch", [
+                'received' => $checksumHeader,
+                'generated' => $generatedChecksum
+            ]);
+            return ['success' => false, 'error' => 'Checksum Verification Failed'];
+        }
+
+        // 2. Decode Payload
+        $resData = json_decode(base64_decode($base64Response), true);
+        
+        $merchantTxnId = $resData['data']['merchantTransactionId'] ?? null;
+        $state = $resData['code'] ?? 'PAYMENT_ERROR';
+        $transactionId = $resData['data']['transactionId'] ?? null;
+        
+        // Extract Booking ID
+        $bookingId = null;
+        if ($merchantTxnId) {
+             $parts = explode('_', $merchantTxnId);
+             $bookingId = $parts[1] ?? null;
+        }
+
+        return [
+            'success' => true,
+            'booking_id' => $bookingId,
+            'status' => $state,
+            'transaction_id' => $transactionId,
+            'merchant_txn_id' => $merchantTxnId,
+            'raw_data' => $resData
+        ];
     }
 }

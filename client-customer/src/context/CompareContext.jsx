@@ -33,20 +33,14 @@ export const CompareProvider = ({ children }) => {
             return;
         }
 
-        // Normalize property object for consistent storage
+        // Store full property object to ensure all DB data is available for systematic comparison
         const normalized = {
+            ...property,
             id: property.id || property.PropertyId,
-            name: property.Name || property.name,
-            image: property.ImageUrl || property.image_url || property.primary_image?.image_url || (property.images?.[0]?.image_url),
-            price: property.Price || property.PricePerNight || property.ResortWalaRate,
-            rating: property.Rating,
-            location: property.Location || property.CityName,
-            type: property.PropertyType,
-            amenities: property.onboarding_data?.amenities || {},
-            bedrooms: property.NoofRooms || property.Bedrooms,
-            capacity: property.MaxCapacity || property.MaxGuests,
-            bathrooms: property.Bathrooms,
-            originalData: property // Keep full data just in case
+            // Keep specific fields for quick access if needed, though ...property covers it
+            Name: property.Name || property.name,
+            PropertyType: property.PropertyType,
+            Location: property.Location || property.CityName
         };
 
         setCompareList([...compareList, normalized]);

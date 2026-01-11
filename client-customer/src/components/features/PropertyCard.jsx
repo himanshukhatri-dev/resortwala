@@ -20,7 +20,7 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
         location = property?.Location || property?.CityName || "India",
         price = parseFloat(property?.Price || property?.PricePerNight || property?.ResortWalaRate || 0) || 15000,
         rating = property?.Rating || 4.9,
-        description = property?.LongDescription || property?.long_description || "Experience luxury living in this beautiful property featuring modern amenities and stunning views.",
+        description = property?.ShortDescription || property?.onboarding_data?.shortDescription || property?.LongDescription || property?.long_description || "Experience luxury living in this beautiful property featuring modern amenities and stunning views.",
     } = property || {};
 
     // Collect all available images
@@ -210,7 +210,7 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                         </div>
                     </div>
 
-                    <p className="text-gray-500 text-sm md:text-base leading-relaxed line-clamp-2 mb-2 max-w-2xl">
+                    <p className="text-gray-500 text-xs md:text-sm leading-relaxed line-clamp-2 mb-2 max-w-2xl">
                         {description}
                     </p>
 
@@ -293,13 +293,13 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                         <div className="text-left sm:text-right flex flex-col items-start sm:items-end">
                             {/* Market Price & Savings */}
                             <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">₹{Math.round(price * 1.25).toLocaleString()}</span>
-                                <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">20% OFF</span>
+                                <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">₹{Math.round(pricing.marketPrice).toLocaleString()}</span>
+                                <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">{pricing.percentage}% OFF</span>
                             </div>
 
                             {/* Selling Price */}
                             <div className="flex items-baseline gap-1">
-                                <span className="text-xl sm:text-2xl font-bold text-gray-900 font-sans">₹{price.toLocaleString()}</span>
+                                <span className="text-xl sm:text-2xl font-bold text-gray-900 font-sans">₹{pricing.sellingPrice.toLocaleString()}</span>
                                 <span className="text-[10px] font-normal text-gray-400 opacity-60">
                                     {property.PropertyType?.toLowerCase() === 'waterpark' ? '/ person' : '/ night'}
                                 </span>

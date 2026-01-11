@@ -328,11 +328,35 @@ export default function PropertyDetails() {
         return isNaN(n) ? def : n;
     };
 
-    const PRICE_WEEKDAY = safeFloat(property.price_mon_thu || pricing.weekday || property.Price, 0);
-    const PRICE_FRISUN = safeFloat(property.price_fri_sun || pricing.weekend || property.Price, 0);
-    const PRICE_SATURDAY = safeFloat(property.price_sat || pricing.saturday || property.Price, 0);
-    const EXTRA_GUEST_CHARGE = safeFloat(pricing.extraGuestCharge, 1000);
-    const FOOD_CHARGE = safeFloat(ob.foodRates?.perPerson || pricing.foodPricePerPerson, 1000);
+    const onboardingData = property?.onboarding_data || {};
+    const adminPricing = property?.admin_pricing || {};
+    const onboardingPricing = onboardingData.pricing || {};
+
+    // Market Price (Vendor Ask - Strikethrough)
+    const originalPrice = parseFloat(
+        adminPricing?.mon_thu?.villa?.current ||
+        property?.Price ||
+        property?.PerCost ||
+        onboardingPricing?.weekday ||
+        0
+    );
+
+    // Selling Price (Customer Rate - Display)
+    const rwRate = parseFloat(
+        adminPricing?.mon_thu?.villa?.final ||
+        property?.ResortWalaRate ||
+        property?.price_mon_thu ||
+        originalPrice ||
+        0
+    );
+
+    const dealPrice = parseFloat(property?.DealPrice || property?.deal_price || 0);
+
+    const PRICE_WEEKDAY = parseFloat(adminPricing?.mon_thu?.villa?.final || property.price_mon_thu || property.ResortWalaRate || property.Price || 0);
+    const PRICE_FRISUN = parseFloat(adminPricing?.fri_sun?.villa?.final || property.price_fri_sun || property.ResortWalaRate || property.Price || 0);
+    const PRICE_SATURDAY = parseFloat(adminPricing?.sat?.villa?.final || property.price_sat || property.ResortWalaRate || property.Price || 0);
+    const EXTRA_GUEST_CHARGE = safeFloat(onboardingPricing?.extraGuestCharge || 0, 1000);
+    const FOOD_CHARGE = safeFloat(onboardingData.foodRates?.perPerson || onboardingData.foodRates?.veg || 0, 1000);
     const GST_PERCENTAGE = safeFloat(property.gst_percentage, 18);
 
     const calculateBreakdown = () => {
@@ -345,6 +369,7 @@ export default function PropertyDetails() {
         if (nights <= 0) return null;
 
         let totalVillaRate = 0;
+        let totalMarketRate = 0;
         let totalAdultTicket = 0;
         let totalChildTicket = 0;
 
@@ -354,7 +379,6 @@ export default function PropertyDetails() {
             const isWeekend = (w === 0 || w === 6 || w === 5);
 
             // 1. Check for Holiday Override
-            // We check if this specific date falls into any approved holiday range
             const holiday = property.holidays?.find(h => {
                 const dStr = format(d, 'yyyy-MM-dd');
                 const hStart = h.from_date ? h.from_date.substring(0, 10) : '';
@@ -362,17 +386,28 @@ export default function PropertyDetails() {
                 return dStr >= hStart && dStr <= hEnd;
             });
 
-            let rate = 0; // Declare rate variable
+            let rate = 0; // Customer Rate
+            let marketDayRate = 0; // Vendor Rate
+
             if (holiday) {
                 rate = parseFloat(holiday.base_price);
+                marketDayRate = rate; // Assume no discount on holidays unless specified
             } else {
-                // Standard Logic
-                if (w === 6) rate = PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
-                else if (w === 0 || w === 5) rate = PRICE_FRISUN || PRICE_WEEKDAY;
-                else rate = PRICE_WEEKDAY;
+                // Standard Logic using admin_pricing if available
+                if (w === 6) { // Saturday
+                    rate = PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
+                    marketDayRate = parseFloat(adminPricing.sat?.villa?.current || adminPricing.fri_sun?.villa?.current || property.Price || rate);
+                } else if (w === 0 || w === 5) { // Fri/Sun
+                    rate = PRICE_FRISUN || PRICE_WEEKDAY;
+                    marketDayRate = parseFloat(adminPricing.fri_sun?.villa?.current || property.Price || rate);
+                } else { // Mon-Thu
+                    rate = PRICE_WEEKDAY;
+                    marketDayRate = parseFloat(adminPricing.mon_thu?.villa?.current || property.Price || rate);
+                }
             }
 
             totalVillaRate += rate;
+            totalMarketRate += marketDayRate;
 
             if (isWaterpark) {
                 let aRate = PRICE_WEEKDAY;
@@ -390,9 +425,33 @@ export default function PropertyDetails() {
         }
 
         if (isWaterpark) {
+            const adminPricing = property.admin_pricing || {};
+            let totalMarketTickets = 0;
+
+            for (let i = 0; i < nights; i++) {
+                const d = new Date(dateRange.from); d.setDate(d.getDate() + i);
+                const w = d.getDay();
+                const isWeekend = (w === 0 || w === 6 || w === 5);
+
+                const typeSuffix = isWeekend ? 'weekend' : 'weekday';
+                const adultMarket = parseFloat(adminPricing[`adult_${typeSuffix}`]?.current || PRICE_WEEKDAY);
+                const childMarket = parseFloat(adminPricing[`child_${typeSuffix}`]?.current || (ob.childCriteria?.monFriPrice || 500));
+
+                totalMarketTickets += (adultMarket * guests.adults) + (childMarket * guests.children);
+            }
+
             const taxableAmount = totalAdultTicket + totalChildTicket;
             const gstAmount = (taxableAmount * GST_PERCENTAGE) / 100;
-            return { nights, totalAdultTicket, totalChildTicket, gstAmount, grantTotal: taxableAmount + gstAmount };
+            const totalSavings = Math.max(0, Math.round(totalMarketTickets - taxableAmount));
+
+            return {
+                nights,
+                totalAdultTicket,
+                totalChildTicket,
+                gstAmount,
+                grantTotal: taxableAmount + gstAmount,
+                totalSavings
+            };
         }
 
         const totalGuests = guests.adults + guests.children;
@@ -415,11 +474,10 @@ export default function PropertyDetails() {
         const taxableAmount = totalVillaRate + totalExtra + totalFood;
         const gstAmount = (taxableAmount * GST_PERCENTAGE) / 100;
 
-        // Savings Calculation (Approx 20% if no specific DealPrice savings)
-        // User requested: "approximated as 20% higher than base if not explicitly set"
-        const rackRate = parseFloat(property.Price) || PRICE_WEEKDAY;
-        const impliedRackTotal = totalVillaRate * 1.25; // 25% markup implies ~20% discount on rack
-        const totalSavings = Math.round(impliedRackTotal - totalVillaRate);
+        // Savings Calculation (Real: Daily Vendor Ask vs Customer Price)
+        const totalSavings = (totalMarketRate > totalVillaRate)
+            ? Math.round(totalMarketRate - totalVillaRate)
+            : 0;
 
         return {
             nights,
@@ -558,20 +616,19 @@ export default function PropertyDetails() {
                     <div className="space-y-8">
                         {/* OVERVIEW */}
                         <section ref={sections.overview} className="scroll-mt-32">
-                            <div className="flex items-start justify-between pb-6 border-b border-gray-100">
-                                <div>
+                            <div className="pb-6 border-b border-gray-100">
+                                <div className="mb-2">
                                     <h2 className="text-2xl font-bold text-gray-900 mb-1">{property.display_name || property.Name}</h2>
-                                    <p className="text-gray-500 text-sm">
+                                    {ob.shortDescription && (
+                                        <p className="text-xs md:text-sm text-gray-500 leading-relaxed max-w-2xl mb-2 font-medium">{ob.shortDescription}</p>
+                                    )}
+                                    <p className="text-gray-500 text-sm font-medium">
                                         {property.PropertyType} · {property.Occupancy || property.MaxCapacity} - {property.MaxCapacity} guests
                                         {!isWaterpark && <> · {roomConfig.bedrooms?.length || property.NoofRooms} bedrooms · {roomConfig.bedrooms?.filter(r => r.bathroom).length || 0} bathrooms</>}
                                     </p>
                                 </div>
                             </div>
-                            {ob.shortDescription && (
-                                <div className="py-6 border-b border-gray-100">
-                                    <p className="text-gray-700 italic text-lg leading-relaxed">{ob.shortDescription}</p>
-                                </div>
-                            )}
+
                             <div className="py-10 border-b border-gray-100">
                                 <h3 className="text-3xl font-bold text-gray-900 mb-6 font-serif relative inline-block">
                                     About this property
@@ -850,7 +907,7 @@ export default function PropertyDetails() {
                     <div className="relative h-full hidden lg:block">
                         <div className="sticky top-28 border border-gray-200 rounded-3xl p-6 shadow-xl bg-white/95 backdrop-blur-md">
                             {isWaterpark ? (
-                                <WaterparkBooking property={property} ob={ob} handleReserve={handleReserve} guests={guests} setGuests={setGuests} dateRange={dateRange} priceBreakdown={priceBreakdown} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} datePickerRef={datePickerRef} bookedDates={property.booked_dates || []} isWaterpark={isWaterpark} />
+                                <WaterparkBooking property={property} ob={ob} handleReserve={handleReserve} guests={guests} setGuests={setGuests} dateRange={dateRange} priceBreakdown={priceBreakdown} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} datePickerRef={datePickerRef} bookedDates={property.booked_dates || []} isWaterpark={isWaterpark} pricing={pricing} />
                             ) : (
                                 <VillaBooking price={PRICE_WEEKDAY} rating={property.Rating} dateRange={dateRange} setDateRange={setDateRange} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} handleReserve={handleReserve} priceBreakdown={priceBreakdown} datePickerRef={datePickerRef} property={property} guests={guests} setGuests={setGuests} mealSelection={mealSelection} setMealSelection={setMealSelection} isWaterpark={isWaterpark} bookedDates={property.booked_dates || []} />
                             )}
@@ -941,7 +998,7 @@ const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navi
 
 
 
-const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, dateRange, priceBreakdown, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, datePickerRef, bookedDates = [], isWaterpark }) => {
+const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, dateRange, priceBreakdown, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, datePickerRef, bookedDates = [], isWaterpark, pricing }) => {
     const getPriceForDate = (date) => {
         const w = date.getDay();
         const p = ob?.pricing || {};
@@ -965,10 +1022,21 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
     };
     const effectiveDate = dateRange?.from ? new Date(dateRange.from) : new Date();
     const adultRate = getPriceForDate(effectiveDate);
+
+    // Calculate market rate based on percentage if available, otherwise fallback
+    const marketRate = pricing ? Math.round(adultRate * (pricing.marketPrice / (pricing.sellingPrice || 1))) : Math.round(adultRate * 1.25);
+    const percentage = pricing ? pricing.percentage : 20;
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-end mb-4 border-b pb-4">
                 <div className="flex flex-col gap-2 w-full">
+                    {pricing && (
+                        <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">₹{marketRate.toLocaleString()}</span>
+                            <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">{percentage}% OFF</span>
+                        </div>
+                    )}
                     <div className="flex justify-between items-center w-full">
                         <div><span className="text-xl font-bold">₹{Math.round(adultRate).toLocaleString()}</span><span className="text-xs text-gray-500 ml-1">/ person</span></div>
                     </div>

@@ -257,9 +257,9 @@ export default function PropertyApproval() {
             const existing = prop.admin_pricing || {};
             const pricingData = ob.pricing || {};
 
-            // Helper to get existing admin price or empty string (NO PRE-FILL from vendor price)
+            // Helper to get existing admin price
             const getVal = (day, type, field) => {
-                return existing[day]?.[type]?.[field] ?? '';
+                return existing[day]?.[type]?.[field] || null;
             };
 
             const getVendorDiscountPercentage = (current, discounted) => {
@@ -280,7 +280,10 @@ export default function PropertyApproval() {
 
             let mt_villa, mt_extra, fs_villa, fs_extra, sat_villa, sat_extra;
 
-            mt_villa = parseFloat(getVal('mon_thu', 'villa', 'current') || prop.price_mon_thu || prop.Price || 0);
+            mt_villa = parseFloat(getVal('mon_thu', 'villa', 'current') || prop.Price || 0);
+
+            // Initial final price fallback
+            const mt_villa_final = getVal('mon_thu', 'villa', 'final') || prop.price_mon_thu || prop.ResortWalaRate || mt_villa;
 
             // Logic to extract Extra Guest Charges
             // Use saved current if available, else fallback to vendor price/criteria
@@ -312,17 +315,17 @@ export default function PropertyApproval() {
             const mt_meal = parseFloat(getVal('mon_thu', 'meal_person', 'current') || foodRates.veg || foodRates.nonVeg || 0);
             const jain_meal = parseFloat(getVal('mon_thu', 'jain_meal_person', 'current') || foodRates.jain || 0); // Extract Jain
 
-            const fs_fs_villa = parseFloat(getVal('fri_sun', 'villa', 'current') || prop.price_fri_sun || 0);
-            const sat_sat_villa = parseFloat(getVal('sat', 'villa', 'current') || prop.price_sat || 0);
+            const fs_fs_villa = parseFloat(getVal('fri_sun', 'villa', 'current') || prop.price_fri_sun || prop.Price || 0);
+            const sat_sat_villa = parseFloat(getVal('sat', 'villa', 'current') || prop.price_sat || prop.Price || 0);
 
             setPricing({
                 mon_thu: {
                     villa: {
                         current: mt_villa,
-                        discounted: getVal('mon_thu', 'villa', 'discounted'),
-                        final: getVal('mon_thu', 'villa', 'final'),
-                        vendorDiscountPercentage: getVendorDiscountPercentage(mt_villa, getVal('mon_thu', 'villa', 'discounted')),
-                        ourMarginPercentage: getOurMarginPercentage(getVal('mon_thu', 'villa', 'discounted'), getVal('mon_thu', 'villa', 'final'))
+                        discounted: getVal('mon_thu', 'villa', 'discounted') || mt_villa,
+                        final: mt_villa_final,
+                        vendorDiscountPercentage: getVendorDiscountPercentage(mt_villa, getVal('mon_thu', 'villa', 'discounted') || mt_villa),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('mon_thu', 'villa', 'discounted') || mt_villa, mt_villa_final)
                     },
                     extra_person: {
                         current: mt_extra,
@@ -349,61 +352,61 @@ export default function PropertyApproval() {
                 fri_sun: {
                     villa: {
                         current: fs_fs_villa,
-                        discounted: getVal('fri_sun', 'villa', 'discounted'),
-                        final: getVal('fri_sun', 'villa', 'final'),
-                        vendorDiscountPercentage: getVendorDiscountPercentage(fs_fs_villa, getVal('fri_sun', 'villa', 'discounted')),
-                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'villa', 'discounted'), getVal('fri_sun', 'villa', 'final'))
+                        discounted: getVal('fri_sun', 'villa', 'discounted') || fs_fs_villa,
+                        final: getVal('fri_sun', 'villa', 'final') || prop.price_fri_sun || fs_fs_villa,
+                        vendorDiscountPercentage: getVendorDiscountPercentage(fs_fs_villa, getVal('fri_sun', 'villa', 'discounted') || fs_fs_villa),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'villa', 'discounted') || fs_fs_villa, getVal('fri_sun', 'villa', 'final') || prop.price_fri_sun || fs_fs_villa)
                     },
                     extra_person: {
                         current: fs_extra,
-                        discounted: getVal('fri_sun', 'extra_person', 'discounted'),
-                        final: getVal('fri_sun', 'extra_person', 'final'),
-                        vendorDiscountPercentage: getVendorDiscountPercentage(fs_extra, getVal('fri_sun', 'extra_person', 'discounted')),
-                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'extra_person', 'discounted'), getVal('fri_sun', 'extra_person', 'final'))
+                        discounted: getVal('fri_sun', 'extra_person', 'discounted') || fs_extra,
+                        final: getVal('fri_sun', 'extra_person', 'final') || fs_extra,
+                        vendorDiscountPercentage: getVendorDiscountPercentage(fs_extra, getVal('fri_sun', 'extra_person', 'discounted') || fs_extra),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'extra_person', 'discounted') || fs_extra, getVal('fri_sun', 'extra_person', 'final') || fs_extra)
                     },
                     meal_person: {
                         current: mt_meal,
-                        discounted: getVal('fri_sun', 'meal_person', 'discounted'),
-                        final: getVal('fri_sun', 'meal_person', 'final'),
-                        vendorDiscountPercentage: getVendorDiscountPercentage(mt_meal, getVal('fri_sun', 'meal_person', 'discounted')),
-                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'meal_person', 'discounted'), getVal('fri_sun', 'meal_person', 'final'))
+                        discounted: getVal('fri_sun', 'meal_person', 'discounted') || mt_meal,
+                        final: getVal('fri_sun', 'meal_person', 'final') || mt_meal,
+                        vendorDiscountPercentage: getVendorDiscountPercentage(mt_meal, getVal('fri_sun', 'meal_person', 'discounted') || mt_meal),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'meal_person', 'discounted') || mt_meal, getVal('fri_sun', 'meal_person', 'final') || mt_meal)
                     },
                     jain_meal_person: {
                         current: jain_meal,
-                        discounted: getVal('fri_sun', 'jain_meal_person', 'discounted'),
-                        final: getVal('fri_sun', 'jain_meal_person', 'final'),
-                        vendorDiscountPercentage: getVendorDiscountPercentage(jain_meal, getVal('fri_sun', 'jain_meal_person', 'discounted')),
-                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'jain_meal_person', 'discounted'), getVal('fri_sun', 'jain_meal_person', 'final'))
+                        discounted: getVal('fri_sun', 'jain_meal_person', 'discounted') || jain_meal,
+                        final: getVal('fri_sun', 'jain_meal_person', 'final') || jain_meal,
+                        vendorDiscountPercentage: getVendorDiscountPercentage(jain_meal, getVal('fri_sun', 'jain_meal_person', 'discounted') || jain_meal),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('fri_sun', 'jain_meal_person', 'discounted') || jain_meal, getVal('fri_sun', 'jain_meal_person', 'final') || jain_meal)
                     }
                 },
                 sat: {
                     villa: {
                         current: sat_sat_villa,
-                        discounted: getVal('sat', 'villa', 'discounted'),
-                        final: getVal('sat', 'villa', 'final'),
-                        vendorDiscountPercentage: getVendorDiscountPercentage(sat_sat_villa, getVal('sat', 'villa', 'discounted')),
-                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'villa', 'discounted'), getVal('sat', 'villa', 'final'))
+                        discounted: getVal('sat', 'villa', 'discounted') || sat_sat_villa,
+                        final: getVal('sat', 'villa', 'final') || prop.price_sat || sat_sat_villa,
+                        vendorDiscountPercentage: getVendorDiscountPercentage(sat_sat_villa, getVal('sat', 'villa', 'discounted') || sat_sat_villa),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'villa', 'discounted') || sat_sat_villa, getVal('sat', 'villa', 'final') || prop.price_sat || sat_sat_villa)
                     },
                     extra_person: {
                         current: sat_extra,
-                        discounted: getVal('sat', 'extra_person', 'discounted'),
-                        final: getVal('sat', 'extra_person', 'final'),
-                        vendorDiscountPercentage: getVendorDiscountPercentage(sat_extra, getVal('sat', 'extra_person', 'discounted')),
-                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'extra_person', 'discounted'), getVal('sat', 'extra_person', 'final'))
+                        discounted: getVal('sat', 'extra_person', 'discounted') || sat_extra,
+                        final: getVal('sat', 'extra_person', 'final') || sat_extra,
+                        vendorDiscountPercentage: getVendorDiscountPercentage(sat_extra, getVal('sat', 'extra_person', 'discounted') || sat_extra),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'extra_person', 'discounted') || sat_extra, getVal('sat', 'extra_person', 'final') || sat_extra)
                     },
                     meal_person: {
                         current: mt_meal,
-                        discounted: getVal('sat', 'meal_person', 'discounted'),
-                        final: getVal('sat', 'meal_person', 'final'),
-                        vendorDiscountPercentage: getVendorDiscountPercentage(mt_meal, getVal('sat', 'meal_person', 'discounted')),
-                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'meal_person', 'discounted'), getVal('sat', 'meal_person', 'final'))
+                        discounted: getVal('sat', 'meal_person', 'discounted') || mt_meal,
+                        final: getVal('sat', 'meal_person', 'final') || mt_meal,
+                        vendorDiscountPercentage: getVendorDiscountPercentage(mt_meal, getVal('sat', 'meal_person', 'discounted') || mt_meal),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'meal_person', 'discounted') || mt_meal, getVal('sat', 'meal_person', 'final') || mt_meal)
                     },
                     jain_meal_person: {
                         current: jain_meal,
-                        discounted: getVal('sat', 'jain_meal_person', 'discounted'),
-                        final: getVal('sat', 'jain_meal_person', 'final'),
-                        vendorDiscountPercentage: getVendorDiscountPercentage(jain_meal, getVal('sat', 'jain_meal_person', 'discounted')),
-                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'jain_meal_person', 'discounted'), getVal('sat', 'jain_meal_person', 'final'))
+                        discounted: getVal('sat', 'jain_meal_person', 'discounted') || jain_meal,
+                        final: getVal('sat', 'jain_meal_person', 'final') || jain_meal,
+                        vendorDiscountPercentage: getVendorDiscountPercentage(jain_meal, getVal('sat', 'jain_meal_person', 'discounted') || jain_meal),
+                        ourMarginPercentage: getOurMarginPercentage(getVal('sat', 'jain_meal_person', 'discounted') || jain_meal, getVal('sat', 'jain_meal_person', 'final') || jain_meal)
                     }
                 }
             });
@@ -1161,52 +1164,39 @@ export default function PropertyApproval() {
 
                             <div className="bg-white border border-gray-200 rounded-xl p-6">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4 pb-3 border-b">Custom Rules</h3>
-                                <div className="flex gap-2 mb-4">
-                                    <input
-                                        type="text"
-                                        id="new-rule-input"
-                                        placeholder="Add a new rule..."
-                                        className="flex-1 px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-blue-500"
-                                        onKeyPress={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                const val = e.target.value.trim();
-                                                if (val) {
-                                                    setFormData(prev => ({ ...prev, otherRules: [...(prev.otherRules || []), val] }));
-                                                    e.target.value = '';
-                                                }
-                                            }
-                                        }}
-                                    />
-                                    <button
-                                        onClick={() => {
-                                            const input = document.getElementById('new-rule-input');
-                                            const val = input.value.trim();
-                                            if (val) {
-                                                setFormData(prev => ({ ...prev, otherRules: [...(prev.otherRules || []), val] }));
-                                                input.value = '';
-                                            }
-                                        }}
-                                        className="bg-black text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-800 transition"
-                                    >
-                                        Add
-                                    </button>
-                                </div>
-                                <div className="space-y-2">
-                                    {formData.otherRules && formData.otherRules.map((rule, idx) => (
-                                        <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                            <span className="text-sm font-medium text-gray-700">{rule}</span>
+                                <div className="space-y-3">
+                                    {(formData.otherRules || []).map((rule, idx) => (
+                                        <div key={idx} className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={rule}
+                                                onChange={(e) => {
+                                                    const newRules = [...(formData.otherRules || [])];
+                                                    newRules[idx] = e.target.value;
+                                                    setFormData(prev => ({ ...prev, otherRules: newRules }));
+                                                }}
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-blue-500 text-sm font-medium"
+                                                placeholder="Enter rule..."
+                                            />
                                             <button
-                                                onClick={() => setFormData(prev => ({ ...prev, otherRules: prev.otherRules.filter((_, i) => i !== idx) }))}
-                                                className="text-red-500 hover:text-red-700 p-1"
+                                                type="button"
+                                                onClick={() => {
+                                                    const newRules = (formData.otherRules || []).filter((_, i) => i !== idx);
+                                                    setFormData(prev => ({ ...prev, otherRules: newRules }));
+                                                }}
+                                                className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
                                             >
                                                 <FaTrash size={14} />
                                             </button>
                                         </div>
                                     ))}
-                                    {(!formData.otherRules || formData.otherRules.length === 0) && (
-                                        <p className="text-sm text-gray-400 italic text-center">No custom rules added.</p>
-                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, otherRules: [...(formData.otherRules || []), ''] }))}
+                                        className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-2 mt-2 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors w-max"
+                                    >
+                                        <span className="text-lg font-normal bg-blue-50 w-6 h-6 flex items-center justify-center rounded-full leading-none">+</span> Add Rule
+                                    </button>
                                 </div>
                             </div>
                             {/* Other Rules (already handled in Basic Info, but duplicating or moving logic might be confusing. User asked for control. The 'PropertyRules' textarea logic is in Basic Info. We could move it here or keep it there.) */}
