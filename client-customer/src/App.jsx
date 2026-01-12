@@ -33,6 +33,7 @@ import BookingPending from './pages/BookingPending';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import CompareFloatingBar from './components/features/CompareFloatingBar';
 import CompareModal from './components/features/CompareModal';
+import ComingSoonGuard from './components/common/ComingSoonGuard';
 
 function App() {
   return (
@@ -42,43 +43,44 @@ function App() {
           <WishlistProvider>
             <CompareProvider>
               <BrowserRouter>
-                <ScrollToTop />
-                <PageTracker />
-                <TokenHandler />
-                <NotificationInitializer />
-                <Toaster position="top-center" />
-                <Routes>
-                  <Route path="/" element={<MainLayout />}>
-                    <Route index element={<Home />} />
-                    <Route path="/property/:id" element={<PropertyDetails />} />
-                    <Route path="/book/:id" element={<BookingPage />} />
-                    <Route path="/checkout/:id" element={<BookingPage />} />
+                <ComingSoonGuard>
+                  <ScrollToTop />
+                  <PageTracker />
+                  <TokenHandler />
+                  <NotificationInitializer />
+                  <Toaster position="top-center" />
+                  <Routes>
+                    <Route path="/" element={<MainLayout />}>
+                      <Route index element={<Home />} />
+                      <Route path="/property/:id" element={<PropertyDetails />} />
+                      <Route path="/book/:id" element={<BookingPage />} />
+                      <Route path="/checkout/:id" element={<BookingPage />} />
 
-                    <Route path="/bookings" element={<UserBookings />} />
-                    <Route path="/booking/success" element={<BookingSuccess />} />
-                    <Route path="/booking/failed" element={<BookingFailed />} />
-                    <Route path="/booking/pending" element={<BookingPending />} />
+                      <Route path="/bookings" element={<UserBookings />} />
+                      <Route path="/booking/success" element={<BookingSuccess />} />
+                      <Route path="/booking/failed" element={<BookingFailed />} />
+                      <Route path="/booking/pending" element={<BookingPending />} />
 
-                    <Route path="/wishlist" element={<Wishlist />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/policy/:type" element={<Policy />} />
-                  </Route>
+                      <Route path="/wishlist" element={<Wishlist />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/contact" element={<Contact />} />
+                      <Route path="/about" element={<About />} />
+                      <Route path="/policy/:type" element={<Policy />} />
+                    </Route>
 
-                  {/* Public Standalone Calendar View */}
-                  <Route path="/stay/:uuid" element={<PublicPropertyCalendar />} />
+                    {/* Public Standalone Calendar View */}
+                    <Route path="/stay/:uuid" element={<PublicPropertyCalendar />} />
 
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/signup" element={<Signup />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/set-password" element={<SetPassword />} />
-                </Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/set-password" element={<SetPassword />} />
+                  </Routes>
 
-                {/* Global Floating Bar & Modal */}
-                <CompareFloatingBar />
-                <CompareModal />
-
+                  {/* Global Floating Bar & Modal */}
+                  <CompareFloatingBar />
+                  <CompareModal />
+                </ComingSoonGuard>
               </BrowserRouter>
             </CompareProvider>
           </WishlistProvider>

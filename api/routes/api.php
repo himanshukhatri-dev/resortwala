@@ -201,6 +201,19 @@ Route::match(['get', 'post'], '/payment/callback', [\App\Http\Controllers\Paymen
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
     ->name('payment.callback');
 
+Route::get('/test-email-public', function (Illuminate\Http\Request $request) {
+    $email = $request->query('email', 'himanshukhatri.1988@gmail.com');
+    try {
+        \Illuminate\Support\Facades\Mail::raw('This is a public test from ResortWala API. Time: ' . now(), function ($msg) use ($email) {
+            $msg->to($email)
+                ->subject('ResortWala Public Test Email');
+        });
+        return response()->json(['status' => 'success', 'message' => "Email sent to $email"]);
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
 Route::post('/payment/simulate', [\App\Http\Controllers\PaymentSimulationController::class, 'simulate']);
 
 
@@ -233,6 +246,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/admin/vendors/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectVendor']);
     
     // Admin Property Management
+    Route::get('/admin/bulk-upload/template', [\App\Http\Controllers\Admin\BulkUploadController::class, 'downloadTemplate']);
+    Route::prefix('admin/bulk-upload')->group(function () {
+        Route::post('init', [\App\Http\Controllers\Admin\BulkUploadController::class, 'initUpload']);
+        Route::get('{id}', [\App\Http\Controllers\Admin\BulkUploadController::class, 'show']);
+        Route::get('{id}/entries', [\App\Http\Controllers\Admin\BulkUploadController::class, 'entries']);
+        Route::post('{id}/import', [\App\Http\Controllers\Admin\BulkUploadController::class, 'import']);
+    });
     Route::post('/admin/properties', [\App\Http\Controllers\AdminPropertyController::class, 'store']);
     Route::get('/admin/properties', [\App\Http\Controllers\AdminController::class, 'getAllProperties']);
     Route::get('/admin/properties/pending', [\App\Http\Controllers\AdminController::class, 'getPendingProperties']);

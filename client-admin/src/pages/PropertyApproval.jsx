@@ -985,7 +985,8 @@ export default function PropertyApproval() {
                                             {[
                                                 { key: 'ac', label: 'AC', icon: <FaSnowflake /> },
                                                 { key: 'tv', label: 'TV', icon: <FaTv /> },
-                                                { key: 'bathroom', label: 'Private Bathroom', icon: <FaRestroom /> }
+                                                { key: 'bathroom', label: 'Private Bathroom', icon: <FaRestroom /> },
+                                                { key: 'balcony', label: 'Balcony', icon: <FaWind /> }
                                             ].map(feat => {
                                                 const isActive = !!room[feat.key];
                                                 return (

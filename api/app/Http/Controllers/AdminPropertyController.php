@@ -67,26 +67,48 @@ class AdminPropertyController extends Controller
                     ->delete();
             }
 
-            // 4. Update standard columns (basic details, contact, etc.)
-            // Exclude non-column fields and internal IDs
-            $exclude = ['id', 'vendor_id', 'is_approved', 'PropertyId', 'admin_pricing', 'waterpark_pricing', 'RoomConfig', 'Amenities', 'deletedImages', 'onboarding_data', 'otherAmenities'];
-            $data = $request->except($exclude);
+            // 4. Update using DB Facade to bypass Eloquent "Unknown Column" errors
+            // This is critical because bulk uploads push fields like 'otherAttractions' 
+            // that don't match DB columns.
             
-            foreach ($data as $key => $value) {
-                if ($value !== null && !empty($key)) {
-                    $property->$key = $value;
-                }
+            // Prepare STRICT update array
+            // Only include columns that DEFINITELY exist in Schema
+            $updateData = $request->only([
+                'Name', 'Location', 'ShortDescription', 'LongDescription', 
+                'Occupancy', 'MaxCapacity', 'NoofRooms', 
+                'checkInTime', 'checkOutTime', 
+                'PropertyRules', 'BookingSpecailMessage',
+                'GoogleMapLink', 'Website', 'Address', 'ContactPerson', 'MobileNo', 'Email', 'PropertyType'
+            ]);
+
+            $updateData['is_approved'] = true;
+            $updateData['IsActive'] = true;
+            $updateData['PropertyStatus'] = true;
+            $updateData['onboarding_data'] = json_encode($obData);
+            
+            if ($request->has('admin_pricing')) {
+                 $adminPricing = is_string($request->admin_pricing) ? json_decode($request->admin_pricing, true) : $request->admin_pricing;
+                 $updateData['admin_pricing'] = json_encode($adminPricing);
+                 
+                 // Sync Pricing columns if present in request/matrix
+                 if (isset($adminPricing['mon_thu']['villa']['current'])) $updateData['Price'] = $adminPricing['mon_thu']['villa']['current'];
+                 if (isset($adminPricing['mon_thu']['villa']['final'])) {
+                     $updateData['ResortWalaRate'] = $adminPricing['mon_thu']['villa']['final'];
+                     $updateData['price_mon_thu'] = $adminPricing['mon_thu']['villa']['final'];
+                     $updateData['DealPrice'] = $adminPricing['mon_thu']['villa']['final'];
+                 }
+                 if (isset($adminPricing['fri_sun']['villa']['final'])) $updateData['price_fri_sun'] = $adminPricing['fri_sun']['villa']['final'];
+                 if (isset($adminPricing['sat']['villa']['final'])) $updateData['price_sat'] = $adminPricing['sat']['villa']['final'];
             }
 
-            $property->is_approved = true;
-            $property->IsActive = true;
-            $property->PropertyStatus = true;
-            
-            $property->save();
+            // Execute Direct Update
+            \Illuminate\Support\Facades\DB::table('property_masters')
+                ->where('PropertyId', $id)
+                ->update($updateData);
 
             return response()->json([
                 'message' => 'Property approved and details updated successfully',
-                'property' => $property
+                'property' => PropertyMaster::find($id) // Reload clean model
             ]);
         });
     }

@@ -756,15 +756,7 @@ export default function EditProperty() {
                     <InputField label="Longitude" name="longitude" value={formData.longitude} onChange={(e) => setFormData({ ...formData, longitude: e.target.value })} placeholder="73.5678" className="bg-white" />
                 </div>
 
-                <div className="space-y-1.5 pt-2 border-t border-green-200/50 mt-2">
-                    <label className="text-[10px] font-bold text-green-700 uppercase tracking-wider">Nearby Attractions</label>
-                    <textarea
-                        value={formData.nearbyAttractions || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, nearbyAttractions: e.target.value }))}
-                        className="w-full bg-white border border-green-200 rounded-lg px-3 py-2 text-sm focus:border-green-500 outline-none h-16 resize-none placeholder-green-200/50"
-                        placeholder="List nearby tourist spots..."
-                    />
-                </div>
+                {/* Nearby Attractions Removed */}
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
@@ -1005,7 +997,7 @@ export default function EditProperty() {
             <div className="bg-blue-50/30 border border-blue-100 rounded-xl p-5">
                 <h4 className="font-bold text-blue-900 mb-4 flex items-center gap-2 text-sm"><FaUserShield /> Safety & Security</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {['Fire Extinguisher', 'Security System', 'First Aid Kit', 'Window Guards'].map(safety => (
+                    {['Fire Extinguisher', 'Security System', 'First Aid Kit', 'Window Guards', 'Caretaker'].map(safety => (
                         <label key={safety} className="flex items-center gap-2 bg-white p-2.5 rounded-lg border border-blue-100 cursor-pointer shadow-sm hover:border-blue-300 transition-all">
                             <input
                                 type="checkbox"
@@ -1215,6 +1207,10 @@ export default function EditProperty() {
                                         <div className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-100">
                                             <span className="font-bold text-[10px] text-gray-600">Geyser</span>
                                             <Toggle active={room.geyser} onChange={(v) => updateRoom(idx, 'geyser', v)} />
+                                        </div>
+                                        <div className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-100">
+                                            <span className="font-bold text-[10px] text-gray-600">Wardrobe</span>
+                                            <Toggle active={room.wardrobe} onChange={(v) => updateRoom(idx, 'wardrobe', v)} />
                                         </div>
                                         <div className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-100">
                                             <span className="font-bold text-[10px] text-gray-600">Balcony</span>

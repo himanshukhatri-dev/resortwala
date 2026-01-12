@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration (Using Root Socket Auth)
-SOURCE_DB_NAME='resortwala'
+SOURCE_DB_NAME='resortwala_staging'
 TARGET_DB_NAME='resortwala_prod'
 
 SOURCE_FILES="/var/www/html/stagingapi.resortwala.com/public/storage/"

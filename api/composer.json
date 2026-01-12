@@ -14,7 +14,8 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "fakerphp/faker": "^1.23",
-        "phonepe/phonepe-pg-php-sdk": "dev-main"
+        "phonepe/phonepe-pg-php-sdk": "dev-main",
+        "maatwebsite/excel": "^3.1"
     },
     "require-dev": {
         "laravel/pail": "^1.2.2",
@@ -86,7 +87,11 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
-        }
+        },
+        "platform": {
+            "php": "8.2.29"
+        },
+        "platform-check": false
     },
     "minimum-stability": "dev",
     "prefer-stable": true

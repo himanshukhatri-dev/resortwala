@@ -78,6 +78,18 @@ $Paths = @{
         "Type"        = "Laravel"
         "Excludes"    = @(".env", "node_modules", "vendor", ".git", "storage/*.key", "tests")
     }
+    "ProdAdmin"  = @{
+        "LocalSource" = "$PSScriptRoot/client-admin"
+        "DistDir"     = "dist"
+        "RemotePath"  = "$RemoteBasePath/admin.resortwala.com"
+        "Type"        = "React"
+    }
+    "ProdVendor" = @{
+        "LocalSource" = "$PSScriptRoot/client-vendor"
+        "DistDir"     = "dist"
+        "RemotePath"  = "$RemoteBasePath/vendor.resortwala.com"
+        "Type"        = "React"
+    }
 }
 
 function Build-ReactApp {
@@ -281,7 +293,11 @@ if ($Component) {
             Deploy-Component "ComingSoon" $Paths.ComingSoon 
             Write-Host "NOTE: Ensure 'resortwala.com' points to $ServerIP" -ForegroundColor Cyan
         }
-        Default { Write-Error "Invalid Component. Use: Customer, Admin, API, Vendor, Beta, ComingSoon" }
+        "Production" { if (Build-ReactApp "Production" $Paths.Production) { Deploy-Component "Production" $Paths.Production } }
+        "ProdAPI" { if (Build-Laravel "ProdAPI" $Paths.ProdAPI) { Deploy-Component "ProdAPI" $Paths.ProdAPI } }
+        "ProdAdmin" { if (Build-ReactApp "ProdAdmin" $Paths.ProdAdmin) { Deploy-Component "ProdAdmin" $Paths.ProdAdmin } }
+        "ProdVendor" { if (Build-ReactApp "ProdVendor" $Paths.ProdVendor) { Deploy-Component "ProdVendor" $Paths.ProdVendor } }
+        Default { Write-Error "Invalid Component. Use: Customer, Admin, API, Vendor, Beta, ComingSoon, Production, ProdAPI, ProdAdmin, ProdVendor" }
     }
     exit
 }
@@ -348,7 +364,13 @@ switch ($Selection) {
         if (Build-Laravel "ProdAPI" $Paths.ProdAPI) { 
             Deploy-Component "ProdAPI" $Paths.ProdAPI 
         }
-        Write-Host "✅ LIVE DEPLOYMENT COMPLETE" -ForegroundColor Green
+        if (Build-ReactApp "ProdAdmin" $Paths.ProdAdmin) { 
+            Deploy-Component "ProdAdmin" $Paths.ProdAdmin 
+        }
+        if (Build-ReactApp "ProdVendor" $Paths.ProdVendor) { 
+            Deploy-Component "ProdVendor" $Paths.ProdVendor 
+        }
+        Write-Host "✅ LIVE DEPLOYMENT COMPLETE (Customer + API + Admin + Vendor)" -ForegroundColor Green
     }
     "Q" { exit }
     Default { Write-Host "Invalid Selection" -ForegroundColor Red }

@@ -23,6 +23,8 @@ import HolidayApprovals from './pages/HolidayApprovals';
 import adminAnalytics from './utils/analytics';
 import Intelligence from './pages/Intelligence';
 import VendorPresentation from './pages/VendorPresentation';
+import BulkUpload from './pages/BulkUpload';
+import BulkUploadDetails from './pages/BulkUploadDetails';
 import InvestorPresentation from './pages/InvestorPresentation';
 import './App.css';
 
@@ -74,6 +76,8 @@ function App() {
               <Route path="/intelligence" element={<Intelligence />} />
               <Route path="/vendor-presentation" element={<VendorPresentation />} />
               <Route path="/investor-presentation" element={<InvestorPresentation />} />
+              <Route path="/bulk-upload" element={<BulkUpload />} />
+              <Route path="/bulk-upload/:id" element={<BulkUploadDetails />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/login" />} />

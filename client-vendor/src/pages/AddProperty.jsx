@@ -632,16 +632,7 @@ export default function AddProperty() {
                     <InputField label="Longitude" name="longitude" value={formData.longitude} onChange={(e) => setFormData({ ...formData, longitude: e.target.value })} placeholder="Ex: 73.5678" className="bg-white" />
                 </div>
 
-                {/* Other Attractions */}
-                <div className="mt-2 pt-2 border-t border-green-200">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Nearby Attractions</label>
-                    <textarea
-                        value={formData.otherAttractions || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, otherAttractions: e.target.value }))}
-                        className="w-full bg-white border border-green-200 rounded-lg px-3 py-2 text-sm focus:border-green-500 outline-none h-16 resize-none"
-                        placeholder="List nearby tourist spots..."
-                    />
-                </div>
+                {/* Other Attractions Removed */}
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">

@@ -55,6 +55,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
         { path: '/analytics', icon: '📊', label: 'Analytics' },
         { path: '/holidays', icon: '🌴', label: 'Holidays' },
         { path: '/intelligence', icon: '🧠', label: 'Intelligence' },
+        { path: '/bulk-upload', icon: '📤', label: 'Bulk Upload' },
         { path: '/vendor-presentation', icon: '🎯', label: 'Vendor Pitch' },
     ];
 

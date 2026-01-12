@@ -182,26 +182,40 @@ class AdminController extends Controller
 
         // Merge Admin updates into onboarding_data
         $obData = $property->onboarding_data ?? [];
-        if ($request->has('Amenities')) $obData['amenities'] = $request->Amenities;
-        if ($request->has('RoomConfig')) $obData['roomConfig'] = $request->RoomConfig;
-        if ($request->has('otherAmenities')) $obData['otherAmenities'] = $request->otherAmenities;
         
-        // Save Lat/Long to onboarding_data (since columns might not exist or be preferred source)
-        if ($request->has('latitude')) $obData['latitude'] = $request->latitude;
-        if ($request->has('longitude')) $obData['longitude'] = $request->longitude;
-
-        $property->onboarding_data = $obData;
-
-        // Explicitly unset non-column attributes to prevent SQL errors
-        unset($property->otherAmenities);
-        unset($property->Amenities);
-        unset($property->RoomConfig);
-
-        $property->is_approved = true;
-        \App\Helpers\Profiler::checkpoint('After setting is_approved');
+        // Helper to Merge
+        $fieldsToMerge = ['Amenities', 'RoomConfig', 'otherAmenities', 'otherAttractions', 'otherRules', 'latitude', 'longitude'];
+        foreach($fieldsToMerge as $field) {
+            if ($request->has($field)) {
+                $obData[$field] = $request->$field;
+            }
+        }
         
-        $property->save();
-        \App\Helpers\Profiler::checkpoint('After save');
+        // Prepare strict update array for DB::table
+        // Only include columns that DEFINITELY exist in Schema
+        $updateData = $request->only([
+            'Name', 'Location', 'ShortDescription', 'LongDescription', 
+            'Occupancy', 'MaxCapacity', 'NoofRooms', 
+            'checkInTime', 'checkOutTime', 
+            'PropertyRules', 'BookingSpecailMessage',
+            'GoogleMapLink', 'Website', 'Address', 'ContactPerson', 'MobileNo', 'Email', 'PropertyType'
+        ]);
+
+        $updateData['is_approved'] = true;
+        $updateData['onboarding_data'] = json_encode($obData); // Manual JSON encode for DB facade
+        
+        if ($request->has('admin_pricing')) {
+            $updateData['admin_pricing'] = json_encode($request->admin_pricing);
+        }
+
+        // Use DB Facade to bypass Eloquent Model Magic/Attributes
+        \Illuminate\Support\Facades\DB::table('property_masters')
+            ->where('PropertyId', $id)
+            ->update($updateData);
+
+        return response()->json([
+            'message' => 'Property approved successfully'
+        ]);
 
         return response()->json([
             'message' => 'Property approved successfully',
