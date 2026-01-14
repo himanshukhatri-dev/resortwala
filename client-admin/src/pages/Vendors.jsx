@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Loader from '../components/Loader';
 import { useModal } from '../context/ModalContext';
 import { API_BASE_URL } from '../config';
-import { FaCheck, FaTimes, FaUser, FaPhone, FaEnvelope, FaBuilding, FaSearch, FaFilter, FaTrash, FaUserTie, FaWhatsapp } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaUser, FaPhone, FaEnvelope, FaBuilding, FaSearch, FaFilter, FaTrash, FaUserTie, FaWhatsapp, FaEdit, FaSave } from 'react-icons/fa';
 
 export default function Vendors() {
     const { token } = useAuth();
@@ -14,6 +14,10 @@ export default function Vendors() {
     const [actionLoading, setActionLoading] = useState(false);
     const [filter, setFilter] = useState('all'); // all, approved, pending
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Editing State
+    const [isEditing, setIsEditing] = useState(false);
+    const [editData, setEditData] = useState({});
 
     useEffect(() => {
         fetchVendors();
@@ -33,15 +37,48 @@ export default function Vendors() {
         }
     };
 
-    // ... (Existing imports and code)
-
     const [selectedVendor, setSelectedVendor] = useState(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
 
     // Triggered by "Approve" button or "View"
     const openApprovalModal = (vendor) => {
         setSelectedVendor(vendor);
+        setIsEditing(false); // Reset edit mode
+        setEditData(vendor); // Initialize edit data even if not editing yet
         setShowDetailModal(true);
+    };
+
+    const handleEditClick = () => {
+        setIsEditing(true);
+        setEditData({ ...selectedVendor }); // Clone data for editing
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        setEditData(selectedVendor); // Revert changes
+    };
+
+    const handleUpdateVendor = async (e) => {
+        e.preventDefault();
+        setActionLoading(true);
+
+        try {
+            const res = await axios.put(`${API_BASE_URL}/admin/users/${selectedVendor.id}`, editData, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            // Update local lists
+            setVendors(vendors.map(v => v.id === selectedVendor.id ? { ...v, ...res.data.user } : v));
+            setSelectedVendor({ ...selectedVendor, ...res.data.user });
+
+            showSuccess('Updated', 'Vendor details updated successfully');
+            setIsEditing(false);
+        } catch (error) {
+            console.error('Error updating vendor:', error);
+            showError('Update Failed', error.response?.data?.message || 'Failed to update vendor details');
+        } finally {
+            setActionLoading(false);
+        }
     };
 
     const confirmApprove = async () => {
@@ -49,11 +86,9 @@ export default function Vendors() {
 
         setActionLoading(true);
         try {
-
             await axios.post(`${API_BASE_URL}/admin/vendors/${selectedVendor.id}/approve`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-
 
             // Update local state
             setVendors(vendors.map(v => v.id === selectedVendor.id ? { ...v, is_approved: 1 } : v));
@@ -257,7 +292,7 @@ export default function Vendors() {
                                                                 : 'bg-green-600 text-white hover:bg-green-700'}`}
                                                             title={vendor.is_approved ? "View Details" : "Review & Approve"}
                                                         >
-                                                            {vendor.is_approved ? 'View Details' : 'Review & Approve'}
+                                                            {vendor.is_approved ? 'View / Edit' : 'Review & Approve'}
                                                         </button>
 
                                                         <button
@@ -305,16 +340,6 @@ export default function Vendors() {
                                             <div className="flex items-center gap-2 text-gray-700">
                                                 <FaPhone className="text-gray-300 text-xs w-4" />
                                                 <span>{vendor.phone || 'N/A'}</span>
-                                                {vendor.phone && (
-                                                    <a
-                                                        href={`https://wa.me/${vendor.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hello ${vendor.name}, I am writing to you from ResortWala Admin regarding your account. \n\nMy query is: `)}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-green-500 hover:text-green-600 transition-colors ml-auto p-2 bg-green-50 rounded-lg"
-                                                    >
-                                                        <FaWhatsapp size={18} />
-                                                    </a>
-                                                )}
                                             </div>
                                             <div className="flex items-center gap-2 text-gray-700">
                                                 <FaBuilding className="text-gray-300 text-xs w-4" />
@@ -327,7 +352,7 @@ export default function Vendors() {
                                                 onClick={() => openApprovalModal(vendor)}
                                                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-sm active:scale-95 transition-all"
                                             >
-                                                {vendor.is_approved ? 'View Details' : 'Review & Approve'}
+                                                {vendor.is_approved ? 'View / Edit' : 'Review & Approve'}
                                             </button>
 
                                             <button
@@ -351,20 +376,32 @@ export default function Vendors() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in">
                         <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-gray-800">Vendor Details</h3>
+                            <h3 className="text-lg font-bold text-gray-800">
+                                {isEditing ? 'Edit Vendor Details' : 'Vendor Details'}
+                            </h3>
                             <button onClick={() => setShowDetailModal(false)} className="text-gray-400 hover:text-black transition-colors">
                                 <FaTimes />
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-6">
+                        <form onSubmit={handleUpdateVendor} className="p-6 space-y-6">
                             {/* Profile Header */}
                             <div className="flex items-center gap-4">
                                 <div className="w-16 h-16 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-2xl border border-blue-200">
                                     {selectedVendor.name?.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-900">{selectedVendor.name}</h2>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={editData.name}
+                                            onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                                            className="font-bold text-xl border-b border-blue-300 focus:border-blue-600 outline-none w-full bg-transparent"
+                                            placeholder="Vendor Name"
+                                        />
+                                    ) : (
+                                        <h2 className="text-xl font-bold text-gray-900">{selectedVendor.name}</h2>
+                                    )}
                                     <p className="text-sm text-gray-500">Member since {new Date(selectedVendor.created_at).toLocaleDateString()}</p>
                                     <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${selectedVendor.is_approved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                                         {selectedVendor.is_approved ? 'Approved' : 'Pending Approval'}
@@ -376,46 +413,106 @@ export default function Vendors() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="p-3 bg-gray-50 rounded-lg">
                                     <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Email</label>
-                                    <p className="font-medium text-gray-800 break-all">{selectedVendor.email}</p>
+                                    {isEditing ? (
+                                        <input
+                                            type="email"
+                                            value={editData.email}
+                                            onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                                            className="font-medium text-gray-800 break-all border border-gray-200 rounded p-1 w-full text-sm"
+                                        />
+                                    ) : (
+                                        <p className="font-medium text-gray-800 break-all">{selectedVendor.email}</p>
+                                    )}
                                 </div>
                                 <div className="p-3 bg-gray-50 rounded-lg">
                                     <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Phone</label>
-                                    <p className="font-medium text-gray-800">{selectedVendor.phone || 'N/A'}</p>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={editData.phone || ''}
+                                            onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                                            className="font-medium text-gray-800 border border-gray-200 rounded p-1 w-full text-sm"
+                                        />
+                                    ) : (
+                                        <p className="font-medium text-gray-800">{selectedVendor.phone || 'N/A'}</p>
+                                    )}
                                 </div>
                                 <div className="p-3 bg-gray-50 rounded-lg">
                                     <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Business Name</label>
-                                    <p className="font-medium text-gray-800">{selectedVendor.business_name || 'N/A'}</p>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={editData.business_name || ''}
+                                            onChange={(e) => setEditData({ ...editData, business_name: e.target.value })}
+                                            className="font-medium text-gray-800 border border-gray-200 rounded p-1 w-full text-sm"
+                                        />
+                                    ) : (
+                                        <p className="font-medium text-gray-800">{selectedVendor.business_name || 'N/A'}</p>
+                                    )}
                                 </div>
                                 <div className="p-3 bg-gray-50 rounded-lg">
                                     <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Vendor Type</label>
-                                    <p className="font-medium text-gray-800">{selectedVendor.vendor_type || 'N/A'}</p>
+                                    <p className="font-medium text-gray-800">{selectedVendor.vendor_type || 'Vendor'}</p>
                                 </div>
                             </div>
 
-                            {!selectedVendor.is_approved && (
+                            {!selectedVendor.is_approved && !isEditing && (
                                 <div className="bg-amber-50 border border-amber-100 p-4 rounded-lg text-sm text-amber-800">
                                     <p><strong>Note:</strong> Approving this vendor will grant them access to the Vendor Dashboard and allow them to list properties.</p>
                                 </div>
                             )}
-                        </div>
 
-                        <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-                            <button
-                                onClick={() => setShowDetailModal(false)}
-                                className="px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition-colors"
-                            >
-                                Close
-                            </button>
-                            {!selectedVendor.is_approved && (
-                                <button
-                                    onClick={confirmApprove}
-                                    disabled={actionLoading}
-                                    className="px-5 py-2.5 rounded-xl font-bold bg-green-600 text-white hover:bg-green-700 shadow-lg hover:shadow-green-200 transition-all flex items-center gap-2"
-                                >
-                                    {actionLoading ? 'Approving...' : <><FaCheck /> Approve Vendor</>}
-                                </button>
-                            )}
-                        </div>
+                            <div className="border-t border-gray-100 pt-4 flex justify-end gap-3">
+                                {isEditing ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={handleCancelEdit}
+                                            disabled={actionLoading}
+                                            className="px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={actionLoading}
+                                            className="px-5 py-2.5 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-blue-200 transition-all flex items-center gap-2"
+                                        >
+                                            {actionLoading ? 'Saving...' : <><FaSave /> Save Changes</>}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowDetailModal(false)}
+                                            className="px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition-colors"
+                                        >
+                                            Close
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleEditClick}
+                                            className="px-5 py-2.5 rounded-xl font-bold bg-gray-800 text-white hover:bg-black shadow-lg hover:shadow-gray-400 transition-all flex items-center gap-2"
+                                        >
+                                            <FaEdit /> Edit Details
+                                        </button>
+
+                                        {!selectedVendor.is_approved && (
+                                            <button
+                                                type="button"
+                                                onClick={confirmApprove}
+                                                disabled={actionLoading}
+                                                className="px-5 py-2.5 rounded-xl font-bold bg-green-600 text-white hover:bg-green-700 shadow-lg hover:shadow-green-200 transition-all flex items-center gap-2"
+                                            >
+                                                {actionLoading ? 'Approving...' : <><FaCheck /> Approve Vendor</>}
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

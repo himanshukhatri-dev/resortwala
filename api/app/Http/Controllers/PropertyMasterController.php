@@ -36,8 +36,15 @@ class PropertyMasterController extends Controller
 
         // --- Fetch Booked Dates Logic ---
         $bookings = \App\Models\Booking::where('PropertyId', $id)
-            ->where('Status', '!=', 'cancelled')
-            ->where('Status', '!=', 'rejected')
+            // Strict Booking Status Check (Copy of BookingController Logic)
+            ->where(function($q) {
+                $q->whereIn('Status', ['Confirmed', 'locked', 'booked'])
+                  ->orWhere(function($q2) {
+                      // Only block for Pending bookings if they are recent (< 15 mins)
+                      $q2->where('Status', 'Pending')
+                         ->where('created_at', '>', \Carbon\Carbon::now()->subMinutes(15));
+                  });
+            })
             ->get(['CheckInDate', 'CheckOutDate']);
 
         $bookedDates = [];
@@ -66,8 +73,14 @@ class PropertyMasterController extends Controller
     public function getBookedDates($id)
     {
         $bookings = \App\Models\Booking::where('PropertyId', $id)
-            ->where('Status', '!=', 'cancelled')
-            ->where('Status', '!=', 'rejected')
+            // Strict Booking Status Check
+            ->where(function($q) {
+                $q->whereIn('Status', ['Confirmed', 'locked', 'booked'])
+                  ->orWhere(function($q2) {
+                      $q2->where('Status', 'Pending')
+                         ->where('created_at', '>', \Carbon\Carbon::now()->subMinutes(15));
+                  });
+            })
             ->get(['CheckInDate', 'CheckOutDate']);
 
         $bookedDates = [];

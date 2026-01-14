@@ -62,6 +62,11 @@ class PropertyMaster extends Model
         return $this->belongsTo(\App\Models\User::class, 'vendor_id');
     }
 
+    public function addons()
+    {
+        return $this->hasMany(\App\Models\Admin\PropertyAddon::class, 'property_id', 'PropertyId');
+    }
+
     public function images()
     {
         return $this->hasMany(\App\Models\PropertyImage::class, 'property_id', 'PropertyId');

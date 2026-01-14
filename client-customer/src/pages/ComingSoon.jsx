@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 
 const ComingSoon = () => {
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -105,7 +105,7 @@ const ComingSoon = () => {
                     {/* CTA Buttons */}
                     <div className="flex flex-col sm:flex-row gap-3 justify-center animate-fade-in-up delay-400">
                         <a
-                            href="https://wa.me/919876543210"
+                            href="https://wa.me/919136276555"
                             target="_blank"
                             rel="noreferrer"
                             className="px-6 py-3 md:px-8 md:py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-sm md:text-base shadow-lg shadow-slate-300/20 transition-all hover:-translate-y-0.5 active:translate-y-0"

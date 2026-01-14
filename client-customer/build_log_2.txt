@@ -1,0 +1,15 @@
+
+> client-customer@0.0.0 build
+> vite build
+
+[36mvite v7.2.7 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32m✓[39m 26 modules transformed.
+[31m✗[39m Build failed in 1.65s
+[31merror during build:
+[31mCould not resolve "./pages/BookingDetails" from "src/App.jsx"[31m
+file: [36mC:/Users/Himanshu/Documents/Code/resortwala/client-customer/src/App.jsx[31m
+    at getRollupError (file:///C:/Users/Himanshu/Documents/Code/resortwala/client-customer/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///C:/Users/Himanshu/Documents/Code/resortwala/client-customer/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at ModuleLoader.handleInvalidResolvedId (file:///C:/Users/Himanshu/Documents/Code/resortwala/client-customer/node_modules/rollup/dist/es/shared/node-entry.js:21590:24)
+    at file:///C:/Users/Himanshu/Documents/Code/resortwala/client-customer/node_modules/rollup/dist/es/shared/node-entry.js:21550:26[39m

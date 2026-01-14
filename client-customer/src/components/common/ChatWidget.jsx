@@ -3,7 +3,7 @@ import { FaWhatsapp } from 'react-icons/fa';
 import { useRef } from 'react';
 
 export default function ChatWidget() {
-    const phoneNumber = "919870646548"; // Admin Number
+    const phoneNumber = "919136276555"; // Admin Number
     const message = "Hi ResortWala, I need help with a booking.";
     const isDragging = useRef(false);
 

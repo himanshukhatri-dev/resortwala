@@ -79,6 +79,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/customer/verify-phone', [\App\Http\Controllers\VerificationController::class, 'verifyPhone']);
     Route::put('/customer/profile', [\App\Http\Controllers\VerificationController::class, 'updateProfile']);
     Route::post('/customer/device-token', [\App\Http\Controllers\CustomerAuthController::class, 'updateDeviceToken']);
+    
+    // Booking Details & Invoice
+    Route::get('/customer/bookings', [\App\Http\Controllers\BookingController::class, 'index']);
+    Route::get('/customer/bookings/{id}', [\App\Http\Controllers\BookingController::class, 'show']);
+    Route::get('/customer/invoices/{id}/download', [\App\Http\Controllers\InvoiceController::class, 'download']);
 });
 
 
@@ -214,6 +219,104 @@ Route::get('/test-email-public', function (Illuminate\Http\Request $request) {
     }
 });
 
+/**
+ * COMPREHENSIVE EMAIL TEST SUITE
+ * Triggers all 4 main template types to the provided email.
+ * Usage: /test-email-suite?email=your@email.com
+ */
+Route::get('/test-email-suite', function (Illuminate\Http\Request $request) {
+    $email = $request->query('email');
+    if (!$email) return response()->json(['error' => 'Please provide ?email=...'], 400);
+
+    $results = [];
+
+    // --- DUMMY DATA ---
+    $vendor = new \App\Models\User(['name' => 'Test Vendor', 'email' => $email]);
+    $client = new \App\Models\User(['name' => 'Test Client', 'email' => $email]);
+    
+    $property = new \App\Models\PropertyMaster();
+    $property->Name = "Grand Resort Lonavala";
+    $property->Location = "Lonavala";
+    $property->vendor = $vendor;
+    
+    $booking = new \App\Models\Booking();
+    $booking->BookingId = 1001;
+    $booking->booking_reference = "TEST-REF-1001";
+    $booking->CustomerName = "Test Client";
+    $booking->CustomerEmail = $email;
+    $booking->CheckInDate = now()->addDays(2);
+    $booking->CheckOutDate = now()->addDays(4);
+    $booking->Guests = 2;
+    $booking->TotalAmount = 5000;
+    $booking->Status = "Confirmed";
+    $booking->property = $property;
+
+    $coupon = (object)['code' => 'WELCOME50', 'amount' => 500];
+
+    // --- HELPER ---
+    $send = function($key, $mailable) use (&$results, $email) {
+        try {
+            \Illuminate\Support\Facades\Mail::to($email)->send($mailable);
+            $results[$key] = 'Sent';
+        } catch (\Exception $e) { $results[$key] = 'Error: ' . $e->getMessage(); }
+    };
+
+    // --- PHASES START ---
+
+    // 1. AUTH / ONBOARDING
+    $send('1_OtpMail', new \App\Mail\OtpMail('999999', 'login'));
+    $send('2_VendorWelcome', new \App\Mail\UserOnboardingMail("New Vendor", "http://link", "vendor", "welcome"));
+    $send('3_VendorApproved', new \App\Mail\UserOnboardingMail("New Vendor", "http://link", "vendor", "approved"));
+    $send('4_VendorRejected', new \App\Mail\UserOnboardingMail("New Vendor", "http://link", "vendor", "rejected"));
+    $send('5_ClientWelcome', new \App\Mail\ClientWelcomeMail($client));
+
+    // 2. PROPERTY LIFECYCLE
+    $send('6_PropertyAdded', new \App\Mail\PropertyAddedMail($property, $vendor));
+    $send('7_PropertyApproved', new \App\Mail\PropertyActionMail($property, 'approved'));
+    $send('8_PropertyRejected', new \App\Mail\PropertyActionMail($property, 'rejected')); // Rejection reason optional in template?
+    $send('9_PropertyDeleted', new \App\Mail\PropertyActionMail($property, 'deleted'));
+
+    // 3. PROPERTY EDITS
+    $send('10_EditSubmitted', new \App\Mail\PropertyEditMail($property, 'submitted'));
+    $send('11_EditApproved', new \App\Mail\PropertyEditMail($property, 'approved'));
+    $send('12_EditRejected', new \App\Mail\PropertyEditMail($property, 'rejected'));
+
+    // 4. CALENDAR
+    $send('13_PriceUpdate', new \App\Mail\CalendarUpdateMail($property, 'price_update', now(), now(), 5000));
+    $send('14_DateFreeze', new \App\Mail\CalendarUpdateMail($property, 'freeze', now(), now()));
+    
+    // 5. MANUAL BOOKING / REQUESTS
+    $send('15_ClientRequest', new \App\Mail\ManualBookingMail($booking, 'client_request'));
+    $send('16_VendorApprove', new \App\Mail\ManualBookingMail($booking, 'vendor_approve'));
+    $send('17_VendorReject', new \App\Mail\ManualBookingMail($booking, 'vendor_reject'));
+
+    // 6. BOOKING FLOW (APP)
+    $send('18_BookingNewAdmin', new \App\Mail\BookingMail($booking, 'new_request_admin')); // Admin Alert
+    $send('19_BookingNewVendor', new \App\Mail\BookingMail($booking, 'new_request_vendor')); // Vendor Alert
+    $send('20_BookingConfirmedClient', new \App\Mail\BookingMail($booking, 'confirmed_customer')); // Customer Receipt
+    $send('21_StayReminder', new \App\Mail\StayReminderMail($booking));
+    $send('22_Cancellation', new \App\Mail\BookingCancellationMail($booking));
+
+    // 7. COUPONS & REFUNDS
+    $send('23_CouponPurchased', new \App\Mail\CouponPurchasedMail($coupon, $client));
+    $send('24_RefundInitiated', new \App\Mail\RefundInitiatedMail($booking));
+    $send('25_RefundCompleted', new \App\Mail\RefundCompletedMail($booking));
+
+    // 8. WHATSAPP (Simulation)
+    try {
+        $wa = new \App\Services\WhatsApp\WhatsAppService();
+        $wa->send(\App\Services\WhatsApp\WhatsAppMessage::template('919876543210', 'test_full_suite', ['param' => 'check_logs']));
+        $results['26_WhatsApp_Sim'] = 'Logged';
+    } catch (\Exception $e) { $results['26_WhatsApp_Sim'] = $e->getMessage(); }
+
+    return response()->json([
+        'status' => 'Completed Full Suite',
+        'target_email' => $email,
+        'results' => $results,
+        'total_sent' => count($results)
+    ]);
+});
+
 Route::post('/payment/simulate', [\App\Http\Controllers\PaymentSimulationController::class, 'simulate']);
 
 
@@ -319,6 +422,23 @@ Route::middleware('auth:sanctum')->group(function () {
         // Live Data Editor
         Route::get('/data/{table}', [\App\Http\Controllers\IntelligenceController::class, 'getData']);
         Route::put('/data/{table}/{id}', [\App\Http\Controllers\IntelligenceController::class, 'updateData']);
+    });
+
+    // Admin Communication Logs (Phase 5)
+    Route::prefix('admin/communications')->group(function () {
+        Route::get('/logs', [\App\Http\Controllers\Admin\CommunicationController::class, 'index']);
+        Route::get('/stats', [\App\Http\Controllers\Admin\CommunicationController::class, 'stats']);
+    });
+
+    // Revenue Control (Admin Only)
+    Route::prefix('admin/revenue')->group(function () {
+        Route::get('/properties', [\App\Http\Controllers\Admin\RevenueController::class, 'index']);
+        Route::put('/properties/{id}/rates', [\App\Http\Controllers\Admin\RevenueController::class, 'updateRates']);
+        
+        // Add-ons
+        Route::get('/properties/{id}/addons', [\App\Http\Controllers\Admin\RevenueController::class, 'getAddons']);
+        Route::post('/properties/{id}/addons', [\App\Http\Controllers\Admin\RevenueController::class, 'storeAddon']);
+        Route::delete('/properties/{id}/addons/{addonId}', [\App\Http\Controllers\Admin\RevenueController::class, 'deleteAddon']);
     });
 });
 

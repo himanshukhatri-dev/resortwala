@@ -6,7 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class BookingMail extends Mailable
+class BookingMail extends BaseMailable
 {
     use Queueable, SerializesModels;
 
@@ -34,6 +34,6 @@ class BookingMail extends Mailable
         }
 
         return $this->subject($subject)
-                    ->view('emails.booking');
+                    ->view('emails.bookings');
     }
 }

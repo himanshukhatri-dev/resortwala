@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useModal } from '../context/ModalContext';
 import { API_BASE_URL } from '../config';
 import { FiX, FiLogOut, FiChevronDown, FiChevronRight, FiMenu } from 'react-icons/fi';
+import RevenueIcon from './icons/RevenueIcon';
 
 export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile, onToggle }) {
     const location = useLocation();
@@ -55,6 +56,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
         { path: '/analytics', icon: '📊', label: 'Analytics' },
         { path: '/holidays', icon: '🌴', label: 'Holidays' },
         { path: '/intelligence', icon: '🧠', label: 'Intelligence' },
+        { path: '/revenue/full-rate-control', icon: '💰', label: 'Revenue Control (NEW)' },
         { path: '/bulk-upload', icon: '📤', label: 'Bulk Upload' },
         { path: '/vendor-presentation', icon: '🎯', label: 'Vendor Pitch' },
     ];
@@ -240,6 +242,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
                         <FiLogOut className="text-xl min-w-[24px]" />
                         {(isMobile || isHovered) && <span className="font-bold text-sm">Logout</span>}
                     </button>
+                    {(isMobile || isHovered) && <div className="text-[10px] text-gray-300 text-center mt-2">v1.1 RevCtrl</div>}
                 </div>
             </div>
 

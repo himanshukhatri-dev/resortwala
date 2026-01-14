@@ -6,9 +6,18 @@ use App\Models\Booking;
 use App\Models\PropertyMaster;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use App\Services\WhatsApp\WhatsAppService;
+use App\Services\WhatsApp\WhatsAppMessage;
 
 class VendorCalendarController extends Controller
 {
+    protected $whatsAppService;
+
+    public function __construct(WhatsAppService $whatsAppService)
+    {
+        $this->whatsAppService = $whatsAppService;
+    }
+    
     // Get calendar data for a specific property
     public function index($propertyId)
     {
@@ -77,6 +86,17 @@ class VendorCalendarController extends Controller
         $booking = Booking::findOrFail($id);
         $booking->Status = 'confirmed';
         $booking->save();
+
+         // WhatsApp
+        try {
+            $this->whatsAppService->send(
+                WhatsAppMessage::template($booking->CustomerMobile, 'booking_confirmed', [
+                    'name' => $booking->CustomerName,
+                    'property' => $booking->property->Name ?? 'Property',
+                    'ref' => $booking->booking_reference ?? $booking->BookingId
+                ])
+            );
+        } catch (\Exception $e) {}
         
         return response()->json(['message' => 'Booking confirmed']);
     }
@@ -87,6 +107,16 @@ class VendorCalendarController extends Controller
         $booking = Booking::findOrFail($id);
         $booking->Status = 'rejected';
         $booking->save();
+
+        // WhatsApp
+        try {
+            $this->whatsAppService->send(
+                WhatsAppMessage::template($booking->CustomerMobile, 'booking_rejected', [
+                    'name' => $booking->CustomerName,
+                    'property' => $booking->property->Name ?? 'Property'
+                ])
+            );
+        } catch (\Exception $e) {}
         
         return response()->json(['message' => 'Booking rejected']);
     }

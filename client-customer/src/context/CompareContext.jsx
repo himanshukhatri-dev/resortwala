@@ -40,7 +40,8 @@ export const CompareProvider = ({ children }) => {
             // Keep specific fields for quick access if needed, though ...property covers it
             Name: property.Name || property.name,
             PropertyType: property.PropertyType,
-            Location: property.Location || property.CityName
+            Location: property.Location || property.CityName,
+            onboarding_data: property.onboarding_data || {} // Ensure this exists
         };
 
         setCompareList([...compareList, normalized]);

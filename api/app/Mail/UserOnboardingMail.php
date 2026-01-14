@@ -8,37 +8,34 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class UserOnboardingMail extends Mailable
+class UserOnboardingMail extends BaseMailable
 {
     use Queueable, SerializesModels;
 
     public $name;
     public $onboardingUrl;
     public $role;
+    public $status; // 'welcome', 'approved', 'rejected'
 
-    public function __construct($name, $onboardingUrl, $role)
+    public function __construct($name, $onboardingUrl, $role, $status = 'welcome')
     {
         $this->name = $name;
         $this->onboardingUrl = $onboardingUrl;
         $this->role = $role;
+        $this->status = $status;
     }
 
-    public function envelope(): Envelope
+    public function build()
     {
-        return new Envelope(
-            subject: 'Welcome to ResortWala - Complete Your Registration',
-        );
-    }
+        $subject = 'Welcome to ResortWala - Complete Your Registration';
 
-    public function content(): Content
-    {
-        return new Content(
-            view: 'emails.onboarding',
-        );
-    }
+        if ($this->status === 'approved') {
+            $subject = 'Account Approved! - Welcome to ResortWala';
+        } elseif ($this->status === 'rejected') {
+            $subject = 'Account Update - ResortWala';
+        }
 
-    public function attachments(): array
-    {
-        return [];
+        return $this->subject($subject)
+                    ->view('emails.vendor.onboarding');
     }
 }

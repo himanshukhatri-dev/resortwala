@@ -71,7 +71,7 @@ export default function AccountPending() {
                         Email Support
                     </button>
                     <button
-                        onClick={() => window.open('https://wa.me/919870646548?text=Hi%20ResortWala%20Support,%20my%20vendor%20account%20is%20pending%20approval.', '_blank')}
+                        onClick={() => window.open('https://wa.me/919136276555?text=Hi%20ResortWala%20Support,%20my%20vendor%20account%20is%20pending%20approval.', '_blank')}
                         className="flex items-center justify-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-xl font-bold hover:bg-[#20bd5a] transition shadow-lg shadow-green-200 group">
                         <FaWhatsapp className="text-white text-lg group-hover:scale-110 transition" />
                         Chat on WhatsApp

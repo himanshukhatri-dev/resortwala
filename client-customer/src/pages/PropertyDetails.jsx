@@ -71,6 +71,7 @@ const AMENITY_METADATA = {
 };
 
 import { getPricing } from '../utils/pricing';
+import SEO from '../components/SEO';
 
 export default function PropertyDetails() {
     const { id } = useParams();
@@ -545,6 +546,33 @@ export default function PropertyDetails() {
 
     return (
         <div className="bg-white min-h-screen pb-20 pt-[80px]">
+            {property && (
+                <SEO
+                    title={property.display_name || property.Name}
+                    description={`Book ${property.display_name || property.Name} in ${property.City || property.Location}. ${ob.shortDescription || 'Luxury stay with modern amenities.'}`}
+                    image={property.images?.[0]?.image_url || property.image_url}
+                    url={window.location.href}
+                    type="place"
+                    schema={{
+                        "@context": "https://schema.org",
+                        "@type": property.PropertyType === 'Villa' ? 'Hotel' : 'LodgingBusiness',
+                        "name": property.display_name || property.Name,
+                        "description": property.LongDescription,
+                        "image": property.images?.map(i => i.image_url) || [property.image_url],
+                        "address": {
+                            "@type": "PostalAddress",
+                            "addressLocality": property.City,
+                            "addressRegion": property.State,
+                            "addressCountry": "IN"
+                        },
+                        "priceRange": `₹${property.Price || property.ResortWalaRate || 5000} - ₹${(property.Price || 5000) * 2}`,
+                        "starRating": {
+                            "@type": "Rating",
+                            "ratingValue": "4.5" // Mock for now
+                        }
+                    }}
+                />
+            )}
             {/* 1. HERO GALLERY */}
             <div className="container mx-auto px-4 lg:px-8 py-6 max-w-7xl">
                 <Header property={property} isSaved={isSaved} setIsSaved={setIsSaved} setIsShareModalOpen={setIsShareModalOpen} user={user} navigate={navigate} location={window.location} />

@@ -56,8 +56,8 @@ export default function Contact() {
                                 <div>
                                     <h3 className="font-bold text-gray-900 mb-1">Call Us</h3>
                                     <p className="text-gray-500 text-sm mb-2">Available 24/7 for your convenience</p>
-                                    <a href="tel:+919870646548" className="text-blue-600 font-semibold hover:underline">
-                                        +91 98706 46548
+                                    <a href="tel:+919136276555" className="text-blue-600 font-semibold hover:underline">
+                                        +91 91362 76555
                                     </a>
                                 </div>
                             </div>

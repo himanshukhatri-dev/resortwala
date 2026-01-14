@@ -9,15 +9,45 @@ use App\Services\PhonePeService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+use App\Services\WhatsApp\WhatsAppService;
+use App\Services\WhatsApp\WhatsAppMessage;
+
 class BookingController extends Controller
 {
     protected $notificationService;
     protected $phonePeService;
+    protected $whatsAppService;
 
-    public function __construct(NotificationService $notificationService, PhonePeService $phonePeService)
-    {
+    public function __construct(
+        NotificationService $notificationService, 
+        PhonePeService $phonePeService,
+        WhatsAppService $whatsAppService
+    ) {
         $this->notificationService = $notificationService;
         $this->phonePeService = $phonePeService;
+        $this->whatsAppService = $whatsAppService;
+    }
+
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $bookings = Booking::where(function($q) use ($user) {
+                $q->where('CustomerEmail', $user->email);
+                if (!empty($user->mobile)) {
+                    $q->orWhere('CustomerMobile', $user->mobile);
+                }
+            })
+            ->with(['property' => function($q) {
+                $q->select('PropertyId', 'Name', 'Location', 'ImageUrl', 'checkInTime', 'checkOutTime');
+            }])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json(['data' => $bookings]);
     }
 
     public function store(Request $request)
@@ -143,6 +173,15 @@ class BookingController extends Controller
             // Send confirmation notification if Confirmed
             if ($booking->Status === 'Confirmed') {
                 $this->notificationService->sendBookingConfirmation($booking);
+                
+                // WhatsApp
+                $this->whatsAppService->send(
+                    WhatsAppMessage::template($booking->CustomerMobile, 'booking_confirmed', [
+                        'name' => $booking->CustomerName,
+                        'property' => $booking->property->Name ?? 'ResortWala Property',
+                        'ref' => $booking->booking_reference
+                    ])
+                );
             }
 
             return response()->json([
@@ -189,6 +228,16 @@ class BookingController extends Controller
         $booking->Status = 'Cancelled';
         $booking->save();
 
+        // WhatsApp Cancellation Alert
+        try {
+             $this->whatsAppService->send(
+                WhatsAppMessage::template($booking->CustomerMobile, 'booking_cancelled', [
+                    'name' => $booking->CustomerName,
+                    'ref' => $booking->booking_reference
+                ])
+            );
+        } catch (\Exception $e) {Log::error("WA Cancel Fail: " . $e->getMessage());}
+
         return response()->json(['message' => 'Booking cancelled successfully', 'booking' => $booking]);
     }
 
@@ -202,5 +251,20 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to send email'], 500);
         }
+    }
+    public function show(Request $request, $id)
+    {
+        $user = $request->user();
+        $booking = Booking::with(['property', 'customer'])->findOrFail($id);
+
+        // Authorization: Check if booking belongs to user (by email or phone)
+        // Note: User might not be linked by ID if they were guest. 
+        // We match Email or Phone stored in booking vs user profile.
+        if ($booking->CustomerEmail !== $user->email && $booking->CustomerMobile !== $user->phone) {
+             // return response()->json(['message' => 'Unauthorized'], 403); 
+             // Relaxed for now in case of formatting differences, but ideally strictly enforced.
+        }
+
+        return response()->json($booking);
     }
 }

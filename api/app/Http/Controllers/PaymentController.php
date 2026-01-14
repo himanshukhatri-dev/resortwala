@@ -22,7 +22,13 @@ class PaymentController extends Controller
     public function callback(Request $request)
     {
         try {
-            Log::info("Payment Callback Hit", $request->all());
+            Log::info("Payment Callback Hit", [
+                'method' => $request->method(),
+                'url' => $request->fullUrl(),
+                'headers' => $request->header(),
+                'all' => $request->all(),
+                'content' => substr($request->getContent(), 0, 500)
+            ]);
 
             // 1. Basic Validation
             $base64Response = $request->input('response');
@@ -68,9 +74,11 @@ class PaymentController extends Controller
                 Log::error("Callback missing 'response' param", $request->all());
                 return response()->json([
                     'error' => 'Invalid Callback',
-                    'debug_keys' => array_keys($request->all()),
-                    'debug_content_type' => $request->header('Content-Type'),
-                    'debug_raw_content' => substr($request->getContent(), 0, 1000)
+                    'method' => $request->method(),
+                    'keys' => array_keys($request->all()),
+                    'has_code' => $request->has('code'),
+                    'has_merchant_id' => $request->has('merchantId') || $request->has('transactionId'),
+                    'debug_raw' => substr($request->getContent(), 0, 200)
                 ], 400);
             }
 

@@ -44,7 +44,7 @@ abstract class BaseMailable extends Mailable
         $env = app()->environment();
 
         if ($env === 'production') {
-            return '[RESORTWALA-PROD]';
+            return ''; // Clean subject for production
         }
 
         return '[RESORTWALA-STAGING]'; // Covers local and staging

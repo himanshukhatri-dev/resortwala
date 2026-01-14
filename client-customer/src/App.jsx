@@ -18,6 +18,7 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import PropertyDetails from './pages/PropertyDetails';
 import BookingPage from './pages/BookingPage';
+import BookingDetails from './pages/BookingDetails';
 import UserBookings from './pages/UserBookings';
 import Profile from './pages/Profile';
 import Wishlist from './pages/Wishlist';
@@ -57,6 +58,7 @@ function App() {
                       <Route path="/checkout/:id" element={<BookingPage />} />
 
                       <Route path="/bookings" element={<UserBookings />} />
+                      <Route path="/bookings/:id" element={<BookingDetails />} />
                       <Route path="/booking/success" element={<BookingSuccess />} />
                       <Route path="/booking/failed" element={<BookingFailed />} />
                       <Route path="/booking/pending" element={<BookingPending />} />

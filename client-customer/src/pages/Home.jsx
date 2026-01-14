@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 import SearchBar from '../components/ui/SearchBar';
-import FilterBar from '../components/ui/FilterBar';
+import FilterSidebar from '../components/features/FilterSidebar';
+import FilterModal from '../components/features/FilterModal';
 import PropertyCard from '../components/features/PropertyCard';
 import MapView from '../components/features/MapView';
 // Framer Motion for Animations
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSwimmingPool, FaHome, FaHotel, FaMapMarkedAlt, FaList, FaSearch } from 'react-icons/fa';
+import { FaSwimmingPool, FaHome, FaHotel, FaMapMarkedAlt, FaList, FaSearch, FaFilter } from 'react-icons/fa';
 import { useSearch } from '../context/SearchContext';
+import SEO from '../components/SEO';
 
 const CATEGORIES = [
     { id: 'all', label: 'All', icon: <FaHome /> },
@@ -21,11 +23,22 @@ export default function Home() {
     const { activeCategory, setActiveCategory } = useSearch();
 
     const [properties, setProperties] = useState([]);
-    const [filteredProperties, setFilteredProperties] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [searchParams, setSearchParams] = useState(null); // To track active search
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'map'
-    const [hasSearched, setHasSearched] = useState(false);
+    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+    // Unified Filter State
+    const [filters, setFilters] = useState({
+        location: '',
+        type: 'all',
+        min_price: '',
+        max_price: '',
+        guests: 1,
+        veg_only: false,
+        amenities: [],
+        sort: 'newest'
+    });
+
     const location = useLocation();
     const resultsRef = useRef(null);
 
@@ -46,20 +59,31 @@ export default function Home() {
         return () => clearInterval(timer);
     }, []);
 
+    // Sync activeCategory with Filter State
+    useEffect(() => {
+        if (activeCategory !== filters.type) {
+            setFilters(prev => ({ ...prev, type: activeCategory }));
+        }
+    }, [activeCategory]);
+
     // Handle incoming search from MainLayout/Global Bubble
     useEffect(() => {
         if (location.state?.searchFilters) {
-            setSearchParams(location.state.searchFilters);
-            setHasSearched(true);
+            const incoming = location.state.searchFilters;
+            setFilters(prev => ({
+                ...prev,
+                location: incoming.location || '',
+                guests: incoming.guests || 1,
+                dateRange: incoming.dateRange // Note: Date range filtering not fully backend impl yet, but ready for pass-through
+            }));
+
             if (location.state.activeCategory) {
                 setActiveCategory(location.state.activeCategory);
             }
 
-            // check if page reload
+            // Scroll to results
             const navEntry = performance.getEntriesByType("navigation")[0];
             const isReload = navEntry && navEntry.type === 'reload';
-
-            // Scroll to results ONLY if not a reload
             if (!isReload) {
                 setTimeout(() => {
                     if (resultsRef.current) {
@@ -68,7 +92,7 @@ export default function Home() {
                         const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
                         window.scrollTo({ top: y, behavior: 'smooth' });
                     }
-                }, 500); // Slightly longer delay to ensure page load/render
+                }, 500);
             }
         }
     }, [location.state, setActiveCategory]);
@@ -78,30 +102,41 @@ export default function Home() {
     const [hasMore, setHasMore] = useState(false);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
 
+    // Fetch Properties (API Driven Filtering)
     const fetchProperties = async (pageToFetch = 1, append = false) => {
         try {
-            setLoading(true);
+            setLoading(!append);
             if (append) setIsFetchingMore(true);
 
-            // Using proxy (vite.config.js) to avoid CORS
-            const response = await fetch(`${API_BASE_URL}/properties?page=${pageToFetch}`);
+            // Construct Query String
+            const params = new URLSearchParams();
+            params.append('page', pageToFetch);
+
+            if (filters.location) params.append('location', filters.location);
+            if (filters.type && filters.type !== 'all') params.append('type', filters.type);
+            if (filters.min_price) params.append('min_price', filters.min_price);
+            if (filters.max_price) params.append('max_price', filters.max_price);
+            if (filters.guests > 1) params.append('guests', filters.guests);
+            if (filters.veg_only) params.append('veg_only', 'true');
+            if (filters.sort) params.append('sort', filters.sort);
+
+            if (filters.amenities && filters.amenities.length > 0) {
+                filters.amenities.forEach(a => params.append('amenities[]', a));
+            }
+
+            const response = await fetch(`${API_BASE_URL}/properties?${params.toString()}`);
 
             if (!response.ok) throw new Error('Failed to fetch');
             const data = await response.json();
 
             // Handle Laravel Pagination Structure
-            // Support both standard paginate() and legacy array
             const newProperties = data.data ? data.data : (Array.isArray(data) ? data : []);
-
-            // Pagination Metadata
-            const fetchedHasMore = data.next_page_url !== null; // Laravel paginator
+            const fetchedHasMore = data.next_page_url !== null;
 
             if (append) {
                 setProperties(prev => [...prev, ...newProperties]);
-                setFilteredProperties(prev => [...prev, ...newProperties]);
             } else {
                 setProperties(newProperties);
-                setFilteredProperties(newProperties);
             }
 
             setHasMore(fetchedHasMore);
@@ -109,128 +144,37 @@ export default function Home() {
 
         } catch (error) {
             console.error("Failed to fetch properties", error);
-            if (!append) {
-                setProperties([]);
-                setFilteredProperties([]);
-            }
+            if (!append) setProperties([]);
         } finally {
             setLoading(false);
             setIsFetchingMore(false);
         }
     };
 
-    // Initial Fetch
+    // Refetch when filters change (Debounced)
     useEffect(() => {
-        fetchProperties(1, false);
-    }, []);
+        const timeoutId = setTimeout(() => {
+            fetchProperties(1, false);
+        }, 500); // 500ms debounce
+        return () => clearTimeout(timeoutId);
+    }, [filters]);
 
     const handleLoadMore = () => {
         const nextPage = page + 1;
         fetchProperties(nextPage, true);
     };
 
-    const [advancedFilters, setAdvancedFilters] = useState({
-        sortBy: 'all',
-        minPrice: '',
-        maxPrice: '',
-        amenities: []
-    });
+    // Update filters from SearchBar
+    const handleSearch = (searchFilters, shouldScroll = false) => {
+        setFilters(prev => ({
+            ...prev,
+            ...searchFilters
+        }));
 
-    useEffect(() => {
-        // Safety guard: ensure properties is array
-        if (!properties || !Array.isArray(properties)) {
-            setFilteredProperties([]);
-            return;
-        }
-
-        let result = properties;
-
-        // 1. Filter by Category
-        if (activeCategory !== 'all') {
-            result = result.filter(p => {
-                if (!p) return false;
-                const type = (p.PropertyType || p.property_type || "").toLowerCase();
-                const name = (p.Name || p.name || "").toLowerCase();
-                const desc = (p.LongDescription || p.long_description || "").toLowerCase();
-
-                if (activeCategory === 'villas') {
-                    return type === 'villa' || name.includes('villa');
-                }
-                if (activeCategory === 'waterpark') {
-                    // Strict check: Must be type 'Waterpark' or have 'waterpark' in name
-                    // Removed 'pool'/'slide' check to avoid matching Villas with pools
-                    return type === 'waterpark' || name.includes('water park') || name.includes('waterpark');
-                }
-                return true;
-            });
-        }
-
-        // 2. Filter by Search Params (Location)
-        if (searchParams) {
-            const { location } = searchParams;
-            if (location) {
-                const term = location.toLowerCase();
-                result = result.filter(p => {
-                    if (!p) return false;
-                    const pLoc = (p.Location || p.location || "").toLowerCase();
-                    const pCity = (p.CityName || p.city_name || "").toLowerCase();
-                    const pName = (p.Name || p.name || "").toLowerCase();
-                    return pLoc.includes(term) || pCity.includes(term) || pName.includes(term);
-                });
-            }
-        }
-
-        // 3. Filter by Price Range
-        if (advancedFilters.minPrice) {
-            result = result.filter(p => {
-                const price = Number(p.Price || p.PricePerNight || 0);
-                return price >= Number(advancedFilters.minPrice);
-            });
-        }
-        if (advancedFilters.maxPrice) {
-            result = result.filter(p => {
-                const price = Number(p.Price || p.PricePerNight || 0);
-                return price <= Number(advancedFilters.maxPrice);
-            });
-        }
-
-        // 4. Filter by Amenities (Text Search)
-        // Since Amenities may not be structured, we search descriptions for keywords
-        if (advancedFilters.amenities.length > 0) {
-            result = result.filter(p => {
-                const text = JSON.stringify(p).toLowerCase();
-                return advancedFilters.amenities.every(amenity => text.includes(amenity));
-            });
-        }
-
-        // 5. Sort
-        if (advancedFilters.sortBy === 'price_low') {
-            result.sort((a, b) => Number(a.Price || a.PricePerNight || 0) - Number(b.Price || b.PricePerNight || 0));
-        } else if (advancedFilters.sortBy === 'price_high') {
-            result.sort((a, b) => Number(b.Price || b.PricePerNight || 0) - Number(a.Price || a.PricePerNight || 0));
-        } else if (advancedFilters.sortBy === 'rating_high') {
-            // Mock rating property if missing
-            result.sort((a, b) => (b.Rating || 0) - (a.Rating || 0));
-        }
-
-        setFilteredProperties([...result]); // Spread to trigger re-render
-    }, [properties, activeCategory, searchParams, advancedFilters]);
-
-    const isFirstRender = useRef(true);
-
-    // AUTO SCROLL REMOVED: Relying on explicit 'shouldScroll' flag in handleSearch
-    // to prevent jumping while filtering (live search).
-
-
-    const handleSearch = (filters, shouldScroll = false) => {
-        setSearchParams(filters);
-        setHasSearched(true);
-
-        // Only scroll if explicitly requested (e.g., via Enter key or Search button)
         if (shouldScroll) {
             setTimeout(() => {
                 if (resultsRef.current) {
-                    const yOffset = -120; // Offset for sticky header
+                    const yOffset = -120;
                     const element = resultsRef.current;
                     const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
                     window.scrollTo({ top: y, behavior: 'smooth' });
@@ -240,19 +184,14 @@ export default function Home() {
     };
 
     const containerRef = useRef(null);
-    const [scrolled, setScrolled] = useState(false);
-    useEffect(() => {
-        const handleScroll = () => {
-            const threshold = 300;
-            setScrolled(window.scrollY > threshold);
-        };
-        window.addEventListener('scroll', handleScroll);
-        handleScroll();
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
 
     return (
         <div className="pb-20" ref={containerRef}>
+            <SEO
+                title="Book Luxury Villas & Stays"
+                description="Discover the best luxury villas, resorts, and waterparks in Lonavala and beyond. Verified stays, best prices, and instant booking."
+            />
+
             {/* 1. IMMERSIVE HERO */}
             <div className="relative min-h-[85vh] md:min-h-[90vh] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-32 pb-12 md:pt-40 md:pb-20">
                 {/* Dynamic Background Carousel */}
@@ -284,15 +223,13 @@ export default function Home() {
                         Discover luxury villas, water parks, and hidden gems across India.
                     </p>
 
-                    {/* CATEGORIES - Handled by SearchBar now */}
                     <div className="mb-2"></div>
 
-                    {/* SEARCH BAR - Integrated into Hero Flow */}
+                    {/* SEARCH BAR */}
                     <div className="w-full max-w-4xl h-auto scale-100 md:scale-100 origin-top mt-4 md:mt-0">
                         <SearchBar
                             onSearch={handleSearch}
-                            isSticky={false} // Disabled sticky behavior here as we use Bubble now
-                            properties={properties}
+                            isSticky={false}
                             categories={CATEGORIES}
                             compact={true}
                         />
@@ -300,141 +237,135 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* 3. COLUMNS LAYOUT (Filter + List + Map) */}
-            <div ref={resultsRef} className="container mx-auto px-4 py-6 min-h-[50vh] scroll-mt-28 mt-4">
+            {/* 2. RESULTS SECTION */}
+            <div ref={resultsRef} className="container mx-auto px-4 py-8 min-h-[50vh] scroll-mt-28 mt-4">
 
-                {/* DYNAMIC HEADER */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 pb-2">
-                    <div>
-                        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 font-serif">
-                            {searchParams?.location
-                                ? `Stays in ${searchParams.location}`
-                                : activeCategory !== 'all'
-                                    ? `${CATEGORIES.find(c => c.id === activeCategory)?.label || 'Selected'} Stays`
-                                    : "All Properties"
-                            }
-                        </h2>
-                        <p className="text-gray-500 mt-1 text-sm">
-                            {loading
-                                ? "Searching..."
-                                : `${filteredProperties.length} properties found`
-                            }
-                        </p>
+                <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8 relative items-start">
+
+                    {/* LEFT COLUMN: Filters (Desktop) */}
+                    <div className="hidden lg:block sticky top-24 z-30">
+                        <FilterSidebar filters={filters} onFilterChange={setFilters} />
                     </div>
 
-                    <div className="lg:hidden flex items-center bg-gray-100 rounded-lg p-1 mt-4 md:mt-0 self-start md:self-auto">
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            <FaList /> List
-                        </button>
-                        <button
-                            onClick={() => setViewMode('map')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'map' ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            <FaMapMarkedAlt /> Map
-                        </button>
-                    </div>
-                </div>
+                    {/* RIGHT COLUMN: Results */}
+                    <div className="w-full">
 
-                {loading ? (
-                    <div className="flex flex-col justify-center items-center py-20">
-                        <div className="w-16 h-16 border-4 border-gray-200 border-t-primary rounded-full animate-spin mb-4"></div>
-                        <p className="text-gray-400 animate-pulse">Loading amazing places...</p>
-                    </div>
-                ) : (
-                    <>
-                        {/* STICKY FILTER BAR */}
-                        < div className="sticky top-[72px] z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 py-3 mb-6 -mx-4 px-4 md:mx-0 md:px-0">
-                            <div className="container mx-auto max-w-7xl">
-                                <FilterBar onFilterChange={setAdvancedFilters} />
+                        {/* Header & Controls */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900 font-serif">
+                                    {filters.location
+                                        ? `Stays in ${filters.location}`
+                                        : filters.type !== 'all'
+                                            ? `${CATEGORIES.find(c => c.id === filters.type)?.label || 'Selected'} Stays`
+                                            : "All Properties"
+                                    }
+                                </h2>
+                                <p className="text-gray-500 mt-1 text-sm font-medium">
+                                    {loading ? "Searching..." : `${properties.length} properties found`}
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-3 self-start md:self-auto w-full md:w-auto">
+                                {/* Mobile Filter Button */}
+                                <button
+                                    onClick={() => setIsFilterModalOpen(true)}
+                                    className="lg:hidden flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold shadow-sm"
+                                >
+                                    <FaFilter /> Filters
+                                </button>
+
+                                {/* View Switcher */}
+                                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                                    <button
+                                        onClick={() => setViewMode('list')}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        <FaList />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('map')}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'map' ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        <FaMapMarkedAlt />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8 relative items-start">
-
-                            {/* LEFT COLUMN: Map (Sticky) */}
-                            <div className={`w-full lg:block ${viewMode === 'list' ? 'hidden' : 'block'} sticky top-[100px] h-[calc(100vh-140px)] overflow-y-auto pr-2 custom-scrollbar`}>
-
-
-                                <div className="w-full h-full rounded-2xl overflow-hidden shadow-2xl border border-gray-100 relative group">
-                                    <MapView properties={filteredProperties} />
-                                    <div className="absolute top-4 left-4 z-[1000] opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-gray-100 shadow-xl flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                                            <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Live Map View</span>
-                                        </div>
-                                    </div>
-                                </div>
+                        {/* Loading State */}
+                        {loading && !isFetchingMore ? (
+                            <div className="flex flex-col justify-center items-center py-20">
+                                <div className="w-16 h-16 border-4 border-gray-200 border-t-black rounded-full animate-spin mb-4"></div>
+                                <p className="text-gray-400 animate-pulse font-bold">Finding the perfect stay...</p>
                             </div>
-
-                            {/* RIGHT COLUMN: Property List */}
-                            <div className={`w-full ${viewMode === 'map' ? 'hidden lg:block' : 'block'}`}>
-
-
-
-                                {filteredProperties.length > 0 ? (
-                                    <div className="flex flex-col gap-8">
-                                        <AnimatePresence mode='popLayout'>
-                                            {filteredProperties.map((p) => (
-                                                <motion.div
-                                                    layout
-                                                    key={p.PropertyId || p.id}
-                                                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-                                                    transition={{
-                                                        layout: { type: "spring", stiffness: 45, damping: 12 }, // Bouncy sort
-                                                        opacity: { duration: 0.3 },
-                                                        y: { type: "spring", stiffness: 100, damping: 20 }
-                                                    }}
-                                                >
-                                                    <PropertyCard property={p} searchParams={searchParams} variant="horizontal" />
-                                                </motion.div>
-                                            ))}
-                                        </AnimatePresence>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-24 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
-                                        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                                            <FaSearch className="text-gray-300 text-3xl" />
+                        ) : (
+                            <>
+                                {/* LIST VIEW */}
+                                <div className={`w-full ${viewMode === 'map' ? 'hidden' : 'block'}`}>
+                                    {properties.length > 0 ? (
+                                        <div className="flex flex-col gap-8">
+                                            <AnimatePresence mode='popLayout'>
+                                                {properties.map((p) => (
+                                                    <motion.div
+                                                        layout
+                                                        key={p.PropertyId || p.id}
+                                                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                        exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                                                        transition={{ duration: 0.4, type: "spring" }}
+                                                    >
+                                                        <PropertyCard property={p} variant="horizontal" />
+                                                    </motion.div>
+                                                ))}
+                                            </AnimatePresence>
                                         </div>
-                                        <h3 className="text-2xl font-bold text-gray-800">No properties found</h3>
-                                        <p className="text-gray-500 mb-6 max-w-xs">We couldn't find any stays matching your current filters.</p>
-                                        <button
-                                            onClick={() => { setActiveCategory('all'); setSearchParams(null); setAdvancedFilters({ sortBy: 'all', minPrice: '', maxPrice: '', amenities: [] }); }}
-                                            className="px-8 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg active:scale-95"
-                                        >
-                                            Clear all filters
-                                        </button>
-                                    </div>
-                                )}
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-20 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
+                                            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                                                <FaSearch className="text-gray-300 text-3xl" />
+                                            </div>
+                                            <h3 className="text-xl font-bold text-gray-800">No properties found</h3>
+                                            <p className="text-gray-500 mb-6 max-w-xs text-sm">We couldn't find any stays matching your current filters.</p>
+                                            <button
+                                                onClick={() => setFilters({ location: '', type: 'all', min_price: '', max_price: '', guests: 1, veg_only: false, amenities: [], sort: 'newest' })}
+                                                className="px-8 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg active:scale-95"
+                                            >
+                                                Clear all filters
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* MAP VIEW */}
+                                <div className={`w-full h-[600px] rounded-2xl overflow-hidden shadow-2xl border border-gray-100 relative ${viewMode === 'list' ? 'hidden' : 'block'}`}>
+                                    <MapView properties={properties} />
+                                </div>
 
                                 {/* LOAD MORE BUTTON */}
-                                {hasMore && !loading && (
+                                {hasMore && (
                                     <div className="flex justify-center mt-12 pb-8">
                                         <button
                                             onClick={handleLoadMore}
                                             disabled={isFetchingMore}
                                             className="px-8 py-3 bg-white border border-gray-200 text-gray-900 rounded-full font-bold shadow-sm hover:shadow-md hover:border-black transition-all flex items-center gap-2 disabled:opacity-50"
                                         >
-                                            {isFetchingMore ? (
-                                                <>
-                                                    <div className="w-5 h-5 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
-                                                    Loading...
-                                                </>
-                                            ) : (
-                                                'Load More Properties'
-                                            )}
+                                            {isFetchingMore ? <div className="w-5 h-5 border-2 border-gray-300 border-t-black rounded-full animate-spin" /> : 'Load More Properties'}
                                         </button>
                                     </div>
                                 )}
-                            </div>
+                            </>
+                        )}
+                    </div>
+                </div>
 
-                        </div>
-                    </>
-                )}
+                <FilterModal
+                    isOpen={isFilterModalOpen}
+                    onClose={() => setIsFilterModalOpen(false)}
+                    filters={filters}
+                    onFilterChange={setFilters}
+                />
+
             </div>
         </div >
     );

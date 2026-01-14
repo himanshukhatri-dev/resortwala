@@ -1,2 +1,7 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin
+Disallow: /vendor
+Disallow: /api
+Disallow: /storage/*.key
+Sitemap: https://api.resortwala.com/sitemap.xml

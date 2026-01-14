@@ -26,6 +26,7 @@ import VendorPresentation from './pages/VendorPresentation';
 import BulkUpload from './pages/BulkUpload';
 import BulkUploadDetails from './pages/BulkUploadDetails';
 import InvestorPresentation from './pages/InvestorPresentation';
+import RevenueDashboard from './pages/Revenue/RevenueDashboard';
 import './App.css';
 
 
@@ -77,7 +78,9 @@ function App() {
               <Route path="/vendor-presentation" element={<VendorPresentation />} />
               <Route path="/investor-presentation" element={<InvestorPresentation />} />
               <Route path="/bulk-upload" element={<BulkUpload />} />
+              <Route path="/bulk-upload" element={<BulkUpload />} />
               <Route path="/bulk-upload/:id" element={<BulkUploadDetails />} />
+              <Route path="/revenue/full-rate-control" element={<RevenueDashboard />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/login" />} />
