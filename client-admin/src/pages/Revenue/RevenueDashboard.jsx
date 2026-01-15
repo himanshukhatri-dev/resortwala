@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { FaDownload, FaLayerGroup } from 'react-icons/fa';
+import { API_BASE_URL } from '../../config';
 import { toast } from 'react-hot-toast';
 import RateCardModal from '../../components/revenue/RateCardModal';
 
@@ -20,7 +21,7 @@ const RevenueDashboard = () => {
 
     const fetchProperties = async () => {
         try {
-            const res = await axios.get('/api/admin/revenue/properties', {
+            const res = await axios.get(`${API_BASE_URL}/admin/revenue/properties`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProperties(res.data.data || res.data);

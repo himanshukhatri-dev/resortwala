@@ -71,12 +71,9 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
                     <a
                         href="/vendor/"
                         target="_self"
-                        className="hidden lg:flex items-center gap-2 group"
+                        className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all group"
                     >
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-pink-500 flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform">
-                            <FaHome size={14} />
-                        </div>
-                        <span className="font-bold text-[11px] uppercase tracking-widest text-gray-700 group-hover:text-primary transition-colors">List your Property</span>
+                        <span className="font-bold text-xs text-gray-700">List your property</span>
                     </a>
 
 

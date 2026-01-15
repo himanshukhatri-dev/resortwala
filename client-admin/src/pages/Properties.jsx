@@ -7,14 +7,14 @@ import { useModal } from '../context/ModalContext';
 import { API_BASE_URL } from '../config';
 import { FaCheck, FaTimes, FaEdit, FaTrash, FaMapMarkerAlt, FaUser, FaPhone, FaBuilding, FaSearch, FaFilter } from 'react-icons/fa';
 
-export default function Properties() {
+export default function Properties({ initialFilter = 'all' }) {
     const navigate = useNavigate();
     const { token } = useAuth();
     const { showConfirm, showSuccess, showError } = useModal();
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
-    const [filter, setFilter] = useState('all'); // all, approved, pending, rejected
+    const [filter, setFilter] = useState(initialFilter); // all, approved, pending, rejected
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {

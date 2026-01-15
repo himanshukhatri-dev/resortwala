@@ -151,23 +151,7 @@ export default function FilterSidebar({ filters, onFilterChange }) {
                 </div>
             </div>
 
-            {/* Toggles */}
-            <div className="pt-4 border-t border-gray-100">
-                <label className="flex items-center justify-between cursor-pointer group">
-                    <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                        <FaLeaf className="text-green-500" /> Veg Only
-                    </span>
-                    <div className={`w-10 h-6 flex items-center bg-gray-200 rounded-full p-1 duration-300 ease-in-out ${localFilters.veg_only ? 'bg-green-500' : ''}`}>
-                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out ${localFilters.veg_only ? 'translate-x-4' : ''}`}></div>
-                    </div>
-                    <input
-                        type="checkbox"
-                        className="hidden"
-                        checked={localFilters.veg_only || false}
-                        onChange={(e) => handleChange('veg_only', e.target.checked)}
-                    />
-                </label>
-            </div>
+
         </div>
     );
 }

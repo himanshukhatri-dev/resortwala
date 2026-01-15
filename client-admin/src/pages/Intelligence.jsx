@@ -53,7 +53,7 @@ export default function Intelligence() {
         { id: 'process', label: 'Business Process', icon: FaCogs, component: BusinessProcessVisualizer },
         { id: 'data', label: 'Live Editor', icon: FaTable, component: LiveDataManager },
         { id: 'backups', label: 'System Backup', icon: FaHistory, component: BackupManager },
-        { id: 'logs', label: 'Logs & Impact', icon: FaNetworkWired, component: ImpactLogs },
+        { id: 'logs', label: 'User Analytics', icon: FaNetworkWired, component: () => <div className="p-10 text-center"><p className="mb-4">Live User Interaction Logs have been moved to the primary Technical menu.</p><button onClick={() => window.location.href = '/admin/analytics'} className="px-6 py-2 bg-blue-600 text-white rounded-lg">Go to System Logs</button></div> },
     ];
 
     const ActiveComponent = tabs.find(t => t.id === activeTab)?.component || SchemaVisualizer;

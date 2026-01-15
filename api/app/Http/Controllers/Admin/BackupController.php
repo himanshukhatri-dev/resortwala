@@ -56,12 +56,41 @@ class BackupController extends Controller
         $password = config('database.connections.mysql.password');
         $database = config('database.connections.mysql.database');
 
+        // Detect or Config mysqldump path
+        // Detect OS for Dump Path
+        if (PHP_OS_FAMILY === 'Windows') {
+            $dumpBinaryPath = env('DB_DUMP_COMMAND_PATH', 'C:\Program Files\MySQL\MySQL Workbench 8.0 CE\mysqldump.exe');
+            if (strpos($dumpBinaryPath, ' ') !== false && strpos($dumpBinaryPath, '"') === false) {
+                 $dumpBinaryPath = '"' . $dumpBinaryPath . '"';
+            }
+        } else {
+            // Linux/Production: Try to find mysqldump
+            $possiblePaths = [
+                '/usr/bin/mysqldump',
+                '/usr/local/bin/mysqldump',
+                '/usr/local/mysql/bin/mysqldump',
+                'mysqldump' // Fallback to PATH
+            ];
+            
+            $dumpBinaryPath = 'mysqldump'; // Default
+            foreach ($possiblePaths as $path) {
+                if (file_exists($path) && is_executable($path)) {
+                    $dumpBinaryPath = $path;
+                    break;
+                }
+            }
+            // Override if env is set
+            if (env('DB_DUMP_COMMAND_PATH')) {
+                $dumpBinaryPath = env('DB_DUMP_COMMAND_PATH');
+            }
+        }
+
         // Build command (using mysqldump)
-        // Note: Password usage in command line is visible in process list, but acceptable for this internal tool context.
-        // Better approach: use .my.cnf or env var. For now, direct command.
-        
+        // Added --column-statistics=0 for MySQL 8 compatibility to avoid "Unknown table 'COLUMN_STATISTICS' in information_schema"
+        // Redirect 2>&1 to capture error messages from mysqldump
         $command = sprintf(
-            'mysqldump --user=%s --password=%s --host=%s %s > %s',
+            '%s --user=%s --password=%s --host=%s --column-statistics=0 %s > %s 2>&1',
+            $dumpBinaryPath,
             escapeshellarg($username),
             escapeshellarg($password),
             escapeshellarg($host),
@@ -78,7 +107,11 @@ class BackupController extends Controller
             exec($command, $output, $resultCode);
 
             if ($resultCode !== 0) {
-                 return response()->json(['success' => false, 'error' => 'Backup failed with code ' . $resultCode], 500);
+                 return response()->json([
+                     'success' => false, 
+                     'error' => 'Backup failed with code ' . $resultCode,
+                     'details' => $output
+                 ], 500);
             }
 
             return response()->json([

@@ -38,11 +38,11 @@ class InvoiceController extends Controller
         // 2. Prepare Data
         $data = [
             'booking' => $booking,
-            'property' => $booking->property,
+            'property' => $booking->property ?? (object)['Name' => 'Unknown Property', 'Location' => 'N/A', 'gst_number' => null],
             'customer' => $booking->customer, // May be null if guest checkout
             'invoice_no' => 'INV-' . str_pad($booking->BookingId, 6, '0', STR_PAD_LEFT),
             'date' => $booking->created_at->format('d M Y'),
-            'gst_number' => $booking->property->gst_number ?? 'N/A', // Assuming field exists or generic
+            'gst_number' => $booking->property->gst_number ?? 'N/A', // Safely access gst_number
             'company' => [
                 'name' => 'ResortWala',
                 'address' => 'Lonavala, Maharashtra, India',

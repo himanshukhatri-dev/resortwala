@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaTimes, FaSave, FaExclamationTriangle } from 'react-icons/fa';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { API_BASE_URL } from '../../config';
 import { toast } from 'react-hot-toast';
 
 const RateCardModal = ({ property, onClose, onUpdate }) => {
@@ -70,7 +71,7 @@ const RateCardModal = ({ property, onClose, onUpdate }) => {
 
     const handleSave = async () => {
         try {
-            await axios.put(`/api/admin/revenue/properties/${property.PropertyId}/rates`, {
+            await axios.put(`${API_BASE_URL}/admin/revenue/properties/${property.PropertyId}/rates`, {
                 admin_pricing: rates,
                 // Sync legacy columns roughly so existing app still works
                 price_mon_thu: rates.base.mon_thu.customer,

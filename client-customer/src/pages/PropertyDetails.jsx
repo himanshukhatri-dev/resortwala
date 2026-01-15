@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
+import { useWishlist } from '../context/WishlistContext';
 import analytics from '../utils/analytics';
 import {
     FaStar, FaMapMarkerAlt, FaWifi, FaSwimmingPool, FaCar, FaUtensils,
@@ -77,6 +78,8 @@ export default function PropertyDetails() {
     const { id } = useParams();
     const [urlParams] = useSearchParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const state = location.state || {};
 
     // -- STATE --
     const [property, setProperty] = useState(null);
@@ -84,11 +87,11 @@ export default function PropertyDetails() {
     const [activeTab, setActiveTab] = useState('overview');
 
     const [dateRange, setDateRange] = useState({
-        from: urlParams.get('start') ? new Date(urlParams.get('start')) : undefined,
-        to: urlParams.get('end') ? new Date(urlParams.get('end')) : undefined
+        from: state.dateRange?.from ? new Date(state.dateRange.from) : (urlParams.get('start') ? new Date(urlParams.get('start')) : undefined),
+        to: state.dateRange?.to ? new Date(state.dateRange.to) : (urlParams.get('end') ? new Date(urlParams.get('end')) : undefined)
     });
 
-    const [guests, setGuests] = useState({
+    const [guests, setGuests] = useState(state.guests || {
         adults: parseInt(urlParams.get('adults')) || 1,
         children: parseInt(urlParams.get('children')) || 0,
         infants: parseInt(urlParams.get('infants')) || 0,
@@ -102,8 +105,16 @@ export default function PropertyDetails() {
     const [photoIndex, setPhotoIndex] = useState(0);
     const [videoIndex, setVideoIndex] = useState(0);
     const datePickerRef = useRef(null);
+    const { isWishlisted, toggleWishlist } = useWishlist();
     const [isSaved, setIsSaved] = useState(false);
+
+    // Sync isSaved with WishlistContext
+    useEffect(() => {
+        if (id) setIsSaved(isWishlisted(id));
+    }, [id, isWishlisted]);
+
     const [mealSelection, setMealSelection] = useState(0); // Single counter for meals
+    const bookedDates = property?.booked_dates || [];
 
     // -- REFS FOR SCROLLING --
     const sections = {
@@ -353,11 +364,20 @@ export default function PropertyDetails() {
 
     const dealPrice = parseFloat(property?.DealPrice || property?.deal_price || 0);
 
-    const PRICE_WEEKDAY = parseFloat(adminPricing?.mon_thu?.villa?.final || property.price_mon_thu || property.ResortWalaRate || property.Price || 0);
-    const PRICE_FRISUN = parseFloat(adminPricing?.fri_sun?.villa?.final || property.price_fri_sun || property.ResortWalaRate || property.Price || 0);
-    const PRICE_SATURDAY = parseFloat(adminPricing?.sat?.villa?.final || property.price_sat || property.ResortWalaRate || property.Price || 0);
-    const EXTRA_GUEST_CHARGE = safeFloat(onboardingPricing?.extraGuestCharge || 0, 1000);
-    const FOOD_CHARGE = safeFloat(onboardingData.foodRates?.perPerson || onboardingData.foodRates?.veg || 0, 1000);
+    // Safe Access Helpers
+    // safeFloat used from previous scope or definition
+
+    const getPrice = (path) => {
+        // Handle both admin_pricing and direct property fields
+        const val = path?.villa?.final || path;
+        return (val && parseFloat(val) > 0) ? parseFloat(val) : 0;
+    };
+
+    const PRICE_WEEKDAY = getPrice(adminPricing?.mon_thu) || parseFloat(property.price_mon_thu) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0;
+    const PRICE_FRISUN = getPrice(adminPricing?.fri_sun) || parseFloat(property.price_fri_sun) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0;
+    const PRICE_SATURDAY = getPrice(adminPricing?.sat) || parseFloat(property.price_sat) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0;
+    const EXTRA_GUEST_CHARGE = safeFloat(onboardingPricing?.extraGuestCharge, 1000);
+    const FOOD_CHARGE = safeFloat(onboardingData.foodRates?.perPerson || onboardingData.foodRates?.veg, 1000);
     const GST_PERCENTAGE = safeFloat(property.gst_percentage, 18);
 
     const calculateBreakdown = () => {
@@ -496,16 +516,20 @@ export default function PropertyDetails() {
 
     // Improved Google Map Link Handling
     let googleMapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(property.Location || property.Address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
-    if (property.GoogleMapLink) {
+
+    // Priority 1: DB Coordinates (Latitude, Longitude)
+    if (property.Latitude && property.Longitude) {
+        googleMapSrc = `https://maps.google.com/maps?q=${property.Latitude},${property.Longitude}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    }
+    // Priority 2: GoogleMapLink (if valid embed/iframe)
+    else if (property.GoogleMapLink) {
         if (property.GoogleMapLink.includes('iframe')) {
             googleMapSrc = property.GoogleMapLink.match(/src="([^"]+)"/)?.[1] || googleMapSrc;
         } else if (property.GoogleMapLink.includes('embed')) {
             googleMapSrc = property.GoogleMapLink;
         }
-        // If standard link, we stick to query fallback for iframe to avoid X-Frame-Options deny, 
-        // but the "Open in Maps" button will use the specific link.
     }
-
+    // Priority 3: Fuzzy fallback (Already set)
     const getYouTubeId = (url) => {
         if (!url) return null;
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
@@ -578,7 +602,8 @@ export default function PropertyDetails() {
                 <Header property={property} isSaved={isSaved} setIsSaved={setIsSaved} setIsShareModalOpen={setIsShareModalOpen} user={user} navigate={navigate} location={window.location} />
 
                 {galleryImages.length > 0 ? (
-                    <div className="rounded-2xl overflow-hidden shadow-sm h-[350px] md:h-[500px] mb-8 grid grid-cols-1 md:grid-cols-4 grid-rows-2 gap-2 relative">
+                    /* DESKTOP GRID GALLERY */
+                    <div className="hidden md:grid rounded-2xl overflow-hidden shadow-sm h-[350px] md:h-[500px] mb-8 grid-cols-1 md:grid-cols-4 grid-rows-2 gap-2 relative">
                         {/* Main Image */}
                         <div className="col-span-1 md:col-span-2 row-span-2 relative cursor-pointer group overflow-hidden" onClick={() => handleGalleryOpen(0)}>
                             <img src={galleryImages[0]} alt="Main" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
@@ -624,6 +649,24 @@ export default function PropertyDetails() {
                         <div className="text-center">
                             <FaCamera size={40} className="mx-auto mb-2 opacity-20" />
                             <p>No photos available for this property.</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* MOBILE GALLERY (Swipeable) */}
+                {galleryImages.length > 0 && (
+                    <div className="md:hidden -mx-4 mb-6 relative group">
+                        <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar h-[320px]">
+                            {galleryImages.map((img, idx) => (
+                                <div key={idx} className="flex-none w-[90vw] snap-center first:pl-4 last:pr-4 mx-2" onClick={() => handleGalleryOpen(idx)}>
+                                    <div className="w-full h-full rounded-2xl overflow-hidden relative shadow-sm">
+                                        <img src={img} alt={`Slide ${idx}`} className="w-full h-full object-cover" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="absolute bottom-4 right-8 bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-md pointer-events-none">
+                            1 / {galleryImages.length}
                         </div>
                     </div>
                 )}
@@ -935,9 +978,9 @@ export default function PropertyDetails() {
                     <div className="relative h-full hidden lg:block">
                         <div className="sticky top-28 border border-gray-200 rounded-3xl p-6 shadow-xl bg-white/95 backdrop-blur-md">
                             {isWaterpark ? (
-                                <WaterparkBooking property={property} ob={ob} handleReserve={handleReserve} guests={guests} setGuests={setGuests} dateRange={dateRange} priceBreakdown={priceBreakdown} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} datePickerRef={datePickerRef} bookedDates={property.booked_dates || []} isWaterpark={isWaterpark} pricing={pricing} />
+                                <WaterparkBooking property={property} ob={ob} handleReserve={handleReserve} guests={guests} setGuests={setGuests} dateRange={dateRange} priceBreakdown={priceBreakdown} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} datePickerRef={datePickerRef} bookedDates={bookedDates} isWaterpark={isWaterpark} pricing={pricing} />
                             ) : (
-                                <VillaBooking price={PRICE_WEEKDAY} rating={property.Rating} dateRange={dateRange} setDateRange={setDateRange} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} handleReserve={handleReserve} priceBreakdown={priceBreakdown} datePickerRef={datePickerRef} property={property} guests={guests} setGuests={setGuests} mealSelection={mealSelection} setMealSelection={setMealSelection} isWaterpark={isWaterpark} bookedDates={property.booked_dates || []} />
+                                <VillaBooking price={PRICE_WEEKDAY} rating={property.Rating} dateRange={dateRange} setDateRange={setDateRange} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} handleReserve={handleReserve} priceBreakdown={priceBreakdown} datePickerRef={datePickerRef} property={property} guests={guests} setGuests={setGuests} mealSelection={mealSelection} setMealSelection={setMealSelection} isWaterpark={isWaterpark} bookedDates={bookedDates} />
                             )}
                         </div>
                         <div className="mt-6 text-center text-gray-400 text-xs flex items-center justify-center gap-1"><FaShieldAlt /> Secure Booking via ResortWala</div>
@@ -945,18 +988,45 @@ export default function PropertyDetails() {
                 </div>
 
                 <MobileFooter
-                    price={isWaterpark ? (priceBreakdown?.totalAdultTicket || PRICE_WEEKDAY) : PRICE_WEEKDAY}
+                    price={isWaterpark ? (priceBreakdown?.totalAdultTicket || PRICE_WEEKDAY) : (priceBreakdown?.grantTotal || PRICE_WEEKDAY)}
                     unit={isWaterpark ? '/ person' : '/ night'}
-                    buttonText={(!dateRange.from || !dateRange.to) ? 'Select Dates' : 'Reserve'}
-                    onReserve={() => {
-                        if (!dateRange.from || !dateRange.to) {
-                            setIsDatePickerOpen(true);
+                    buttonText={(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : 'Reserve'}
+                    dateRange={dateRange}
+                    onDateClick={() => {
+                        setIsDatePickerOpen(true);
+                        setTimeout(() => {
                             if (datePickerRef.current) datePickerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
+                    }}
+                    onReserve={() => {
+                        if (!dateRange.from || (!isWaterpark && !dateRange.to)) {
+                            setIsDatePickerOpen(true);
+                            // Only scroll if ref exists (desktop), otherwise modal will show
+                            setTimeout(() => {
+                                if (datePickerRef.current && window.innerWidth >= 1024) {
+                                    datePickerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }
+                            }, 100);
                         } else {
                             handleReserve();
                         }
                     }}
                 />
+
+                {/* Mobile Date Picker Modal */}
+                <AnimatePresence>
+                    {isDatePickerOpen && (
+                        <MobileDateSelector
+                            isOpen={isDatePickerOpen}
+                            onClose={() => setIsDatePickerOpen(false)}
+                            dateRange={dateRange}
+                            onDateSelect={handleDateSelect}
+                            bookedDates={bookedDates}
+                            property={property}
+                            pricing={pricing}
+                        />
+                    )}
+                </AnimatePresence>
             </div>
 
             <Lightbox isOpen={isGalleryOpen} onClose={() => setIsGalleryOpen(false)} images={galleryImages} currentIndex={photoIndex} setIndex={setPhotoIndex} />
@@ -991,6 +1061,21 @@ export default function PropertyDetails() {
                     <span className="absolute right-full mr-3 bg-black/80 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Watch Video Tour</span>
                 </motion.button>
             )}
+
+            <MobileFooter
+                price={priceBreakdown?.grantTotal || pricing.sellingPrice}
+                unit={priceBreakdown?.nights > 0 ? 'total' : 'night'}
+                onReserve={() => {
+                    if (!dateRange.from || !dateRange.to) {
+                        setIsDatePickerOpen(true);
+                    } else {
+                        handleReserve();
+                    }
+                }}
+                buttonText={(!dateRange.from || !dateRange.to) ? 'Check Availability' : 'Reserve Now'}
+                dateRange={dateRange}
+                onDateClick={() => setIsDatePickerOpen(true)}
+            />
         </div>
     );
 }
@@ -1006,19 +1091,32 @@ const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navi
                 <span className="underline text-gray-600 hover:text-black cursor-pointer">{property.CityName}, {property.Location}</span>
             </div>
             <div className="flex gap-2 text-sm font-semibold">
-                <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 hover:bg-gray-100 px-4 py-2 rounded-lg transition underline decoration-gray-300"><FaShare /> Share</button>
                 <button onClick={() => {
+                    const text = `Check out this amazing property: ${property.Name} in ${property.Location}! ${window.location.href}`;
+                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                    window.open(whatsappUrl, '_blank');
+                }} className="flex items-center gap-2 hover:bg-gray-100 px-4 py-2 rounded-lg transition underline decoration-gray-300"><FaWhatsapp className="text-green-500 text-lg" /> Share</button>
+                <button onClick={async () => {
                     if (!user) {
                         navigate('/login', {
                             state: {
                                 returnTo: location.pathname + location.search,
-                                message: "Please login to save properties to your wishlist."
+                                bookingState: { action: 'wishlist', propertyId: id }
                             }
                         });
-                    } else {
-                        setIsSaved(!isSaved);
+                        return;
                     }
-                }} className="flex items-center gap-2 hover:bg-gray-100 px-4 py-2 rounded-lg transition underline decoration-gray-300"><FaHeart className={isSaved ? "text-[#FF385C]" : "text-transparent stroke-black stroke-2"} /> {isSaved ? "Saved" : "Save"}</button>
+                    const result = await toggleWishlist(id);
+                    if (result.success) {
+                        toast.success(result.message);
+                        setIsSaved(!isSaved);
+                    } else {
+                        toast.error(result.message);
+                    }
+                }} className="flex items-center gap-2 hover:bg-gray-100 px-4 py-2 rounded-lg transition underline decoration-gray-300">
+                    <FaHeart className={isSaved ? "text-[#FF385C] fill-current" : "text-gray-400"} />
+                    {isSaved ? "Saved" : "Save"}
+                </button>
             </div>
         </div>
     </div>
@@ -1394,17 +1492,95 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                     {(!dateRange.from || !dateRange.to) ? 'Check Availability' : (priceBreakdown ? 'Reserve Now' : 'Calculate Total')}
                 </button>
             </div>
-            <div className="bg-gray-50 py-2 text-center text-[10px] text-gray-400 font-bold border-t border-gray-100">
-                No booking fees · Free cancellation before 7 days
-            </div>
+            {/* Removed Booking Fees Text as per request */}
         </div>
     );
 };
 
-const MobileFooter = ({ price, unit, onReserve, buttonText }) => (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 px-6 z-40 flex justify-between items-center shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
-        <div><div className="font-bold text-lg">₹{Math.round(price).toLocaleString()} <span className="text-sm font-normal text-gray-600">{unit}</span></div></div>
-        <button onClick={onReserve} className="bg-[#FF385C] text-white px-8 py-3 rounded-lg font-bold shadow-lg">{buttonText || 'Reserve'}</button>
+const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDates, property, pricing }) => (
+    <AnimatePresence>
+        {isOpen && (
+            <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm lg:hidden flex items-end justify-center"
+                onClick={onClose}
+            >
+                <motion.div
+                    initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                    className="bg-white w-full rounded-t-3xl p-4 shadow-2xl h-[85vh] overflow-y-auto"
+                    onClick={e => e.stopPropagation()}
+                >
+                    <div className="flex justify-between items-center mb-6 sticky top-0 bg-white z-10 py-2">
+                        <div>
+                            <h3 className="text-xl font-bold font-serif">Select Dates</h3>
+                            <p className="text-xs text-gray-500">Pick your check-in & check-out</p>
+                        </div>
+                        <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
+                            <FaTimes size={16} />
+                        </button>
+                    </div>
+
+                    <div className="flex justify-center -mx-4 pb-4 overflow-hidden">
+                        <DayPicker
+                            mode="range"
+                            selected={dateRange}
+                            onDayClick={(day) => onDateSelect(day)}
+                            numberOfMonths={12}
+                            disabled={[{ before: new Date() }]}
+                            classNames={{
+                                day: "p-0",
+                                button: "h-12 w-12 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
+                                selected: "!bg-[#FF385C] !text-white hover:!bg-[#e31c5f] hover:!text-white",
+                                range_middle: "!bg-[#FF385C]/10 !text-black",
+                                range_start: "!bg-[#FF385C] !text-white rounded-l-lg",
+                                range_end: "!bg-[#FF385C] !text-white rounded-r-lg"
+                            }}
+                        />
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-gray-100 pb-20">
+                        <button
+                            onClick={onClose}
+                            className="w-full bg-black text-white py-4 rounded-xl font-bold font-serif text-lg shadow-lg active:scale-95 transition"
+                        >
+                            Done
+                        </button>
+                    </div>
+                </motion.div>
+            </motion.div>
+        )}
+    </AnimatePresence>
+);
+
+const MobileFooter = ({ price, unit, onReserve, buttonText, dateRange, onDateClick }) => (
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 z-40 flex justify-between items-center shadow-[0_-5px_20px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
+        <div className="flex flex-col cursor-pointer" onClick={onDateClick}>
+            {dateRange?.from ? (
+                <>
+                    <div className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1">
+                        {format(new Date(dateRange.from), 'dd MMM')}
+                        {dateRange.to ? ` - ${format(new Date(dateRange.to), 'dd MMM')}` : ''}
+                        <FaArrowRight size={8} className="rotate-[-45deg] text-blue-500" />
+                    </div>
+                    <div className="font-bold text-lg leading-tight">
+                        ₹{Math.round(price).toLocaleString()} <span className="text-xs font-normal text-gray-500">total</span>
+                    </div>
+                </>
+            ) : (
+                <>
+                    <div className="font-bold text-lg leading-tight">
+                        ₹{Math.round(price).toLocaleString()} <span className="text-xs font-normal text-gray-500">{unit}</span>
+                    </div>
+                    <div className="text-[10px] font-bold text-blue-600 underline">Select Dates</div>
+                </>
+            )}
+        </div>
+        <button
+            onClick={onReserve}
+            className="bg-[#FF385C] active:bg-[#d9324e] text-white px-6 py-3 rounded-xl font-bold shadow-lg text-sm flex items-center gap-2"
+        >
+            {buttonText || 'Reserve'}
+        </button>
     </div>
 );
 
@@ -1432,22 +1608,18 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
 };
 
 const ShareModal = ({ isOpen, onClose, property }) => {
-    const [copied, setCopied] = React.useState(false);
-    if (!isOpen) return null;
     const url = window.location.href;
-    const handleCopy = async () => {
-        try { await navigator.clipboard.writeText(url); setCopied(true); }
-        catch (err) { const textArea = document.createElement("textarea"); textArea.value = url; document.body.appendChild(textArea); textArea.select(); try { document.execCommand('copy'); setCopied(true); } catch (e) { console.error("Copy failed", e); } document.body.removeChild(textArea); }
-        setTimeout(() => setCopied(false), 2000);
+    const handleShare = () => {
+        const text = `Check out this amazing property: ${property.Name} in ${property.Location}! ${url}`;
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        window.open(whatsappUrl, '_blank');
+        onClose();
     };
-    return (
-        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
-            <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between mb-6"><h3 className="font-bold">Share</h3><button onClick={onClose}><FaTimes /></button></div>
-                <div className="grid grid-cols-2 gap-3">
-                    <button onClick={handleCopy} className="flex items-center gap-3 p-3 border rounded-xl hover:bg-gray-50 bg-gray-50 font-medium">{copied ? <FaCheck className="text-green-600" /> : <FaLink />} {copied ? "Copied!" : "Copy Link"}</button>
-                </div>
-            </div>
-        </div>
-    );
+
+    // Auto-redirect to WhatsApp on open if requested
+    React.useEffect(() => {
+        if (isOpen) handleShare();
+    }, [isOpen]);
+
+    return null; // Logic is handled via side-effect or direct call, no UI needed for now as per user request "directly share via whatsapp"
 };

@@ -11,21 +11,28 @@ use Illuminate\Support\Facades\Log;
 
 use App\Services\WhatsApp\WhatsAppService;
 use App\Services\WhatsApp\WhatsAppMessage;
+use App\Services\FCMService;
 
 class BookingController extends Controller
 {
     protected $notificationService;
     protected $phonePeService;
     protected $whatsAppService;
+    protected $commissionService;
+    protected $fcmService;
 
     public function __construct(
         NotificationService $notificationService, 
         PhonePeService $phonePeService,
-        WhatsAppService $whatsAppService
+        WhatsAppService $whatsAppService,
+        \App\Services\CommissionService $commissionService,
+        \App\Services\FCMService $fcmService
     ) {
         $this->notificationService = $notificationService;
         $this->phonePeService = $phonePeService;
         $this->whatsAppService = $whatsAppService;
+        $this->commissionService = $commissionService;
+        $this->fcmService = $fcmService;
     }
 
     public function index(Request $request)
@@ -42,7 +49,7 @@ class BookingController extends Controller
                 }
             })
             ->with(['property' => function($q) {
-                $q->select('PropertyId', 'Name', 'Location', 'ImageUrl', 'checkInTime', 'checkOutTime');
+                $q->select('PropertyId', 'Name', 'Location', 'checkInTime', 'checkOutTime');
             }])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -66,6 +73,7 @@ class BookingController extends Controller
             'tax_amount' => 'nullable|numeric',
             'base_amount' => 'nullable|numeric',
             'TotalAmount' => 'required|numeric',
+            'paid_amount' => 'nullable|numeric', // Booking Token Amount
             'payment_method' => 'required|string|in:hotel,card,upi',
             'SpecialRequest' => 'nullable|string',
             'booking_source' => 'nullable|string|in:customer_app,public_calendar,vendor_manual,admin_manual'
@@ -172,6 +180,8 @@ class BookingController extends Controller
 
             // Send confirmation notification if Confirmed
             if ($booking->Status === 'Confirmed') {
+                $this->commissionService->calculateAndRecord($booking);
+
                 $this->notificationService->sendBookingConfirmation($booking);
                 
                 // WhatsApp
@@ -182,6 +192,17 @@ class BookingController extends Controller
                         'ref' => $booking->booking_reference
                     ])
                 );
+
+                // Mobile Push Notification
+                $user = \App\Models\User::where('email', $booking->CustomerEmail)->first();
+                if ($user) {
+                    $this->fcmService->sendToUsers(
+                        [$user->id],
+                        'Booking Confirmed! 🎉',
+                        "Your stay at {$booking->property->Name} is confirmed. Ref: {$booking->booking_reference}",
+                        ['type' => 'booking', 'id' => $booking->id]
+                    );
+                }
             }
 
             return response()->json([

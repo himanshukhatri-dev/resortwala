@@ -4,7 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import { useModal } from '../context/ModalContext';
 import { API_BASE_URL } from '../config';
-import { FaUserPlus, FaTrash, FaSearch, FaEnvelope, FaPhone, FaExchangeAlt, FaCheckCircle, FaUserCircle, FaWhatsapp } from 'react-icons/fa';
+
+import { FaUserPlus, FaTrash, FaEnvelope, FaPhone, FaExchangeAlt, FaCheckCircle, FaUserCircle, FaWhatsapp } from 'react-icons/fa';
+import AdminTable from '../components/ui/AdminTable';
+import StatusBadge from '../components/ui/StatusBadge';
 
 export default function Users() {
     const { token } = useAuth();
@@ -223,186 +226,150 @@ export default function Users() {
         u.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const getRoleBadge = (role) => {
-        const styles = {
-            admin: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-            vendor: 'bg-orange-100 text-orange-700 border-orange-200',
-            customer: 'bg-emerald-100 text-emerald-700 border-emerald-200'
-        };
-        return <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${styles[role] || 'bg-gray-100'}`}>{role || activeTab.slice(0, -1)}</span>;
-    };
+
 
     return (
         <div className="min-h-screen bg-gray-50/50 p-4 md:p-8">
             <div className="max-w-7xl mx-auto space-y-6">
 
-                {/* Header Section */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-black text-gray-900 flex items-center gap-3">
-                            User Authority
-                        </h1>
-                        <p className="text-gray-500 font-medium font-outfit">Control roles, onboard users and manage account access</p>
-                    </div>
-                    <button
-                        onClick={() => {
-                            setOnboardingData({ ...onboardingData, role: activeTab === 'admins' ? 'admin' : (activeTab === 'vendors' ? 'vendor' : 'customer') });
-                            setShowAddModal(true);
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 flex items-center gap-2 transition-all active:scale-95"
-                    >
-                        <FaUserPlus /> Onboard New User
-                    </button>
-                </div>
-
-                {/* Search & Tabs */}
-                <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
-                    <div className="flex bg-gray-100 p-1 rounded-2xl w-full md:w-auto overflow-x-auto">
-                        {['admins', 'vendors', 'customers'].map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                            >
-                                {tab}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="relative flex-1 group w-full">
-                        <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search by name, phone or email..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-50 outline-none font-bold text-gray-700 transition-all placeholder-gray-300"
-                        />
-                    </div>
-                </div>
-
-                {/* Content Table / Cards */}
-                <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-                    {loading ? (
-                        <div className="p-20 text-center"><div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></div>
-                    ) : (
-                        <>
-                            {/* Desktop Table View */}
-                            <div className="hidden md:block overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead>
-                                        <tr className="bg-gray-50 border-b border-gray-100">
-                                            <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">User Profile</th>
-                                            <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contact Identity</th>
-                                            <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Authorization</th>
-                                            <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Operations</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {filteredUsers.map(user => (
-                                            <tr key={user.id} className="hover:bg-blue-50/20 transition-colors group">
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 text-xl font-black border border-gray-100">
-                                                            {user.name?.charAt(0)}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-black text-gray-900 leading-none mb-1">{user.name}</div>
-                                                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">ID #{user.id} • {new Date(user.created_at).toLocaleDateString()}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <div className="space-y-1">
-                                                        <div className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                                            <FaEnvelope className="text-gray-300 w-3" /> {user.email}
-                                                        </div>
-                                                        <div className="text-xs font-medium text-gray-500 flex items-center gap-2">
-                                                            <FaPhone className="text-gray-300 w-3" /> {user.phone || 'NO MOBILE'}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6 text-center">
-                                                    {getRoleBadge(user.role)}
-                                                </td>
-                                                <td className="px-8 py-6 text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <button
-                                                            onClick={() => handleLoginAs(user.id)}
-                                                            className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-[10px] font-black hover:bg-emerald-100 transition-all uppercase tracking-widest"
-                                                        >
-                                                            Login As
-                                                        </button>
-                                                        {activeTab !== 'customers' && (
-                                                            <button
-                                                                onClick={() => { setSelectedUser(user); setNewRole(user.role); setShowRoleModal(true); }}
-                                                                className="p-2.5 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition-all border border-indigo-100"
-                                                                title="Change Role"
-                                                            >
-                                                                <FaExchangeAlt size={14} />
-                                                            </button>
-                                                        )}
-                                                        <button
-                                                            onClick={() => handleDelete(user.id)}
-                                                            className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all border border-red-100"
-                                                        >
-                                                            <FaTrash size={14} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* Mobile Card View */}
-                            <div className="md:hidden divide-y divide-gray-50 bg-gray-50">
-                                {filteredUsers.map(user => (
-                                    <div key={user.id} className="p-6 bg-white space-y-4">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-lg shadow-blue-100">
-                                                    {user.name?.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <div className="font-black text-gray-900">{user.name}</div>
-                                                    <div className="mt-1">{getRoleBadge(user.role)}</div>
-                                                </div>
+                <AdminTable
+                    title="User Authority"
+                    subtitle="Control roles, onboard users and manage account access"
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    loading={loading}
+                    actions={(
+                        <button
+                            onClick={() => {
+                                setOnboardingData({ ...onboardingData, role: activeTab === 'admins' ? 'admin' : (activeTab === 'vendors' ? 'vendor' : 'customer') });
+                                setShowAddModal(true);
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 flex items-center gap-2 transition-all active:scale-95"
+                        >
+                            <FaUserPlus /> Onboard New User
+                        </button>
+                    )}
+                    filterContent={(
+                        <div className="flex bg-gray-100 p-1 rounded-2xl w-full md:w-auto overflow-x-auto">
+                            {['admins', 'vendors', 'customers'].map(tab => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    mobileRenderer={() => (
+                        <div>
+                            {filteredUsers.map(user => (
+                                <div key={user.id} className="p-6 bg-white space-y-4 border-b border-gray-50 last:border-none">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-lg shadow-blue-100">
+                                                {user.name?.charAt(0)}
                                             </div>
-                                            <button onClick={() => handleDelete(user.id)} className="p-3 text-red-300 hover:text-red-600 transition-colors">
-                                                <FaTrash />
-                                            </button>
-                                        </div>
-
-                                        <div className="space-y-2 py-3 border-y border-gray-50">
-                                            <div className="flex items-center gap-3 text-sm font-bold text-gray-600">
-                                                <FaEnvelope className="text-gray-300 w-4" /> {user.email}
-                                            </div>
-                                            <div className="flex items-center gap-3 text-sm font-bold text-gray-600">
-                                                <FaPhone className="text-gray-300 w-4" /> {user.phone || 'No Mobile Provided'}
+                                            <div>
+                                                <div className="font-black text-gray-900">{user.name}</div>
+                                                <div className="mt-1"><StatusBadge status={user.role || activeTab.slice(0, -1)} /></div>
                                             </div>
                                         </div>
+                                        <button onClick={() => handleDelete(user.id)} className="p-3 text-red-300 hover:text-red-600 transition-colors">
+                                            <FaTrash />
+                                        </button>
+                                    </div>
 
-                                        <div className="flex gap-2 pt-2">
-                                            <button onClick={() => handleLoginAs(user.id)} className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black shadow-lg shadow-emerald-50 active:scale-95 transition-all uppercase tracking-widest leading-none">Impersonate</button>
-                                            {activeTab !== 'customers' && (
-                                                <button
-                                                    onClick={() => { setSelectedUser(user); setNewRole(user.role); setShowRoleModal(true); }}
-                                                    className="w-14 h-12 flex items-center justify-center bg-indigo-50 text-indigo-700 rounded-2xl active:scale-95 transition-all border border-indigo-100"
-                                                >
-                                                    <FaExchangeAlt />
-                                                </button>
-                                            )}
+                                    <div className="space-y-2 py-3 border-y border-gray-50">
+                                        <div className="flex items-center gap-3 text-sm font-bold text-gray-600">
+                                            <FaEnvelope className="text-gray-300 w-4" /> {user.email}
+                                        </div>
+                                        <div className="flex items-center gap-3 text-sm font-bold text-gray-600">
+                                            <FaPhone className="text-gray-300 w-4" /> {user.phone || 'No Mobile Provided'}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </>
+
+                                    <div className="flex gap-2 pt-2">
+                                        <button onClick={() => handleLoginAs(user.id)} className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black shadow-lg shadow-emerald-50 active:scale-95 transition-all uppercase tracking-widest leading-none">Impersonate</button>
+                                        {activeTab !== 'customers' && (
+                                            <button
+                                                onClick={() => { setSelectedUser(user); setNewRole(user.role); setShowRoleModal(true); }}
+                                                className="w-14 h-12 flex items-center justify-center bg-indigo-50 text-indigo-700 rounded-2xl active:scale-95 transition-all border border-indigo-100"
+                                            >
+                                                <FaExchangeAlt />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     )}
-                    {filteredUsers.length === 0 && !loading && (
-                        <div className="p-20 text-center text-gray-300 font-black uppercase tracking-[0.2em] text-xs">No matching authority records found</div>
-                    )}
-                </div>
+                >
+                    <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                            <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">User Profile</th>
+                            <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contact Identity</th>
+                            <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Authorization</th>
+                            <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Operations</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                        {filteredUsers.map(user => (
+                            <tr key={user.id} className="hover:bg-blue-50/20 transition-colors group">
+                                <td className="px-8 py-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 text-xl font-black border border-gray-100">
+                                            {user.name?.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <div className="font-black text-gray-900 leading-none mb-1">{user.name}</div>
+                                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">ID #{user.id} • {new Date(user.created_at).toLocaleDateString()}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-8 py-6">
+                                    <div className="space-y-1">
+                                        <div className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                            <FaEnvelope className="text-gray-300 w-3" /> {user.email}
+                                        </div>
+                                        <div className="text-xs font-medium text-gray-500 flex items-center gap-2">
+                                            <FaPhone className="text-gray-300 w-3" /> {user.phone || 'NO MOBILE'}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-8 py-6 text-center">
+                                    <StatusBadge status={user.role || activeTab.slice(0, -1)} />
+                                </td>
+                                <td className="px-8 py-6 text-center">
+                                    <div className="flex justify-center gap-2">
+                                        <button
+                                            onClick={() => handleLoginAs(user.id)}
+                                            className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-[10px] font-black hover:bg-emerald-100 transition-all uppercase tracking-widest"
+                                        >
+                                            Login As
+                                        </button>
+                                        {activeTab !== 'customers' && (
+                                            <button
+                                                onClick={() => { setSelectedUser(user); setNewRole(user.role); setShowRoleModal(true); }}
+                                                className="p-2.5 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition-all border border-indigo-100"
+                                                title="Change Role"
+                                            >
+                                                <FaExchangeAlt size={14} />
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => handleDelete(user.id)}
+                                            className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all border border-red-100"
+                                        >
+                                            <FaTrash size={14} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </AdminTable>
 
                 {/* Modal: Onboard User */}
                 {

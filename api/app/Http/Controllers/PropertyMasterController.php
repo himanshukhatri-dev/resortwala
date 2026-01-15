@@ -3,119 +3,145 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Models\PropertyMaster;
 
 class PropertyMasterController extends Controller
 {
     public function index(Request $request)
     {
         try {
-            $query = \App\Models\PropertyMaster::with('images')
-                ->where('is_approved', 1)
-                ->orderBy('created_at', 'desc');
+            \Illuminate\Support\Facades\Log::info('Property Search Params:', $request->all());
+            
+            $query = PropertyMaster::with('images')
+                ->where('is_approved', 1);
 
-            if ($request->has('location')) {
-                $query->where('Location', 'like', '%' . $request->input('location') . '%');
+            // 0. GEOSPATIAL FILTER (Distance)
+            if ($request->has('lat') && $request->has('lon')) {
+                $lat = floatval($request->input('lat'));
+                $lon = floatval($request->input('lon'));
+                $radius = intval($request->input('radius', 50)); 
+                
+                // Using NOWDOC for cleaner SQL, standard Haversine
+                // We use HAVING for distance filtering
+                $haversine = "( 6371 * acos( cos( radians($lat) ) * cos( radians( Latitude ) ) * cos( radians( Longitude ) - radians($lon) ) + sin( radians($lat) ) * sin( radians( Latitude ) ) ) )";
+                
+                $query->select('*', DB::raw("{$haversine} as distance_km"));
+                // Include properties within radius OR with no coordinates (NULL distance)
+                $query->havingRaw("distance_km <= ? OR distance_km IS NULL", [$radius]);
+                // Sort by: Valid distances first, then NULLs
+                $query->orderByRaw('CASE WHEN distance_km IS NULL THEN 1 ELSE 0 END, distance_km ASC');
+            } else {
+                // Default Sorting
+                if ($request->has('sort')) {
+                    switch ($request->input('sort')) {
+                        case 'price_low':
+                            $query->orderBy('Price', 'asc');
+                            break;
+                        case 'price_high':
+                            $query->orderBy('Price', 'desc');
+                            break;
+                        default: // newest
+                            $query->orderBy('created_at', 'desc');
+                    }
+                } else {
+                    $query->orderBy('created_at', 'desc');
+                }
             }
 
-            // Return paginated results (standard Laravel pagination structure)
-            return response()->json($query->paginate(12));
+            // 1. TEXT LOCATION FILTER
+            if ($request->has('location') && !empty($request->input('location')) && !$request->has('lat')) {
+                $loc = $request->input('location');
+                $query->where(function($q) use ($loc) {
+                    $q->where('Location', 'like', '%' . $loc . '%')
+                      ->orWhere('CityName', 'like', '%' . $loc . '%')
+                      ->orWhere('Address', 'like', '%' . $loc . '%');
+                });
+            }
+
+            // 2. Type Filter
+            if ($request->has('type') && $request->input('type') !== 'all') {
+                $type = $request->input('type');
+                if ($type == 'villas') {
+                    $query->where('PropertyType', 'Villa');
+                } elseif ($type == 'waterpark') {
+                    $query->where(function($q) {
+                        $q->where('PropertyType', 'like', '%Resort%')
+                          ->orWhere('Name', 'like', '%Water%');
+                    });
+                }
+            }
+
+            // 3. Price Filter
+            if ($request->has('min_price') && !empty($request->input('min_price'))) {
+                $query->where('Price', '>=', $request->input('min_price'));
+            }
+            if ($request->has('max_price')) {
+                 $query->where('Price', '<=', $request->input('max_price'));
+            }
+            
+            // 4. Guests Filter
+            if ($request->has('guests') && $request->input('guests') > 1) {
+                $guests = $request->input('guests');
+                $query->where(function($q) use ($guests) {
+                     $q->where('MaxGuests', '>=', $guests)
+                       ->orWhere('MaxCapacity', '>=', $guests);
+                });
+            }
+
+            // 5. Veg Only
+            if ($request->has('veg_only') && $request->input('veg_only') == 'true') {
+                 // Logic to be implemented if VegOnly column exists
+            }
+
+            // Pagination
+            $limit = intval($request->input('limit', 10));
+            $properties = $query->paginate($limit);
+
+            return response()->json($properties);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()], 500);
+            // Return 200 with empty data to prevent client crash? No, 500 is better for debugging, 
+            // but for user experience 'No properties' is better than crash.
+            // But we already handle catch in frontend.
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
     public function show($id)
     {
-        $property = \App\Models\PropertyMaster::with(['images', 'holidays' => function($q) {
-            $q->where('to_date', '>=', now()->toDateString());
-        }])->find($id);
-
-        if (!$property) {
-            return response()->json(['message' => 'Property not found'], 404);
-        }
-
-        // --- Fetch Booked Dates Logic ---
-        $bookings = \App\Models\Booking::where('PropertyId', $id)
-            // Strict Booking Status Check (Copy of BookingController Logic)
-            ->where(function($q) {
-                $q->whereIn('Status', ['Confirmed', 'locked', 'booked'])
-                  ->orWhere(function($q2) {
-                      // Only block for Pending bookings if they are recent (< 15 mins)
-                      $q2->where('Status', 'Pending')
-                         ->where('created_at', '>', \Carbon\Carbon::now()->subMinutes(15));
-                  });
-            })
-            ->get(['CheckInDate', 'CheckOutDate']);
-
-        $bookedDates = [];
-        foreach ($bookings as $booking) {
-            $start = \Carbon\Carbon::parse($booking->CheckInDate);
-            $end = \Carbon\Carbon::parse($booking->CheckOutDate);
-
-            if ($start->eq($end)) {
-                 $bookedDates[] = $start->format('Y-m-d');
-            } else {
-                 $end->subDay(); // Exclude checkout day
-                 if ($start->lte($end)) {
-                    $period = \Carbon\CarbonPeriod::create($start, $end);
-                    foreach ($period as $date) {
-                        $bookedDates[] = $date->format('Y-m-d');
-                    }
-                 }
+        try {
+            $property = PropertyMaster::with(['images', 'videos', 'holidays'])->find($id);
+            if (!$property) {
+                return response()->json(['message' => 'Property not found'], 404);
             }
+            return response()->json($property);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-        $property->booked_dates = array_values(array_unique($bookedDates));
-        // -----------------------------
-
-        return response()->json($property);
     }
-
-    public function getBookedDates($id)
+    
+    public function getLocations()
     {
-        $bookings = \App\Models\Booking::where('PropertyId', $id)
-            // Strict Booking Status Check
-            ->where(function($q) {
-                $q->whereIn('Status', ['Confirmed', 'locked', 'booked'])
-                  ->orWhere(function($q2) {
-                      $q2->where('Status', 'Pending')
-                         ->where('created_at', '>', \Carbon\Carbon::now()->subMinutes(15));
-                  });
-            })
-            ->get(['CheckInDate', 'CheckOutDate']);
+        try {
+            $locations = PropertyMaster::where('is_approved', 1)
+                ->select('Location', DB::raw('count(*) as total'))
+                ->whereNotNull('Location')
+                ->where('Location', '!=', '')
+                ->groupBy('Location')
+                ->orderBy('total', 'desc')
+                ->limit(20)
+                ->get();
 
-        $bookedDates = [];
+            $formatted = $locations->map(function($item) {
+                return [
+                    'name' => $item->Location,
+                    'count' => $item->total
+                ];
+            });
 
-        foreach ($bookings as $booking) {
-            // Include check-in date, exclude check-out date (nights booked)
-            // If check-out is the day they leave, the room is free that night?
-            // Usually hotel logic: Booked NIGHTS. 
-            // So if Booked 14th to 15th, the night of 14th is booked. 15th is free for check-in.
-            // My CustomDatePicker disables check-in selection.
-            // If I disable 14th, user can't check in on 14th.
-            // If I disable 15th, user can't check in on 15th?
-            // Wait, if someone books 14-16 (14, 15 nights).
-            // 14th is occupied. 15th is occupied. 16th is free to check in (checkout day).
-            // So I should calculate dates from CheckIn up to CheckOut - 1 day.
-            
-            $start = \Carbon\Carbon::parse($booking->CheckInDate);
-            $end = \Carbon\Carbon::parse($booking->CheckOutDate);
-
-            // If Start == End (Single Day Freeze), include it.
-            if ($start->eq($end)) {
-                 $bookedDates[] = $start->format('Y-m-d');
-            } else {
-                 // Standard Booking: Exclude checkout day (subDay)
-                 $end->subDay();
-                 
-                 if ($start->lte($end)) {
-                    $period = \Carbon\CarbonPeriod::create($start, $end);
-                    foreach ($period as $date) {
-                        $bookedDates[] = $date->format('Y-m-d');
-                    }
-                 }
-            }
+            return response()->json($formatted);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        return response()->json(['booked_dates' => array_values(array_unique($bookedDates))]);
     }
 }

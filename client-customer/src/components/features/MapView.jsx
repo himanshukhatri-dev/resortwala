@@ -53,8 +53,25 @@ function getApproxCoords(property, index) {
     ];
 }
 
-// Marker Icon with Price
-const createPriceIcon = (price) => {
+// Marker Icon with Price and Distance
+const createPriceIcon = (price, distance) => {
+    const validPrice = price && !isNaN(price) ? Number(price).toLocaleString() : 'View';
+
+    let distText = '';
+    if (distance !== undefined && distance !== null) {
+        distText = distance < 1 ? Math.round(distance * 1000) + 'm' : distance.toFixed(1) + 'km';
+    } else {
+        // DEBUG: Why is it missing?
+        // distText = '?'; 
+    }
+
+    const distHtml = distText
+        ? `<span style="margin-left:4px; padding-left:4px; border-left:1px solid #ddd; color:#16a34a; font-size:10px; display:flex; items-center;">
+            <svg style="width:8px; height:8px; margin-right:2px;" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            ${distText}
+           </span>`
+        : '';
+
     return L.divIcon({
         className: 'custom-price-marker',
         html: `
@@ -64,61 +81,152 @@ const createPriceIcon = (price) => {
                 font-weight: bold; 
                 padding: 4px 8px; 
                 border-radius: 12px; 
-                box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
-                font-size: 12px;
-                border: 1px solid #ccc;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+                font-size: 11px;
+                border: 1px solid #e5e7eb;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 white-space: nowrap;
                 transform: translate(-50%, -50%);
+                font-family: sans-serif;
             ">
-                ₹${Number(price).toLocaleString()}
+                ₹${validPrice}
+                ${distHtml}
             </div>
         `,
-        iconSize: [60, 30], // Adjust based on content size
-        iconAnchor: [30, 15] // Center it
+        iconSize: [100, 40], // Increased anchor area further
+        iconAnchor: [50, 20]
     });
 };
 
 function MapUpdater({ markers, userLocation }) {
     const map = useMap();
     React.useEffect(() => {
+        if (markers.length === 0 && !userLocation) return;
+
+        const bounds = L.latLngBounds([]);
+
+        // Add all markers to bounds
+        markers.forEach(m => {
+            if (m.position) bounds.extend(m.position);
+        });
+
+        // Add user location to bounds
         if (userLocation) {
-            map.flyTo(userLocation, 12, { duration: 2 });
-        } else if (markers.length > 0) {
-            const group = new L.featureGroup(markers.map(m => L.marker(m.position)));
-            map.fitBounds(group.getBounds(), { padding: [50, 50] });
+            bounds.extend(userLocation);
+        }
+
+        if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13, animate: true, duration: 1.5 });
         }
     }, [markers, map, userLocation]);
     return null;
 }
 
-export default function MapView({ properties }) {
+// Haversine Distance Calculation
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+export default function MapView({ properties, onLocationSelect, currentUserLocation }) {
     const defaultCenter = [20.5937, 78.9629];
 
     // Prepare markers with generated coords if needed
     const markers = useMemo(() => {
         if (!properties) return [];
+        console.log("MapView Properties:", properties.length, "UserLoc:", currentUserLocation);
+
         return properties.map((p, i) => {
+            const position = getApproxCoords(p, i);
+            let dist = p.distanceKm;
+            // const pLat = p.Latitude || p.latitude || p.lat; // Unused if we use position fallback or prioritized logic
+            const uLat = currentUserLocation ? (currentUserLocation.lat || currentUserLocation.latitude) : null;
+            const uLon = currentUserLocation ? (currentUserLocation.lon || currentUserLocation.longitude) : null;
+
+            // Calculate distance if missing and we have user location
+            if ((!dist || dist === undefined) && uLat && uLon) {
+                // Only calculate if property has REAL coordinates, not fallbacks
+                if (p.Latitude && p.Longitude) {
+                    dist = calculateDistance(
+                        parseFloat(uLat),
+                        parseFloat(uLon),
+                        parseFloat(p.Latitude),
+                        parseFloat(p.Longitude)
+                    );
+                } else {
+                    dist = null; // Ensure we don't show fake distance
+                }
+            }
+            // Log for first property
+            if (i === 0) console.log("Prop 0 Dist:", dist, "Price:", p.Price || p.price);
+
             return {
                 ...p,
-                position: getApproxCoords(p, i)
+                distanceKm: dist,
+                position: position
             };
         });
-    }, [properties]);
+    }, [properties, currentUserLocation]);
+
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const [isSearching, setIsSearching] = React.useState(false);
+
+    const handleSearch = async (e) => {
+        e.preventDefault();
+        if (!searchQuery.trim()) return;
+
+        setIsSearching(true);
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                const { lat, lon, display_name } = data[0];
+                const location = { lat: parseFloat(lat), lon: parseFloat(lon), name: display_name.split(',')[0] };
+
+                setUserLocation([location.lat, location.lon]);
+                if (onLocationSelect) {
+                    onLocationSelect(location);
+                }
+            } else {
+                alert("Location not found");
+            }
+        } catch (error) {
+            console.error("Search error:", error);
+            alert("Failed to search location");
+        } finally {
+            setIsSearching(false);
+        }
+    };
 
     const [userLocation, setUserLocation] = React.useState(null);
+
+    // Sync prop location to local state
+    React.useEffect(() => {
+        if (currentUserLocation) {
+            setUserLocation([currentUserLocation.lat, currentUserLocation.lon]);
+        }
+    }, [currentUserLocation]);
 
     const handleLocateMe = () => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const { latitude, longitude } = position.coords;
+                    const location = { lat: latitude, lon: longitude, name: "Current Location" };
                     setUserLocation([latitude, longitude]);
-                    // You might need to access map instance to flyTo, but simplified for now
-                    // For a proper FlyTo, we'd need a component inside MapContainer or useMap
-                    // We'll add a <LocateHandler> component below
+
+                    if (onLocationSelect) {
+                        onLocationSelect(location);
+                    }
                 },
                 (error) => {
                     console.error("Error getting location: ", error);
@@ -168,7 +276,7 @@ export default function MapView({ properties }) {
                     <Marker
                         key={p.PropertyId || i}
                         position={p.position}
-                        icon={createPriceIcon(p.Price || p.price)}
+                        icon={createPriceIcon(p.Price || p.price, p.distanceKm)}
                     >
                         <Popup className="custom-popup" closeButton={false}>
                             <div className="min-w-[240px] p-0 font-sans">
@@ -194,7 +302,7 @@ export default function MapView({ properties }) {
                                             <span className="font-bold text-lg text-gray-900">₹{Number(p.Price).toLocaleString()}</span>
                                         </div>
                                         <Link
-                                            to={`/property/${p.PropertyId}`}
+                                            to={`/property/${p.id || p.PropertyID || p.PropertyId}`}
                                             className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-lg shadow-gray-200"
                                         >
                                             View Details
@@ -206,6 +314,8 @@ export default function MapView({ properties }) {
                     </Marker>
                 ))}
             </MapContainer>
+
+
 
             {/* Locate Me Button */}
             <button

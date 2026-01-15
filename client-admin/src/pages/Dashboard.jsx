@@ -3,354 +3,341 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
-import adminAnalytics from '../utils/analytics';
 import {
-    FaUsers, FaHome, FaCalendarCheck, FaCheckCircle,
-    FaTimesCircle, FaRupeeSign, FaSearch, FaArrowRight, FaEdit, FaExclamationCircle
-} from 'react-icons/fa';
+    FiUsers, FiHome, FiTrendingUp, FiActivity,
+    FiArrowUpRight, FiArrowDownRight, FiCalendar,
+    FiSearch, FiArrowRight, FiInfo, FiZap
+} from 'react-icons/fi';
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid,
+    Tooltip, ResponsiveContainer, BarChart, Bar,
+    Cell, PieChart, Pie
+} from 'recharts';
 import Loader from '../components/Loader';
 
 // --- COMPONENTS ---
 
-const StatCard = ({ label, value, icon, color }) => (
-    <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
-        <div className="flex justify-between items-center">
-            <div className={`w-12 h-12 rounded-2xl ${color} text-white flex items-center justify-center shadow-lg`}>
-                {icon}
+const DashboardKPITile = ({ label, value, subValue, icon: Icon, color, trend, trendValue }) => (
+    <div className="saas-card p-6 relative overflow-hidden group">
+        <div className="flex justify-between items-start relative z-10">
+            <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{label}</p>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">{value}</h3>
+                {subValue && <p className="text-[10px] font-bold text-gray-400 mt-1">{subValue}</p>}
             </div>
-            <div className="text-right">
-                <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.2em] mb-1">{label}</p>
-                <h3 className="text-2xl font-black text-gray-900 tracking-tight">{value}</h3>
+            <div className={`w-10 h-10 rounded-xl ${color} bg-opacity-10 flex items-center justify-center text-xl`}>
+                <Icon className={color.replace('bg-', 'text-')} />
             </div>
         </div>
+        {trend && (
+            <div className="mt-4 flex items-center gap-2">
+                <span className={`flex items-center text-[10px] font-black px-1.5 py-0.5 rounded ${trend === 'up' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                    {trend === 'up' ? <FiArrowUpRight size={12} /> : <FiArrowDownRight size={12} />}
+                    {trendValue}%
+                </span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">vs last month</span>
+            </div>
+        )}
+        <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full ${color} opacity-[0.03] group-hover:scale-125 transition-transform duration-500`}></div>
     </div>
 );
 
-const ActionBox = ({ title, count, data, renderItem, icon: Icon, colorClass, onViewAll }) => (
-    <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm flex flex-col h-full">
+const ChartCard = ({ title, children, icon: Icon, badge }) => (
+    <div className="saas-card p-6 flex flex-col">
         <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-xl ${colorClass} bg-opacity-10 text-xl`}>
-                    <Icon className={colorClass.replace('bg-', 'text-')} />
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <Icon size={16} />
                 </div>
-                <div>
-                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">{title}</h3>
-                    <p className="text-[10px] font-bold text-gray-400">{count} Items Pending</p>
-                </div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">{title}</h3>
             </div>
-            {onViewAll && count > 0 && (
-                <button onClick={onViewAll} className="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest flex items-center gap-1">
-                    View All <FaArrowRight />
-                </button>
-            )}
+            {badge && <span className="text-[9px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg shadow-indigo-100">{badge}</span>}
         </div>
-
-        <div className="space-y-3 flex-1">
-            {data.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-gray-300 opacity-60">
-                    <FaCheckCircle className="text-3xl mb-2" />
-                    <p className="text-xs font-bold uppercase tracking-widest">All Caught Up</p>
-                </div>
-            ) : (
-                data.slice(0, 4).map(renderItem)
-            )}
+        <div className="flex-1 min-h-[250px] w-full min-w-0">
+            {children}
         </div>
     </div>
 );
-
-const StatusBadge = ({ status }) => {
-    let styles = "bg-gray-100 text-gray-600";
-    const s = status?.toLowerCase();
-    if (s === 'confirmed' || s === 'approved' || s === 'completed') styles = "bg-emerald-50 text-emerald-600 border border-emerald-100";
-    if (s === 'pending') styles = "bg-amber-50 text-amber-600 border border-amber-100";
-    if (s === 'cancelled' || s === 'rejected' || s === 'failed') styles = "bg-red-50 text-red-600 border border-red-100";
-    return <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${styles}`}>{status || 'Pending'}</span>;
-};
 
 // --- MAIN COMPONENT ---
 
 export default function Dashboard() {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
     const navigate = useNavigate();
 
     // State
+    const [analytics, setAnalytics] = useState(null);
     const [stats, setStats] = useState(null);
-    const [pendingVendors, setPendingVendors] = useState([]);
-    const [pendingProperties, setPendingProperties] = useState([]);
-    const [changeRequests, setChangeRequests] = useState([]);
-    const [recentBookings, setRecentBookings] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
-    const [isSearching, setIsSearching] = useState(false);
+    const [recentBookings, setRecentBookings] = useState([]);
 
     const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
 
     useEffect(() => {
-        adminAnalytics.pageView('Dashboard', { section: 'main' });
         fetchDashboardData();
     }, []);
 
     const fetchDashboardData = async () => {
         try {
             const headers = { Authorization: `Bearer ${token}` };
-            const [statsRes, vendorsRes, propsRes, changesRes, bookingsRes] = await Promise.all([
+            const [analyticsRes, statsRes, bookingsRes] = await Promise.all([
+                axios.get(`${API_BASE_URL}/admin/analytics/dashboard`, { headers }),
                 axios.get(`${API_BASE_URL}/admin/stats`, { headers }),
-                axios.get(`${API_BASE_URL}/admin/vendors/pending`, { headers }),
-                axios.get(`${API_BASE_URL}/admin/properties/pending`, { headers }),
-                axios.get(`${API_BASE_URL}/admin/property-changes`, { headers }),
                 axios.get(`${API_BASE_URL}/admin/bookings`, { headers })
             ]);
 
+            setAnalytics(analyticsRes.data);
             setStats(statsRes.data);
-            setPendingVendors(vendorsRes.data);
-            setPendingProperties(propsRes.data);
-            setChangeRequests(changesRes.data || []);
             setRecentBookings(bookingsRes.data.slice(0, 5));
         } catch (error) {
             console.error("Dashboard Fetch Error:", error);
         } finally {
             setLoading(false);
         }
-    };
+    }
 
-    useEffect(() => {
-        const delayDebounceFn = setTimeout(() => {
-            if (searchTerm.length > 2) {
-                handleGlobalSearch();
-            } else {
-                setSearchResults([]);
-            }
-        }, 300);
+    if (loading) return <Loader message="Compiling Platform Intelligence..." />;
 
-        return () => clearTimeout(delayDebounceFn);
-    }, [searchTerm]);
-
-    const handleGlobalSearch = async () => {
-        setIsSearching(true);
-        try {
-            const res = await axios.get(`${API_BASE_URL}/admin/search?query=${searchTerm}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setSearchResults(res.data);
-        } catch (error) {
-            console.error("Search Error:", error);
-        } finally {
-            setIsSearching(false);
-        }
-    };
-
-    const navigateToResult = (result) => {
-        setSearchTerm('');
-        setSearchResults([]);
-        if (result.type === 'user') navigate('/users');
-        if (result.type === 'customer') navigate('/customers');
-        if (result.type === 'property') navigate(`/properties/${result.id}/approve`);
-        if (result.type === 'booking') navigate('/bookings');
-    };
-
-    if (loading) return <Loader message="Accessing Console..." />;
+    const kpis = analytics?.kpis || {};
+    const revenueTrends = analytics?.revenue_trends || [];
+    const trafficTrends = analytics?.traffic_trends || [];
+    const funnel = analytics?.funnel || {};
 
     return (
-        <div className="min-h-screen bg-gray-50/50 p-6 md:p-8 space-y-8 pb-24 font-inter text-left">
-
-            {/* Header */}
+        <div className="space-y-8 pb-12 text-left">
+            {/* Header Area */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Admin Console</h1>
-                    <p className="text-gray-500 font-medium font-outfit mt-1">Operational status of ResortWala ecosystem</p>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                        Terminal <span className="text-indigo-600">Console</span>
+                    </h1>
+                    <p className="text-slate-500 font-medium font-outfit mt-1">Real-time ecosystem performance & revenue control</p>
                 </div>
-                <div className="relative group w-full md:w-80">
-                    <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-                    <input
-                        type="text"
-                        placeholder="Search IDs, Phones, Names..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl text-sm focus:ring-4 focus:ring-blue-50 outline-none font-bold text-gray-700 transition-all shadow-sm"
-                    />
-
-                    {/* Search Results Dropdown */}
-                    {(searchResults.length > 0 || isSearching) && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 text-left">
-                            {isSearching ? (
-                                <div className="p-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">Searching Platform...</div>
-                            ) : (
-                                <div className="divide-y divide-gray-50">
-                                    {searchResults.map((res, idx) => (
-                                        <div
-                                            key={`${res.type}-${res.id}-${idx}`}
-                                            onClick={() => navigateToResult(res)}
-                                            className="p-4 hover:bg-blue-50 cursor-pointer transition-colors flex items-center justify-between"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black uppercase ${res.type === 'user' ? 'bg-indigo-100 text-indigo-600' :
-                                                    res.type === 'customer' ? 'bg-emerald-100 text-emerald-600' :
-                                                        res.type === 'property' ? 'bg-blue-100 text-blue-600' : 'bg-violet-100 text-violet-600'
-                                                    }`}>{res.type.charAt(0)}</div>
-                                                <div>
-                                                    <div className="text-xs font-black text-gray-900">{res.name}</div>
-                                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">
-                                                        {res.type === 'user' ? `${res.role} • ${res.email}` :
-                                                            res.type === 'customer' ? `Guest • ${res.phone || res.email}` :
-                                                                res.type === 'property' ? `Property • ${res.Location}` : `Booking • ${res.Status}`}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <FaArrowRight className="text-gray-200 text-[10px]" />
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-sm border border-slate-100 group cursor-pointer hover:border-indigo-200 transition-all touch-manipulation">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">System Operational</span>
+                    </div>
                 </div>
-            </div>
-
-            {/* ACTION CENTER */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-
-                {/* Pending Vendors */}
-                <ActionBox
-                    title="Vendor Access"
-                    count={pendingVendors.length}
-                    data={pendingVendors}
-                    icon={FaUsers}
-                    colorClass="bg-amber-600"
-                    onViewAll={() => navigate('/vendors')}
-                    renderItem={(vendor) => (
-                        <div key={vendor.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-amber-50/50 border border-transparent transition group cursor-pointer" onClick={() => navigate(`/vendors/${vendor.id}`)}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-amber-600 shadow-sm border border-amber-50">
-                                    {vendor.name?.charAt(0)}
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-black text-gray-900">{vendor.name}</h4>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase">{vendor.business_name || 'Individual'}</p>
-                                </div>
-                            </div>
-                            <FaArrowRight className="text-amber-200 group-hover:text-amber-600 transition-colors" />
-                        </div>
-                    )}
-                />
-
-                {/* Pending Properties */}
-                <ActionBox
-                    title="Property Approval"
-                    count={pendingProperties.length}
-                    data={pendingProperties}
-                    icon={FaHome}
-                    colorClass="bg-blue-600"
-                    onViewAll={() => navigate('/properties')}
-                    renderItem={(prop) => (
-                        <div key={prop.PropertyId} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-blue-50/50 border border-transparent transition group cursor-pointer" onClick={() => navigate(`/properties/${prop.PropertyId}/approve`)}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-blue-600 shadow-sm border border-blue-50">
-                                    P
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-black text-gray-900">{prop.Name}</h4>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase">{prop.Location} • ₹{prop.Price}</p>
-                                </div>
-                            </div>
-                            <FaArrowRight className="text-blue-200 group-hover:text-blue-600 transition-colors" />
-                        </div>
-                    )}
-                />
-
-                {/* Change Requests */}
-                <ActionBox
-                    title="Change Requests"
-                    count={changeRequests.length}
-                    data={changeRequests}
-                    icon={FaEdit}
-                    colorClass="bg-violet-600"
-                    onViewAll={() => navigate('/property-changes')}
-                    renderItem={(req) => (
-                        <div key={req.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-violet-50/50 border border-transparent transition group cursor-pointer" onClick={() => navigate(`/properties/${req.property_id}/changes/${req.id}`)}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-violet-600 shadow-sm border border-violet-50">
-                                    <FaExclamationCircle className="text-xs" />
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-black text-gray-900">{req.property_name}</h4>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Vendor: {req.vendor_name || 'N/A'}</p>
-                                </div>
-                            </div>
-                            <FaArrowRight className="text-violet-200 group-hover:text-violet-600 transition-colors" />
-                        </div>
-                    )}
-                />
             </div>
 
             {/* KPI GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <StatCard label="Platform Revenue" value={formatCurrency(stats?.total_revenue)} icon={<FaRupeeSign />} color="bg-blue-600" />
-                <StatCard label="Total Volume" value={stats?.total_bookings || '0'} icon={<FaCalendarCheck />} color="bg-indigo-600" />
-                <StatCard label="Retail Partners" value={stats?.approved_vendors || '0'} icon={<FaUsers />} color="bg-emerald-600" />
-                <StatCard label="Active Inventory" value={stats?.total_properties || '0'} icon={<FaHome />} color="bg-violet-600" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <DashboardKPITile
+                    label="Lifetime Revenue"
+                    value={formatCurrency(kpis.total_revenue)}
+                    subValue={`₹${(kpis.monthly_revenue || 0).toLocaleString()} this month`}
+                    icon={FiTrendingUp}
+                    color="bg-emerald-600"
+                    trend={kpis.revenue_growth >= 0 ? "up" : "down"}
+                    trendValue={Math.abs(kpis.revenue_growth || 0)}
+                />
+                <DashboardKPITile
+                    label="Platform Growth"
+                    value={kpis.active_inventory || '0'}
+                    subValue={`${kpis.pending_approvals || 0} pending review`}
+                    icon={FiHome}
+                    color="bg-indigo-600"
+                    trend={kpis.inventory_growth >= 0 ? "up" : "down"}
+                    trendValue={Math.abs(kpis.inventory_growth || 0)}
+                />
+                <DashboardKPITile
+                    label="Daily Active Users"
+                    value={kpis.active_users_today || '0'}
+                    subValue="Across 3 platforms"
+                    icon={FiUsers}
+                    color="bg-blue-600"
+                />
+                <DashboardKPITile
+                    label="System Traffic"
+                    value={kpis.interactions || '0'}
+                    subValue="API requests last 30d"
+                    icon={FiActivity}
+                    color="bg-violet-600"
+                />
             </div>
 
-            {/* RECENT BOOKINGS */}
-            <div className="bg-white rounded-[2.5rem] p-6 md:p-10 border border-gray-100 shadow-sm">
+            {/* MAIN DATA SECTION */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                {/* Revenue & Growth Chart */}
+                <div className="lg:col-span-2 space-y-8">
+                    <ChartCard title="Revenue Distribution" icon={FiTrendingUp} badge="Live Flow">
+                        <div className="h-[300px] w-full min-w-0">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                                <AreaChart data={revenueTrends}>
+                                    <defs>
+                                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1} />
+                                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis
+                                        dataKey="date"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 9, fontWeight: 900, fill: '#64748b' }}
+                                        dy={10}
+                                        tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                                    />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fontSize: 9, fontWeight: 900, fill: '#64748b' }}
+                                        tickFormatter={(val) => `₹${val >= 1000 ? (val / 1000).toFixed(1) + 'k' : val}`}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: '900' }}
+                                        formatter={(val) => [formatCurrency(val), 'Revenue']}
+                                    />
+                                    <Area type="monotone" dataKey="revenue" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </ChartCard>
+
+                    {/* Funnel Dropoff */}
+                    <div className="saas-card p-6">
+                        <div className="flex justify-between items-center mb-8">
+                            <div>
+                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                    <FiZap className="text-amber-500" /> Conversion Funnel
+                                </h3>
+                                <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase">End-to-End lifecycle tracking</p>
+                            </div>
+                        </div>
+                        <div className="space-y-6">
+                            {[
+                                { label: 'Top of Funnel (Unique Sessions)', value: funnel.total_users, color: 'bg-indigo-600', total: funnel.total_users },
+                                { label: 'Property Discovery (Views)', value: funnel.property_views, color: 'bg-indigo-500', total: funnel.total_users },
+                                { label: 'Intent to Book (Checkout)', value: funnel.checkouts, color: 'bg-indigo-400', total: funnel.total_users },
+                                { label: 'Conversion (Completed)', value: funnel.bookings, color: 'bg-emerald-500', total: funnel.total_users },
+                            ].map((step, idx) => (
+                                <div key={idx} className="space-y-2">
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{step.label}</span>
+                                        <span className="text-xs font-black text-slate-900">{step.value} <span className="text-slate-300 font-bold ml-1">({((step.value / step.total) * 100).toFixed(1)}%)</span></span>
+                                    </div>
+                                    <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full ${step.color} transition-all duration-1000`}
+                                            style={{ width: `${step.total > 0 ? (step.value / step.total) * 100 : 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sidebar Data: Traffic & Recent Actions */}
+                <div className="space-y-8">
+                    <ChartCard title="Platform Traffic" icon={FiActivity}>
+                        <div className="h-[200px] w-full min-w-0">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                                <BarChart data={trafficTrends}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis
+                                        dataKey="date"
+                                        hide
+                                    />
+                                    <YAxis hide />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '10px', fontWeight: '900' }}
+                                    />
+                                    <Bar dataKey="users" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="mt-4 flex items-center justify-center bg-slate-50 p-3 rounded-xl border border-slate-100 italic text-[10px] text-slate-400">
+                            Real-time traffic analysis based on platform event logs
+                        </div>
+                    </ChartCard>
+
+                    {/* Quick Access Actions */}
+                    <div className="saas-card p-6 bg-slate-900 text-white border-none shadow-xl shadow-indigo-100">
+                        <h3 className="text-sm font-black uppercase tracking-wider mb-6 flex items-center gap-2">
+                            System Quick Actions
+                        </h3>
+                        <div className="space-y-3">
+                            <button onClick={() => navigate('/properties/add')} className="w-full flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group">
+                                <div className="flex items-center gap-3">
+                                    <FiHome className="text-indigo-400" />
+                                    <span className="text-xs font-bold">Onboard New Property</span>
+                                </div>
+                                <FiArrowRight className="text-white/20 group-hover:text-white transition-colors" />
+                            </button>
+                            <button onClick={() => navigate('/revenue/full-rate-control')} className="w-full flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group">
+                                <div className="flex items-center gap-3">
+                                    <FiTrendingUp className="text-emerald-400" />
+                                    <span className="text-xs font-bold">Manage Rate Control</span>
+                                </div>
+                                <FiArrowRight className="text-white/20 group-hover:text-white transition-colors" />
+                            </button>
+                            <button onClick={() => navigate('/admin/vendor-leads')} className="w-full flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 rounded-2xl transition-all group">
+                                <div className="flex items-center gap-3">
+                                    <FiUsers className="text-blue-400" />
+                                    <span className="text-xs font-bold">Access Sales CRM</span>
+                                </div>
+                                <FiArrowRight className="text-white/20 group-hover:text-white transition-colors" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* RECENT FLOW TABLE */}
+            <div className="saas-card pt-8 p-6 md:p-10">
                 <div className="flex justify-between items-center mb-8">
                     <div>
-                        <h3 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-                            Internal Transaction Flow
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                            Financial Ledger
                         </h3>
-                        <p className="text-gray-400 text-xs font-bold font-outfit mt-1">Real-time booking data across all categories</p>
+                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Real-time transaction stream</p>
                     </div>
-                    <button onClick={() => navigate('/bookings')} className="px-6 py-2.5 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-gray-200">
-                        Full Ledger
+                    <button onClick={() => navigate('/bookings')} className="saas-button-primary">
+                        View Full Ledger
                     </button>
                 </div>
 
-                {/* Desktop View */}
-                <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-left">
+                <div className="overflow-x-auto">
+                    <table className="saas-table">
                         <thead>
-                            <tr className="border-b border-gray-50">
-                                <th className="pb-5 text-[10px] font-black text-gray-300 uppercase tracking-widest">Transaction ID</th>
-                                <th className="pb-5 text-[10px] font-black text-gray-300 uppercase tracking-widest">Primary Client</th>
-                                <th className="pb-5 text-[10px] font-black text-gray-300 uppercase tracking-widest text-center">Engagement Date</th>
-                                <th className="pb-5 text-[10px] font-black text-gray-300 uppercase tracking-widest text-center">Financials</th>
-                                <th className="pb-5 text-[10px] font-black text-gray-300 uppercase tracking-widest text-right">Verification</th>
+                            <tr>
+                                <th>Transaction ID</th>
+                                <th>Client</th>
+                                <th>Engagement Date</th>
+                                <th className="text-center">Financials</th>
+                                <th className="text-right">Verification</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y divide-slate-50">
                             {recentBookings.map(b => (
-                                <tr key={b.BookingId} className="hover:bg-blue-50/20 transition-colors">
-                                    <td className="py-6 font-mono text-[10px] text-gray-400">#RES-{b.BookingId}</td>
-                                    <td className="py-6 font-black text-gray-900 text-sm">{b.CustomerName}</td>
-                                    <td className="py-6 text-xs font-bold text-gray-400 text-center">{new Date(b.CheckInDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                                    <td className="py-6 font-black text-gray-900 text-sm text-center">₹{(b.TotalAmount || 0).toLocaleString('en-IN')}</td>
-                                    <td className="py-6 text-right"><StatusBadge status={b.Status} /></td>
+                                <tr key={b.BookingId} className="hover:bg-slate-50/50 transition-colors group">
+                                    <td className="py-5 font-mono text-[10px] text-slate-400 font-bold">#RES-{b.BookingId}</td>
+                                    <td className="py-5">
+                                        <div className="font-black text-slate-900 text-sm">{b.CustomerName}</div>
+                                        <div className="text-[10px] text-slate-400 font-bold uppercase">{b.CustomerEmail || 'direct customer'}</div>
+                                    </td>
+                                    <td className="py-5 text-xs font-bold text-slate-500">
+                                        {new Date(b.CheckInDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </td>
+                                    <td className="py-5 font-black text-slate-900 text-sm text-center">
+                                        {formatCurrency(b.TotalAmount)}
+                                    </td>
+                                    <td className="py-5 text-right">
+                                        <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${b.Status?.toLowerCase() === 'confirmed' ? 'bg-emerald-50 text-emerald-600' :
+                                            b.Status?.toLowerCase() === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'
+                                            }`}>
+                                            {b.Status || 'Active'}
+                                        </span>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
-
-                {/* Mobile View */}
-                <div className="md:hidden space-y-4">
-                    {recentBookings.map(b => (
-                        <div key={b.BookingId} className="p-5 bg-gray-50 rounded-2xl border border-gray-100 flex justify-between items-center">
-                            <div>
-                                <div className="text-[10px] font-black text-gray-300 uppercase mb-1">ID: #RES-{b.BookingId}</div>
-                                <div className="font-black text-gray-900 text-sm">{b.CustomerName}</div>
-                                <div className="text-xs font-bold text-gray-400 mt-1">{new Date(b.CheckInDate).toLocaleDateString()}</div>
-                            </div>
-                            <div className="text-right">
-                                <div className="font-black text-blue-600 text-lg">₹{(b.TotalAmount || 0).toLocaleString('en-IN')}</div>
-                                <div className="mt-2"><StatusBadge status={b.Status} /></div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {recentBookings.length === 0 && (
-                    <div className="py-20 text-center text-gray-300 font-black uppercase tracking-[0.2em] text-xs">No Recent Transactions</div>
-                )}
             </div>
         </div>
     );

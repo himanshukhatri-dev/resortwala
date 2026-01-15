@@ -17,11 +17,11 @@ class PhonePeService
 
     public function __construct()
     {
-        // Load Configuration from .env
-        $this->clientId = env('PHONEPE_CLIENT_ID'); // New Client ID
-        $this->clientSecret = env('PHONEPE_SALT_KEY'); // Secret (Mapped to Salt Key)
-        $this->saltIndex = env('PHONEPE_SALT_INDEX', '1'); 
-        $this->env = env('PHONEPE_ENV', 'PROD'); // Default to PROD
+        // Load Configuration from Config/PhonePe or Env
+        $this->clientId = config('phonepe.merchant_id') ?? env('PHONEPE_MERCHANT_ID');
+        $this->clientSecret = config('phonepe.salt_key') ?? env('PHONEPE_SALT_KEY'); 
+        $this->saltIndex = config('phonepe.salt_index') ?? env('PHONEPE_SALT_INDEX', '1'); 
+        $this->env = config('phonepe.env') ?? env('PHONEPE_ENV', 'PROD'); 
 
         $envUrl = ($this->env === 'PROD') ? Env::PRODUCTION : Env::UAT;
         
@@ -48,14 +48,28 @@ class PhonePeService
      */
     public function initiatePayment($booking, $callbackUrl)
     {
+        if (!$this->client) {
+            Log::error("PhonePe Client not initialized. Check credentials.");
+            return [
+                'success' => false,
+                'message' => 'Payment Gateway Configuration Missing',
+                'code' => 'SDK_NOT_INIT'
+            ];
+        }
+
         // Calculate Amount (Default) in Paise
-        $amountPaise = (int) ($booking->TotalAmount * 100);
+        // Use paid_amount (Token) if available, otherwise TotalAmount
+        $paymentAmount = ($booking->paid_amount > 0) ? $booking->paid_amount : $booking->TotalAmount;
+        $amountPaise = (int) ($paymentAmount * 100);
 
         // LIVE TESTING OVERRIDE: Force 1 Rupee (100 Paise)
+        // FIXME: Remove or move to a specific test configuration before full production launch
+        /*
         if ($this->env === 'PROD') {
              $amountPaise = 100; // ₹1.00
              Log::warning("PhonePe Live Testing: Amount overridden to ₹1.00");
         }
+        */
         
         $transactionId = "TXN_" . $booking->BookingId . "_" . time();
 

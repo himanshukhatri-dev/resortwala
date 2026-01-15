@@ -35,7 +35,7 @@ class AdminPropertyController extends Controller
             }
             $property->onboarding_data = $obData;
 
-            // 2. Handle Admin Pricing (Villa Matrix)
+                // 2. Handle Admin Pricing (Villa Matrix)
             if ($request->has('admin_pricing')) {
                 $adminPricing = is_string($request->admin_pricing) 
                     ? json_decode($request->admin_pricing, true) 
@@ -43,20 +43,36 @@ class AdminPropertyController extends Controller
                 
                 $property->admin_pricing = $adminPricing;
                 
-                // Sync Prices: Price = Vendor Ask, ResortWalaRate = Customer Price
-                if (isset($adminPricing['mon_thu']['villa']['current'])) {
-                    $property->Price = $adminPricing['mon_thu']['villa']['current'];
-                }
-                if (isset($adminPricing['mon_thu']['villa']['final'])) {
-                    $property->ResortWalaRate = $adminPricing['mon_thu']['villa']['final'];
-                    $property->price_mon_thu = $adminPricing['mon_thu']['villa']['final'];
-                    $property->DealPrice = $adminPricing['mon_thu']['villa']['final']; // Sync DealPrice
-                }
-                if (isset($adminPricing['fri_sun']['villa']['final'])) {
-                    $property->price_fri_sun = $adminPricing['fri_sun']['villa']['final'];
-                }
-                if (isset($adminPricing['sat']['villa']['final'])) {
-                    $property->price_sat = $adminPricing['sat']['villa']['final'];
+                // DETECT FORMAT: New (monday key) vs Old (mon_thu key)
+                if (isset($adminPricing['monday'])) {
+                    // NEW 7-DAY FORMAT
+                    // Map Legacy Columns for backward compatibility
+                    if (isset($adminPricing['monday']['villa']['current'])) $property->Price = $adminPricing['monday']['villa']['current'];
+                    
+                    if (isset($adminPricing['monday']['villa']['final'])) {
+                        $property->ResortWalaRate = $adminPricing['monday']['villa']['final'];
+                        $property->price_mon_thu = $adminPricing['monday']['villa']['final'];
+                        $property->DealPrice = $adminPricing['monday']['villa']['final'];
+                    }
+                    if (isset($adminPricing['friday']['villa']['final'])) $property->price_fri_sun = $adminPricing['friday']['villa']['final'];
+                    if (isset($adminPricing['saturday']['villa']['final'])) $property->price_sat = $adminPricing['saturday']['villa']['final'];
+
+                } else {
+                    // LEGACY 3-BUCKET FORMAT
+                    if (isset($adminPricing['mon_thu']['villa']['current'])) {
+                        $property->Price = $adminPricing['mon_thu']['villa']['current'];
+                    }
+                    if (isset($adminPricing['mon_thu']['villa']['final'])) {
+                        $property->ResortWalaRate = $adminPricing['mon_thu']['villa']['final'];
+                        $property->price_mon_thu = $adminPricing['mon_thu']['villa']['final'];
+                        $property->DealPrice = $adminPricing['mon_thu']['villa']['final']; // Sync DealPrice
+                    }
+                    if (isset($adminPricing['fri_sun']['villa']['final'])) {
+                        $property->price_fri_sun = $adminPricing['fri_sun']['villa']['final'];
+                    }
+                    if (isset($adminPricing['sat']['villa']['final'])) {
+                        $property->price_sat = $adminPricing['sat']['villa']['final'];
+                    }
                 }
             }
 
@@ -90,15 +106,31 @@ class AdminPropertyController extends Controller
                  $adminPricing = is_string($request->admin_pricing) ? json_decode($request->admin_pricing, true) : $request->admin_pricing;
                  $updateData['admin_pricing'] = json_encode($adminPricing);
                  
-                 // Sync Pricing columns if present in request/matrix
-                 if (isset($adminPricing['mon_thu']['villa']['current'])) $updateData['Price'] = $adminPricing['mon_thu']['villa']['current'];
-                 if (isset($adminPricing['mon_thu']['villa']['final'])) {
-                     $updateData['ResortWalaRate'] = $adminPricing['mon_thu']['villa']['final'];
-                     $updateData['price_mon_thu'] = $adminPricing['mon_thu']['villa']['final'];
-                     $updateData['DealPrice'] = $adminPricing['mon_thu']['villa']['final'];
+                 // Sync Pricing columns
+                 if (isset($adminPricing['monday'])) {
+                     // NEW FORMAT
+                     if (isset($adminPricing['monday']['villa']['current'])) $updateData['Price'] = $adminPricing['monday']['villa']['current'];
+                     if (isset($adminPricing['monday']['villa']['final'])) {
+                         $updateData['ResortWalaRate'] = $adminPricing['monday']['villa']['final'];
+                         $updateData['price_mon_thu'] = $adminPricing['monday']['villa']['final'];
+                         $updateData['DealPrice'] = $adminPricing['monday']['villa']['final'];
+                     }
+                     if (isset($adminPricing['friday']['villa']['final'])) $updateData['price_fri_sun'] = $adminPricing['friday']['villa']['final'];
+                     if (isset($adminPricing['saturday']['villa']['final'])) $updateData['price_sat'] = $adminPricing['saturday']['villa']['final'];
+                 } else {
+                     // OLD FORMAT
+                     if (isset($adminPricing['mon_thu']['villa']['current'])) $updateData['Price'] = $adminPricing['mon_thu']['villa']['current'];
+                     if (isset($adminPricing['mon_thu']['villa']['final'])) {
+                         $updateData['ResortWalaRate'] = $adminPricing['mon_thu']['villa']['final'];
+                         $updateData['price_mon_thu'] = $adminPricing['mon_thu']['villa']['final'];
+                         $updateData['DealPrice'] = $adminPricing['mon_thu']['villa']['final'];
+                     }
+                     if (isset($adminPricing['fri_sun']['villa']['final'])) $updateData['price_fri_sun'] = $adminPricing['fri_sun']['villa']['final'];
+                     if (isset($adminPricing['sat']['villa']['final'])) $updateData['price_sat'] = $adminPricing['sat']['villa']['final'];
                  }
-                 if (isset($adminPricing['fri_sun']['villa']['final'])) $updateData['price_fri_sun'] = $adminPricing['fri_sun']['villa']['final'];
-                 if (isset($adminPricing['sat']['villa']['final'])) $updateData['price_sat'] = $adminPricing['sat']['villa']['final'];
+                 
+                 // Sync to Daily Rates Table
+                 $this->syncDailyRates($id, $adminPricing);
             }
 
             // Execute Direct Update
@@ -111,6 +143,79 @@ class AdminPropertyController extends Controller
                 'property' => PropertyMaster::find($id) // Reload clean model
             ]);
         });
+    }
+
+    /**
+     * Helper to sync admin_pricing JSON to property_daily_rates table.
+     * This should be called after a successful save of the main property.
+     */
+    private function syncDailyRates($propertyId, $adminPricing)
+    {
+        if (!is_array($adminPricing)) return;
+
+        // Map day names to 0-6 (Sunday=0, Monday=1, ...)
+        $dayMap = [
+            'sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3, 
+            'thursday' => 4, 'friday' => 5, 'saturday' => 6
+        ];
+
+        // 1. Delete existing daily rates (simple full replace strategy for now)
+        \App\Models\PropertyDailyRate::where('property_id', $propertyId)->delete();
+
+        // 2. Insert new rates
+        $now = now();
+        $inserts = [];
+
+        // Check if New or Old Format
+        if (isset($adminPricing['monday'])) {
+            // New Format
+            foreach ($dayMap as $key => $val) {
+                if (isset($adminPricing[$key])) {
+                    $dayData = $adminPricing[$key];
+                    $inserts[] = [
+                        'property_id' => $propertyId,
+                        'day_of_week' => $val,
+                        'base_price' => $dayData['villa']['final'] ?? 0,
+                        'extra_person_price' => $dayData['extra_person']['final'] ?? 0,
+                        'child_price' => 0, // Not explicitly in matrix yet, maybe in future
+                        'effective_from' => $now,
+                        'effective_to' => null,
+                        'created_at' => $now,
+                        'updated_at' => $now
+                    ];
+                }
+            }
+        } else {
+            // Legacy Format - Expand buckets to days
+            $bucketMap = [
+                'mon_thu' => [1, 2, 3, 4],
+                'fri_sun' => [5, 0],
+                'sat' => [6]
+            ];
+
+            foreach ($bucketMap as $bucket => $days) {
+                if (isset($adminPricing[$bucket])) {
+                    $bData = $adminPricing[$bucket];
+                    foreach ($days as $dVal) {
+                        $inserts[] = [
+                            'property_id' => $propertyId,
+                            'day_of_week' => $dVal,
+                            'base_price' => $bData['villa']['final'] ?? 0,
+                            'extra_person_price' => $bData['extra_person']['final'] ?? 0,
+                            'child_price' => 0,
+                            'effective_from' => $now,
+                            'effective_to' => null,
+                            'created_at' => $now,
+                            'updated_at' => $now
+                        ];
+                    }
+                }
+            }
+        }
+
+        if (!empty($inserts)) {
+            \App\Models\PropertyDailyRate::insert($inserts);
+        }
     }
 
     /**
@@ -130,22 +235,39 @@ class AdminPropertyController extends Controller
         $property->admin_pricing = $validated['admin_pricing'];
         
         // Update main price columns
-        if (isset($validated['admin_pricing']['mon_thu']['villa']['current'])) {
-            $property->Price = $validated['admin_pricing']['mon_thu']['villa']['current'];
-        }
-        if (isset($validated['admin_pricing']['mon_thu']['villa']['final'])) {
-            $property->ResortWalaRate = $validated['admin_pricing']['mon_thu']['villa']['final'];
-            $property->price_mon_thu = $validated['admin_pricing']['mon_thu']['villa']['final'];
-            $property->DealPrice = $validated['admin_pricing']['mon_thu']['villa']['final']; // Sync DealPrice
-        }
-        if (isset($validated['admin_pricing']['fri_sun']['villa']['final'])) {
-            $property->price_fri_sun = $validated['admin_pricing']['fri_sun']['villa']['final'];
-        }
-        if (isset($validated['admin_pricing']['sat']['villa']['final'])) {
-            $property->price_sat = $validated['admin_pricing']['sat']['villa']['final'];
+        if (isset($validated['admin_pricing']['monday'])) {
+            // New 7-Day Format
+            if (isset($validated['admin_pricing']['monday']['villa']['current'])) $property->Price = $validated['admin_pricing']['monday']['villa']['current'];
+            if (isset($validated['admin_pricing']['monday']['villa']['final'])) {
+                $property->ResortWalaRate = $validated['admin_pricing']['monday']['villa']['final'];
+                $property->price_mon_thu = $validated['admin_pricing']['monday']['villa']['final'];
+                $property->DealPrice = $validated['admin_pricing']['monday']['villa']['final'];
+            }
+            if (isset($validated['admin_pricing']['friday']['villa']['final'])) $property->price_fri_sun = $validated['admin_pricing']['friday']['villa']['final'];
+            if (isset($validated['admin_pricing']['saturday']['villa']['final'])) $property->price_sat = $validated['admin_pricing']['saturday']['villa']['final'];
+
+        } else {
+            // Legacy Format
+            if (isset($validated['admin_pricing']['mon_thu']['villa']['current'])) {
+                $property->Price = $validated['admin_pricing']['mon_thu']['villa']['current'];
+            }
+            if (isset($validated['admin_pricing']['mon_thu']['villa']['final'])) {
+                $property->ResortWalaRate = $validated['admin_pricing']['mon_thu']['villa']['final'];
+                $property->price_mon_thu = $validated['admin_pricing']['mon_thu']['villa']['final'];
+                $property->DealPrice = $validated['admin_pricing']['mon_thu']['villa']['final']; // Sync DealPrice
+            }
+            if (isset($validated['admin_pricing']['fri_sun']['villa']['final'])) {
+                $property->price_fri_sun = $validated['admin_pricing']['fri_sun']['villa']['final'];
+            }
+            if (isset($validated['admin_pricing']['sat']['villa']['final'])) {
+                $property->price_sat = $validated['admin_pricing']['sat']['villa']['final'];
+            }
         }
 
         $property->save();
+
+        // Sync to Daily Rates Table
+        $this->syncDailyRates($id, $validated['admin_pricing']);
 
         return response()->json([
             'message' => 'Pricing updated successfully',

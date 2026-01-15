@@ -13,7 +13,7 @@ export default function Register() {
         password_confirmation: '',
         business_name: '',
         phone: '',
-        vendor_type: 'Resort'
+        vendor_type: 'Villa'
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -100,9 +100,8 @@ export default function Register() {
                             onChange={e => setFormData({ ...formData, vendor_type: e.target.value })}
                             style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }}
                         >
-                            <option value="Resort">Resort</option>
-                            <option value="WaterPark">Water Park</option>
-                            <option value="Villa">Villa/Bungalow</option>
+                            <option value="Villa">Villa</option>
+                            <option value="Waterpark">Water Park</option>
                         </select>
                     </div>
 

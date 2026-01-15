@@ -4,8 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\Auditable;
+
 class Booking extends Model
 {
+    use Auditable;
     protected $table = 'bookings';
     protected $primaryKey = 'BookingId';
     
@@ -18,6 +21,7 @@ class Booking extends Model
         'CheckOutDate',
         'Guests',
         'TotalAmount',
+        'paid_amount',
         'Status',
         'SpecialRequest',
         'coupon_code',

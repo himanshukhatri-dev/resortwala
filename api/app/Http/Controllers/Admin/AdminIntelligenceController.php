@@ -42,8 +42,13 @@ class AdminIntelligenceController extends Controller
         $schema = [];
 
 
+        $databaseName = config('database.connections.mysql.database');
+        $keyName = "Tables_in_" . $databaseName;
+
         foreach ($tables as $table) {
-            $tableName = $table->name;
+            // Robustly get table name
+            $tableName = $table->$keyName ?? array_values((array)$table)[0];
+            
             $columns = $this->getTableColumns($tableName);
             $foreignKeys = $this->getLocalForeignKeys($tableName);
 
@@ -69,8 +74,6 @@ class AdminIntelligenceController extends Controller
     {
         // MySQL specific
         return DB::select('SHOW TABLES'); 
-        // Note: The specific output property name depends on DB config, usually is "Tables_in_dbname"
-        // We will normalize this in the loop or use a more robust doctrine method if available
     }
 
     private function getTableColumns($table)
@@ -81,9 +84,7 @@ class AdminIntelligenceController extends Controller
         
         foreach ($columns as $col) {
             $type = Schema::getColumnType($table, $col);
-            // Check for Primary Key (Simple check)
-            // A more robust way is using raw SQL or Doctrine
-            $isPrimary = $col === 'id' || $col === 'ID'; // Simplification for now
+            $isPrimary = $col === 'id' || $col === 'ID' || $col === 'PropertyId' || $col === 'BookingId'; 
             
             $details[] = [
                 'name' => $col,
@@ -97,7 +98,7 @@ class AdminIntelligenceController extends Controller
     private function getLocalForeignKeys($table)
     {
         // Getting FKs in MySQL is tricky without Doctrine, using information_schema
-        $dbName = env('DB_DATABASE', 'resortwala');
+        $dbName = config('database.connections.mysql.database');
         
         $fks = DB::select("
             SELECT 
@@ -132,8 +133,14 @@ class AdminIntelligenceController extends Controller
         } else {
             // Default sort by ID if exists, else first column
             $columns = Schema::getColumnListing($table);
+            
+            // Try explicit PKs first
             if (in_array('id', $columns)) {
                 $query->orderBy('id', 'desc');
+            } elseif (in_array('PropertyId', $columns)) {
+                $query->orderBy('PropertyId', 'desc');
+            } elseif (in_array('BookingId', $columns)) {
+                $query->orderBy('BookingId', 'desc');
             } else {
                 $query->orderBy($columns[0], 'desc');
             }
@@ -167,8 +174,6 @@ class AdminIntelligenceController extends Controller
         }
 
         // Security: ID column validation
-        // Assuming 'id' is the primary key for generic updates. 
-        // For production, we should detect the PK dynamically.
         
         $updates = $request->except(['id', '_token']); // Exclude protected
         
@@ -187,27 +192,32 @@ class AdminIntelligenceController extends Controller
         try {
             DB::beginTransaction();
             
+            // Determine PK
+            $columns = Schema::getColumnListing($table);
+            $pk = in_array('id', $columns) ? 'id' : (in_array('PropertyId', $columns) ? 'PropertyId' : (in_array('BookingId', $columns) ? 'BookingId' : 'id'));
+
             // 1. Audit Log (Before Update)
-            $oldData = DB::table($table)->where('id', $id)->first();
+            $oldData = DB::table($table)->where($pk, $id)->first();
             
             // 2. Perform Update
-            DB::table($table)->where('id', $id)->update($updates);
+            DB::table($table)->where($pk, $id)->update($updates);
 
             // 3. Log Audit
-            DB::table('user_events')->insert([
-                'user_id' => $request->user()->id,
-                'event_type' => 'intelligence_db_update',
-                'event_category' => 'admin_action',
-                'event_data' => json_encode([
-                    'table' => $table,
-                    'row_id' => $id,
-                    'old' => $oldData,
-                    'new' => $updates
-                ]),
-                'context' => json_encode(['ip' => $request->ip()]),
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            try {
+                DB::table('user_events')->insert([
+                    'user_id' => $request->user()->id ?? 0,
+                    'event_type' => 'intelligence_db_update',
+                    'event_category' => 'admin_action',
+                    'event_data' => json_encode([
+                        'table' => $table,
+                        'row_id' => $id,
+                        'old' => $oldData,
+                        'new' => $updates
+                    ]),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            } catch (\Exception $e) {}
 
             DB::commit();
 
@@ -218,10 +228,57 @@ class AdminIntelligenceController extends Controller
         }
     }
 
+    /**
+     * Delete a specific row in a table
+     */
+    public function deleteTableData(Request $request, $table, $id)
+    {
+        $this->configureConnection($request);
+
+        if (!$this->isValidTable($table)) {
+            return response()->json(['error' => 'Invalid table'], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Determine PK
+            $columns = Schema::getColumnListing($table);
+            $pk = in_array('id', $columns) ? 'id' : (in_array('PropertyId', $columns) ? 'PropertyId' : (in_array('BookingId', $columns) ? 'BookingId' : 'id'));
+
+            // 1. Audit Log (Before Delete)
+            $oldData = DB::table($table)->where($pk, $id)->first();
+
+            // 2. Perform Delete
+            DB::table($table)->where($pk, $id)->delete();
+
+            // 3. Log Audit
+            try {
+                DB::table('user_events')->insert([
+                    'user_id' => $request->user()->id ?? 0,
+                    'event_type' => 'intelligence_db_delete',
+                    'event_category' => 'admin_action',
+                    'event_data' => json_encode([
+                        'table' => $table,
+                        'row_id' => $id,
+                        'deleted_data' => $oldData
+                    ]),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            } catch (\Exception $e) {}
+
+            DB::commit();
+
+            return response()->json(['success' => true, 'message' => 'Record deleted successfully']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     private function isValidTable($table)
     {
-        $tables = simplexml_load_string(json_encode(DB::select('SHOW TABLES')), 'SimpleXMLElement', LIBXML_NOCDATA);
-        // DB::select returns array of objects, verify if table exists in schema
         return Schema::hasTable($table); 
     }
 }

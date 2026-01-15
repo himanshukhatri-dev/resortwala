@@ -93,7 +93,7 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
             onClick={handleCardClick}
             className={`group flex flex-col ${cardType === 'horizontal' ? 'xl:flex-row' : ''} gap-5 bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 p-3 cursor-pointer relative hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 h-full`}
         >
-            {/* IMAGE SLIDER (Left Side) - Updated to Landscape Aspect Ratio */}
+            {/* IMAGE SLIDER (Left Side) */}
             <div className={`relative w-full ${cardType === 'horizontal' ? 'xl:w-[320px] h-[276px] xl:h-[300px]' : 'h-[250px]'} flex-shrink-0 rounded-[1.2rem] overflow-hidden bg-gray-100`}>
                 <AnimatePresence mode="wait">
                     <motion.img
@@ -150,8 +150,6 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
 
                 {(property?.PropertyType || property?.IsTrending) && (
                     <div className="absolute top-3 left-3 flex flex-col gap-2 items-start">
-                        {/* PROPERTY TYPE BADGE - REMOVED (Moved to content area) */}
-
                         {/* TRENDING BADGE */}
                         {property?.IsTrending && (
                             <div className="bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white uppercase tracking-wider flex items-center gap-1.5 shadow-lg border border-white/10">
@@ -172,9 +170,9 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                         </h3>
                     </div>
 
-                    {/* ROW 2: Property Type, Rating & Location (Moved Below Title) */}
+                    {/* ROW 2: Property Type, Rating, Location & DISTANCE */}
                     <div className="flex flex-wrap items-center gap-3 mb-2 text-sm">
-                        {/* PROPERTY TYPE BADGE - Moved Here */}
+
                         {property?.PropertyType && (
                             <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${property.PropertyType === 'Waterpark'
                                 ? 'bg-blue-50 text-blue-700 border-blue-100'
@@ -189,14 +187,23 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                             <span>{rating > 0 ? rating : "New"}</span>
                             {rating > 0 && <span className="text-[10px] text-gray-400 font-normal ml-0.5">({(id % 50) + 5} Reviews)</span>}
                         </div>
+
                         <div className="flex items-center gap-1.5 text-gray-500 font-medium">
                             <FaMapMarkerAlt className="text-gray-400" size={12} />
                             <span className="truncate max-w-[150px]">{location}</span>
+
+                            {/** DISTANCE DISPLAY **/}
+                            {property?.distanceKm !== undefined && (
+                                <span className="text-xs font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100">
+                                    {property.distanceKm < 1 ? `${Math.round(property.distanceKm * 1000)}m` : `${property.distanceKm.toFixed(1)} km`}
+                                </span>
+                            )}
+
                             {property.GoogleMapLink && (
                                 <a
                                     href={property.GoogleMapLink.includes('iframe') ? '#' : property.GoogleMapLink}
                                     onClick={(e) => {
-                                        if (property.GoogleMapLink.includes('iframe')) return; // handled by details page
+                                        if (property.GoogleMapLink.includes('iframe')) return;
                                         e.stopPropagation();
                                     }}
                                     target="_blank"
@@ -216,8 +223,6 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
 
                     {/* QUICK STATS & AMENITIES */}
                     <div className="flex flex-col gap-2 mb-2">
-                        {/* Quick Stats Row */}
-                        {/* Quick Stats Row */}
                         {property?.PropertyType !== 'Waterpark' && (
                             <div className="flex items-center gap-6 text-sm text-gray-700 font-medium">
                                 <div className="flex items-center gap-2">
@@ -231,7 +236,6 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                                 <div className="flex items-center gap-2">
                                     <FaBath className="text-gray-400" />
                                     <span>{
-                                        // Try to calculate bathrooms from room config, else fallback to room count (ensuite assumption)
                                         property?.onboarding_data?.roomConfig?.bedrooms?.filter(r => r.bathroom)?.length
                                         || property?.NoofRooms
                                         || property?.Bathrooms
@@ -241,30 +245,25 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                             </div>
                         )}
 
-                        {/* Amenities Tags (Dynamic) */}
                         <div className="flex flex-wrap gap-2 text-xs font-bold">
-                            {/* Pool Check */}
                             {(property?.onboarding_data?.amenities?.big_pools || property?.onboarding_data?.amenities?.small_pools) ? (
                                 <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-lg">
                                     <FaSwimmingPool size={10} /> Pool
                                 </div>
                             ) : null}
 
-                            {/* Wifi Check */}
                             {property?.onboarding_data?.amenities?.wifi ? (
                                 <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg">
                                     <FaWifi size={10} /> Wi-Fi
                                 </div>
                             ) : null}
 
-                            {/* AC Check (From Room Config) */}
                             {property?.onboarding_data?.roomConfig?.bedrooms?.some(r => r.ac) ? (
                                 <div className="flex items-center gap-1.5 px-3 py-1 bg-sky-50 text-sky-700 rounded-lg">
                                     <FaSnowflake size={10} /> AC
                                 </div>
                             ) : null}
 
-                            {/* Fallback: Parking if not enough items? Or just show what we have. */}
                             {property?.onboarding_data?.amenities?.parking ? (
                                 <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-50 text-gray-700 rounded-lg">
                                     <FaParking size={10} /> Parking
@@ -291,13 +290,10 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
 
                     <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 w-full sm:w-auto">
                         <div className="text-left sm:text-right flex flex-col items-start sm:items-end">
-                            {/* Market Price & Savings */}
                             <div className="flex items-center gap-2">
                                 <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">₹{Math.round(pricing.marketPrice).toLocaleString()}</span>
                                 <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">{pricing.percentage}% OFF</span>
                             </div>
-
-                            {/* Selling Price */}
                             <div className="flex items-baseline gap-1">
                                 <span className="text-xl sm:text-2xl font-bold text-gray-900 font-sans">₹{pricing.sellingPrice.toLocaleString()}</span>
                                 <span className="text-[10px] font-normal text-gray-400 opacity-60">
@@ -315,4 +311,3 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
         </div>
     );
 }
-

@@ -58,7 +58,11 @@ export default function Login() {
                 setShowOtpInput(true);
             } else {
                 // --- Email: Backend OTP Flow ---
-                await axios.post(`${API_URL}/api/customer/login-email-otp`, { email: loginIdentifier });
+                // FIX: Use Generic OTP Send endpoint
+                await axios.post(`${API_URL}/api/otp/send`, {
+                    email: loginIdentifier,
+                    type: 'login'
+                });
                 setShowOtpInput(true);
             }
         } catch (err) {
@@ -67,7 +71,7 @@ export default function Login() {
                 setError('Account not found. Please register properly.');
                 setTimeout(() => navigate('/signup'), 2000);
             } else {
-                setError(err.message || 'Failed to send OTP. Try again.');
+                setError(err.response?.data?.message || err.message || 'Failed to send OTP. Try again.');
             }
         } finally {
             setIsLoading(false);
@@ -94,9 +98,10 @@ export default function Login() {
                 });
             } else {
                 // Verify via Backend Email OTP
-                response = await axios.post(`${API_URL}/api/customer/login`, {
+                // FIX: Use correct Login-with-OTP endpoint
+                response = await axios.post(`${API_URL}/api/customer/login-email-otp`, {
                     email: loginIdentifier,
-                    otp: otp
+                    code: otp
                 });
             }
 
@@ -201,7 +206,17 @@ export default function Login() {
                                     placeholder="• • • • • •"
                                     className="w-full px-6 py-5 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10 outline-none font-mono font-bold text-4xl text-center tracking-[0.5em] text-gray-900 transition-all shadow-sm hover:border-gray-200"
                                     value={otp}
-                                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                        setOtp(val);
+                                        if (val.length === 6) {
+                                            // Auto-submit
+                                            // We need to bypass the form submit event or create a synthetic one, 
+                                            // but calling handleVerifyOtp directly is better if we extract the logic or mock the event.
+                                            // Since handleVerifyOtp expects an event with preventDefault, we mock it.
+                                            setTimeout(() => handleVerifyOtp({ preventDefault: () => { } }), 0);
+                                        }
+                                    }}
                                     autoFocus
                                     maxLength={6}
                                 />

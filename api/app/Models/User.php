@@ -8,10 +8,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+use App\Traits\Auditable;
+
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasFactory, Notifiable, HasApiTokens, Auditable;
 
     /**
      * The attributes that are mass assignable.
@@ -62,5 +64,10 @@ class User extends Authenticatable
     public function properties()
     {
         return $this->hasMany(\App\Models\PropertyMaster::class, 'vendor_id');
+    }
+
+    public function assignedLeads()
+    {
+        return $this->hasMany(\App\Models\VendorOnboardingLead::class, 'assigned_to');
     }
 }

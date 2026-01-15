@@ -37,6 +37,29 @@ import CompareModal from './components/features/CompareModal';
 import ComingSoonGuard from './components/common/ComingSoonGuard';
 
 function App() {
+  // Version Check for Auto-Refresh
+  React.useEffect(() => {
+    const APP_VERSION = '1.0.1';
+    const checkVersion = async () => {
+      try {
+        const res = await fetch('/version.json?t=' + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          if (data.version && data.version !== APP_VERSION) {
+            console.log("New version found. Reloading...", data.version);
+            window.location.reload(true);
+          }
+        }
+      } catch (e) {
+        // console.warn("Version check failed", e);
+      }
+    };
+
+    checkVersion();
+    const interval = setInterval(checkVersion, 60 * 1000); // Check every 1 min
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <ErrorBoundary>
       <AuthProvider>

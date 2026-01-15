@@ -57,6 +57,24 @@ class AdminController extends Controller
         ]);
     }
 
+    public function getSidebarStats(Request $request)
+    {
+        return response()->json([
+            'users' => [
+                'pending_vendors' => User::where('role', 'vendor')->where('is_approved', false)->count(),
+            ],
+            'properties' => [
+                'pending' => PropertyMaster::where('is_approved', false)->count(),
+            ],
+            'bookings' => [
+                'pending' => Booking::where('Status', 'pending')->count(), 
+            ],
+            'holidays' => [
+                'pending' => \App\Models\Holiday::where('approved', 0)->count(),
+            ]
+        ]);
+    }
+
     public function getStats(Request $request)
     {
         $stats = [

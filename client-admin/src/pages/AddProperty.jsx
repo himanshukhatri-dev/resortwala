@@ -7,9 +7,9 @@ import { API_BASE_URL } from '../config';
 import {
     FaUser, FaBuilding, FaMapMarkerAlt, FaTag, FaImage, FaArrowRight, FaArrowLeft, FaCheck,
     FaHome, FaWater, FaUtensils, FaGlassMartiniAlt, FaUserShield, FaSearch, FaTrash,
-    FaBed, FaCouch, FaUsers, FaMoneyBillWave, FaChild, FaVideo, FaTimes, FaCamera, FaStar
+    FaBed, FaCouch, FaUsers, FaMoneyBillWave, FaChild, FaVideo, FaTimes, FaCamera, FaStar, FaTv, FaPlus
 } from 'react-icons/fa';
-import { STEPS_VILLA, STEPS_WATERPARK, AMENITY_TYPES } from '../constants/propertyConstants';
+import { STEPS_VILLA, STEPS_WATERPARK, AMENITY_TYPES, PROPERTY_TYPES } from '../constants/propertyConstants';
 import Loader from '../components/Loader';
 
 const INCLUSIONS = [
@@ -99,7 +99,7 @@ export default function AddProperty() {
 
         // Room Config
         roomConfig: {
-            livingRoom: { bedType: 'Sofa', ac: false, bathroom: false, toiletType: '', balcony: false },
+            livingRooms: [{ bedType: 'Sofa', ac: false, tv: false, bathroom: false, toiletType: '', balcony: false }],
             bedrooms: []
         },
 
@@ -332,12 +332,33 @@ export default function AddProperty() {
         }
     };
 
-    const updateLiving = (key, val) => {
+    const updateLiving = (idx, key, val) => {
+        setFormData(prev => {
+            const updated = [...(prev.roomConfig.livingRooms || [])];
+            updated[idx] = { ...updated[idx], [key]: val };
+            return {
+                ...prev,
+                roomConfig: { ...prev.roomConfig, livingRooms: updated }
+            };
+        });
+    };
+
+    const addLivingRoom = () => {
         setFormData(prev => ({
             ...prev,
             roomConfig: {
                 ...prev.roomConfig,
-                livingRoom: { ...prev.roomConfig.livingRoom, [key]: val }
+                livingRooms: [...(prev.roomConfig.livingRooms || []), { bedType: 'Sofa', ac: false, tv: false, bathroom: false, toiletType: '', balcony: false }]
+            }
+        }));
+    };
+
+    const removeLivingRoom = (idx) => {
+        setFormData(prev => ({
+            ...prev,
+            roomConfig: {
+                ...prev.roomConfig,
+                livingRooms: prev.roomConfig.livingRooms.filter((_, i) => i !== idx)
             }
         }));
     };
@@ -426,22 +447,16 @@ export default function AddProperty() {
                     <FaBuilding className="text-blue-500" /> Property Type
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
-                    <button type="button"
-                        onClick={() => setFormData(p => ({ ...p, propertyType: 'Villa' }))}
-                        className={`p-6 rounded-xl border-2 font-bold text-center transition-all ${formData.propertyType === 'Villa'
-                            ? 'border-blue-600 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 hover:border-blue-300'}`}>
-                        <FaHome className="mx-auto text-3xl mb-2" />
-                        Villa / Resort
-                    </button>
-                    <button type="button"
-                        onClick={() => setFormData(p => ({ ...p, propertyType: 'Waterpark' }))}
-                        className={`p-6 rounded-xl border-2 font-bold text-center transition-all ${formData.propertyType === 'Waterpark'
-                            ? 'border-blue-600 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 hover:border-blue-300'}`}>
-                        <FaWater className="mx-auto text-3xl mb-2" />
-                        Waterpark
-                    </button>
+                    {PROPERTY_TYPES.map(type => (
+                        <button key={type.value} type="button"
+                            onClick={() => setFormData(p => ({ ...p, propertyType: type.value }))}
+                            className={`p-6 rounded-xl border-2 font-bold text-center transition-all ${formData.propertyType === type.value
+                                ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                : 'border-gray-200 hover:border-blue-300'}`}>
+                            {type.value === 'Villa' ? <FaHome className="mx-auto text-3xl mb-2" /> : <FaWater className="mx-auto text-3xl mb-2" />}
+                            {type.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
@@ -627,40 +642,61 @@ export default function AddProperty() {
                 </div>
             </div>
 
-            <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100">
-                <h3 className="text-xl font-bold flex items-center gap-2 mb-4 text-amber-900"><FaCouch /> Living Room</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Bed Type</label>
-                        <select className="w-full p-2 rounded border" value={formData.roomConfig.livingRoom.bedType} onChange={(e) => updateLiving('bedType', e.target.value)}>
-                            <option value="Sofa">Sofa</option>
-                            <option value="Sofa cum Bed">Sofa cum Bed</option>
-                            <option value="None">None</option>
-                        </select>
-                    </div>
-                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
-                        <span className="font-bold text-sm">AC</span>
-                        <Toggle active={formData.roomConfig.livingRoom.ac} onChange={(v) => updateLiving('ac', v)} />
-                    </div>
-                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
-                        <span className="font-bold text-sm">Bathroom</span>
-                        <Toggle active={formData.roomConfig.livingRoom.bathroom} onChange={(v) => updateLiving('bathroom', v)} />
-                    </div>
-                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
-                        <span className="font-bold text-sm">Balcony</span>
-                        <Toggle active={formData.roomConfig.livingRoom.balcony} onChange={(v) => updateLiving('balcony', v)} />
-                    </div>
-                    {formData.roomConfig.livingRoom.bathroom && (
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Toilet Style</label>
-                            <select className="w-full p-2 rounded border" value={formData.roomConfig.livingRoom.toiletType} onChange={(e) => updateLiving('toiletType', e.target.value)}>
-                                <option value="">Select</option>
-                                <option value="Western">Western (English)</option>
-                                <option value="Indian">Indian</option>
-                            </select>
-                        </div>
-                    )}
+            {/* Living Rooms Section */}
+            <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-xl font-bold flex items-center gap-2 text-amber-900"><FaCouch /> Living Rooms</h3>
+                    <button type="button" onClick={addLivingRoom} className="text-sm font-bold text-amber-600 hover:bg-amber-50 px-3 py-1.5 rounded-lg border border-transparent hover:border-amber-200 transition-all flex items-center gap-2">
+                        <FaPlus /> Add Living Room
+                    </button>
                 </div>
+
+                {(formData.roomConfig.livingRooms || []).map((room, idx) => (
+                    <div key={idx} className="bg-amber-50 rounded-2xl p-6 border border-amber-100 relative group">
+                        <div className="absolute top-4 right-4">
+                            <button onClick={() => removeLivingRoom(idx)} className="text-amber-300 hover:text-red-500 transition-colors p-2">
+                                <FaTrash size={14} />
+                            </button>
+                        </div>
+                        <h4 className="font-bold text-amber-800 mb-4 text-sm uppercase tracking-wide">Living Room {idx + 1}</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Bed Type</label>
+                                <select className="w-full p-2 rounded border focus:border-amber-500 outline-none" value={room.bedType} onChange={(e) => updateLiving(idx, 'bedType', e.target.value)}>
+                                    <option value="Sofa">Sofa</option>
+                                    <option value="Sofa cum Bed">Sofa cum Bed</option>
+                                    <option value="None">None</option>
+                                </select>
+                            </div>
+                            <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                                <span className="font-bold text-sm">AC</span>
+                                <Toggle active={room.ac} onChange={(v) => updateLiving(idx, 'ac', v)} />
+                            </div>
+                            <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                                <span className="font-bold text-sm">TV</span>
+                                <Toggle active={room.tv} onChange={(v) => updateLiving(idx, 'tv', v)} />
+                            </div>
+                            <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                                <span className="font-bold text-sm">Bathroom</span>
+                                <Toggle active={room.bathroom} onChange={(v) => updateLiving(idx, 'bathroom', v)} />
+                            </div>
+                            <div className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                                <span className="font-bold text-sm">Balcony</span>
+                                <Toggle active={room.balcony} onChange={(v) => updateLiving(idx, 'balcony', v)} />
+                            </div>
+                            {room.bathroom && (
+                                <div className="md:col-span-2 lg:col-span-1 animate-in fade-in">
+                                    <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Toilet Style</label>
+                                    <select className="w-full p-2 rounded border focus:border-amber-500 outline-none" value={room.toiletType} onChange={(e) => updateLiving(idx, 'toiletType', e.target.value)}>
+                                        <option value="">Select</option>
+                                        <option value="Western">Western</option>
+                                        <option value="Indian">Indian</option>
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ))}
             </div>
 
             <div className="space-y-4">

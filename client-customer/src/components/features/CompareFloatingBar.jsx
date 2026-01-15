@@ -35,9 +35,9 @@ export default function CompareFloatingBar() {
                                     </button>
                                 </div>
                             ))}
-                            {compareList.length < 3 && (
+                            {compareList.length < (window.innerWidth < 768 ? 2 : 3) && (
                                 <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 bg-gray-50 text-[10px] font-bold">
-                                    {compareList.length}/3
+                                    {compareList.length}/{window.innerWidth < 768 ? 2 : 3}
                                 </div>
                             )}
                         </div>

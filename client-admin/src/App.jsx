@@ -27,6 +27,16 @@ import BulkUpload from './pages/BulkUpload';
 import BulkUploadDetails from './pages/BulkUploadDetails';
 import InvestorPresentation from './pages/InvestorPresentation';
 import RevenueDashboard from './pages/Revenue/RevenueDashboard';
+import DbControl from './pages/Internal/DbControl';
+import VendorLeads from './pages/VendorLeads';
+import VendorLeadDetails from './pages/VendorLeadDetails';
+import Payments from './pages/Payments';
+import Coupons from './pages/Coupons';
+import Reconciliation from './pages/Reconciliation';
+import Communications from './pages/Communications';
+import Connectors from './pages/Connectors';
+import Notifications from './pages/Notifications';
+import ComingSoon from './pages/ComingSoon';
 import './App.css';
 
 
@@ -65,7 +75,9 @@ function App() {
               <Route path="/bookings" element={<Bookings />} />
               <Route path="/calendar" element={<AdminCalendar />} />
               <Route path="/analytics" element={<AdminEventLogs />} />
+              <Route path="/intelligence/logs" element={<AdminEventLogs />} />
               <Route path="/properties" element={<Properties />} />
+              <Route path="/properties/pending" element={<Properties initialFilter="pending" />} />
               <Route path="/properties/add" element={<AddProperty />} />
               <Route path="/properties/:id/approve" element={<PropertyApproval />} />
               <Route path="/property-changes" element={<PropertyChangeRequests />} />
@@ -78,9 +90,19 @@ function App() {
               <Route path="/vendor-presentation" element={<VendorPresentation />} />
               <Route path="/investor-presentation" element={<InvestorPresentation />} />
               <Route path="/bulk-upload" element={<BulkUpload />} />
-              <Route path="/bulk-upload" element={<BulkUpload />} />
               <Route path="/bulk-upload/:id" element={<BulkUploadDetails />} />
               <Route path="/revenue/full-rate-control" element={<RevenueDashboard />} />
+              <Route path="/vendor-leads" element={<VendorLeads />} />
+              <Route path="/vendor-leads/:id" element={<VendorLeadDetails />} />
+              <Route path="/internal/db-control" element={<DbControl />} />
+              <Route path="/payments" element={<Payments />} />
+              <Route path="/coupons" element={<Coupons />} />
+              <Route path="/connectors" element={<Connectors />} /> {/* New Route */}
+              <Route path="/reconciliation" element={<Reconciliation />} /> {/* New Route */}
+              <Route path="/communications" element={<Communications />} /> {/* New Route */}
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={<div className="p-20 text-center font-bold text-red-500">404: Route Not Found. Path: {window.location.pathname}</div>} />
             </Route>
 
             <Route path="/" element={<Navigate to="/login" />} />

@@ -1,5 +1,9 @@
 export const STEPS_VILLA = ["Basic Info", "Features", "Room Config", "Policies", "Pricing", "Gallery"];
 export const STEPS_WATERPARK = ["Basic Info", "Attractions", "Policies", "Ticket Pricing", "Gallery"];
+export const PROPERTY_TYPES = [
+    { value: 'Villa', label: 'Villa' },
+    { value: 'Waterpark', label: 'Water Park' }
+];
 
 export const AMENITY_TYPES = [
     { key: 'big_pools', label: 'Swimming Pool', type: 'number', subtitle: 'Swimming pools', scope: ['Villa', 'Waterpark'] },

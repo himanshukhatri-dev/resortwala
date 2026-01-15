@@ -2,206 +2,226 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
-import { FaEdit, FaStar, FaGoogle, FaMapMarkerAlt, FaCreditCard, FaHotel, FaShieldAlt } from 'react-icons/fa';
-import { format, eachDayOfInterval, startOfDay, subDays, getDay } from 'date-fns';
+import { FaStar, FaGoogle, FaCreditCard, FaHotel, FaShieldAlt, FaArrowLeft, FaCheck } from 'react-icons/fa';
+import { format, differenceInDays, addDays, isValid } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function BookingPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     const locationState = location.state || {};
-    const { user, loading } = useAuth(); // Auth Context
+    const { user, loading } = useAuth();
 
-    // Redirect if not logged in
-    useEffect(() => {
-        if (!loading && !user) {
-            navigate('/login', {
-                state: {
-                    returnTo: location.pathname,
-                    bookingState: locationState // Pass booking details forward
-                }
-            });
-        }
-    }, [user, loading, navigate, location.pathname, locationState]);
+    // -- HELPER: Safe Dates --
+    const safeDate = (input, defaultDate) => {
+        if (!input) return defaultDate;
+        const d = new Date(input);
+        return isValid(d) ? d : defaultDate;
+    };
 
+    // -- STATE --
+    const [property, setProperty] = useState(null);
+    const [holidays, setHolidays] = useState([]);
+
+    // Dates (Initialize safely)
+    const [dateRange] = useState({
+        from: safeDate(locationState.dateRange?.from || locationState.checkIn, new Date()),
+        to: safeDate(locationState.dateRange?.to || locationState.checkOut, addDays(new Date(), 1))
+    });
+
+    // Guests
+    const guests = locationState.guests || { adults: 2, children: 0, infants: 0 };
+    const guestCount = typeof guests === 'object'
+        ? (guests.adults || 0) + (guests.children || 0) + (guests.infants || 0)
+        : guests;
+
+    // Form
     const [form, setForm] = useState({
-        CustomerName: '',
-        CustomerMobile: '',
-        CustomerEmail: '',
-        payment_method: 'hotel', // hotel, card, upi
+        CustomerName: user?.name || '',
+        CustomerMobile: user?.phone || '',
+        CustomerEmail: user?.email || '',
         SpecialRequest: ''
     });
 
-    // Pre-fill form if logged in
+    // Coupons
+    const [couponCode, setCouponCode] = useState('');
+    const [couponError, setCouponError] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [bookingStatus, setBookingStatus] = useState('idle');
+
+    // -- EFFECTS --
+
+    // Pre-fill form on auth load
     useEffect(() => {
         if (user) {
             setForm(prev => ({
                 ...prev,
-                CustomerName: user.name || '',
-                CustomerEmail: user.email || '',
-                CustomerMobile: user.phone || ''
+                CustomerName: user.name || prev.CustomerName,
+                CustomerEmail: user.email || prev.CustomerEmail,
+                CustomerMobile: user.phone || prev.CustomerMobile
             }));
+        } else if (!loading) {
+            // Optional: Redirect to login if enforced, but maybe allow guest checkout or handle later
+            // navigate('/login', { state: { returnTo: location.pathname, bookingState: locationState } });
         }
-    }, [user]);
+    }, [user, loading]);
 
-    const [property, setProperty] = useState(null);
-    const [couponCode, setCouponCode] = useState('');
-    const [couponError, setCouponError] = useState('');
-    const [appliedCoupon, setAppliedCoupon] = useState(null);
-    const [bookingStatus, setBookingStatus] = useState('idle'); // idle, loading, success, error
-    const [holidays, setHolidays] = useState([]);
-
-    // Defaults from location state or mock
-    // Defaults from location state or mock
-    const [checkIn, setCheckIn] = useState(
-        locationState.dateRange?.from ? new Date(locationState.dateRange.from) :
-            (locationState.checkIn ? new Date(locationState.checkIn) : new Date())
-    );
-    const [checkOut, setCheckOut] = useState(
-        locationState.dateRange?.to ? new Date(locationState.dateRange.to) :
-            (locationState.checkOut ? new Date(locationState.checkOut) : new Date(new Date().setDate(new Date().getDate() + 1)))
-    );
-
-    // Ensure CheckOut > CheckIn
+    // Fetch Data
     useEffect(() => {
-        if (checkOut <= checkIn) {
-            const nextDay = new Date(checkIn);
-            nextDay.setDate(nextDay.getDate() + 1);
-            setCheckOut(nextDay);
-        }
-    }, [checkIn, checkOut]);
-
-    // Handle guests - can be number or object
-    const guestsFromState = locationState.guests || 2;
-    const guests = typeof guestsFromState === 'object'
-        ? (guestsFromState.adults || 0) + (guestsFromState.children || 0) + (guestsFromState.infants || 0)
-        : guestsFromState;
-    const nights = Math.max(1, Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
-
-    useEffect(() => {
-        // Fetch Property Details
         const fetchProperty = async () => {
             try {
                 const response = await axios.get(`${API_BASE_URL}/properties/${id}`);
                 setProperty(response.data);
-            } catch (error) {
-                console.error("Error fetching property", error);
-            }
+            } catch (error) { console.error("Error fetching property", error); }
         };
-        fetchProperty();
-
-        // Fetch Holidays
         const fetchHolidays = async () => {
             try {
                 const res = await axios.get(`${API_BASE_URL}/holidays?property_id=${id}`);
                 setHolidays(res.data);
             } catch (err) { console.error("Error fetching holidays", err); }
         };
-        if (id) fetchHolidays();
+        fetchProperty();
+        fetchHolidays();
     }, [id]);
+
+    // -- ACTIONS --
+
+    // "Edit" Action -> Go back to Property Page
+    const handleEdit = () => {
+        navigate(`/property/${id}`, {
+            state: {
+                ...locationState,
+                // Preserve current search if needed, or let PropertyPage handle it
+                checkIn: dateRange.from,
+                checkOut: dateRange.to,
+                guests: guests
+            }
+        });
+    };
 
     const handleCouponApply = async () => {
         if (!couponCode) return;
-        setBookingStatus('loading');
-        setCouponError('');
+        setBookingStatus('loading'); setCouponError('');
         try {
             const res = await axios.post(`${API_BASE_URL}/coupons/check`, { code: couponCode });
             setAppliedCoupon(res.data.coupon);
             setBookingStatus('idle');
         } catch (err) {
-            setAppliedCoupon(null);
-            setCouponError(err.response?.data?.message || 'Invalid coupon');
-            setBookingStatus('idle');
+            setAppliedCoupon(null); setCouponError(err.response?.data?.message || 'Invalid coupon'); setBookingStatus('idle');
         }
     };
 
+    // -- PRICING --
     const getPricingDetails = () => {
-        let base = 0;
-        let extraGuestCost = 0;
-        let foodCost = 0;
-        let nightsCount = nights;
-        let childTicketCost = 0;
-        let isWaterparkBreakdown = false;
+        if (!property) return null;
+        // Basic date validation
+        if (!isValid(dateRange.from) || !isValid(dateRange.to)) return null;
 
-        // 1. Try use passed breakdown (High Fidelity)
-        if (locationState.breakdown) {
-            const b = locationState.breakdown;
-            if (b.totalAdultTicket !== undefined) {
-                // Waterpark Logic
-                base = b.totalAdultTicket || 0;
-                childTicketCost = b.totalChildTicket || 0;
-                isWaterparkBreakdown = true;
-            } else {
-                // Villa Logic
-                base = b.totalVillaRate || 0;
-            }
-            extraGuestCost = b.totalExtra || 0;
-            foodCost = b.totalFood || 0;
-            nightsCount = b.nights || nights;
-        }
-        // 2. Fallback Calculation (Basic)
-        else if (property) {
-            // Logic: Iterate through dates...
-            const start = startOfDay(checkIn);
-            const end = startOfDay(checkOut);
-            const nightDates = eachDayOfInterval({ start, end: subDays(end, 1) });
+        const nights = differenceInDays(dateRange.to, dateRange.from);
+        if (nights < 1) return null;
 
-            nightDates.forEach(date => {
-                const dayOfWeek = getDay(date);
-                let nightlyRate = Number(property.PricePerNight) || 5000;
-                let appliedHoliday = holidays.find(h => {
-                    const from = new Date(h.from_date); from.setHours(0, 0, 0, 0);
-                    const to = new Date(h.to_date); to.setHours(23, 59, 59, 999);
-                    const d = new Date(date); d.setHours(12, 0, 0, 0);
-                    return d >= from && d <= to;
+        const ob = property.onboarding_data && typeof property.onboarding_data === 'string'
+            ? JSON.parse(property.onboarding_data)
+            : (property.onboarding_data || {});
+
+        const onboardingPricing = ob.pricing || {};
+        const adminPricing = property.admin_pricing || {};
+
+        // Safe Access Helpers
+        const safeFloat = (val, def = 0) => { const n = parseFloat(val); return isNaN(n) ? def : n; };
+
+        // Helper: Get value from nested path, treat 0/"" as invalid to allow fallback
+        const getPrice = (path) => {
+            const val = path?.villa?.final;
+            return (val && parseFloat(val) > 0) ? parseFloat(val) : 0;
+        };
+
+        // Fallback Logic: AdminPricing -> LegacyMonThu -> ResortWalaRate -> Price
+        const PRICE_WEEKDAY = getPrice(adminPricing?.mon_thu) || parseFloat(property.price_mon_thu) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0;
+        const PRICE_FRISUN = getPrice(adminPricing?.fri_sun) || parseFloat(property.price_fri_sun) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0;
+        const PRICE_SATURDAY = getPrice(adminPricing?.sat) || parseFloat(property.price_sat) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0;
+
+        const EXTRA_GUEST_CHARGE = safeFloat(onboardingPricing?.extraGuestCharge || 0, 1000);
+        const GST_PERCENTAGE = safeFloat(property.gst_percentage, 18);
+
+        let totalVillaRate = 0;
+        const isWaterpark = property?.PropertyType?.toLowerCase().includes('waterpark');
+
+        if (isWaterpark) {
+            // For Waterparks, we use the breakdown's tickets total as the base
+            totalVillaRate = locationState.breakdown?.totalAdultTicket || 0;
+            const totalChildTickets = locationState.breakdown?.totalChildTicket || 0;
+            totalVillaRate += totalChildTickets;
+        } else {
+            // Loop through each night for Villas
+            for (let i = 0; i < nights; i++) {
+                const d = new Date(dateRange.from);
+                d.setDate(d.getDate() + i);
+                if (!isValid(d)) continue;
+                const w = d.getDay();
+
+                const holiday = property.holidays?.find(h => {
+                    if (!h.from_date || !h.to_date) return false;
+                    const dStr = format(d, 'yyyy-MM-dd');
+                    const hStart = h.from_date.substring(0, 10);
+                    const hEnd = h.to_date.substring(0, 10);
+                    return dStr >= hStart && dStr <= hEnd;
                 });
 
-                if (appliedHoliday) {
-                    nightlyRate = Number(appliedHoliday.base_price);
+                if (holiday) {
+                    totalVillaRate += parseFloat(holiday.base_price || 0);
                 } else {
-                    if (dayOfWeek >= 1 && dayOfWeek <= 4 && property.price_mon_thu) nightlyRate = Number(property.price_mon_thu);
-                    else if ((dayOfWeek === 5 || dayOfWeek === 0) && property.price_fri_sun) nightlyRate = Number(property.price_fri_sun);
-                    else if (dayOfWeek === 6 && property.price_sat) nightlyRate = Number(property.price_sat);
+                    if (w === 6) totalVillaRate += (PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY);
+                    else if (w === 0 || w === 5) totalVillaRate += (PRICE_FRISUN || PRICE_WEEKDAY);
+                    else totalVillaRate += PRICE_WEEKDAY;
                 }
-                base += nightlyRate;
-            });
-        } else {
-            base = 5000 * nights;
-        }
-
-        // Coupon Logic
-        let discountVal = 0;
-        if (appliedCoupon) {
-            if (appliedCoupon.discount_type === 'percentage') {
-                discountVal = (base * appliedCoupon.value) / 100;
-            } else {
-                discountVal = Number(appliedCoupon.value);
             }
         }
 
-        // Tax Logic
-        const taxable = base + extraGuestCost + foodCost + childTicketCost - discountVal;
-        const gstPercent = property?.gst_percentage ? parseFloat(property.gst_percentage) : 18;
-        const taxVal = (taxable * gstPercent) / 100;
+        const totalGuests = (guests.adults || 0) + (guests.children || 0);
+        const baseGuestLimit = parseInt(property?.Occupancy || onboardingPricing?.extraGuestLimit || 12);
+        const extraPeople = Math.max(0, totalGuests - baseGuestLimit);
+        const totalExtra = isWaterpark ? 0 : (extraPeople * EXTRA_GUEST_CHARGE * nights);
+        const totalFood = locationState.breakdown?.totalFood || 0;
 
+        let taxable = totalVillaRate + totalExtra + totalFood;
+
+        // Coupon
+        let discountVal = 0;
+        if (appliedCoupon) {
+            const val = parseFloat(appliedCoupon.value) || 0;
+            if (appliedCoupon.discount_type === 'percentage') discountVal = (taxable * val) / 100;
+            else discountVal = val;
+        }
+        taxable -= discountVal;
+
+        const gstAmount = (taxable * GST_PERCENTAGE) / 100;
+        const grantTotal = Math.max(0, taxable + gstAmount);
         return {
-            basePrice: base,
-            childTicketCost,
-            extraGuestCost,
-            foodCost,
-            taxes: taxVal,
+            nights,
+            base: totalVillaRate,
+            extra: totalExtra,
+            food: totalFood,
+            gst: gstAmount,
             discount: discountVal,
-            total: Math.max(0, taxable + taxVal),
-            nights: nightsCount,
-            isWaterparkBreakdown
+            total: grantTotal,
+            isWaterpark
         };
     };
 
-    const { basePrice, childTicketCost, extraGuestCost, foodCost, taxes, discount, total, nights: nightsDisplay, isWaterparkBreakdown } = getPricingDetails();
+    const details = getPricingDetails();
 
+    // TOKEN CALCULATION
+    const PAY_NOW_PERCENT = 0.10;
+    const payNowAmount = details ? Math.ceil(details.total * PAY_NOW_PERCENT) : 0;
+    const balanceAmount = details ? details.total - payNowAmount : 0;
+
+    // -- SUBMIT --
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!details) return;
         setBookingStatus('submitting');
 
         const payload = {
@@ -209,305 +229,285 @@ export default function BookingPage() {
             CustomerName: form.CustomerName,
             CustomerMobile: form.CustomerMobile,
             CustomerEmail: form.CustomerEmail,
-            CheckInDate: format(checkIn, 'yyyy-MM-dd'),
-            CheckOutDate: format(checkOut, 'yyyy-MM-dd'),
-            Guests: guests,
-            TotalAmount: total,
-            base_amount: basePrice,
-            tax_amount: taxes,
-            discount_amount: discount,
-            extra_guest_charge: extraGuestCost,
-            food_charge: foodCost,
+            CheckInDate: format(dateRange.from, 'yyyy-MM-dd'),
+            CheckOutDate: format(dateRange.to, 'yyyy-MM-dd'),
+            Guests: guestCount,
+            TotalAmount: details.total,
+            paid_amount: payNowAmount,
+            base_amount: details.base,
+            tax_amount: details.gst,
+            extra_guest_charge: details.extra,
+            food_charge: details.food,
+            discount_amount: details.discount,
             coupon_code: appliedCoupon?.code || null,
-            payment_method: form.payment_method,
+            payment_method: 'upi',
             SpecialRequest: form.SpecialRequest,
             booking_source: 'customer_app',
             Status: 'Pending',
             metadata: {
-                breakdown: locationState.breakdown,
-                foodIncluded: locationState.breakdown?.totalFood > 0,
-                childTicketCost
+                isTokenPayment: true,
+                totalPropertyPrice: details.total,
+                balanceAmount: balanceAmount,
+                breakdown: details
             }
         };
 
         try {
-            // SINGLE ATOMIC CALL
-            // BookingController now handles Payment Initiation internally
             const res = await axios.post(`${API_BASE_URL}/bookings`, payload);
 
-            if (form.payment_method === 'hotel') {
-                // Offline Flow
-                if (form.CustomerEmail) localStorage.setItem('user_email', form.CustomerEmail);
-                if (form.CustomerMobile) localStorage.setItem('user_mobile', form.CustomerMobile);
-                navigate('/bookings', {
-                    state: {
-                        bookingSuccess: true,
-                        message: "Booking Request Sent! Waiting for Approval.",
-                        newBookingId: res.data.booking?.BookingId || res.data.booking?.id,
-                        property_name: property.Name
-                    }
-                });
+            if (res.data.payment_required && res.data.redirect_url) {
+                window.location.href = res.data.redirect_url;
             } else {
-                // Online Payment Flow
-                // Backend now returns redirect_url directly if successful
-                if (res.data.payment_required && res.data.redirect_url) {
-                    window.location.href = res.data.redirect_url;
-                } else {
-                    // Fallback or specific error case (should be caught by catch block usually)
-                    alert("Unexpected response from server. Please contact support.");
-                }
+                const bookingId = res.data.booking?.BookingId || res.data.booking?.id;
+                navigate(`/booking/${bookingId}/success`);
             }
         } catch (error) {
             console.error(error);
-            // Handle specific Payment Gateway Errors (422)
-            const errMsg = error.response?.data?.message || error.message || "Booking Failed";
-            const errCode = error.response?.data?.error_code;
-
-            if (errCode === 'GATEWAY_ERROR') {
-                alert(`Payment Gateway Error: ${errMsg}. Please try again.`);
-            } else {
-                alert(`Booking Failed: ${errMsg}`);
-            }
+            alert(`Booking Failed: ${error.response?.data?.message || "Unknown error"}`);
             setBookingStatus('idle');
         }
     };
 
-    if (!property) return <div className="pt-32 text-center">Loading...</div>;
+    // Render Loading State Safe Guard
+    if (!property) return <div className="pt-32 text-center">Loading Property...</div>;
+    if (!isValid(dateRange.from) || !isValid(dateRange.to)) return <div className="pt-32 text-center">Invalid Dates Selection</div>;
 
     return (
-        <div className="pt-32 pb-20 min-h-screen bg-gray-50">
+        <div className="pt-32 pb-24 min-h-screen bg-gray-50 font-outfit">
             <div className="container mx-auto px-4 max-w-6xl">
 
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-8 text-sm text-gray-500">
-                    <span className="cursor-pointer hover:text-black" onClick={() => navigate(-1)}>&larr; Back</span>
+                    <button onClick={() => navigate(-1)} className="flex items-center gap-1 hover:text-black transition">
+                        <FaArrowLeft /> Back
+                    </button>
                     <span>/</span>
-                    <span className="font-semibold text-black">Confirm and pay</span>
+                    <span className="font-semibold text-black">Confirm and Pay</span>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 xl:gap-12">
 
-                    {/* LEFT COLUMN: FORM */}
-                    <div className="space-y-8">
+                    {/* LEFT COLUMN: DETAILS & FORM (2/3 width) */}
+                    <div className="lg:col-span-2 space-y-6">
 
-                        {/* 1. Trip Details */}
-                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                            <h2 className="text-xl font-bold mb-4">Your Trip</h2>
-                            <div className="flex justify-between items-center mb-4">
+                        {/* 1. TRIP DETAILS (READ ONLY with EDIT Action) */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                            <h2 className="text-xl font-bold mb-6 text-gray-900 border-b pb-4">Your Trip</h2>
+
+                            {/* DATES */}
+                            <div className="flex justify-between items-start mb-6">
                                 <div>
-                                    <div className="font-semibold">Dates</div>
-                                    <div className="text-gray-600">{format(checkIn, 'MMM dd')} – {format(checkOut, 'MMM dd, yyyy')}</div>
+                                    <h3 className="font-semibold text-gray-900 mb-1">Dates</h3>
+                                    <p className="text-gray-600 text-sm">
+                                        {format(dateRange.from, 'MMM dd')} – {format(dateRange.to, 'MMM dd, yyyy')}
+                                    </p>
                                 </div>
-                                <button className="text-black font-semibold underline text-sm">Edit</button>
+                                <button
+                                    onClick={handleEdit}
+                                    className="text-black font-semibold text-sm underline decoration-gray-300 underline-offset-4 hover:decoration-black transition"
+                                >
+                                    Edit
+                                </button>
                             </div>
-                            <div className="flex justify-between items-center">
+
+                            {/* GUESTS */}
+                            <div className="flex justify-between items-start">
                                 <div>
-                                    <div className="font-semibold">Guests</div>
-                                    <div className="text-gray-600">
-                                        {typeof guestsFromState === 'object' ? (
+                                    <h3 className="font-semibold text-gray-900 mb-1">Guests</h3>
+                                    <p className="text-gray-600 text-sm">
+                                        {typeof guests === 'object' ? (
                                             <>
-                                                {guestsFromState.adults} Adults
-                                                {guestsFromState.children > 0 && `, ${guestsFromState.children} Children`}
+                                                {guests.adults} Adults
+                                                {guests.children > 0 && `, ${guests.children} Children`}
                                             </>
                                         ) : (
                                             `${guests} guests`
                                         )}
-                                    </div>
+                                    </p>
                                 </div>
-                                <button className="text-black font-semibold underline text-sm">Edit</button>
+                                <button
+                                    onClick={handleEdit}
+                                    className="text-black font-semibold text-sm underline decoration-gray-300 underline-offset-4 hover:decoration-black transition"
+                                >
+                                    Edit
+                                </button>
                             </div>
                         </div>
 
-                        {/* 2. Pay With */}
-                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                            <h2 className="text-xl font-bold mb-4">Pay with</h2>
-                            <div className="space-y-4">
-                                {/* Credit Card */}
-                                <label className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition ${form.payment_method === 'card' ? 'border-black bg-gray-50' : 'border-gray-200'}`}>
-                                    <div className="flex items-center gap-3">
-                                        <FaCreditCard className="text-gray-600" />
-                                        <span className="font-medium">Credit or Debit Card</span>
-                                    </div>
-                                    <input type="radio" name="payment" value="card" checked={form.payment_method === 'card'} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} />
-                                </label>
-
-                                {/* UPI */}
-                                <label className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition ${form.payment_method === 'upi' ? 'border-black bg-gray-50' : 'border-gray-200'}`}>
-                                    <div className="flex items-center gap-3">
-                                        <FaGoogle className="text-gray-600" />
-                                        <span className="font-medium">UPI / GPay / PhonePe</span>
-                                    </div>
-                                    <input type="radio" name="payment" value="upi" checked={form.payment_method === 'upi'} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} />
-                                </label>
-
-                                {/* Pay at Hotel */}
-                                <label className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition ${form.payment_method === 'hotel' ? 'border-black bg-gray-50' : 'border-gray-200'}`}>
-                                    <div className="flex items-center gap-3">
-                                        <FaHotel className="text-gray-600" />
-                                        <span className="font-medium">Pay at Hotel</span>
-                                    </div>
-                                    <input type="radio" name="payment" value="hotel" checked={form.payment_method === 'hotel'} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} />
-                                </label>
-                            </div>
-                        </div>
-
-                        {/* 3. Guest Details */}
-                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                            <h2 className="text-xl font-bold mb-4">Required for your trip</h2>
+                        {/* 2. GUEST INFO (FORM) */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                            <h2 className="text-xl font-bold mb-6 text-gray-900 border-b pb-4">Contact Details</h2>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Full Name</label>
                                     <input
                                         type="text"
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none"
-                                        placeholder="Same as on ID"
                                         value={form.CustomerName}
-                                        onChange={(e) => setForm({ ...form, CustomerName: e.target.value })}
-                                        required
+                                        onChange={e => setForm({ ...form, CustomerName: e.target.value })}
+                                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition"
+                                        placeholder="e.g. John Doe"
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Phone Number</label>
                                         <input
                                             type="tel"
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none"
-                                            placeholder="+91"
                                             value={form.CustomerMobile}
-                                            onChange={(e) => setForm({ ...form, CustomerMobile: e.target.value })}
-                                            required
+                                            onChange={e => setForm({ ...form, CustomerMobile: e.target.value })}
+                                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition"
+                                            placeholder="+91 98765 43210"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Email (Optional)</label>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Email</label>
                                         <input
                                             type="email"
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none"
-                                            placeholder="For confirmation"
                                             value={form.CustomerEmail}
-                                            onChange={(e) => setForm({ ...form, CustomerEmail: e.target.value })}
+                                            onChange={e => setForm({ ...form, CustomerEmail: e.target.value })}
+                                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition"
+                                            placeholder="john@example.com"
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Special Request (Optional)</label>
                                     <textarea
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none"
                                         rows="3"
-                                        placeholder="Early check-in, dietary needs, etc."
                                         value={form.SpecialRequest}
-                                        onChange={(e) => setForm({ ...form, SpecialRequest: e.target.value })}
+                                        onChange={e => setForm({ ...form, SpecialRequest: e.target.value })}
+                                        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:bg-white focus:border-black outline-none transition"
+                                        placeholder="Early check-in needed..."
                                     />
                                 </div>
                             </div>
                         </div>
 
-
-
+                        {/* 3. PAYMENT METHOD (Read Only / Hidden selection) */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                            <h2 className="text-xl font-bold mb-4 text-gray-900">Payment Method</h2>
+                            <div className="p-4 border border-teal-200 bg-teal-50 rounded-xl flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
+                                        <FaGoogle />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-teal-900">Online Payment</p>
+                                        <p className="text-xs text-teal-700">UPI / GPay / PhonePe</p>
+                                    </div>
+                                </div>
+                                <FaCheck className="text-teal-600" />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2 px-1">
+                                <FaShieldAlt className="inline mr-1" />
+                                Secure database encryption. We do not store card details.
+                            </p>
+                        </div>
                     </div>
 
-                    {/* RIGHT COLUMN: STICKY SUMMARY */}
-                    <div className="hidden lg:block">
-                        <div className="sticky top-32 border border-gray-200 rounded-xl shadow-lg p-6 bg-white space-y-6">
+                    {/* RIGHT COLUMN: PRICE SUMMARY (Sticky) */}
+                    <div className="lg:col-span-1">
+                        <div className="sticky top-28 bg-white border border-gray-200 rounded-2xl shadow-xl p-6 space-y-6">
 
-                            {/* Property Mini Header */}
-                            <div className="flex gap-4 border-b pb-6">
-                                <img
-                                    src={property.image_url || property.image_path || "https://images.unsplash.com/photo-1512918760532-3ed64bc80e89"}
-                                    className="w-24 h-24 object-cover rounded-lg"
-                                    alt="Property"
-                                />
+                            {/* Property Mini */}
+                            <div className="flex gap-4 border-b border-gray-100 pb-6">
+                                <img src={property.image_url || property?.images?.[0]?.image_url} className="w-20 h-20 rounded-xl object-cover" alt="Property" />
                                 <div>
-                                    <div className="text-xs text-gray-500 uppercase font-bold tracking-wide">Plus</div>
-                                    <h3 className="font-bold text-gray-800 line-clamp-2">{property.Name}</h3>
-                                    <div className="flex items-center gap-1 text-sm mt-1">
-                                        <FaStar className="text-sm" /> <span>4.92</span> <span className="text-gray-500">(120 reviews)</span>
-                                    </div>
+                                    <div className="text-[10px] bg-red-50 text-red-600 font-bold px-2 py-0.5 rounded uppercase tracking-wider inline-block mb-1">Luxury</div>
+                                    <h3 className="font-bold text-gray-900 line-clamp-2 leading-tight">{property.Name}</h3>
+                                    <div className="text-xs text-gray-500 mt-1">{property.City}</div>
                                 </div>
                             </div>
 
                             {/* Price Breakdown */}
-                            <div className="space-y-1">
-                                <h3 className="text-xl font-bold mb-4">Price details</h3>
-                                <div className="flex justify-between text-gray-600">
-                                    <span>{isWaterparkBreakdown ? 'Adult Tickets' : `Total Base Price (${nightsDisplay} nights)`}</span>
-                                    <span>₹{basePrice.toLocaleString()}</span>
+                            {details && (
+                                <div className="space-y-3">
+                                    <div className="flex justify-between text-gray-600 text-sm">
+                                        <span>₹{calculatePerNight(details).toLocaleString()} x {details.nights} nights</span>
+                                        <span>₹{details.base.toLocaleString()}</span>
+                                    </div>
+                                    {details.extra > 0 && (
+                                        <div className="flex justify-between text-gray-600 text-sm">
+                                            <span>Extra Guests Charge</span>
+                                            <span>₹{details.extra.toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between text-gray-600 text-sm">
+                                        <span>Taxes (GST)</span>
+                                        <span>₹{details.gst.toLocaleString()}</span>
+                                    </div>
+                                    <div className="border-t border-gray-100 my-2 pt-2 flex justify-between font-bold text-lg">
+                                        <span>Total (incl. GST)</span>
+                                        <span>₹{details.total.toLocaleString()}</span>
+                                    </div>
                                 </div>
-                                {childTicketCost > 0 && (
-                                    <div className="flex justify-between text-gray-600">
-                                        <span>Children Tickets</span>
-                                        <span>₹{childTicketCost.toLocaleString()}</span>
-                                    </div>
-                                )}
-                                {extraGuestCost > 0 && (
-                                    <div className="flex justify-between text-gray-600">
-                                        <span>Extra Guest Charges</span>
-                                        <span>₹{extraGuestCost.toLocaleString()}</span>
-                                    </div>
-                                )}
-                                {foodCost > 0 && (
-                                    <div className="flex justify-between text-gray-600">
-                                        <span>Food Charges</span>
-                                        <span>₹{foodCost.toLocaleString()}</span>
-                                    </div>
-                                )}
-                                <div className="flex justify-between text-gray-600">
-                                    <span>Taxes ({property.gst_percentage || 18}% GST)</span>
-                                    <span>₹{taxes.toLocaleString()}</span>
-                                </div>
-                                {appliedCoupon && (
-                                    <div className="flex justify-between text-green-600 font-medium">
-                                        <span>Discount ({appliedCoupon.code})</span>
-                                        <span>-₹{discount.toLocaleString()}</span>
-                                    </div>
-                                )}
-                            </div>
+                            )}
 
-                            <div className="border-t pt-4 flex justify-between items-center font-bold text-lg">
-                                <span>Total (INR)</span>
-                                <span>₹{total.toLocaleString()}</span>
+                            {/* Token Block */}
+                            <div className="bg-black text-white p-4 rounded-xl relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-bl-full -mr-4 -mt-4"></div>
+                                <div className="relative z-10">
+                                    <div className="text-xs text-gray-300 uppercase tracking-widest font-bold mb-1">Pay Now to Book</div>
+                                    <div className="text-2xl font-black">₹{payNowAmount.toLocaleString()}</div>
+                                    <div className="text-xs text-gray-400 mt-1">10% Token Amount</div>
+                                </div>
                             </div>
 
                             {/* Coupon Input */}
-                            <div className="bg-gray-50 p-4 rounded-lg flex gap-2">
+                            <div className="bg-gray-50 p-3 rounded-xl flex gap-2 border border-gray-200">
                                 <input
                                     type="text"
-                                    placeholder="Enter coupon code"
-                                    className="flex-1 bg-transparent outline-none text-sm font-medium uppercase placeholder:normal-case"
+                                    placeholder="COUPON CODE"
+                                    className="flex-1 bg-transparent outline-none text-sm font-bold uppercase placeholder:font-medium placeholder:text-gray-400"
                                     value={couponCode}
                                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                                 />
-                                <button
-                                    className="text-black font-bold text-sm underline"
-                                    onClick={handleCouponApply}
-                                >
-                                    Apply
-                                </button>
+                                <button onClick={handleCouponApply} className="text-xs font-black bg-black text-white px-3 py-1.5 rounded-lg hover:opacity-80 transition">{appliedCoupon ? 'APPLIED' : 'APPLY'}</button>
                             </div>
-                            {couponError && <div className="text-red-500 text-xs mt-1">{couponError}</div>}
-                            {appliedCoupon && <div className="text-green-600 text-xs mt-1">Code applied successfully!</div>}
+                            {couponError && <div className="text-red-500 text-xs font-bold">{couponError}</div>}
+                            {appliedCoupon && <div className="text-green-600 text-xs font-bold">Code applied! Discount: ₹{details?.discount}</div>}
 
-                            {/* Confirm Button Moved Here */}
+
                             <button
                                 onClick={handleSubmit}
-                                disabled={bookingStatus === 'submitting' || !form.CustomerName || !form.CustomerMobile}
-                                className="w-full bg-[#FF385C] hover:bg-[#d9324e] text-white py-4 rounded-xl text-lg font-bold shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed mt-4 flex items-center justify-center gap-2"
+                                disabled={bookingStatus === 'submitting' || !details}
+                                className="w-full bg-[#FF385C] hover:bg-[#D9324E] text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-200 hover:shadow-red-300 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {bookingStatus === 'submitting' ? (
-                                    <>Processing...</>
-                                ) : (
-                                    <>Confirm and pay</>
-                                )}
+                                {bookingStatus === 'submitting' ? 'Processing...' : 'Pay & Reserve'}
                             </button>
-
-                            <div className="text-center text-xs text-gray-400 flex items-center justify-center gap-1 mt-2">
-                                <FaShieldAlt /> Secure Payment via PhonePe/UPI
-                            </div>
 
                         </div>
                     </div>
+
                 </div>
+
+                {/* MOBILE STICKY FOOTER */}
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 lg:hidden z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 font-bold uppercase">Pay Now (10%)</span>
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-bold text-gray-900">₹{payNowAmount.toLocaleString()}</span>
+                                <span className="text-xs text-gray-400 line-through">₹{details?.total.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={bookingStatus === 'submitting'}
+                            className="bg-[#FF385C] hover:bg-[#d9324e] text-white px-8 py-3 rounded-xl font-bold shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {bookingStatus === 'submitting' ? 'Processing...' : 'Reserve'}
+                        </button>
+                    </div>
+                </div>
+
             </div>
         </div>
     );
+}
+
+// Helper to avoid division by zero in render
+function calculatePerNight(details) {
+    if (!details || details.nights === 0) return 0;
+    return Math.round(details.base / details.nights);
 }

@@ -4,8 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\Auditable;
+
 class PropertyMaster extends Model
 {
+    use Auditable;
     protected $appends = ['image_url'];
 
     public function getImageUrlAttribute()
@@ -91,5 +94,31 @@ class PropertyMaster extends Model
     public function holidays()
     {
         return $this->hasMany(\App\Models\Holiday::class, 'property_id', 'PropertyId');
+    }
+    
+    // NEW: Connectors Relationship
+    public function connectors()
+    {
+        return $this->belongsToMany(\App\Models\Connector::class, 'property_connectors', 'property_id', 'connector_id')
+                    ->withPivot(['commission_type', 'commission_value', 'effective_from', 'effective_to'])
+                    ->withTimestamps();
+    }
+
+    public function dailyRates()
+    {
+        return $this->hasMany(\App\Models\PropertyDailyRate::class, 'property_id', 'PropertyId');
+    }
+    
+    public function activeConnector()
+    {
+        // Helper to get the currently effective connector
+        // For simplicity, getting the first active one. 
+        // In real world, might need date range check vs today.
+        return $this->connectors()
+                    ->wherePivot('effective_from', '<=', now())
+                    ->where(function ($query) {
+                        $query->whereNull('property_connectors.effective_to')
+                              ->orWhere('property_connectors.effective_to', '>=', now());
+                    });
     }
 }

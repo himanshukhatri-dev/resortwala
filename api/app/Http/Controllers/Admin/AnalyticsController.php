@@ -2,110 +2,266 @@
 
 namespace App\Http\Controllers\Admin;
 
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\EventLog;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class AnalyticsController extends Controller
 {
     /**
-     * Get event logs with filtering and pagination
+     * Batch event tracking from client SDK
+     */
+    public function batch(Request $request)
+    {
+        try {
+            $events = $request->input('events', []);
+            $user = auth()->user();
+            $ip = $request->ip();
+            $ua = $request->userAgent();
+
+            foreach ($events as $eventData) {
+                EventLog::create([
+                    'event_name' => $eventData['event_type'] ?? 'unknown',
+                    'event_category' => $eventData['event_category'] ?? 'customer',
+                    'user_id' => $user ? $user->id : null,
+                    'role' => $user ? $user->role : 'guest',
+                    'session_id' => $eventData['session_id'] ?? null,
+                    'metadata' => $eventData['event_data'] ?? [],
+                    'ip_address' => $ip,
+                    'user_agent' => $ua,
+                    'status' => 'success',
+                    'created_at' => $eventData['event_data']['timestamp'] ?? now(),
+                ]);
+            }
+
+            return response()->json(['status' => 'success', 'processed' => count($events)]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Client-side event tracking (Single)
+     */
+    public function track(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            
+            EventLog::create([
+                'event_name' => $request->input('event_name'),
+                'event_category' => $request->input('event_category', 'customer'),
+                'user_id' => $user ? $user->id : null,
+                'role' => $user ? $user->role : 'guest',
+                'session_id' => $request->header('X-Session-ID') ?: $request->input('session_id'),
+                'entity_type' => $request->input('entity_type'),
+                'entity_id' => $request->input('entity_id'),
+                'screen_name' => $request->input('screen_name'),
+                'action' => $request->input('action'),
+                'metadata' => $request->input('metadata', []),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'status' => 'success'
+            ]);
+
+            return response()->json(['status' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Dashboard KPIs and Charts
+     */
+    public function dashboard(Request $request)
+    {
+        $days = $request->input('days', 30);
+        $startDate = Carbon::now()->subDays($days);
+        $lastMonthStart = Carbon::now()->subMonth()->startOfMonth();
+        $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth();
+        $thisMonthStart = Carbon::now()->startOfMonth();
+
+        // 1. Financial KPIs & Trends
+        $revenueTotal = \App\Models\Booking::where('Status', 'confirmed')->sum('TotalAmount');
+        $revenueMonth = \App\Models\Booking::where('Status', 'confirmed')
+            ->where('CheckInDate', '>=', $thisMonthStart)
+            ->sum('TotalAmount');
+        $revenueLastMonth = \App\Models\Booking::where('Status', 'confirmed')
+            ->whereBetween('CheckInDate', [$lastMonthStart, $lastMonthEnd])
+            ->sum('TotalAmount');
+        
+        $revenueGrowth = $revenueLastMonth > 0 ? round((($revenueMonth - $revenueLastMonth) / $revenueLastMonth) * 100, 1) : 0;
+
+        // 2. Engagement KPIs & Trends
+        $totalInteractions = EventLog::where('created_at', '>=', $startDate)->count();
+        $dau = EventLog::where('created_at', '>=', Carbon::today())
+            ->distinct('session_id')
+            ->count();
+        
+        // 3. Inventory Stats & Trends
+        $activeInventory = \App\Models\PropertyMaster::where('is_approved', true)->count();
+        $pendingApprovals = \App\Models\PropertyMaster::where('is_approved', false)->count();
+        $inventoryLastMonth = \App\Models\PropertyMaster::where('is_approved', true)
+            ->where('created_at', '<', $thisMonthStart)
+            ->count();
+        
+        $inventoryGrowth = $inventoryLastMonth > 0 ? round((($activeInventory - $inventoryLastMonth) / $inventoryLastMonth) * 100, 1) : 0;
+
+        // 4. Trends (Revenue & Traffic)
+        $revenueTrends = \App\Models\Booking::select(
+            DB::raw('DATE(CheckInDate) as date'),
+            DB::raw('SUM(TotalAmount) as revenue')
+        )
+            ->where('Status', 'confirmed')
+            ->where('CheckInDate', '>=', $startDate)
+            ->groupBy('date')
+            ->get();
+
+        $trafficTrends = EventLog::select(
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('count(*) as count'),
+            DB::raw('count(distinct session_id) as users')
+        )
+            ->where('created_at', '>=', $startDate)
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // 5. Funnel (Consolidated)
+        $funnel = [
+            'total_users' => EventLog::distinct('session_id')->count(),
+            'property_views' => EventLog::where('event_name', 'property_detail_view')->count(),
+            'checkouts' => EventLog::where('event_name', 'checkout_started')->count(),
+            'bookings' => \App\Models\Booking::count(),
+        ];
+
+        return response()->json([
+            'kpis' => [
+                'total_revenue' => $revenueTotal,
+                'monthly_revenue' => $revenueMonth,
+                'revenue_growth' => $revenueGrowth,
+                'interactions' => $totalInteractions,
+                'active_users_today' => $dau,
+                'active_inventory' => $activeInventory,
+                'inventory_growth' => $inventoryGrowth,
+                'pending_approvals' => $pendingApprovals
+            ],
+            'revenue_trends' => $revenueTrends,
+            'traffic_trends' => $trafficTrends,
+            'funnel' => $funnel
+        ]);
+    }
+
+    /**
+     * Get Paginated Event Logs
      */
     public function getEventLogs(Request $request)
     {
-        $query = DB::table('user_events')
-            ->orderBy('created_at', 'desc');
+        $query = EventLog::query();
 
-        // Filter by event type
-        if ($request->has('event_type') && $request->event_type) {
-            $query->where('event_type', $request->event_type);
+        if ($request->filled('event_type')) {
+            $query->where('event_name', $request->event_type);
         }
-
-        // Filter by category
-        if ($request->has('event_category') && $request->event_category) {
+        if ($request->filled('event_category')) {
             $query->where('event_category', $request->event_category);
         }
-
-        // Filter by user
-        if ($request->has('user_id') && $request->user_id) {
+        if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
-
-        // Filter by date range
-        if ($request->has('start_date') && $request->start_date) {
+        if ($request->filled('start_date')) {
             $query->where('created_at', '>=', $request->start_date);
         }
-        if ($request->has('end_date') && $request->end_date) {
-            $query->where('created_at', '<=', $request->end_date);
+        if ($request->filled('end_date')) {
+            $query->where('created_at', '<=', $request->end_date . ' 23:59:59');
         }
 
-        // Pagination
-        $perPage = $request->get('per_page', 50);
-        $events = $query->paginate($perPage);
+        $logs = $query->with('user:id,name,email')
+            ->orderBy('created_at', 'desc')
+            ->paginate($request->input('per_page', 50));
 
-        // Parse JSON fields
-        $events->getCollection()->transform(function ($event) {
-            $event->event_data = json_decode($event->event_data, true);
-            $event->context = json_decode($event->context, true);
-            return $event;
-        });
-
-        return response()->json($events);
+        return response()->json($logs);
     }
 
     /**
-     * Get event statistics
+     * Get Analytics Stats
      */
-    public function getEventStats(Request $request)
+    public function getEventStats()
     {
-        $hours = $request->get('hours', 24);
+        $last24h = Carbon::now()->subDay();
         
-        $stats = [
-            'total_events' => DB::table('user_events')
-                ->where('created_at', '>', now()->subHours($hours))
-                ->count(),
-            
-            'by_type' => DB::table('user_events')
-                ->select('event_type', DB::raw('COUNT(*) as count'))
-                ->where('created_at', '>', now()->subHours($hours))
-                ->groupBy('event_type')
+        return response()->json([
+            'total_events' => EventLog::where('created_at', '>=', $last24h)->count(),
+            'unique_sessions' => EventLog::where('created_at', '>=', $last24h)->distinct('session_id')->count(),
+            'unique_users' => EventLog::where('created_at', '>=', $last24h)->whereNotNull('user_id')->distinct('user_id')->count(),
+            'by_type' => EventLog::select('event_name as event_type', DB::raw('count(*) as count'))
+                ->where('created_at', '>=', $last24h)
+                ->groupBy('event_name')
                 ->orderBy('count', 'desc')
-                ->get(),
-            
-            'by_category' => DB::table('user_events')
-                ->select('event_category', DB::raw('COUNT(*) as count'))
-                ->where('created_at', '>', now()->subHours($hours))
-                ->groupBy('event_category')
-                ->orderBy('count', 'desc')
-                ->get(),
-            
-            'unique_sessions' => DB::table('user_events')
-                ->where('created_at', '>', now()->subHours($hours))
-                ->distinct('session_id')
-                ->count('session_id'),
-            
-            'unique_users' => DB::table('user_events')
-                ->where('created_at', '>', now()->subHours($hours))
-                ->whereNotNull('user_id')
-                ->distinct('user_id')
-                ->count('user_id'),
-        ];
-
-        return response()->json($stats);
+                ->limit(5)
+                ->get()
+        ]);
     }
 
     /**
-     * Get distinct event types and categories
+     * Get Available Filters
      */
     public function getEventFilters()
     {
         return response()->json([
-            'event_types' => DB::table('user_events')
-                ->distinct()
-                ->pluck('event_type'),
-            'event_categories' => DB::table('user_events')
-                ->distinct()
-                ->pluck('event_category')
+            'event_types' => EventLog::distinct()->pluck('event_name'),
+            'event_categories' => EventLog::distinct()->pluck('event_category')
         ]);
+    }
+
+    /**
+     * Platform-wide Global Search Index
+     */
+    public function search(Request $request)
+    {
+        $query = $request->input('query');
+        
+        if (strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        $results = [];
+
+        // 1. Search Properties
+        $properties = \App\Models\PropertyMaster::where('PropertyName', 'LIKE', "%{$query}%")
+            ->orWhere('Location', 'LIKE', "%{$query}%")
+            ->limit(5)
+            ->get(['PropertyId as id', 'PropertyName as name', 'Location'])
+            ->map(function($item) {
+                $item->type = 'property';
+                return $item;
+            });
+        $results = array_merge($results, $properties->toArray());
+
+        // 2. Search Users (Admins/Vendors)
+        $users = \App\Models\User::where('name', 'LIKE', "%{$query}%")
+            ->orWhere('email', 'LIKE', "%{$query}%")
+            ->limit(5)
+            ->get(['id', 'name', 'email', 'role'])
+            ->map(function($item) {
+                $item->type = 'user';
+                return $item;
+            });
+        $results = array_merge($results, $users->toArray());
+
+        // 3. Search Customers
+        $customers = \App\Models\Customer::where('name', 'LIKE', "%{$query}%")
+            ->orWhere('email', 'LIKE', "%{$query}%")
+            ->orWhere('phone', 'LIKE', "%{$query}%")
+            ->limit(5)
+            ->get(['id', 'name', 'email', 'phone'])
+            ->map(function($item) {
+                $item->type = 'customer';
+                return $item;
+            });
+        $results = array_merge($results, $customers->toArray());
+
+        return response()->json($results);
     }
 }

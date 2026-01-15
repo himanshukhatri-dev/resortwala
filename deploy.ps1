@@ -189,7 +189,7 @@ function Deploy-Component {
     
     # 2. Compress (Tar Gzip for Linux Compatibility)
     # Use localized filename to avoid 'tar' interpreting "C:" as a remote host in MinGW
-    $TarFileName = "deploy_package_${Name}.tar.gz"
+    $TarFileName = "deploy_package_${Name}_${RandomId}.tar.gz"
     # Create in current directory to ensure relative path usage
     $TarPath = ".\$TarFileName"
     

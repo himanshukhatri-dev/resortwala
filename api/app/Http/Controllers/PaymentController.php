@@ -116,6 +116,13 @@ class PaymentController extends Controller
                             $booking->transaction_id = $transactionId ?? $merchantTxnId;
                             $booking->save();
 
+                            // Record Commission
+                            try {
+                                app(\App\Services\CommissionService::class)->calculateAndRecord($booking);
+                            } catch (\Exception $e) {
+                                Log::error("Failed to record commission: " . $e->getMessage());
+                            }
+
                             // Send Confirmation Email (Async)
                             try {
                                 $notif = app(\App\Services\NotificationService::class);

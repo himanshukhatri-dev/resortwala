@@ -6,6 +6,10 @@ use App\Http\Controllers\PropertyMasterController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\StatusController;
 
+
+// Debug Route
+require_once __DIR__ . '/debug_route.php';
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -14,6 +18,8 @@ use App\Http\Controllers\StatusController;
 
 // System Status Route (Public)
 Route::get('/status', [StatusController::class, 'check']);
+Route::post('/events/batch', [\App\Http\Controllers\Admin\AnalyticsController::class, 'batch']);
+Route::post('/analytics/track', [\App\Http\Controllers\Admin\AnalyticsController::class, 'track']);
 Route::get('/admin/system-info', [\App\Http\Controllers\AdminController::class, 'getSystemInfo']);
 
 Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp']);
@@ -35,6 +41,7 @@ Route::get('/user', function (Request $request) {
 
 // Client-Customer Routes
 Route::get('/properties', [PropertyMasterController::class, 'index']);
+Route::get('/properties/locations', [PropertyMasterController::class, 'getLocations']); // Locations aggregation
 Route::get('/properties/{id}', [PropertyMasterController::class, 'show']);
 Route::get('/properties/{id}/images', [\App\Http\Controllers\PropertyImageController::class, 'getImages']);
 Route::post('/bookings', [\App\Http\Controllers\BookingController::class, 'store']);
@@ -44,6 +51,7 @@ Route::get('/properties/{id}/booked-dates', [PropertyMasterController::class, 'g
 Route::post('/coupons/check', [\App\Http\Controllers\CouponController::class, 'check']);
 
 // Event Tracking (Analytics)
+Route::post('/analytics/track', [\App\Http\Controllers\Admin\AnalyticsController::class, 'track']);
 Route::post('/events/track', [\App\Http\Controllers\EventController::class, 'track']);
 Route::post('/events/batch', [\App\Http\Controllers\EventController::class, 'batchTrack']);
 
@@ -84,7 +92,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customer/bookings', [\App\Http\Controllers\BookingController::class, 'index']);
     Route::get('/customer/bookings/{id}', [\App\Http\Controllers\BookingController::class, 'show']);
     Route::get('/customer/invoices/{id}/download', [\App\Http\Controllers\InvoiceController::class, 'download']);
+    // Notifications
+    Route::post('/notifications/token', [App\Http\Controllers\NotificationController::class, 'registerToken']);
+    Route::post('/notifications/send', [App\Http\Controllers\NotificationController::class, 'send']);
+    Route::get('/notifications/logs', [App\Http\Controllers\NotificationController::class, 'logs']);
 });
+
 
 
 
@@ -325,6 +338,7 @@ Route::prefix('admin/intelligence')->middleware(['auth:sanctum', 'verified'])->g
     Route::get('/schema', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getSchema']);
     Route::get('/data/{table}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getTableData']);
     Route::put('/data/{table}/{id}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'updateTableData']);
+    Route::delete('/data/{table}/{id}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'deleteTableData']);
     
     // Database Backups
     Route::get('/backups', [App\Http\Controllers\Admin\BackupController::class, 'index']);
@@ -341,6 +355,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/profile', [\App\Http\Controllers\AdminController::class, 'profile']);
     Route::post('/admin/logout', [\App\Http\Controllers\AdminController::class, 'logout']);
     Route::get('/admin/stats', [\App\Http\Controllers\AdminController::class, 'getStats']);
+    Route::get('/admin/stats/sidebar', [\App\Http\Controllers\AdminController::class, 'getSidebarStats']);
     Route::get('/admin/search', [\App\Http\Controllers\AdminController::class, 'globalSearch']);
     Route::get('/admin/vendors', [\App\Http\Controllers\AdminController::class, 'getAllVendors']);
     Route::get('/admin/vendors/pending', [\App\Http\Controllers\AdminController::class, 'getPendingVendors']);
@@ -362,9 +377,58 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/properties/{id}/calendar', [\App\Http\Controllers\AdminPropertyController::class, 'getCalendar']);
     
     // Analytics routes (Admin)
-    Route::get('/admin/analytics/events', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventLogs']);
-    Route::get('/admin/analytics/stats', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventStats']);
-    Route::get('/admin/analytics/filters', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventFilters']);
+    Route::prefix('admin/analytics')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Admin\AnalyticsController::class, 'dashboard']);
+        Route::get('/events', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventLogs']);
+        Route::get('/stats', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventStats']);
+        Route::get('/filters', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventFilters']);
+    });
+    
+    // Vendor CRM routes
+    Route::prefix('admin/crm')->group(function () {
+        Route::get('/leads', [\App\Http\Controllers\Admin\VendorCrmController::class, 'index']);
+        Route::post('/leads', [\App\Http\Controllers\Admin\VendorCrmController::class, 'store']);
+        Route::get('/leads/{id}', [\App\Http\Controllers\Admin\VendorCrmController::class, 'show']);
+        Route::put('/leads/{id}', [\App\Http\Controllers\Admin\VendorCrmController::class, 'update']);
+        Route::delete('/leads/{id}', [\App\Http\Controllers\Admin\VendorCrmController::class, 'destroy']);
+        Route::post('/leads/{id}/interactions', [\App\Http\Controllers\Admin\VendorCrmController::class, 'logInteraction']);
+        Route::get('/stats', [\App\Http\Controllers\Admin\VendorCrmController::class, 'stats']);
+        Route::get('/agents', [\App\Http\Controllers\Admin\VendorCrmController::class, 'getAgents']);
+        Route::get('/funnel', [\App\Http\Controllers\Admin\VendorCrmController::class, 'funnel']);
+        Route::get('/export', [\App\Http\Controllers\Admin\VendorCrmController::class, 'export']);
+    });
+
+    // Admin Finance & Reconciliation (Phase 7)
+    Route::prefix('admin/finance')->group(function () {
+        Route::get('/transactions', [\App\Http\Controllers\Admin\FinanceController::class, 'index']);
+        Route::get('/stats', [\App\Http\Controllers\Admin\FinanceController::class, 'stats']);
+    });
+
+    // Admin Coupon Management
+    Route::prefix('admin/coupons')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\CouponManagementController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Admin\CouponManagementController::class, 'store']);
+        Route::put('/{id}', [\App\Http\Controllers\Admin\CouponManagementController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\Admin\CouponManagementController::class, 'destroy']);
+    });
+
+    // Admin Reconciliation (Phase 9)
+    Route::prefix('admin/finance/reconciliation')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\ReconciliationController::class, 'index']);
+        Route::post('/upload', [\App\Http\Controllers\Admin\ReconciliationController::class, 'upload']);
+        Route::get('/{id}', [\App\Http\Controllers\Admin\ReconciliationController::class, 'show']);
+        Route::post('/link', [\App\Http\Controllers\Admin\ReconciliationController::class, 'linkRecord']);
+        Route::put('/record/{id}', [\App\Http\Controllers\Admin\ReconciliationController::class, 'updateRecordStatus']);
+    });
+
+    // Admin Revenue (Phase 10)
+    Route::prefix('admin/revenue')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\RevenueController::class, 'index']);
+        Route::get('/properties', [\App\Http\Controllers\Admin\RevenueController::class, 'properties']);
+        Route::put('/properties/{id}/rates', [\App\Http\Controllers\Admin\RevenueController::class, 'updateRates']);
+        Route::get('/analytics', [\App\Http\Controllers\Admin\RevenueController::class, 'analytics']);
+    });
+
     Route::put('/admin/properties/{id}/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approve']);
     Route::put('/admin/properties/{id}/pricing', [\App\Http\Controllers\AdminPropertyController::class, 'updatePricing']);
     Route::get('/admin/properties/{id}', [\App\Http\Controllers\AdminPropertyController::class, 'show']);
@@ -378,9 +442,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin Calendar Routes (Added for parity with Vendor)
     Route::get('/admin/bookings', [\App\Http\Controllers\AdminController::class, 'getAllBookings']);
-    Route::post('/admin/bookings/lock', [\App\Http\Controllers\AdminController::class, 'lockDates']); // Needs implementation
-    Route::post('/admin/bookings/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveBooking']); // Needs impl
-    Route::post('/admin/bookings/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectBooking']); // Needs impl
+    Route::post('/admin/bookings/lock', [\App\Http\Controllers\AdminController::class, 'lockDates']); 
+    Route::post('/admin/bookings/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveBooking']); 
+    Route::post('/admin/bookings/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectBooking']); 
     Route::post('/admin/properties/{id}/changes/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approveChanges']);
     Route::post('/admin/properties/{id}/changes/reject', [\App\Http\Controllers\AdminPropertyController::class, 'rejectChanges']);
 
@@ -396,6 +460,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/bookings/{id}/status', [\App\Http\Controllers\AdminController::class, 'updateBookingStatus']);
     Route::post('/admin/bookings/{id}/resend-email', [\App\Http\Controllers\BookingController::class, 'resendConfirmation']);
     
+    // Admin Communications
+    Route::prefix('admin/communications')->group(function () {
+        Route::get('/logs', [\App\Http\Controllers\Admin\CommunicationController::class, 'index']);
+        Route::post('/broadcast', [\App\Http\Controllers\Admin\CommunicationController::class, 'broadcast']);
+    });
+
+    // Admin Settings
+    Route::prefix('admin/settings')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\SettingsController::class, 'index']);
+        Route::post('/update', [\App\Http\Controllers\Admin\SettingsController::class, 'update']);
+    });
+
     // User Management
     Route::get('/admin/users/admins', [\App\Http\Controllers\AdminUserController::class, 'getAdmins']);
     Route::post('/admin/users/admins', [\App\Http\Controllers\AdminUserController::class, 'createAdmin']);
@@ -413,16 +489,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/users/customers/{id}', [\App\Http\Controllers\AdminUserController::class, 'updateCustomer']);
     Route::delete('/admin/users/customers/{id}', [\App\Http\Controllers\AdminUserController::class, 'deleteCustomer']);
 
-    // Admin Intelligence Interface
-    Route::prefix('admin/intelligence')->group(function () {
-        Route::get('/schema', [\App\Http\Controllers\IntelligenceController::class, 'getSchema']);
-        Route::get('/routes', [\App\Http\Controllers\IntelligenceController::class, 'getRoutes']);
-        Route::get('/logs', [\App\Http\Controllers\IntelligenceController::class, 'getLogs']);
-        
-        // Live Data Editor
-        Route::get('/data/{table}', [\App\Http\Controllers\IntelligenceController::class, 'getData']);
-        Route::put('/data/{table}/{id}', [\App\Http\Controllers\IntelligenceController::class, 'updateData']);
-    });
+    // Admin Intelligence Interface (Removed duplicate block - already defined above)
+    // See lines 328-339 using AdminIntelligenceController
 
     // Admin Communication Logs (Phase 5)
     Route::prefix('admin/communications')->group(function () {
@@ -439,6 +507,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/properties/{id}/addons', [\App\Http\Controllers\Admin\RevenueController::class, 'getAddons']);
         Route::post('/properties/{id}/addons', [\App\Http\Controllers\Admin\RevenueController::class, 'storeAddon']);
         Route::delete('/properties/{id}/addons/{addonId}', [\App\Http\Controllers\Admin\RevenueController::class, 'deleteAddon']);
+    });
+
+    // Admin Connector Management
+    Route::prefix('admin/connectors')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\ConnectorController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Admin\ConnectorController::class, 'store']);
+        Route::put('/{id}', [\App\Http\Controllers\Admin\ConnectorController::class, 'update']);
+        Route::put('/{id}/status', [\App\Http\Controllers\Admin\ConnectorController::class, 'toggleStatus']);
+    });
+
+    // Connector Property Assignment
+    Route::post('/admin/properties/{id}/connector', [\App\Http\Controllers\Admin\ConnectorController::class, 'assignToProperty']);
+    Route::get('/admin/properties/{id}/connectors', [\App\Http\Controllers\Admin\ConnectorController::class, 'getPropertyConnectors']);
+
+    // Internal DevOps Control (Developer Only)
+    // NOTE: Restricted to Super Admin / Dev roles in middleware/controller
+    Route::prefix('internal/db-control')->group(function () {
+        Route::get('/backups', [\App\Http\Controllers\Internal\DbControlController::class, 'index']);
+        Route::post('/backups', [\App\Http\Controllers\Internal\DbControlController::class, 'triggerBackup']);
+        Route::get('/backups/{id}/download', [\App\Http\Controllers\Internal\DbControlController::class, 'download']);
+        Route::post('/backups/{id}/restore', [\App\Http\Controllers\Internal\DbControlController::class, 'restore']);
+        Route::get('/audit-logs', [\App\Http\Controllers\Internal\DbControlController::class, 'auditLogs']);
     });
 });
 

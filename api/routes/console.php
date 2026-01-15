@@ -9,4 +9,4 @@ Artisan::command('inspire', function () {
 
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::command('db:backup')->dailyAt('03:00');
+Schedule::command('db:backup --encrypt')->dailyAt('02:00');
