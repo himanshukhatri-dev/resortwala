@@ -106,9 +106,7 @@ const ConfirmationModal = ({ isOpen, title, message, type = 'confirm', onConfirm
                     >
                         {confirmText}
                     </button>
-                    {activeTab === 'connectors' && (
-                        <ConnectorAssignment propertyId={id} />
-                    )}
+
                 </div>
             </div>
 
@@ -371,29 +369,29 @@ export default function PropertyApproval() {
             const ob = prop.onboarding_data || {};
             const existing = prop.admin_pricing || {};
 
-            const adultWeek = parseFloat(ob.pricing?.waterparkPrices?.adult?.week || prop.price_mon_thu || prop.Price || 0);
-            const adultWeekend = parseFloat(ob.pricing?.waterparkPrices?.adult?.weekend || prop.price_fri_sun || 0);
-            const childWeek = parseFloat(ob.pricing?.waterparkPrices?.child?.week || ob.childCriteria?.price || 0);
-            const childWeekend = parseFloat(ob.pricing?.waterparkPrices?.child?.weekend || ob.childCriteria?.price || 0);
+            const adultWeek = parseFloat(ob.pricing?.waterparkPrices?.adult?.week || ob.ticketPrices?.adult || prop.price_mon_thu || prop.Price || 0);
+            const adultWeekend = parseFloat(ob.pricing?.waterparkPrices?.adult?.weekend || ob.ticketPrices?.adult || prop.price_fri_sun || 0);
+            const childWeek = parseFloat(ob.pricing?.waterparkPrices?.child?.week || ob.ticketPrices?.child || ob.childCriteria?.monFriPrice || ob.childCriteria?.price || 0);
+            const childWeekend = parseFloat(ob.pricing?.waterparkPrices?.child?.weekend || ob.ticketPrices?.child || ob.childCriteria?.satSunPrice || ob.childCriteria?.price || 0);
 
             setWaterparkPricing({
                 adult_weekday: {
-                    current: adultWeek,
+                    current: existing.adult_weekday?.current || adultWeek,
                     discounted: existing.adult_weekday?.discounted ?? '',
                     final: existing.adult_weekday?.final ?? ''
                 },
                 adult_weekend: {
-                    current: adultWeekend,
+                    current: existing.adult_weekend?.current || adultWeekend,
                     discounted: existing.adult_weekend?.discounted ?? '',
                     final: existing.adult_weekend?.final ?? ''
                 },
                 child_weekday: {
-                    current: childWeek,
+                    current: existing.child_weekday?.current || childWeek,
                     discounted: existing.child_weekday?.discounted ?? '',
                     final: existing.child_weekday?.final ?? ''
                 },
                 child_weekend: {
-                    current: childWeekend,
+                    current: existing.child_weekend?.current || childWeekend,
                     discounted: existing.child_weekend?.discounted ?? '',
                     final: existing.child_weekend?.final ?? ''
                 }
@@ -528,7 +526,7 @@ export default function PropertyApproval() {
         setSaving(true);
         try {
             const payload = {
-                admin_pricing: pricing,
+                admin_pricing: formData.PropertyType === 'Waterpark' ? waterparkPricing : pricing,
                 PropertyType: formData.PropertyType,
                 Website: formData.Website,
                 GoogleMapLink: formData.GoogleMapLink,
@@ -614,7 +612,7 @@ export default function PropertyApproval() {
                         { id: 'food', label: 'Food & Dining', icon: <FaUtensils />, show: obData.mealPlans && Object.values(obData.mealPlans).some(m => m.available) },
                         { id: 'media', label: 'Media', icon: <FaCamera />, show: true },
                         { id: 'rules', label: 'Rules', icon: <FaUtensils />, show: true },
-                        { id: 'rules', label: 'Rules', icon: <FaUtensils />, show: true },
+
                         { id: 'pricing', label: property.PropertyType === 'Waterpark' ? 'Ticket Pricing' : 'Pricing Matrix', icon: <FaMoneyBillWave />, show: true },
                         { id: 'connectors', label: 'Connectors', icon: <FaUsers />, show: true }
                     ].filter(tab => tab.show).map(tab => (
@@ -1312,8 +1310,19 @@ export default function PropertyApproval() {
                                                                 </span>
                                                                 {item.label}
                                                             </td>
-                                                            <td className="px-6 py-4 text-right tabular-nums text-gray-500 font-medium">
-                                                                {waterparkPricing[item.type].current ? `₹${waterparkPricing[item.type].current.toLocaleString()}` : '--'}
+                                                            <td className="px-6 py-4 text-right">
+                                                                <div className="flex justify-end">
+                                                                    <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            className="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-right font-medium text-gray-800 placeholder-gray-300"
+                                                                            value={waterparkPricing[item.type].current}
+                                                                            onChange={(e) => handleWaterparkPriceChange(item.type, 'current', e.target.value)}
+                                                                            placeholder="0"
+                                                                        />
+                                                                    </div>
+                                                                </div>
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <div className="flex justify-end">

@@ -42,7 +42,8 @@ class UpdatePropertyRequest extends FormRequest
             'video_url' => 'nullable|url',
             'onboarding_data' => 'nullable|string', // Validated as JSON in withValidator
             'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
-            'videos.*' => 'file|mimes:mp4,mov,avi,m4v|max:51200'
+            'videos.*' => 'file|mimes:mp4,mov,avi,m4v|max:51200',
+            'admin_pricing' => 'nullable|array',
         ];
     }
 

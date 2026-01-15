@@ -30,7 +30,7 @@ export default function ConnectorAssignment({ propertyId }) {
         setLoading(true);
         try {
             const [assignRes, connRes] = await Promise.all([
-                axios.get(`${API_BASE_URL}/admin/properties/${propertyId}/connector`, {
+                axios.get(`${API_BASE_URL}/admin/properties/${propertyId}/connectors`, {
                     headers: { Authorization: `Bearer ${token}` }
                 }),
                 axios.get(`${API_BASE_URL}/admin/connectors?active=1`, {

@@ -24,10 +24,30 @@ export default function Login() {
     const API_URL = import.meta.env.VITE_API_BASE_URL;
 
     // Auto-trigger from Signup redirection
+    // Auto-trigger from Signup redirection & Cleanup Recaptcha
     useEffect(() => {
+        // Cleanup stale recaptcha from previous renders
+        if (window.recaptchaVerifier) {
+            try {
+                window.recaptchaVerifier.clear();
+            } catch (e) {
+                console.warn("Recaptcha clear error", e);
+            }
+            window.recaptchaVerifier = null;
+        }
+
         if (location.state?.autoTrigger && location.state?.identifier) {
             handleLoginSubmit({ preventDefault: () => { } });
         }
+
+        return () => {
+            if (window.recaptchaVerifier) {
+                try {
+                    window.recaptchaVerifier.clear();
+                } catch (e) { }
+                window.recaptchaVerifier = null;
+            }
+        };
     }, []);
 
     const handleLoginSubmit = async (e) => {
@@ -37,6 +57,35 @@ export default function Login() {
 
         const isMobile = isValidMobile(loginIdentifier);
         setIsPhoneAuth(isMobile);
+
+        // --- BYPASS LOGIC FOR HIMANSHU ---
+        const TEST_NUMBERS = ['9034195000', '9896934000', '9999999999', '9870646548']; // Add Himanshu's number here
+        const normalizedInput = normalizePhone(loginIdentifier);
+
+        if (isMobile && TEST_NUMBERS.includes(normalizedInput)) {
+            try {
+                // Direct Login without Firebase
+                const response = await axios.post(`${API_URL}/api/customer/login-otp`, {
+                    phone: normalizedInput,
+                    firebase_token: 'bypass-otp-secret'
+                });
+
+                const { token } = response.data;
+                await loginWithToken(token);
+
+                if (location.state?.returnTo) {
+                    navigate(location.state.returnTo, { state: location.state?.bookingState });
+                } else {
+                    navigate('/');
+                }
+                return; // Stop execution
+            } catch (err) {
+                console.error("Bypass failed", err);
+                setError("Bypass login failed");
+                setIsLoading(false);
+                return;
+            }
+        }
 
         try {
             if (isMobile) {

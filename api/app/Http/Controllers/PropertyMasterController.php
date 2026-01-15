@@ -110,7 +110,7 @@ class PropertyMasterController extends Controller
     public function show($id)
     {
         try {
-            $property = PropertyMaster::with(['images', 'videos', 'holidays'])->find($id);
+            $property = PropertyMaster::with(['images', 'videos', 'holidays', 'dailyRates'])->find($id);
             if (!$property) {
                 return response()->json(['message' => 'Property not found'], 404);
             }

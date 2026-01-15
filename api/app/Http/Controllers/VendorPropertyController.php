@@ -47,6 +47,10 @@ class VendorPropertyController extends Controller
             $data['onboarding_data'] = json_decode($request->onboarding_data, true);
         }
 
+        if ($request->has('admin_pricing') && is_string($request->admin_pricing)) {
+            $data['admin_pricing'] = json_decode($request->admin_pricing, true);
+        }
+
         return DB::transaction(function () use ($data, $request, $notificationService) {
             $property = PropertyMaster::create([
                 ...$data,

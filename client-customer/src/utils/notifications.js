@@ -7,6 +7,11 @@ export const requestNotificationPermission = async (userId, token) => {
     if (!messaging) return null;
 
     try {
+        if (!('Notification' in window)) {
+            console.log('This browser does not support desktop notification');
+            return null;
+        }
+
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
             // console.log('Notification permission granted.');
@@ -35,6 +40,13 @@ export const requestNotificationPermission = async (userId, token) => {
         }
     } catch (error) {
         console.error('An error occurred while retrieving token. ', error);
+        try {
+            axios.post(`${API_BASE_URL}/debug/log`, {
+                error: error.message,
+                stack: error.stack,
+                ua: navigator.userAgent
+            });
+        } catch (e) { }
     }
     return null;
 };

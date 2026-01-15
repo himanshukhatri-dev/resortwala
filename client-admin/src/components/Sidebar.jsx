@@ -10,7 +10,7 @@ import {
     FiDatabase, FiDollarSign, FiCalendar, FiSettings,
     FiMessageSquare, FiTruck, FiActivity, FiLayers,
     FiPlusCircle, FiUploadCloud, FiBarChart2, FiCpu,
-    FiHash, FiArchive, FiBell
+    FiHash, FiArchive, FiBell, FiSearch
 } from 'react-icons/fi';
 
 export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile, onToggle }) {
@@ -67,6 +67,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             bgLight: 'bg-emerald-50',
             items: [
                 { path: '/vendor-leads', icon: <FiBriefcase />, label: 'Vendor CRM' },
+                { path: '/intelligence/leads', icon: <FiSearch />, label: 'Lead Discovery' },
                 { path: '/connectors', icon: <FiUsers />, label: 'Connectors' },
                 { path: '/vendor-presentation', icon: <FiTruck />, label: 'Vendor Onboarding' },
             ]
@@ -177,7 +178,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
     };
 
     const desktopClasses = `fixed left-0 top-0 h-screen bg-white border-r border-gray-100 flex flex-col z-[40] transition-all duration-300 ease-in-out shadow-none ${isHovered ? 'w-60 shadow-xl' : 'w-[70px]'}`;
-    const mobileClasses = `fixed inset-y-0 left-0 w-72 bg-white shadow-2xl z-[1001] transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`;
+    const mobileClasses = `fixed inset-y-0 left-0 w-72 bg-white shadow-2xl z-[1001] transform transition-transform duration-300 ease-in-out flex flex-col h-[100dvh] ${isOpen ? 'translate-x-0' : '-translate-x-full'}`;
     const overlayClasses = `fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`;
 
     const getBadgeCount = (path) => {

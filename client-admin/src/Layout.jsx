@@ -55,16 +55,37 @@ export default function Layout() {
         return () => clearTimeout(delayDebounceFn);
     }, [searchTerm]);
 
+    // Navigation Index
+    const NAV_ITEMS = [
+        { name: 'Lead Intelligence', type: 'navigation', path: '/intelligence/leads', keywords: ['lead', 'leads', 'crawl', 'market', 'intelligence'] },
+        { name: 'Properties', type: 'navigation', path: '/properties', keywords: ['property', 'hotel', 'resort'] },
+        { name: 'Bookings', type: 'navigation', path: '/bookings', keywords: ['booking', 'reservation'] },
+        { name: 'Users', type: 'navigation', path: '/users', keywords: ['user', 'admin', 'staff'] },
+        { name: 'Customers', type: 'navigation', path: '/customers', keywords: ['customer', 'guest'] },
+    ];
+
     const performGlobalSearch = async () => {
         setIsSearching(true);
+        let results = [];
+
+        // 1. Local Navigation Search
+        const query = searchTerm.toLowerCase();
+        const navMatches = NAV_ITEMS.filter(item =>
+            item.name.toLowerCase().includes(query) ||
+            item.keywords.some(k => k.includes(query))
+        );
+        results = [...navMatches];
+
+        // 2. API Search
         try {
             const res = await axios.get(`${API_BASE_URL}/admin/search?query=${searchTerm}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setSearchResults(res.data);
+            results = [...results, ...res.data];
         } catch (error) {
             console.error("Search error:", error);
         } finally {
+            setSearchResults(results);
             setIsSearching(false);
         }
     };
@@ -147,6 +168,7 @@ export default function Layout() {
                                                 onClick={() => {
                                                     setSearchTerm('');
                                                     setSearchResults([]);
+                                                    if (res.type === 'navigation') navigate(res.path);
                                                     if (res.type === 'user') navigate('/users');
                                                     if (res.type === 'customer') navigate('/customers');
                                                     if (res.type === 'property') navigate(`/properties/${res.id}/approve`);
@@ -155,16 +177,18 @@ export default function Layout() {
                                                 className="p-4 hover:bg-indigo-50 cursor-pointer transition-colors flex items-center justify-between group"
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black uppercase ${res.type === 'user' ? 'bg-indigo-100 text-indigo-600' :
-                                                        res.type === 'customer' ? 'bg-emerald-100 text-emerald-600' :
-                                                            res.type === 'property' ? 'bg-blue-100 text-blue-600' : 'bg-violet-100 text-violet-600'
+                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black uppercase ${res.type === 'navigation' ? 'bg-orange-100 text-orange-600' :
+                                                            res.type === 'user' ? 'bg-indigo-100 text-indigo-600' :
+                                                                res.type === 'customer' ? 'bg-emerald-100 text-emerald-600' :
+                                                                    res.type === 'property' ? 'bg-blue-100 text-blue-600' : 'bg-violet-100 text-violet-600'
                                                         }`}>{res.type.charAt(0)}</div>
                                                     <div>
                                                         <div className="text-xs font-black text-gray-900">{res.name}</div>
                                                         <div className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">
-                                                            {res.type === 'user' ? `${res.role} • ${res.email}` :
-                                                                res.type === 'customer' ? `Guest • ${res.phone || res.email}` :
-                                                                    res.type === 'property' ? `Property • ${res.Location}` : `Booking • ${res.Status}`}
+                                                            {res.type === 'navigation' ? `Go to Page • ${res.path}` :
+                                                                res.type === 'user' ? `${res.role} • ${res.email}` :
+                                                                    res.type === 'customer' ? `Guest • ${res.phone || res.email}` :
+                                                                        res.type === 'property' ? `Property • ${res.Location}` : `Booking • ${res.Status}`}
                                                         </div>
                                                     </div>
                                                 </div>

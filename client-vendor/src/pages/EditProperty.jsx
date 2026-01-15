@@ -193,6 +193,19 @@ export default function EditProperty() {
     const [existingVideos, setExistingVideos] = useState([]);
     const [selectedImages, setSelectedImages] = useState([]);
 
+    const [pricing, setPricing] = useState(() => {
+        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        types = ['villa', 'extra_person', 'meal_person', 'jain_meal_person'];
+        const initial = {};
+        days.forEach(day => {
+            initial[day] = {};
+            types.forEach(type => {
+                initial[day][type] = { current: 0, discounted: 0, final: 0, vendorDiscountPercentage: 0, ourMarginPercentage: 0 };
+            });
+        });
+        return initial;
+    });
+
     useEffect(() => {
         const fetchProperty = async () => {
             try {
@@ -311,9 +324,41 @@ export default function EditProperty() {
 
                     foodOptions,
                     videoUrl: p.video_url || '',
-                    images: [],
                     videos: []
                 });
+
+                // LOAD PRICING MATRIX
+                let loadedPricing = p.admin_pricing;
+
+                // Fallback if admin_pricing is missing or empty (Legacy Support)
+                if (!loadedPricing || Object.keys(loadedPricing).length === 0) {
+                    const w = parseFloat(getValue(p, ['price_mon_thu', 'Price'])) || 0;
+                    const we = parseFloat(getValue(p, ['price_fri_sun', 'weekend'])) || 0;
+                    const s = parseFloat(getValue(p, ['price_sat', 'saturday'])) || 0;
+
+                    loadedPricing = {};
+                    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                    const types = ['villa', 'extra_person', 'meal_person', 'jain_meal_person'];
+
+                    days.forEach(day => {
+                        const isSat = day === 'saturday';
+                        const isWeekend = day === 'friday' || day === 'sunday';
+                        const val = isSat ? s : (isWeekend ? we : w);
+
+                        loadedPricing[day] = {};
+                        types.forEach(type => {
+                            loadedPricing[day][type] = {
+                                current: type === 'villa' ? val : 0,
+                                discounted: type === 'villa' ? val : 0,
+                                final: type === 'villa' ? val : 0,
+                                vendorDiscountPercentage: 0,
+                                ourMarginPercentage: 0
+                            };
+                        });
+                    });
+                }
+                setPricing(loadedPricing);
+
                 setExistingImages(p.images || []);
                 setExistingVideos(p.videos || []);
                 setLoading(false);
@@ -392,10 +437,89 @@ export default function EditProperty() {
         if (['maxCapacity', 'noofRooms', 'occupancy', 'priceMonThu', 'priceFriSun', 'priceSaturday', 'extraGuestPriceMonThu', 'extraGuestPriceFriSun', 'extraGuestPriceSaturday'].includes(name)) {
             const filtered = value.replace(/[^0-9]/g, '');
             setFormData(prev => ({ ...prev, [name]: filtered }));
+
+            // SYNC PRICING MATRIX
+            if (['priceMonThu', 'priceFriSun', 'priceSaturday'].includes(name)) {
+                const val = parseFloat(filtered) || 0;
+                const days = name === 'priceMonThu' ? ['monday', 'tuesday', 'wednesday', 'thursday'] :
+                    name === 'priceFriSun' ? ['friday', 'sunday'] : ['saturday'];
+
+                setPricing(prev => {
+                    const next = { ...prev };
+                    days.forEach(d => {
+                        if (next[d]) {
+                            next[d] = {
+                                ...next[d],
+                                villa: {
+                                    ...next[d].villa,
+                                    current: val,
+                                    discounted: val,
+                                    final: val,
+                                    vendorDiscountPercentage: 0,
+                                    ourMarginPercentage: 0
+                                }
+                            };
+                        }
+                    });
+                    return next;
+                });
+            }
             return;
         }
 
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handlePriceChange = (day, type, field, value) => {
+        let num = parseFloat(value);
+        if (isNaN(num)) num = 0;
+
+        setPricing(prev => {
+            const current = parseFloat(prev[day][type].current || 0);
+            let newDiscounted = parseFloat(prev[day][type].discounted || 0);
+            let newFinal = parseFloat(prev[day][type].final || 0);
+            let newVendorDiscountPercentage = parseFloat(prev[day][type].vendorDiscountPercentage || 0);
+            let newOurMarginPercentage = parseFloat(prev[day][type].ourMarginPercentage || 0);
+
+            if (field === 'vendorDiscountPercentage') {
+                newVendorDiscountPercentage = num;
+                newDiscounted = current - (current * newVendorDiscountPercentage / 100);
+                newFinal = newDiscounted + (newDiscounted * newOurMarginPercentage / 100);
+            }
+            else if (field === 'current') {
+                const newCurrent = num;
+                newDiscounted = newCurrent - (newCurrent * newVendorDiscountPercentage / 100);
+                newFinal = newDiscounted + (newDiscounted * newOurMarginPercentage / 100);
+                return { ...prev, [day]: { ...prev[day], [type]: { ...prev[day][type], current: newCurrent, discounted: newDiscounted, final: newFinal } } };
+            }
+            else if (field === 'ourMarginPercentage') {
+                newOurMarginPercentage = num;
+                newFinal = newDiscounted + (newDiscounted * newOurMarginPercentage / 100);
+            }
+            else if (field === 'discounted') {
+                newDiscounted = num;
+                if (current !== 0) newVendorDiscountPercentage = ((current - newDiscounted) / current * 100);
+                newFinal = newDiscounted + (newDiscounted * newOurMarginPercentage / 100);
+            }
+            else if (field === 'final') {
+                newFinal = num;
+                if (newDiscounted !== 0) newOurMarginPercentage = ((newFinal - newDiscounted) / newDiscounted * 100);
+            }
+
+            return {
+                ...prev,
+                [day]: {
+                    ...prev[day],
+                    [type]: {
+                        ...prev[day][type],
+                        discounted: newDiscounted,
+                        final: newFinal,
+                        vendorDiscountPercentage: newVendorDiscountPercentage,
+                        ourMarginPercentage: newOurMarginPercentage
+                    }
+                }
+            };
+        });
     };
 
     // Normalize phone number: remove +91, leading 0, spaces, hyphens
@@ -490,6 +614,13 @@ export default function EditProperty() {
     const handleImageUpload = (e) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
+
+        if (files.length > 50) {
+            alert('You can only select up to 50 photos at a time. Please upload in smaller batches.');
+            e.target.value = null;
+            return;
+        }
+
         setFormData(prev => ({ ...prev, images: [...prev.images, ...files] }));
         e.target.value = null; // Reset input
     };
@@ -636,6 +767,9 @@ export default function EditProperty() {
             if (formData.videos && formData.videos.length > 0) {
                 formData.videos.forEach((file) => apiData.append('videos[]', file));
             }
+
+            // Append Admin Pricing
+            apiData.append('admin_pricing', JSON.stringify(pricing));
 
             // Append existing image URLs (for deletion tracking or just to confirm they exist)
             // The backend should handle which images to keep/delete based on what's sent vs what's stored.
@@ -1259,13 +1393,50 @@ export default function EditProperty() {
 
                     <div className="border border-orange-100 p-5 rounded-xl bg-orange-50/50">
                         <h4 className="flex items-center gap-2 mb-4 font-bold text-orange-800 text-sm">
-                            <FaMoneyBillWave /> Base Pricing
+                            <FaMoneyBillWave /> Base Pricing (Auto-fills Matrix)
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <InputField label="Mon-Thu (Per Night)" name="priceMonThu" value={formData.priceMonThu} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
-                            <InputField label="Fri & Sun (Per Night)" name="priceFriSun" value={formData.priceFriSun} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
-                            <InputField label="Saturday (Per Night)" name="priceSaturday" value={formData.priceSaturday} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
+                            <InputField label="Mon-Thu" name="priceMonThu" value={formData.priceMonThu} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
+                            <InputField label="Fri & Sun" name="priceFriSun" value={formData.priceFriSun} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
+                            <InputField label="Saturday" name="priceSaturday" value={formData.priceSaturday} onChange={handleInputChange} placeholder="₹ Rate" className="bg-white" />
                         </div>
+                    </div>
+
+                    {/* NEW: Pricing Matrix */}
+                    <div className="border border-gray-200 p-4 rounded-xl bg-white overflow-x-auto">
+                        <h4 className="font-bold text-gray-800 mb-4 text-sm">Detailed Pricing (7-Day Breakdown)</h4>
+                        <table className="w-full min-w-[700px] text-xs text-left">
+                            <thead className="text-gray-500 uppercase bg-gray-50 border-b">
+                                <tr>
+                                    <th className="px-2 py-2">Day</th>
+                                    <th className="px-2 py-2 bg-blue-50 text-blue-700">Vendor Ask (₹)</th>
+                                    <th className="px-2 py-2 text-orange-600">Vendor Disc (%)</th>
+                                    <th className="px-2 py-2 font-bold bg-green-50 text-green-700">Our Rate (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {Object.keys(pricing).map(day => (
+                                    <tr key={day} className="hover:bg-gray-50">
+                                        <td className="px-2 py-2 font-bold capitalize">{day}</td>
+                                        <td className="px-2 py-2 bg-blue-50/30">
+                                            <input type="number" value={pricing[day]?.villa?.current || ''} onChange={e => handlePriceChange(day, 'villa', 'current', e.target.value)}
+                                                className="w-20 p-1 border rounded bg-white focus:border-blue-500 outline-none" placeholder="0" />
+                                        </td>
+                                        <td className="px-2 py-2">
+                                            <input type="number" value={pricing[day]?.villa?.vendorDiscountPercentage} onChange={e => handlePriceChange(day, 'villa', 'vendorDiscountPercentage', e.target.value)}
+                                                className="w-12 p-1 border rounded bg-white focus:border-orange-500 outline-none" placeholder="0" />
+                                        </td>
+                                        <td className="px-2 py-2 bg-green-50/30 font-bold text-green-700">
+                                            <input type="number" value={Math.round(pricing[day]?.villa?.discounted) || ''} onChange={e => handlePriceChange(day, 'villa', 'discounted', e.target.value)}
+                                                className="w-20 p-1 border rounded bg-green-50 focus:border-green-500 outline-none font-bold" />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <p className="text-[10px] text-gray-400 mt-2 px-1">
+                            * 'Our Rate' is what we sell at. The difference between Vendor Ask and Our Rate is your discount to us.
+                        </p>
                     </div>
 
                     {/* Extra Person Policy */}

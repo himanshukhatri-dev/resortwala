@@ -51,13 +51,17 @@ class OnboardingController extends Controller
             $userType = 'customer';
         } else {
             // Admin or Vendor (Users table)
-            if (User::where('phone', $mobile)->exists()) {
-                return response()->json(['message' => 'User with this mobile already exists.'], 422);
+            if (User::where('phone', $mobile)->where('role', $role)->exists()) {
+                return response()->json(['message' => 'User with this mobile already exists in ' . $role . ' role.'], 422);
+            }
+
+            if ($email && User::where('email', $email)->where('role', $role)->exists()) {
+                return response()->json(['message' => 'User with this email already exists in ' . $role . ' role.'], 422);
             }
 
             $user = User::create([
                 'name' => $name,
-                'email' => $email ?? $mobile . '@resortwala.tmp',
+                'email' => $email ?? $mobile . '.' . $role . '@resortwala.tmp',
                 'phone' => $mobile,
                 'password' => $tempPassword,
                 'role' => $role,

@@ -414,16 +414,27 @@ export default function PropertyDetails() {
                 rate = parseFloat(holiday.base_price);
                 marketDayRate = rate; // Assume no discount on holidays unless specified
             } else {
-                // Standard Logic using admin_pricing if available
-                if (w === 6) { // Saturday
-                    rate = PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
-                    marketDayRate = parseFloat(adminPricing.sat?.villa?.current || adminPricing.fri_sun?.villa?.current || property.Price || rate);
-                } else if (w === 0 || w === 5) { // Fri/Sun
-                    rate = PRICE_FRISUN || PRICE_WEEKDAY;
-                    marketDayRate = parseFloat(adminPricing.fri_sun?.villa?.current || property.Price || rate);
-                } else { // Mon-Thu
-                    rate = PRICE_WEEKDAY;
-                    marketDayRate = parseFloat(adminPricing.mon_thu?.villa?.current || property.Price || rate);
+                // Prioritize 7-Day Pricing (New Format)
+                const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                const dayKey = dayNames[w];
+                const dayPricing = adminPricing?.[dayKey];
+
+                if (dayPricing?.villa?.final) {
+                    // Use new 7-day explicit pricing
+                    rate = parseFloat(dayPricing.villa.final);
+                    marketDayRate = parseFloat(dayPricing.villa.current || rate);
+                } else {
+                    // Fallback to Legacy Buckets
+                    if (w === 6) { // Saturday
+                        rate = PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
+                        marketDayRate = parseFloat(adminPricing.sat?.villa?.current || adminPricing.fri_sun?.villa?.current || property.Price || rate);
+                    } else if (w === 0 || w === 5) { // Fri/Sun
+                        rate = PRICE_FRISUN || PRICE_WEEKDAY;
+                        marketDayRate = parseFloat(adminPricing.fri_sun?.villa?.current || property.Price || rate);
+                    } else { // Mon-Thu
+                        rate = PRICE_WEEKDAY;
+                        marketDayRate = parseFloat(adminPricing.mon_thu?.villa?.current || property.Price || rate);
+                    }
                 }
             }
 

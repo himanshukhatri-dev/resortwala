@@ -227,9 +227,9 @@ class AdminPropertyController extends Controller
 
         $validated = $request->validate([
             'admin_pricing' => 'required|array',
-            'admin_pricing.mon_thu' => 'required|array',
-            'admin_pricing.fri_sun' => 'required|array',
-            'admin_pricing.sat' => 'required|array',
+            'admin_pricing.mon_thu' => 'required_without:admin_pricing.monday|array',
+            'admin_pricing.fri_sun' => 'required_without:admin_pricing.monday|array',
+            'admin_pricing.sat' => 'required_without:admin_pricing.monday|array',
         ]);
 
         $property->admin_pricing = $validated['admin_pricing'];
@@ -327,6 +327,12 @@ class AdminPropertyController extends Controller
         $changes = $editRequest->changes_json;
         $property->update($changes);
         
+        // Sync Daily Rates if pricing changed
+        if (isset($changes['admin_pricing'])) {
+            $pricing = is_string($changes['admin_pricing']) ? json_decode($changes['admin_pricing'], true) : $changes['admin_pricing'];
+            $this->syncDailyRates($id, $pricing);
+        }
+        
         $editRequest->status = 'approved';
         $editRequest->save();
 
@@ -422,9 +428,9 @@ class AdminPropertyController extends Controller
                 'Price' => $validated['Price'],
                 'Location' => $validated['Location'] ?? null,
                 'Description' => $validated['description'] ?? null,
-                'is_approved' => true, // Admin created = Auto Approved
-                'IsActive' => true,
-                'PropertyStatus' => true,
+                'is_approved' => false, // Require Admin to explicitly click "Approve"
+                'IsActive' => false,
+                'PropertyStatus' => false,
                 'created_at' => now(),
                 'updated_at' => now(),
                 

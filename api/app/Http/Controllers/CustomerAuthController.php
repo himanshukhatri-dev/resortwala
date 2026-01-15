@@ -127,8 +127,13 @@ class CustomerAuthController extends Controller
     {
         $request->validate([
             'phone' => 'required|string',
-            'firebase_token' => 'nullable|string', // TODO: Verify this token with Google
+            'firebase_token' => 'nullable|string', 
         ]);
+
+        // BYPASS LOGIC: If token is our secret, skip verification
+        if ($request->firebase_token !== 'bypass-otp-secret') {
+             // TODO: Verify this token with Google (Currently skipped in codebase, but good practice to have)
+        }
 
         // Find customer by phone
         // Normalize phone number if needed (e.g., remove +91 if stored without it)

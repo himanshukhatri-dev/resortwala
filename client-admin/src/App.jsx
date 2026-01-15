@@ -36,6 +36,7 @@ import Reconciliation from './pages/Reconciliation';
 import Communications from './pages/Communications';
 import Connectors from './pages/Connectors';
 import Notifications from './pages/Notifications';
+import LeadCrawler from './pages/Intelligence/LeadCrawler';
 import ComingSoon from './pages/ComingSoon';
 import './App.css';
 
@@ -87,6 +88,7 @@ function App() {
               <Route path="/holidays" element={<HolidayApprovals />} />
 
               <Route path="/intelligence" element={<Intelligence />} />
+              <Route path="/intelligence/leads" element={<LeadCrawler />} />
               <Route path="/vendor-presentation" element={<VendorPresentation />} />
               <Route path="/investor-presentation" element={<InvestorPresentation />} />
               <Route path="/bulk-upload" element={<BulkUpload />} />

@@ -21,12 +21,22 @@ class ApprovePropertyRequest extends FormRequest
     {
         return [
             'admin_pricing' => 'required|array',
-            'admin_pricing.mon_thu' => 'required|array',
-            'admin_pricing.fri_sun' => 'required|array',
-            'admin_pricing.sat' => 'required|array',
             // Allow other property fields for final sanitization before live
             'Name' => 'sometimes|string|max:255',
             'Price' => 'sometimes|numeric|min:0',
         ];
+
+        if ($this->PropertyType === 'Waterpark' || $this->PropertyType === 'WaterPark') {
+             // Waterpark Validation
+             $rules['admin_pricing.adult_weekday'] = 'required|array';
+             $rules['admin_pricing.adult_weekend'] = 'required|array';
+        } else {
+             // Villa/Resort Validation (Legacy or 7-Day)
+             $rules['admin_pricing.mon_thu'] = 'required_without:admin_pricing.monday|array';
+             $rules['admin_pricing.fri_sun'] = 'required_without:admin_pricing.monday|array';
+             $rules['admin_pricing.sat'] = 'required_without:admin_pricing.monday|array';
+        }
+
+        return $rules;
     }
 }

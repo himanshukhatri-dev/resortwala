@@ -40,6 +40,15 @@ return [
         'http://beta.resortwala.com',
         'http://resortwala.com',
         'http://www.resortwala.com',
+        // HTTPS Variants
+        'https://staging.resortwala.com',
+        'https://stagingvendor.resortwala.com',
+        'https://stagingadmin.resortwala.com',
+        'https://stagingapi.resortwala.com',
+        'https://beta.resortwala.com',
+        'https://resortwala.com',
+        'https://www.resortwala.com',
+        'https://admin.resortwala.com',
     ],
 
     'allowed_origins_patterns' => [],

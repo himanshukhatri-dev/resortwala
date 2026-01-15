@@ -53,7 +53,7 @@ Route::post('/coupons/check', [\App\Http\Controllers\CouponController::class, 'c
 // Event Tracking (Analytics)
 Route::post('/analytics/track', [\App\Http\Controllers\Admin\AnalyticsController::class, 'track']);
 Route::post('/events/track', [\App\Http\Controllers\EventController::class, 'track']);
-Route::post('/events/batch', [\App\Http\Controllers\EventController::class, 'batchTrack']);
+// Route::post('/events/batch', [\App\Http\Controllers\EventController::class, 'batchTrack']); // Duplicate
 
 
 // Customer Authentication Routes
@@ -92,10 +92,25 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customer/bookings', [\App\Http\Controllers\BookingController::class, 'index']);
     Route::get('/customer/bookings/{id}', [\App\Http\Controllers\BookingController::class, 'show']);
     Route::get('/customer/invoices/{id}/download', [\App\Http\Controllers\InvoiceController::class, 'download']);
+    // Lead Intelligence
+    Route::get('/intelligence/leads/export', [App\Http\Controllers\Admin\LeadCrawlerController::class, 'export']);
+    Route::get('/intelligence/leads', [App\Http\Controllers\Admin\LeadCrawlerController::class, 'index']);
+    Route::get('/intelligence/jobs', [App\Http\Controllers\Admin\LeadCrawlerController::class, 'jobs']);
+    Route::post('/intelligence/trigger', [App\Http\Controllers\Admin\LeadCrawlerController::class, 'trigger']);
+    Route::put('/intelligence/leads/{id}', [App\Http\Controllers\Admin\LeadCrawlerController::class, 'update']);
+    Route::post('/intelligence/leads/{id}/convert', [App\Http\Controllers\Admin\LeadCrawlerController::class, 'convert']);
+
+    // Notifications
+
     // Notifications
     Route::post('/notifications/token', [App\Http\Controllers\NotificationController::class, 'registerToken']);
     Route::post('/notifications/send', [App\Http\Controllers\NotificationController::class, 'send']);
     Route::get('/notifications/logs', [App\Http\Controllers\NotificationController::class, 'logs']);
+    
+    // In-App Notifications
+    Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'myNotifications']);
+    Route::post('/notifications/{id}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [App\Http\Controllers\NotificationController::class, 'markAllRead']);
 });
 
 
@@ -126,6 +141,12 @@ Route::get('/health', [StatusController::class, 'check']); // Alias for status
 // Public Holiday Route (for pricing calculation)
 Route::get('/holidays', [\App\Http\Controllers\HolidayController::class, 'index']);
 Route::get('/holidays/fix-approve', [\App\Http\Controllers\HolidayController::class, 'approveAll']);
+
+// DEBUG ROUTE - Frontend Logging
+Route::post('/debug/log', function(\Illuminate\Http\Request $request) {
+    \Illuminate\Support\Facades\Log::error("FRONTEND LOG: " . json_encode($request->all()));
+    return response()->json(['status' => 'logged']);
+}); 
 
 // DEBUG ROUTE - REMOVE AFTER FIXING 500 ERROR
 Route::get('/debug-db', function() {
