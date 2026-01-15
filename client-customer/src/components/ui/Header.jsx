@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 
 import SearchBar from '../ui/SearchBar';
+import BellIcon from '../common/BellIcon';
 
 export default function Header({ onOpenSearch, onSearch, properties, categories, activeCategory, onCategoryChange }) {
     const location = useLocation();
@@ -75,6 +76,9 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
                     >
                         <span className="font-bold text-xs text-gray-700">List your property</span>
                     </a>
+
+                    {/* Notification Bell */}
+                    {user && <div className="mx-1"><BellIcon /></div>}
 
 
                     <div

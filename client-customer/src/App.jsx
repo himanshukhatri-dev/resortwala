@@ -8,6 +8,9 @@ import PageTracker from './components/utils/PageTracker';
 import TokenHandler from './components/common/TokenHandler';
 import { Toaster } from 'react-hot-toast';
 
+import { NotificationProvider } from './context/NotificationContext';
+import Notifications from './pages/Notifications';
+
 import { AuthProvider } from './context/AuthContext';
 import { SearchProvider } from './context/SearchContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -37,28 +40,7 @@ import CompareModal from './components/features/CompareModal';
 import ComingSoonGuard from './components/common/ComingSoonGuard';
 
 function App() {
-  // Version Check for Auto-Refresh
-  React.useEffect(() => {
-    const APP_VERSION = '1.0.1';
-    const checkVersion = async () => {
-      try {
-        const res = await fetch('/version.json?t=' + Date.now());
-        if (res.ok) {
-          const data = await res.json();
-          if (data.version && data.version !== APP_VERSION) {
-            console.log("New version found. Reloading...", data.version);
-            window.location.reload(true);
-          }
-        }
-      } catch (e) {
-        // console.warn("Version check failed", e);
-      }
-    };
-
-    checkVersion();
-    const interval = setInterval(checkVersion, 60 * 1000); // Check every 1 min
-    return () => clearInterval(interval);
-  }, []);
+  // ... (existing useEffect)
 
   return (
     <ErrorBoundary>
@@ -66,47 +48,50 @@ function App() {
         <SearchProvider>
           <WishlistProvider>
             <CompareProvider>
-              <BrowserRouter>
-                <ComingSoonGuard>
-                  <ScrollToTop />
-                  <PageTracker />
-                  <TokenHandler />
-                  <NotificationInitializer />
-                  <Toaster position="top-center" />
-                  <Routes>
-                    <Route path="/" element={<MainLayout />}>
-                      <Route index element={<Home />} />
-                      <Route path="/property/:id" element={<PropertyDetails />} />
-                      <Route path="/book/:id" element={<BookingPage />} />
-                      <Route path="/checkout/:id" element={<BookingPage />} />
+              <NotificationProvider> {/* Added Provider */}
+                <BrowserRouter>
+                  <ComingSoonGuard>
+                    <ScrollToTop />
+                    <PageTracker />
+                    <TokenHandler />
+                    <NotificationInitializer />
+                    <Toaster position="top-center" />
+                    <Routes>
+                      <Route path="/" element={<MainLayout />}>
+                        <Route index element={<Home />} />
+                        <Route path="/notifications" element={<Notifications />} /> {/* Added Route */}
+                        <Route path="/property/:id" element={<PropertyDetails />} />
+                        {/* ... existing routes ... */}
+                        <Route path="/book/:id" element={<BookingPage />} />
+                        <Route path="/checkout/:id" element={<BookingPage />} />
 
-                      <Route path="/bookings" element={<UserBookings />} />
-                      <Route path="/bookings/:id" element={<BookingDetails />} />
-                      <Route path="/booking/success" element={<BookingSuccess />} />
-                      <Route path="/booking/failed" element={<BookingFailed />} />
-                      <Route path="/booking/pending" element={<BookingPending />} />
+                        <Route path="/bookings" element={<UserBookings />} />
+                        <Route path="/bookings/:id" element={<BookingDetails />} />
+                        <Route path="/booking/success" element={<BookingSuccess />} />
+                        <Route path="/booking/failed" element={<BookingFailed />} />
+                        <Route path="/booking/pending" element={<BookingPending />} />
 
-                      <Route path="/wishlist" element={<Wishlist />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/contact" element={<Contact />} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/policy/:type" element={<Policy />} />
-                    </Route>
+                        <Route path="/wishlist" element={<Wishlist />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/policy/:type" element={<Policy />} />
+                      </Route>
 
-                    {/* Public Standalone Calendar View */}
-                    <Route path="/stay/:uuid" element={<PublicPropertyCalendar />} />
+                      {/* Public Standalone Calendar View */}
+                      <Route path="/stay/:uuid" element={<PublicPropertyCalendar />} />
 
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/signup" element={<Signup />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/set-password" element={<SetPassword />} />
-                  </Routes>
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/signup" element={<Signup />} />
+                      <Route path="/forgot-password" element={<ForgotPassword />} />
+                      <Route path="/set-password" element={<SetPassword />} />
+                    </Routes>
 
-                  {/* Global Floating Bar & Modal */}
-                  <CompareFloatingBar />
-                  <CompareModal />
-                </ComingSoonGuard>
-              </BrowserRouter>
+                    {/* Global Floating Bar & Modal */}
+                    <CompareFloatingBar />
+                    <CompareModal />
+                  </ComingSoonGuard>
+                </BrowserRouter>
             </CompareProvider>
           </WishlistProvider>
         </SearchProvider>
