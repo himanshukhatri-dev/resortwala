@@ -552,6 +552,21 @@ Route::middleware('auth:sanctum')->group(function () {
     // Chatbot Public Routes
 
 
+    // AI Video Generator
+    Route::prefix('admin/video-generator')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'index']);
+        Route::post('/render', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'store']);
+        Route::get('/jobs/{id}', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'show']);
+    });
+
+    // AI Voice Studio
+    Route::prefix('admin/voice-studio')->group(function () {
+        Route::get('/config', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'config']);
+        Route::post('/generate-audio', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'generateAudio']);
+        Route::post('/projects/{id}/render', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'renderVideo']);
+        Route::get('/setup-db', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'setupDB']); // Auto-Fix
+    });
+
     // Admin Chatbot Management
     Route::prefix('admin/chatbot')->group(function () {
         Route::get('/faqs', [\App\Http\Controllers\AdminChatbotController::class, 'index']);

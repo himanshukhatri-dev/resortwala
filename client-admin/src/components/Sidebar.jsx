@@ -10,7 +10,7 @@ import {
     FiDatabase, FiDollarSign, FiCalendar, FiSettings,
     FiMessageSquare, FiTruck, FiActivity, FiLayers,
     FiPlusCircle, FiUploadCloud, FiBarChart2, FiCpu,
-    FiHash, FiArchive, FiBell, FiSearch
+    FiHash, FiArchive, FiBell, FiSearch, FiVideo, FiMic
 } from 'react-icons/fi';
 
 export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile, onToggle }) {
@@ -70,6 +70,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
                 { path: '/intelligence/leads', icon: <FiSearch />, label: 'Lead Discovery' },
                 { path: '/connectors', icon: <FiUsers />, label: 'Connectors' },
                 { path: '/vendor-presentation', icon: <FiTruck />, label: 'Vendor Onboarding' },
+                { path: '/voice-studio', icon: <FiMic />, label: 'Voice Studio' },
             ]
         },
         {

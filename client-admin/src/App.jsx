@@ -39,6 +39,8 @@ import Notifications from './pages/Notifications';
 import LeadCrawler from './pages/Intelligence/LeadCrawler';
 import ComingSoon from './pages/ComingSoon';
 import ChatbotManager from './pages/ChatbotManager';
+import AIVideoGenerator from './pages/AIVideoGenerator';
+import VoiceStudio from './pages/VoiceStudio';
 import './App.css';
 
 
@@ -91,6 +93,10 @@ function App() {
               <Route path="/intelligence" element={<Intelligence />} />
               <Route path="/intelligence/leads" element={<LeadCrawler />} />
               <Route path="/vendor-presentation" element={<VendorPresentation />} />
+              <Route path="/ai-video-generator" element={<AIVideoGenerator />} />
+              <Route path="/voice-studio" element={<VoiceStudio />} />
+
+              {/* Settings & System */}
               <Route path="/investor-presentation" element={<InvestorPresentation />} />
               <Route path="/bulk-upload" element={<BulkUpload />} />
               <Route path="/bulk-upload/:id" element={<BulkUploadDetails />} />
