@@ -473,7 +473,7 @@ export default function PropertyDetails() {
                 const isWeekend = (w === 0 || w === 6 || w === 5);
 
                 const typeSuffix = isWeekend ? 'weekend' : 'weekday';
-                const adultMarket = parseFloat(adminPricing[`adult_${typeSuffix}`]?.current || PRICE_WEEKDAY);
+                const adultMarket = parseFloat(adminPricing[`adult_${typeSuffix}`]?.current || PRICE_WEEKDAY || 0);
                 const childMarket = parseFloat(adminPricing[`child_${typeSuffix}`]?.current || (ob.childCriteria?.monFriPrice || 500));
 
                 totalMarketTickets += (adultMarket * guests.adults) + (childMarket * guests.children);
@@ -481,7 +481,7 @@ export default function PropertyDetails() {
 
             const taxableAmount = totalAdultTicket + totalChildTicket;
             const gstAmount = (taxableAmount * GST_PERCENTAGE) / 100;
-            const totalSavings = Math.max(0, Math.round(totalMarketTickets - taxableAmount));
+            const totalSavings = Math.max(0, Math.round((totalMarketTickets || 0) - taxableAmount));
 
             return {
                 nights,
@@ -617,7 +617,7 @@ export default function PropertyDetails() {
             )}
             {/* 1. HERO GALLERY */}
             <div className="container mx-auto px-4 lg:px-8 py-6 max-w-7xl">
-                <Header property={property} isSaved={isSaved} setIsSaved={setIsSaved} setIsShareModalOpen={setIsShareModalOpen} user={user} navigate={navigate} location={window.location} />
+                <Header property={property} isSaved={isSaved} setIsSaved={setIsSaved} setIsShareModalOpen={setIsShareModalOpen} user={user} navigate={navigate} location={window.location} toggleWishlist={toggleWishlist} id={id} />
 
                 {galleryImages.length > 0 ? (
                     /* DESKTOP GRID GALLERY */
@@ -813,34 +813,7 @@ export default function PropertyDetails() {
                             )}
                         </section>
 
-                        {/* REVIEWS SECTION */}
-                        <section ref={sections.reviews} className="scroll-mt-32 pb-8 border-b border-gray-100">
-                            <div className="flex items-center justify-between mb-8">
-                                <h2 className="text-2xl font-bold text-gray-900 font-serif flex items-center gap-3">
-                                    <div className="bg-yellow-100 p-2.5 rounded-xl text-yellow-600 shadow-sm"><FaStar /></div>
-                                    Guest Reviews
-                                </h2>
-                                <div className="text-right">
-                                    <div className="text-2xl font-black text-gray-900">{property.Rating || 4.8} / 5</div>
-                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Based on {(id % 40) + 12} reviews</div>
-                                </div>
-                            </div>
 
-                            <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                                <div className="text-gray-300 mb-4"><FaStar size={40} /></div>
-                                <h4 className="text-lg font-bold text-gray-900 mb-1">No reviews yet</h4>
-                                <p className="text-gray-500 text-sm">Be the first to share your experience after your stay!</p>
-                            </div>
-
-                            <div className="mt-8 p-6 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl text-white shadow-xl shadow-blue-100 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-150 transition-transform duration-700"><FaQuoteRight size={80} /></div>
-                                <div className="relative z-10">
-                                    <h4 className="text-lg font-bold mb-2">Have you stayed here?</h4>
-                                    <p className="text-blue-100 text-sm mb-4 max-w-md leading-relaxed">Share your experience with other travelers and help them choose their perfect stay.</p>
-                                    <button className="bg-white text-blue-600 px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-50 transition shadow-lg active:scale-95">Write a Review</button>
-                                </div>
-                            </div>
-                        </section>
 
 
 
@@ -1113,7 +1086,7 @@ export default function PropertyDetails() {
     );
 }
 
-const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navigate, location }) => (
+const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navigate, location, toggleWishlist, id }) => (
     <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 font-serif mb-3 leading-tight">{property.Name || "Luxury Stay"}</h1>
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -1279,12 +1252,10 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                             <span>Adult Tickets</span>
                             <span>₹{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
                         </div>
-                        {guests.children > 0 && (
-                            <div className="flex justify-between text-sm text-gray-600">
-                                <span>Child Tickets</span>
-                                <span>₹{priceBreakdown.totalChildTicket?.toLocaleString()}</span>
-                            </div>
-                        )}
+                        <div className="flex justify-between text-sm text-gray-600">
+                            <span>Child Tickets</span>
+                            <span>₹{(priceBreakdown.totalChildTicket || 0).toLocaleString()}</span>
+                        </div>
                         <div className="flex justify-between text-sm text-gray-600">
                             <span>GST (18%)</span>
                             <span>₹{priceBreakdown.gstAmount?.toLocaleString()}</span>

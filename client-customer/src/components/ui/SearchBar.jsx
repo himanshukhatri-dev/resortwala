@@ -365,7 +365,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                                             selected={dateRange}
                                             onDayClick={(day) => handleDateSelect(day)}
                                             disabled={{ before: new Date() }}
-                                            numberOfMonths={window.innerWidth < 768 ? 12 : 2}
+                                            numberOfMonths={window.innerWidth < 768 ? 1 : 2}
                                             pagedNavigation={window.innerWidth >= 768}
                                         />
                                     </div>

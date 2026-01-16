@@ -51,7 +51,7 @@ class UpdatePropertyRequest extends FormRequest
             'ShortDescription' => 'nullable|string|max:1000',
             'LongDescription' => 'nullable|string',
             'video_url' => 'nullable|url',
-            'onboarding_data' => 'nullable|string', // Validated as JSON in withValidator
+            'onboarding_data' => 'nullable', // Validated in withValidator, can be string or array
             'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
             'videos.*' => 'file|mimes:mp4,mov,avi,m4v|max:51200',
             'videos.*' => 'file|mimes:mp4,mov,avi,m4v|max:51200',

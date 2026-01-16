@@ -181,7 +181,7 @@ export default function Properties({ initialFilter = 'all' }) {
                                                         <div className="w-16 h-16 rounded-lg bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-100 relative">
                                                             {property.primary_image ? (
                                                                 <img
-                                                                    src={property.primary_image.image_path}
+                                                                    src={property.primary_image.image_url}
                                                                     alt={property.Name}
                                                                     className="w-full h-full object-cover"
                                                                 />
