@@ -111,10 +111,32 @@ export default function AIVideoGenerator() {
             }, { headers: { Authorization: `Bearer ${token}` } });
 
             setJobId(res.data.job_id);
+            fetchJobs(); // Refresh list immediately
             pollJob(res.data.job_id);
         } catch (err) {
             setJobStatus('failed');
             showError("Failed to start generation");
+        }
+    };
+
+    const [jobs, setJobs] = useState([]);
+
+    // Fetch Properties and Jobs on Mount
+    useEffect(() => {
+        fetchProperties();
+        fetchJobs();
+        const interval = setInterval(fetchJobs, 10000); // Polling list every 10s
+        return () => clearInterval(interval);
+    }, []);
+
+    const fetchJobs = async () => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/admin/video-generator`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setJobs(res.data);
+        } catch (err) {
+            console.error(err);
         }
     };
 
@@ -140,6 +162,18 @@ export default function AIVideoGenerator() {
                 clearInterval(interval); // Stop on network error to avoid infinite loop
             }
         }, 2000); // Check every 2s
+    };
+
+    const loadJob = (j) => {
+        setJobId(j.id);
+        setJobStatus(j.status);
+        if (j.status === 'completed' && j.output_path) {
+            setResultUrl(`${API_BASE_URL.replace('/api', '')}/storage/${j.output_path}`);
+        }
+        setStep(4);
+        if (j.status === 'pending' || j.status === 'processing') {
+            pollJob(j.id);
+        }
     };
 
     return (
