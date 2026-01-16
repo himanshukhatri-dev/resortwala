@@ -19,7 +19,8 @@ export default {
                 'brand-darker': '#020617', // Slate-950 (Midnight)
             },
             fontFamily: {
-                sans: ['Inter', 'sans-serif'],
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+                display: ['Poppins', 'sans-serif'],
                 serif: ['Playfair Display', 'serif'],
             },
             animation: {

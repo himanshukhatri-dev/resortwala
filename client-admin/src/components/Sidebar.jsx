@@ -112,6 +112,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             bgLight: 'bg-slate-50',
             items: [
                 { path: '/intelligence', icon: <FiCpu />, label: 'Control Plane' },
+                { path: '/chatbot', icon: <FiMessageSquare />, label: 'Chatbot AI' },
                 { path: '/communications', icon: <FiMessageSquare />, label: 'Communications' },
                 { path: '/notifications', icon: <FiBell />, label: 'Push Notifications' },
                 { path: '/analytics', icon: <FiDatabase />, label: 'System Logs' },

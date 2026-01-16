@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 import { FaCheckCircle, FaArrowRight, FaArrowLeft, FaHome } from 'react-icons/fa';
 import { auth } from '../firebase';
 import AuthLeftPanel from '../components/auth/AuthLeftPanel';
@@ -12,7 +13,7 @@ import SEO from '../components/common/SEO';
 export default function Signup() {
     const navigate = useNavigate();
     const { loginWithToken } = useAuth();
-    const API_URL = import.meta.env.VITE_API_BASE_URL;
+    // const API_URL = import.meta.env.VITE_API_BASE_URL; // Replaced
 
     // Multi-step state
     const [step, setStep] = useState(1); // 1: Form, 2: Mobile OTP, 3: Email OTP, 4: Success
@@ -38,7 +39,7 @@ export default function Signup() {
 
         setLoading(true);
         try {
-            const res = await axios.post(`${API_URL}/api/customer/register`, {
+            const res = await axios.post(`${API_BASE_URL}/customer/register`, {
                 ...formData,
                 phone: normalizePhone(formData.phone)
             });
@@ -84,7 +85,7 @@ export default function Signup() {
             // Mobile Verif
             if (step === 2) {
                 const result = await confirmationResult.confirm(otp);
-                await axios.post(`${API_URL}/api/customer/login-otp`, {
+                await axios.post(`${API_BASE_URL}/customer/login-otp`, {
                     phone: normalizePhone(formData.phone),
                     firebase_token: await result.user.getIdToken()
                 });
@@ -100,7 +101,7 @@ export default function Signup() {
             }
             // Email Verif
             else if (step === 3) {
-                await axios.post(`${API_URL}/api/customer/verify-email`, { otp }, { headers: { Authorization: `Bearer ${token}` } });
+                await axios.post(`${API_BASE_URL}/customer/verify-email`, { otp }, { headers: { Authorization: `Bearer ${token}` } });
                 setStep(4);
             }
         } catch (err) {
@@ -111,7 +112,7 @@ export default function Signup() {
     };
 
     const sendEmailOtp = async () => {
-        try { await axios.post(`${API_URL}/api/customer/send-verification-email`, {}, { headers: { Authorization: `Bearer ${token}` } }); } catch (e) { }
+        try { await axios.post(`${API_BASE_URL}/customer/send-verification-email`, {}, { headers: { Authorization: `Bearer ${token}` } }); } catch (e) { }
     };
 
     return (

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 import AuthCard from '../components/auth/AuthCard';
 import OtpInput from '../components/auth/OtpInput';
 
@@ -17,14 +18,14 @@ export default function ForgotPassword() {
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
 
-    const API_URL = import.meta.env.VITE_API_BASE_URL;
+    // const API_URL = import.meta.env.VITE_API_BASE_URL;
 
     const handleSendOtp = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         try {
-            await axios.post(`${API_URL}/api/otp/send`, { email, type: 'reset' });
+            await axios.post(`${API_BASE_URL}/otp/send`, { email, type: 'reset' });
             setStep('otp');
             setMessage('A verification code has been sent to your email.');
         } catch (err) {
@@ -38,7 +39,7 @@ export default function ForgotPassword() {
         setError('');
         setLoading(true);
         try {
-            await axios.post(`${API_URL}/api/otp/verify`, {
+            await axios.post(`${API_BASE_URL}/otp/verify`, {
                 email,
                 code: code || otp,
                 type: 'reset'
@@ -62,7 +63,7 @@ export default function ForgotPassword() {
         setError('');
         setLoading(true);
         try {
-            await axios.post(`${API_URL}/api/reset-password`, {
+            await axios.post(`${API_BASE_URL}/reset-password`, {
                 email,
                 otp, // The password_reset_tokens logic in backend expects 'otp' as 'token' usually
                 password,

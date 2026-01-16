@@ -1,16 +1,15 @@
 const getApiBaseUrl = () => {
-    // 1. Production / Staging Environment Check
-    if (import.meta.env.PROD) {
-        return '/api';
-    }
-
-    // 2. Local / Development Environment
-    // If .env has a value (e.g. for proxy), use it
+    // 1. Env Variable Priority (Allows override in .env or .env.production)
     if (import.meta.env.VITE_API_BASE_URL) {
         return import.meta.env.VITE_API_BASE_URL;
     }
 
-    // 3. Fallback for local development without env
+    // 2. Production / Staging Fallback (Relative path assumes proxy)
+    if (import.meta.env.PROD) {
+        return '/api';
+    }
+
+    // 3. Fallback for local development
     return 'http://localhost:8000/api';
 };
 

@@ -42,7 +42,9 @@ class PropertyMaster extends Model
         'Name', 'ShortName', 'PropertyType', 'Price', 'DealPrice', 'Tax',
         'Address', 'LongDescription', 'ShortDescription', 'Website', 'Email', 'MobileNo',
         'IsActive', 'GSTNo', 'ContactPerson', 'CityName', 'GoogleMapLink',
+        'IsActive', 'GSTNo', 'ContactPerson', 'CityName', 'GoogleMapLink',
         'CityLatitude', 'CityLongitude', 'Location', 'PaymentFacitlity',
+        'Latitude', 'Longitude', // Added for geospatial search
         'AvailabilityType', 'NoofBathRooms', 'NoofQueenBeds', 'Occupancy',
         'BookingSpecailMessage', 'PropertyOffersDetails', 'PropertyRules',
         'IsDeleted', 'PerCost', 'ResortWalaRate', 'PropertyStatus',

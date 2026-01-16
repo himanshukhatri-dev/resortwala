@@ -5,6 +5,7 @@ import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { format } from 'date-fns';
 import { useSearch } from '../../context/SearchContext';
+import { API_BASE_URL } from '../../config';
 
 export default function SearchBar({ compact = false, isSticky = false, onSearch, properties = [], categories = [] }) {
     // Global State
@@ -20,40 +21,41 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
     const searchRef = useRef(null);
     const inputRef = useRef(null);
 
-    // Auto-search suggestions
+    // Auto-search suggestions (Debounced API Call)
     const handleLocationChange = (e) => {
         const val = e.target.value;
         setLocation(val);
+    };
 
-        if (!properties || !Array.isArray(properties)) {
+    // Debounced Fetch for Suggestions
+    useEffect(() => {
+        if (!location || location.length < 2) {
             setSuggestions([]);
             return;
         }
 
-        if (val.length >= 1) {
-            const lowerVal = val.toLowerCase();
-            const matches = properties.filter(p => {
-                if (!p) return false;
-                const name = (p.Name || p.name || "").toLowerCase();
-                const loc = (p.Location || p.location || "").toLowerCase();
-                const city = (p.CityName || p.city_name || "").toLowerCase();
-                return name.includes(lowerVal) || loc.includes(lowerVal) || city.includes(lowerVal);
-            });
+        const timer = setTimeout(async () => {
+            try {
+                // Use API_BASE_URL from config
+                const res = await fetch(`${API_BASE_URL}/properties?location=${encodeURIComponent(location)}&limit=5`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const rawSuggestions = (data.data || []).map(p => ({
+                        id: p.PropertyId,
+                        label: p.Name,
+                        subLabel: `${p.CityName || ''} • ${p.Location || ''}`, // Show context
+                        // Add type for icon differentiation if needed
+                        type: p.PropertyType
+                    }));
+                    setSuggestions(rawSuggestions);
+                }
+            } catch (err) {
+                console.error("Suggestion fetch failed", err);
+            }
+        }, 300); // 300ms Debounce
 
-            const rawSuggestions = matches.slice(0, 5).map(p => {
-                const safeP = p || {};
-                return {
-                    id: safeP.id || safeP.PropertyId || safeP.property_id || Math.random().toString(),
-                    label: (safeP.Name || safeP.name || "Unknown Property").replace(', India', ''),
-                    subLabel: (safeP.Location || safeP.location || safeP.CityName || safeP.city_name || "Unknown Location").replace(', India', ''),
-                };
-            });
-
-            setSuggestions(rawSuggestions);
-        } else {
-            setSuggestions([]);
-        }
-    };
+        return () => clearTimeout(timer);
+    }, [location]);
 
     // Click outside handler
     useEffect(() => {
@@ -65,6 +67,15 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [activeTab]);
+
+    // Auto-Scroll to center when popup opens (Standard visibility fix)
+    useEffect(() => {
+        if (activeTab && !isSticky && searchRef.current) {
+            setTimeout(() => {
+                searchRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        }
+    }, [activeTab, isSticky]);
 
     // Helper to get current filters for live updates
     const getFilters = (overrideLocation) => ({
@@ -280,56 +291,53 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                             transition={{ duration: 0.2 }}
                             onClick={(e) => e.stopPropagation()}
                             className={`
-                                z-[100] bg-white border-gray-100 overflow-hidden
+                                z-[999] bg-white border-gray-100 overflow-hidden
                                 fixed inset-0 top-0 left-0 right-0 bottom-0 h-full w-full flex flex-col  /* Mobile: Full Screen Fixed */
-                                md:absolute md:inset-auto md:h-auto md:w-auto md:flex-col md:rounded-3xl md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] md:p-8 md:border /* Desktop: Dropdown */
+                                md:absolute md:inset-auto md:h-auto md:w-auto md:flex-col md:rounded-2xl md:shadow-2xl md:p-3 md:border md:max-h-[60vh] md:overflow-y-auto /* Desktop: Dropdown - P-3 is safer */
                                 ${isSticky
-                                    ? 'md:top-full md:mt-2 md:w-full md:origin-top'
-                                    : 'md:top-full md:mt-4 md:w-full md:origin-top'}`
+                                    ? 'md:top-full md:mt-2 md:w-[120%] md:-ml-[10%] md:origin-top'
+                                    : 'md:top-full md:mt-3 md:w-full md:origin-top'}`
                             }
                         >
-                            {/* MOBILE HEADER (Visible only on small screens) */}
+                            {/* MOBILE HEADER */}
                             <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 bg-white sticky top-0 z-10">
                                 <h3 className="text-lg font-bold text-gray-900">
                                     {activeTab === 'location' ? 'Where to?' : activeTab === 'dates' ? 'Select Dates' : 'Who is coming?'}
                                 </h3>
-                                <button
-                                    onClick={() => setActiveTab(null)}
-                                    className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition"
-                                >
+                                <button onClick={() => setActiveTab(null)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
                                     <FaMinus className="transform rotate-45 text-gray-500" />
                                 </button>
                             </div>
 
                             {/* CONTENT SCROLLABLE AREA */}
-                            <div className="flex-1 overflow-y-auto p-4 md:p-0">
+                            <div className="flex-1 overflow-y-auto p-4 md:p-0 md:max-h-[380px]"> {/* Reduced Max Height */}
                                 {activeTab === 'location' && (
                                     <div>
-                                        <h3 className="hidden md:block text-xs font-bold text-gray-400 mb-4 uppercase tracking-wider">
-                                            {suggestions.length > 0 ? 'Matching Destinations' : 'Popular Destinations'}
+                                        <h3 className="hidden md:block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wider">
+                                            {suggestions.length > 0 ? 'Destinations' : 'Popular'}
                                         </h3>
-                                        <div className="grid grid-cols-1 gap-2">
+                                        <div className="grid grid-cols-1 gap-1">
                                             {suggestions.length > 0 ? (
                                                 suggestions.map(s => (
                                                     <div
                                                         key={s.id}
                                                         onClick={() => {
                                                             setLocation(s.label);
-                                                            if (onSearch) onSearch({ ...getFilters(s.label), }, false); // Live update, no scroll
+                                                            if (onSearch) onSearch({ ...getFilters(s.label), }, false);
                                                             setActiveTab('dates');
                                                         }}
-                                                        className="flex items-center gap-4 cursor-pointer hover:bg-gray-50 p-4 md:p-3 rounded-xl transition group border border-gray-100 md:border-transparent mb-2 md:mb-0"
+                                                        className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition group"
                                                     >
-                                                        <div className="bg-gray-100 group-hover:bg-white border border-transparent group-hover:border-gray-200 p-3 rounded-xl transition text-gray-500"><FaMapMarkerAlt /></div>
+                                                        <div className="bg-gray-100 group-hover:bg-white border border-transparent group-hover:border-gray-200 p-1.5 rounded-md transition text-gray-500 text-xs"><FaMapMarkerAlt /></div>
                                                         <div>
-                                                            <div className="text-gray-900 font-bold">{s.label}</div>
-                                                            <div className="text-xs text-gray-500">{s.subLabel}</div>
+                                                            <div className="text-gray-900 font-bold text-sm">{s.label}</div>
+                                                            <div className="text-[10px] text-gray-400">{s.subLabel}</div>
                                                         </div>
                                                     </div>
                                                 ))
                                             ) : (
-                                                <div className="p-4 text-center text-gray-400 text-sm bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                                    Type to search...
+                                                <div className="p-2 text-center text-gray-400 text-[10px] bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                                    Start typing...
                                                 </div>
                                             )}
                                         </div>
@@ -339,15 +347,17 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                                 {activeTab === 'dates' && (
                                     <div className="flex justify-center h-full items-start md:items-center">
                                         <style>{`
-                                            .rdp { --rdp-cell-size: 44px; --rdp-accent-color: #000; --rdp-background-color: #f3f4f6; margin: 0; width: 100%; }
-                                            .rdp-months { justify-content: center; }
+                                            .rdp { --rdp-cell-size: 30px; --rdp-accent-color: #000; --rdp-background-color: #f3f4f6; margin: 0; width: 100%; }
+                                            .rdp-months { justify-content: center; gap: 1rem; }
                                             .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f3f4f6; }
                                             .rdp-day_selected { background-color: #000 !important; color: white !important; font-weight: bold; }
-                                            .rdp-caption_label { font-size: 1.1rem; font-weight: 700; color: #1f2937; }
+                                            .rdp-caption_label { font-size: 0.85rem; font-weight: 700; color: #1f2937; margin-bottom: 0.5rem; }
+                                            .rdp-head_cell { font-size: 0.7rem; color: #9ca3af; font-weight: 500; }
+                                            .rdp-nav_button { width: 24px; height: 24px; }
                                             @media (max-width: 768px) {
                                                 .rdp-month { width: 100%; }
                                                 .rdp-table { width: 100%; max-width: 100%; }
-                                                .rdp-cell { height: 50px; width: 14%; } /* Bigger touch targets */
+                                                .rdp-cell { height: 44px; width: 14%; }
                                             }
                                         `}</style>
                                         <DayPicker
@@ -355,34 +365,34 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                                             selected={dateRange}
                                             onDayClick={(day) => handleDateSelect(day)}
                                             disabled={{ before: new Date() }}
-                                            numberOfMonths={window.innerWidth < 768 ? 12 : 2} // Vertical scroll on mobile
-                                            pagedNavigation={window.innerWidth >= 768} // Paged on desktop only
+                                            numberOfMonths={window.innerWidth < 768 ? 12 : 2}
+                                            pagedNavigation={window.innerWidth >= 768}
                                         />
                                     </div>
                                 )}
 
                                 {activeTab === 'guests' && (
-                                    <div className="space-y-6 pt-4 md:pt-0">
+                                    <div className="space-y-2 pt-2 md:pt-0 pl-1 pr-1">
                                         {['adults', 'children', 'rooms'].map((type) => (
-                                            <div key={type} className="flex justify-between items-center pb-6 md:pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+                                            <div key={type} className="flex justify-between items-center pb-2 border-b border-gray-50 last:border-0 last:pb-0">
                                                 <div>
-                                                    <div className="capitalize font-bold text-gray-800 text-lg md:text-base">{type}</div>
-                                                    <div className="text-sm md:text-xs text-gray-400">{type === 'adults' ? 'Ages 13 or above' : type === 'children' ? 'Ages 2-12' : 'Number of rooms'}</div>
+                                                    <div className="capitalize font-bold text-gray-800 text-sm">{type}</div>
+                                                    <div className="text-[10px] text-gray-400">{type === 'adults' ? 'Age 13+' : type === 'children' ? 'Age 2-12' : 'Count'}</div>
                                                 </div>
-                                                <div className="flex items-center gap-6 md:gap-4">
+                                                <div className="flex items-center gap-2">
                                                     <button
                                                         onClick={() => updateGuest(type, -1)}
                                                         disabled={guests[type] <= 0}
-                                                        className="w-12 h-12 md:w-10 md:h-10 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition disabled:opacity-30 disabled:hover:border-gray-200 disabled:hover:bg-transparent"
+                                                        className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition disabled:opacity-30"
                                                     >
-                                                        <FaMinus size={12} />
+                                                        <FaMinus size={8} />
                                                     </button>
-                                                    <span className="w-6 text-center font-bold text-xl md:text-lg">{guests[type]}</span>
+                                                    <span className="w-4 text-center font-bold text-sm">{guests[type]}</span>
                                                     <button
                                                         onClick={() => updateGuest(type, 1)}
-                                                        className="w-12 h-12 md:w-10 md:h-10 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition"
+                                                        className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition"
                                                     >
-                                                        <FaPlus size={12} />
+                                                        <FaPlus size={8} />
                                                     </button>
                                                 </div>
                                             </div>
@@ -397,21 +407,15 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                                     onClick={() => {
                                         setSuggestions([]);
                                         setDateRange({ from: undefined, to: undefined });
-                                        // Reset guests logic if needed
                                     }}
                                     className="text-sm font-semibold text-gray-500 underline"
                                 >
                                     Clear all
                                 </button>
-                                <button
-                                    onClick={handleSearchClick}
-                                    className="bg-black text-white px-8 py-3 rounded-xl font-bold text-base shadow-lg active:scale-95 transition-transform flex items-center gap-2"
-                                >
-                                    <FaSearch size={12} />
-                                    Search
+                                <button onClick={handleSearchClick} className="bg-black text-white px-8 py-3 rounded-xl font-bold text-base shadow-lg active:scale-95 transition-transform flex items-center gap-2">
+                                    <FaSearch size={12} /> Search
                                 </button>
                             </div>
-
                         </motion.div>
                     </>
                 )}

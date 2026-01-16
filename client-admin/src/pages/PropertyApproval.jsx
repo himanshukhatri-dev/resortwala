@@ -1312,7 +1312,7 @@ export default function PropertyApproval() {
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <div className="flex justify-end">
-                                                                    <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                    <div className="relative w-32">
                                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
                                                                         <input
                                                                             type="number"
@@ -1326,7 +1326,7 @@ export default function PropertyApproval() {
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <div className="flex justify-end">
-                                                                    <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                    <div className="relative w-32">
                                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium pointer-events-none">₹</span>
                                                                         <input
                                                                             type="number"
@@ -1340,7 +1340,7 @@ export default function PropertyApproval() {
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <div className="flex justify-end">
-                                                                    <div className="relative w-32 group-hover:w-36 transition-all duration-300">
+                                                                    <div className="relative w-32">
                                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500 font-bold pointer-events-none">₹</span>
                                                                         <input
                                                                             type="number"

@@ -39,6 +39,8 @@ import CompareFloatingBar from './components/features/CompareFloatingBar';
 import CompareModal from './components/features/CompareModal';
 import ComingSoonGuard from './components/common/ComingSoonGuard';
 
+import ChatWidget from './components/chat/ChatWidget';
+
 function App() {
   // ... (existing useEffect)
 
@@ -90,8 +92,10 @@ function App() {
                     {/* Global Floating Bar & Modal */}
                     <CompareFloatingBar />
                     <CompareModal />
+                    <ChatWidget />
                   </ComingSoonGuard>
                 </BrowserRouter>
+              </NotificationProvider>
             </CompareProvider>
           </WishlistProvider>
         </SearchProvider>

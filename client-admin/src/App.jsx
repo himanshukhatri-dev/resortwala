@@ -38,6 +38,7 @@ import Connectors from './pages/Connectors';
 import Notifications from './pages/Notifications';
 import LeadCrawler from './pages/Intelligence/LeadCrawler';
 import ComingSoon from './pages/ComingSoon';
+import ChatbotManager from './pages/ChatbotManager';
 import './App.css';
 
 
@@ -102,7 +103,9 @@ function App() {
               <Route path="/connectors" element={<Connectors />} /> {/* New Route */}
               <Route path="/reconciliation" element={<Reconciliation />} /> {/* New Route */}
               <Route path="/communications" element={<Communications />} /> {/* New Route */}
+
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/chatbot" element={<ChatbotManager />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<div className="p-20 text-center font-bold text-red-500">404: Route Not Found. Path: {window.location.pathname}</div>} />
             </Route>

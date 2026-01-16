@@ -64,6 +64,13 @@ Route::post('/public/bookings/request', [\App\Http\Controllers\PublicAvailabilit
 // Alternative path using unique top-level segment to avoid any properties resource conflicts
 Route::post('/request-booking', [\App\Http\Controllers\PublicAvailabilityController::class, 'request']);
 
+// Chatbot Public Routes
+Route::get('/chatbot/config', [\App\Http\Controllers\ChatbotController::class, 'config']);
+Route::post('/chatbot/track', [\App\Http\Controllers\ChatbotController::class, 'track']);
+Route::post('/chatbot/query', [\App\Http\Controllers\ChatbotController::class, 'query']);
+Route::post('/chatbot/submit', [\App\Http\Controllers\ChatbotController::class, 'submitQuery']);
+Route::get('/chatbot/search', [\App\Http\Controllers\ChatbotController::class, 'searchProperties']);
+
 // Route::post('/register', [AuthController::class, 'register']);
 
 Route::post('/customer/register', [\App\Http\Controllers\CustomerAuthController::class, 'register']);
@@ -541,6 +548,23 @@ Route::middleware('auth:sanctum')->group(function () {
     // Connector Property Assignment
     Route::post('/admin/properties/{id}/connector', [\App\Http\Controllers\Admin\ConnectorController::class, 'assignToProperty']);
     Route::get('/admin/properties/{id}/connectors', [\App\Http\Controllers\Admin\ConnectorController::class, 'getPropertyConnectors']);
+
+    // Chatbot Public Routes
+
+
+    // Admin Chatbot Management
+    Route::prefix('admin/chatbot')->group(function () {
+        Route::get('/faqs', [\App\Http\Controllers\AdminChatbotController::class, 'index']);
+        Route::post('/faqs', [\App\Http\Controllers\AdminChatbotController::class, 'store']);
+        Route::put('/faqs/{id}', [\App\Http\Controllers\AdminChatbotController::class, 'update']);
+        Route::delete('/faqs/{id}', [\App\Http\Controllers\AdminChatbotController::class, 'destroy']);
+        Route::get('/analytics', [\App\Http\Controllers\AdminChatbotController::class, 'analytics']);
+        
+        // Customer Queries
+        Route::get('/queries', [\App\Http\Controllers\AdminCustomerQueryController::class, 'index']);
+        Route::put('/queries/{id}', [\App\Http\Controllers\AdminCustomerQueryController::class, 'update']);
+        Route::delete('/queries/{id}', [\App\Http\Controllers\AdminCustomerQueryController::class, 'destroy']);
+    });
 
     // Internal DevOps Control (Developer Only)
     // NOTE: Restricted to Super Admin / Dev roles in middleware/controller

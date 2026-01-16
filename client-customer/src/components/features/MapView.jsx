@@ -142,31 +142,29 @@ export default function MapView({ properties, onLocationSelect, currentUserLocat
     // Prepare markers with generated coords if needed
     const markers = useMemo(() => {
         if (!properties) return [];
-        console.log("MapView Properties:", properties.length, "UserLoc:", currentUserLocation);
+        const DEBUG = false; // Toggle for diagnostics
+
+        if (DEBUG) console.log(`[MapView] Processing ${properties.length} properties. UserLoc:`, currentUserLocation);
 
         return properties.map((p, i) => {
             const position = getApproxCoords(p, i);
-            let dist = p.distanceKm;
-            // const pLat = p.Latitude || p.latitude || p.lat; // Unused if we use position fallback or prioritized logic
+            let dist = p.distanceKm; // Use backend distance if available
+
             const uLat = currentUserLocation ? (currentUserLocation.lat || currentUserLocation.latitude) : null;
             const uLon = currentUserLocation ? (currentUserLocation.lon || currentUserLocation.longitude) : null;
 
-            // Calculate distance if missing and we have user location
-            if ((!dist || dist === undefined) && uLat && uLon) {
-                // Only calculate if property has REAL coordinates, not fallbacks
-                if (p.Latitude && p.Longitude) {
-                    dist = calculateDistance(
-                        parseFloat(uLat),
-                        parseFloat(uLon),
-                        parseFloat(p.Latitude),
-                        parseFloat(p.Longitude)
-                    );
-                } else {
-                    dist = null; // Ensure we don't show fake distance
+            // Fallback: Calculate distance client-side if missing
+            if ((dist === undefined || dist === null) && uLat && uLon) {
+                // Ensure valid numeric coordinates
+                const pLat = parseFloat(p.Latitude);
+                const pLon = parseFloat(p.Longitude);
+
+                if (!isNaN(pLat) && !isNaN(pLon) && pLat !== 0 && pLon !== 0) {
+                    dist = calculateDistance(parseFloat(uLat), parseFloat(uLon), pLat, pLon);
                 }
             }
-            // Log for first property
-            if (i === 0) console.log("Prop 0 Dist:", dist, "Price:", p.Price || p.price);
+
+            if (DEBUG && i === 0) console.log("Prop 0 Dist:", dist, "Price:", p.Price);
 
             return {
                 ...p,

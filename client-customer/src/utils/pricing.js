@@ -4,34 +4,52 @@ export const getPricing = (property) => {
     const pricing = ob.pricing || {};
     const adminPricing = property?.admin_pricing || {};
 
-    // 1. Determine Market Price (Vendor Ask / Base Rate) - Crossed Out
+    // Determine current day for mapping
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayIndex = new Date().getDay(); // 0 (Sun) - 6 (Sat)
+    const todayName = days[todayIndex];
+
+    const isWaterpark = property?.PropertyType?.toLowerCase() === 'waterpark';
+    const isWeekend = ['friday', 'saturday', 'sunday'].includes(todayName);
+    const wpKey = isWeekend ? 'adult_weekend' : 'adult_weekday';
+
+    // 1. Determine Market Price (Vendor Ask / Base Rate)
     let marketPrice = parseFloat(
-        adminPricing.mon_thu?.villa?.current ||
+        (isWaterpark
+            ? (adminPricing[wpKey]?.current || adminPricing.adult_rate?.current || adminPricing.adult?.current)
+            : adminPricing[todayName]?.villa?.current) ||
+        adminPricing.mon_thu?.villa?.current || // Legacy fallback
+        property?.display_price ||
+        property?.lowest_price_next_30 ||
         pricing.weekday ||
         pricing.mon_thu ||
         pricing.base_price ||
         property?.Price ||
         property?.price ||
-        property?.PerCost || // Legacy fallback
         0
     );
 
-    // 2. Determine Selling Price (Customer Rate / ResortWala Rate) - Final Price
+
+    // 2. Determine Selling Price (Customer Rate / ResortWala Rate)
     let sellingPrice = parseFloat(
+        property?.display_price ||
+        property?.lowest_price_next_30 ||
+        (isWaterpark
+            ? (adminPricing[wpKey]?.final || adminPricing.adult_rate?.discounted || adminPricing.adult?.discounted)
+            : adminPricing[todayName]?.villa?.final) ||
         property?.ResortWalaRate ||
         property?.resort_wala_rate ||
         0
     );
+
+
 
     // If no specific Customer Rate is set, fallback to Market Price
     if (!sellingPrice || sellingPrice === 0) {
         sellingPrice = marketPrice;
     }
 
-    // Logic Check: If Customer Rate > Market Price (which shouldn't happen usually but data can be messy),
-    // we assume the higher one is the "Original" and lower is "Deal".
-    // However, user strictly wants: Vendor Rate = Crossed, Customer Rate = Used.
-    // So we just enforce that. If Selling > Market, we just set Market = Selling to hide discount.
+    // Logic Check: If Customer Rate > Market Price, assume the higher one is Market
     if (sellingPrice > marketPrice) {
         marketPrice = sellingPrice;
     }
@@ -48,3 +66,4 @@ export const getPricing = (property) => {
         isFallback: marketPrice === sellingPrice
     };
 };
+

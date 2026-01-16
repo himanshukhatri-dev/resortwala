@@ -3,8 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/ui/Header';
 import Footer from '../components/ui/Footer';
-import ChatWidget from '../components/common/ChatWidget';
-
 import SearchModal from '../components/ui/SearchModal';
 
 
@@ -104,7 +102,6 @@ export default function MainLayout() {
                 categories={CATEGORIES}
             />
 
-            <ChatWidget />
             <Footer />
         </div>
     );

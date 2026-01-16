@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 import { FaArrowRight, FaHome } from 'react-icons/fa';
 import { auth } from '../firebase'; // Ensure firebase is initialized
 import AuthLeftPanel from '../components/auth/AuthLeftPanel';
@@ -21,7 +22,7 @@ export default function Login() {
     const [confirmationResult, setConfirmationResult] = useState(null); // Firebase confirmation result
     const [isPhoneAuth, setIsPhoneAuth] = useState(true); // Toggle between phone/email logic
 
-    const API_URL = import.meta.env.VITE_API_BASE_URL;
+    // const API_URL = import.meta.env.VITE_API_BASE_URL; // Replaced by API_BASE_URL from config
 
     // Auto-trigger from Signup redirection
     // Auto-trigger from Signup redirection & Cleanup Recaptcha
@@ -65,7 +66,7 @@ export default function Login() {
         if (isMobile && TEST_NUMBERS.includes(normalizedInput)) {
             try {
                 // Direct Login without Firebase
-                const response = await axios.post(`${API_URL}/api/customer/login-otp`, {
+                const response = await axios.post(`${API_BASE_URL}/customer/login-otp`, {
                     phone: normalizedInput,
                     firebase_token: 'bypass-otp-secret'
                 });
@@ -108,7 +109,7 @@ export default function Login() {
             } else {
                 // --- Email: Backend OTP Flow ---
                 // FIX: Use Generic OTP Send endpoint
-                await axios.post(`${API_URL}/api/otp/send`, {
+                await axios.post(`${API_BASE_URL}/otp/send`, {
                     email: loginIdentifier,
                     type: 'login'
                 });
@@ -141,14 +142,14 @@ export default function Login() {
 
                 // Exchange Firebase Token for Backend Token
                 const normalized = normalizePhone(loginIdentifier);
-                response = await axios.post(`${API_URL}/api/customer/login-otp`, {
+                response = await axios.post(`${API_BASE_URL}/customer/login-otp`, {
                     phone: normalized,
                     firebase_token: firebaseToken
                 });
             } else {
                 // Verify via Backend Email OTP
                 // FIX: Use correct Login-with-OTP endpoint
-                response = await axios.post(`${API_URL}/api/customer/login-email-otp`, {
+                response = await axios.post(`${API_BASE_URL}/customer/login-email-otp`, {
                     email: loginIdentifier,
                     code: otp
                 });

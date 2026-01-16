@@ -12,16 +12,21 @@ import { getPricing } from '../../utils/pricing';
 
 export default function PropertyCard({ property, searchParams, cardType = 'horizontal' }) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const pricing = getPricing(property);
-
     const {
         id = property?.PropertyId || property?.id,
         name = property?.Name || property?.name || "Luxury Villa",
         location = property?.Location || property?.CityName || "India",
-        price = parseFloat(property?.Price || property?.PricePerNight || property?.ResortWalaRate || 0) || 15000,
-        rating = property?.Rating || 4.9,
+        // Use Smart Price (Lowest in 30 days) > Deal Price > Standard Price
+        price = parseFloat(property?.lowest_price_next_30 || property?.DealPrice || property?.Price || property?.PricePerNight || 0) || 15000,
+        // Use Smart Review Logic
+        rating = property?.display_rating || property?.Rating || 4.9,
         description = property?.ShortDescription || property?.onboarding_data?.shortDescription || property?.LongDescription || property?.long_description || "Experience luxury living in this beautiful property featuring modern amenities and stunning views.",
+        isVerifiedRating = property?.is_verified_rating,
+        ratingLabel = property?.display_rating_label
     } = property || {};
+
+    // Re-calculate pricing object with the correct base price
+    const pricing = getPricing({ ...property, Price: price });
 
     // Collect all available images
     const allImages = [
@@ -104,6 +109,7 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
+                        loading="lazy"
                         className="w-full h-full object-cover"
                     />
                 </AnimatePresence>
@@ -165,7 +171,7 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                 <div>
                     {/* ROW 1: Title Only */}
                     <div className="mb-2">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 font-serif leading-tight line-clamp-2" title={name}>
+                        <h3 className="text-lg md:text-xl font-bold text-gray-900 font-display leading-[1.3] tracking-normal line-clamp-2" title={name}>
                             {name}
                         </h3>
                     </div>
@@ -185,7 +191,8 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                         <div className="flex items-center gap-1.5 font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
                             <FaStar className="text-yellow-400 text-xs mb-0.5" />
                             <span>{rating > 0 ? rating : "New"}</span>
-                            {rating > 0 && <span className="text-[10px] text-gray-400 font-normal ml-0.5">({(id % 50) + 5} Reviews)</span>}
+                            {ratingLabel && <span className="text-[8px] uppercase tracking-wider text-gray-400 font-normal ml-1 border-l pl-1 border-gray-300">{ratingLabel}</span>}
+                            {/* {rating > 0 && <span className="text-[10px] text-gray-400 font-normal ml-0.5">({(id % 50) + 5} Reviews)</span>} */}
                         </div>
 
                         <div className="flex items-center gap-1.5 text-gray-500 font-medium">

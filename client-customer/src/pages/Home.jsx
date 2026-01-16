@@ -235,12 +235,24 @@ export default function Home() {
     };
 
     // Explicitly clear distance when searching via SearchBar (Text Search)
-    const handleSearch = (searchFilters) => setFilters(prev => ({
-        ...prev,
-        ...searchFilters,
-        distance: { ...prev.distance, center: null },
-        page: 1
-    }));
+    const handleSearch = (searchFilters, shouldScroll = false) => {
+        setFilters(prev => ({
+            ...prev,
+            ...searchFilters,
+            distance: { ...prev.distance, center: null },
+            page: 1
+        }));
+
+        if (shouldScroll) {
+            setTimeout(() => {
+                if (resultsRef.current) {
+                    const yOffset = -100; // Offset for sticky header
+                    const y = resultsRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+            }, 100);
+        }
+    };
 
     // Popular Location Click
     const handleLocationClick = (locName) => {
@@ -303,8 +315,8 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-black/40" />
                 </div>
 
-                <div className="relative z-30 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
-                    <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 md:mb-6 drop-shadow-2xl font-serif italic tracking-wide leading-tight text-center">
+                <div className="relative z-50 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
+                    <h1 className="text-[1.75rem] md:text-5xl lg:text-6xl font-extrabold text-white mb-3 md:mb-6 drop-shadow-2xl font-display tracking-tight leading-tight text-center">
                         Find your peace in <br className="hidden md:block" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-2">paradise</span>
                     </h1>
@@ -393,7 +405,7 @@ export default function Home() {
                         <div className={`flex flex-col gap-6 ${viewMode === 'map' ? 'hidden lg:flex' : 'flex'}`}>
 
                             <div className="mb-2 px-2">
-                                <h2 className="text-xl font-bold text-gray-900 font-serif">
+                                <h2 className="text-xl md:text-2xl font-bold text-gray-900 font-display tracking-tight">
                                     {filters.location
                                         ? `Stays in ${filters.location}`
                                         : filters.distance?.center
@@ -403,7 +415,7 @@ export default function Home() {
                                                 : "All Properties"
                                     }
                                 </h2>
-                                <p className="text-gray-500 mt-1 text-sm font-medium">{loading ? "Searching..." : `${filteredProperties.length} ${pagination?.total ? `of ${pagination.total}` : ''} properties`}</p>
+                                <p className="text-gray-500 mt-1 text-sm font-medium">{loading ? "Searching..." : `${filteredProperties.length} properties`}</p>
                             </div>
 
                             {loading ? (
