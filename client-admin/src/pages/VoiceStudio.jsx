@@ -59,11 +59,20 @@ export default function VoiceStudio() {
         const prop = properties.find(p => p.PropertyId == propId);
         setSelectedProperty(prop);
         // Load media
-        const res = await axios.get(`${API_BASE_URL}/admin/properties/${propId}/images`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        // Select first 5 by default
-        setSelectedMedia(res.data.slice(0, 5).map(img => img.id));
+        // Load media (Fetch full property details including images)
+        try {
+            const res = await axios.get(`${API_BASE_URL}/admin/properties/${propId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            // Select first 5 by default from the included 'images' relationship
+            if (res.data && res.data.images) {
+                setSelectedMedia(res.data.images.slice(0, 5).map(img => img.id));
+            } else {
+                setSelectedMedia([]);
+            }
+        } catch (err) {
+            console.error("Failed to load property images", err);
+        }
     };
 
     const generateAudio = async () => {
