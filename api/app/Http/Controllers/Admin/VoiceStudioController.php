@@ -18,6 +18,23 @@ class VoiceStudioController extends Controller
         return new \App\Services\TextToSpeechService();
     }
 
+    public function index()
+    {
+        try {
+            // Lazy Load Model if needed (Fallback for some environments)
+            if (!class_exists('App\Models\VoiceProject')) {
+                 if (file_exists(app_path('Models/VoiceProject.php'))) {
+                     require_once app_path('Models/VoiceProject.php');
+                 }
+            }
+
+            $projects = \App\Models\VoiceProject::latest()->limit(20)->get();
+            return response()->json($projects);
+        } catch (\Throwable $e) {
+            return response()->json([], 200); // Return empty on error to prevent UI crash
+        }
+    }
+
     public function config()
     {
         try {
@@ -81,25 +98,41 @@ class VoiceStudioController extends Controller
             'visual_options.property_id' => 'required'
         ]);
 
-        // 2. Create Job
+        // 2. Fetch Voice Project to get Audio Path
+        $voiceProject = \App\Models\VoiceProject::findOrFail($id);
+        $audioSource = $voiceProject->output_url;
+
+        // 3. Create Job
         $job = new \App\Models\VideoRenderJob();
         $job->property_id = $request->visual_options['property_id'];
         $job->template_id = $request->visual_type; // 'cinematic' or 'avatar'
         $job->status = 'pending';
-        $job->options = array_merge($request->visual_options, ['voice_project_id' => $id]);
+        // IMPORTANT: Pass 'audio_source' so the renderer knows where the file is
+        $job->options = array_merge($request->visual_options, [
+            'voice_project_id' => $id,
+            'audio_source' => $audioSource
+        ]);
         $job->save();
 
-        // 3. Spawn Background Worker (Async)
+        // 4. Spawn Background Worker (Async)
         $phpBinary = 'php'; 
         $artisanPath = base_path('artisan');
-        // "php artisan video:process {id} > /dev/null 2>&1 &"
-        $command = "nohup {$phpBinary} {$artisanPath} video:process {$job->id} > /dev/null 2>&1 &";
         
+        // Construct Command
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            $command = "start /B php {$artisanPath} video:process {$job->id}";
+            // Windows: Use start /B to run in background
+            $command = "start /B {$phpBinary} {$artisanPath} video:process {$job->id} > NUL 2>&1";
+        } else {
+            // Linux/Mac: Use nohup
+            $command = "nohup {$phpBinary} {$artisanPath} video:process {$job->id} > /dev/null 2>&1 &";
         }
 
-        exec($command);
+        // Execute
+        if (function_exists('popen') && strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+             pclose(popen($command, "r"));
+        } else {
+             exec($command);
+        }
 
         return response()->json([
             'message' => 'Video Rendering Started',

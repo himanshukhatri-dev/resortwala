@@ -17,12 +17,43 @@ class TextToSpeechService
             mkdir(dirname($outputPath), 0755, true);
         }
 
-        $mockSource = storage_path('app/public/music/viral_beat.mp3'); 
-        if (file_exists($mockSource)) {
-             copy($mockSource, $outputPath);
-        } else {
-             // Generate 3 Seconds of Dummy Audio (Silence)
-             // Specs: 44.1kHz, 16-bit, Stereo
+        // 1. Normalize Language
+        $langMap = [
+            'hinglish' => 'hi',
+            'english' => 'en',
+            'hindi' => 'hi'
+        ];
+        $targetLang = $langMap[strtolower($language)] ?? 'en';
+
+        // 2. Python gTTS Execution (Robust Arg Passing)
+        // We pass text as arguments to avoid quoting hell in -c string
+        $pythonScript = "import sys; from gtts import gTTS; gTTS(text=sys.argv[1], lang=sys.argv[2]).save(sys.argv[3])";
+        
+        $safeText = escapeshellarg($text);
+        $safeLang = escapeshellarg($targetLang);
+        $safePath = escapeshellarg($outputPath);
+
+        $cmd = "python3 -c \"{$pythonScript}\" {$safeText} {$safeLang} {$safePath}";
+        
+        try {
+            $output = [];
+            $returnCode = 0;
+            
+            // Log command (redacted)
+            Log::info("Executing TTS Python: python3 -c ... [text length: " . strlen($text) . "]");
+
+            exec($cmd . " 2>&1", $output, $returnCode);
+
+            if ($returnCode === 0 && file_exists($outputPath)) {
+                // Success
+            } else {
+                throw new \Exception("Python gTTS failed (" . $returnCode . "): " . implode("\n", $output));
+            }
+
+        } catch (\Throwable $e) {
+            Log::error("TTS Generation Failed: " . $e->getMessage());
+            
+            // Fallback: Generate Silence
              $sampleRate = 44100;
              $duration = 3;
              $numSamples = $sampleRate * $duration;
@@ -33,23 +64,8 @@ class TextToSpeechService
              $dataSize = $numSamples * $blockAlign;
              $fileSize = 36 + $dataSize;
 
-             // WAV Header
-             $header = "RIFF" . 
-                       pack("V", $fileSize) . 
-                       "WAVEfmt " . 
-                       pack("V", 16) . // Subchunk1Size
-                       pack("v", 1) .  // AudioFormat (PCM)
-                       pack("v", $channels) . 
-                       pack("V", $sampleRate) . 
-                       pack("V", $byteRate) . 
-                       pack("v", $blockAlign) . 
-                       pack("v", $bitsPerSample) . 
-                       "data" . 
-                       pack("V", $dataSize);
-             
-             // Generate Empty Data (Silence)
+             $header = "RIFF" . pack("V", $fileSize) . "WAVEfmt " . pack("V", 16) . pack("v", 1) . pack("v", $channels) . pack("V", $sampleRate) . pack("V", $byteRate) . pack("v", $blockAlign) . pack("v", $bitsPerSample) . "data" . pack("V", $dataSize);
              $data = str_repeat(pack("C", 0), $dataSize);
-             
              file_put_contents($outputPath, $header . $data);
         }
 

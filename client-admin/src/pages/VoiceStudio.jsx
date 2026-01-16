@@ -13,7 +13,9 @@ export default function VoiceStudio() {
     const [script, setScript] = useState('');
     const [selectedVoice, setSelectedVoice] = useState('cinematic_male');
     const [language, setLanguage] = useState('en');
+
     const [voices, setVoices] = useState([]);
+    const [projects, setProjects] = useState([]); // Recent History
 
     // Step 2: Visuals
     const [visualType, setVisualType] = useState('cinematic'); // 'avatar' or 'cinematic'
@@ -28,8 +30,18 @@ export default function VoiceStudio() {
 
     useEffect(() => {
         fetchConfig();
+        fetchProjects();
         fetchProperties();
     }, [token]);
+
+    const fetchProjects = async () => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/admin/voice-studio/projects`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (Array.isArray(res.data)) setProjects(res.data);
+        } catch (e) { console.error(e); }
+    };
 
     const fetchConfig = async () => {
         try {
@@ -140,6 +152,15 @@ export default function VoiceStudio() {
             setVideoStatus('failed');
             alert("Failed to start render");
         }
+    };
+
+    const loadProject = (p) => {
+        setScript(p.script_text);
+        setSelectedVoice(p.voice_id);
+        setLanguage(p.language);
+        setProjectId(p.id);
+        setAudioUrl(`${API_BASE_URL.replace('/api', '')}/storage/${p.output_url}`); // Fix path if needed
+        setStep(2); // Jump to video creation
     };
 
     return (
@@ -275,8 +296,34 @@ export default function VoiceStudio() {
 
                 </div>
 
-                {/* Sidebar Info */}
+                {/* Sidebar Info & History */}
                 <div className="space-y-6">
+                    {/* Project History */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                        <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wide">Recent History</h3>
+                        <div className="space-y-3">
+                            {projects.map(p => (
+                                <div key={p.id} className="p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition group relative">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <span className="text-xs font-bold text-gray-700">Project #{p.id}</span>
+                                        <span className="text-[10px] text-gray-400">{new Date(p.created_at).toLocaleDateString()}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 line-clamp-2 mb-2 italic">"{p.script_text.substring(0, 50)}..."</p>
+
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => loadProject(p)}
+                                            className="flex-1 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold hover:bg-purple-200 transition text-center"
+                                        >
+                                            Create Video
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {projects.length === 0 && <p className="text-xs text-gray-400 text-center py-4">No history yet.</p>}
+                        </div>
+                    </div>
+
                     <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-6 text-white">
                         <h3 className="font-bold text-lg mb-2">Pro Tips</h3>
                         <ul className="space-y-2 text-sm opacity-90">

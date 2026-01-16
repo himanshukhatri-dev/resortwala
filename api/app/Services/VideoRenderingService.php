@@ -34,7 +34,12 @@ class VideoRenderingService
             $publicPath = 'videos/' . $outputFilename;
 
             // Check system FFmpeg availability
-            $ffmpegPath = trim(shell_exec('which ffmpeg'));
+            $ffmpegPath = null;
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                $ffmpegPath = trim(shell_exec('where ffmpeg 2>nul'));
+            } else {
+                $ffmpegPath = trim(shell_exec('which ffmpeg'));
+            }
             if (empty($ffmpegPath)) {
                 // Fallback to Simulation if FFmpeg is missing (Local Dev)
                  Log::warning("FFmpeg not found. Falling back to simulation.");
@@ -205,9 +210,36 @@ class VideoRenderingService
              $filterComplex .= "[{$musicIdx}:a]afade=t=in:st=0:d=2,afade=t=out:st=" . ($offset - 2) . ":d=2[aOut]";
         }
 
+        // E. Branding & Watermark
+        $logoPath = public_path('resortwala-logo.png');
+        $hasLogo = file_exists($logoPath);
+        $logoIdx = -1;
+
+        if ($hasLogo) {
+            $inputs .= "-i \"{$logoPath}\" ";
+            // Index logic: Images (0 to count-1) + Music (1) + Voice (Optional 1)
+            $logoIdx = $count + 1 + ($hasVoice ? 1 : 0);
+        }
+
+        $lastVideoNode = "[vText]";
+
+        // Apply Logo Overlay
+        if ($hasLogo && $logoIdx > 0) {
+            // Scale Logo to 180px width, Overlay at Top-Left (20px padding)
+            $filterComplex .= "[{$logoIdx}:v]scale=180:-1[vLogoIn];{$lastVideoNode}[vLogoIn]overlay=x=20:y=20[vMarked];";
+            $lastVideoNode = "[vMarked]";
+        }
+
+        // Apply URL Overlay (Bottom Center)
+        $propUrl = "www.resortwala.com/properties/" . $job->property_id;
+        $filterComplex .= "{$lastVideoNode}drawtext=text='{$propUrl}':fontcolor=white:fontsize=28:box=1:boxcolor=black@0.5:boxborderw=5:x=(w-text_w)/2:y=h-80[vFinal];";
+        
+        $lastVideoNode = "[vFinal]";
+
+
         // 4. Final Command
-        // Map [vText] (or vMerged if no text) and [aOut]
-        $cmd = "ffmpeg {$inputs} -filter_complex \"{$filterComplex}\" -map \"[vText]\" -map \"[aOut]\" -c:v libx264 -pix_fmt yuv420p -r 30 -shortest \"{$outputPath}\"";
+        // Map [vFinal] and [aOut]
+        $cmd = "ffmpeg {$inputs} -filter_complex \"{$filterComplex}\" -map \"{$lastVideoNode}\" -map \"[aOut]\" -c:v libx264 -pix_fmt yuv420p -r 30 -shortest \"{$outputPath}\"";
 
         return $cmd;
     }

@@ -70,6 +70,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
                 { path: '/intelligence/leads', icon: <FiSearch />, label: 'Lead Discovery' },
                 { path: '/connectors', icon: <FiUsers />, label: 'Connectors' },
                 { path: '/vendor-presentation', icon: <FiTruck />, label: 'Vendor Onboarding' },
+                { path: '/ai-video-generator', icon: <FiVideo />, label: 'Video Generator' },
                 { path: '/voice-studio', icon: <FiMic />, label: 'Voice Studio' },
             ]
         },

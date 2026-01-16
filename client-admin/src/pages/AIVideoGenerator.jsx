@@ -368,6 +368,83 @@ export default function AIVideoGenerator() {
 
                 </div>
             </div>
+
+            {/* Recent Generations History */}
+            <div className="max-w-7xl mx-auto mt-12 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+                    <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                        <FaVideo className="text-purple-600" /> Recent Generations
+                    </h3>
+                    <button onClick={fetchJobs} className="text-xs text-purple-600 hover:underline">Refresh</button>
+                </div>
+                {/* ... (keep table content same, just fixing structure) ... */}
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs">
+                            <tr>
+                                <th className="p-4">Property</th>
+                                <th className="p-4">Style</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4">Created</th>
+                                <th className="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {jobs.map(job => (
+                                <tr key={job.id} className="hover:bg-gray-50 transition">
+                                    <td className="p-4 font-medium text-gray-900">
+                                        {job.property?.Name || 'Unknown Property'}
+                                    </td>
+                                    <td className="p-4">
+                                        <span className="capitalize px-2 py-1 bg-gray-100 rounded text-xs font-bold text-gray-600">
+                                            {job.template_id}
+                                        </span>
+                                    </td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider
+                                            ${job.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                job.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                                    'bg-yellow-100 text-yellow-700 animate-pulse'}`}>
+                                            {job.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-gray-500 text-xs">
+                                        {new Date(job.created_at).toLocaleString()}
+                                    </td>
+                                    <td className="p-4 text-right flex justify-end gap-2">
+                                        {job.status === 'completed' && (
+                                            <>
+                                                <button
+                                                    onClick={() => loadJob(job)}
+                                                    className="p-2 bg-purple-50 text-purple-600 rounded hover:bg-purple-100 transition"
+                                                    title="Play"
+                                                >
+                                                    <FaPlay size={12} />
+                                                </button>
+                                                <a
+                                                    href={`${API_BASE_URL.replace('/api', '')}/storage/${job.output_path}`}
+                                                    download
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="p-2 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 transition"
+                                                    title="Download"
+                                                >
+                                                    <FaDownload size={12} />
+                                                </a>
+                                            </>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                            {jobs.length === 0 && (
+                                <tr>
+                                    <td colSpan="5" className="p-8 text-center text-gray-400 italic">No recent video jobs found.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     );
 }

@@ -149,6 +149,74 @@ Route::get('/ping', function () {
 
 Route::get('/health', [StatusController::class, 'check']); // Alias for status
 
+// DIAGNOSTIC: Video Generation Capabilities Check
+Route::get('/debug/video-capabilities', function () {
+    $results = [
+        'timestamp' => now()->toIso8601String(),
+        'os' => PHP_OS,
+        'uname' => php_uname(),
+        'php_binary' => PHP_BINARY,
+    ];
+
+    // 1. FFmpeg Check
+    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        $path = trim(shell_exec('where ffmpeg 2>nul'));
+        $results['ffmpeg_path'] = $path ?: 'NOT FOUND (Windows)';
+    } else {
+        $path = trim(shell_exec('which ffmpeg'));
+        $results['ffmpeg_path'] = $path ?: 'NOT FOUND (Linux)';
+    }
+
+    // 2. Version Check
+    $output = [];
+    exec('ffmpeg -version 2>&1', $output, $ret);
+    $results['ffmpeg_version_head'] = array_slice($output, 0, 3);
+    $results['ffmpeg_return_code'] = $ret;
+
+    // 3. Storage Check
+    $videoDir = storage_path('app/public/videos');
+    $results['video_dir'] = $videoDir;
+    
+    if (!file_exists($videoDir)) {
+        try {
+            mkdir($videoDir, 0755, true);
+            $results['dir_creation'] = 'Created successfully';
+        } catch (\Exception $e) {
+            $results['dir_creation'] = 'Failed: ' . $e->getMessage();
+        }
+    } else {
+        $results['dir_creation'] = 'Already exists';
+    }
+
+    $results['is_writable'] = is_writable($videoDir);
+
+    // 4. Function Availability
+    $results['functions'] = [
+        'exec' => function_exists('exec'),
+        'shell_exec' => function_exists('shell_exec'),
+        'proc_open' => function_exists('proc_open'),
+        'popen' => function_exists('popen')
+    ];
+
+// 5. Music Assets Check
+    $musicDir = storage_path('app/public/music');
+    $results['music_dir'] = [
+        'path' => $musicDir,
+        'exists' => file_exists($musicDir),
+        'files' => file_exists($musicDir) ? array_diff(scandir($musicDir), ['.', '..']) : []
+    ];
+    
+    $requiredTracks = ['luxury_ambient.mp3', 'upbeat_pop.mp3', 'happy_acoustic.mp3', 'viral_beat.mp3'];
+    $results['missing_tracks'] = [];
+    foreach ($requiredTracks as $track) {
+         if (!file_exists($musicDir . '/' . $track)) {
+             $results['missing_tracks'][] = $track;
+         }
+    }
+
+    return response()->json($results);
+});
+
 // Public Holiday Route (for pricing calculation)
 Route::get('/holidays', [\App\Http\Controllers\HolidayController::class, 'index']);
 Route::get('/holidays/fix-approve', [\App\Http\Controllers\HolidayController::class, 'approveAll']);
@@ -565,6 +633,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // AI Voice Studio
     Route::prefix('admin/voice-studio')->group(function () {
+        Route::get('/projects', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'index']); // List History
         Route::get('/config', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'config']);
         Route::post('/generate-audio', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'generateAudio']);
         Route::post('/projects/{id}/render', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'renderVideo']);

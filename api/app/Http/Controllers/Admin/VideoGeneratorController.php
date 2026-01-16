@@ -56,12 +56,18 @@ class VideoGeneratorController extends Controller
         // 2. Path to Artisan
         $artisanPath = base_path('artisan');
         
-        // 3. Construct Command: "php artisan video:process {id} > /dev/null 2>&1 &"
-        // The "&" at the end puts it in background. nohup ensures it survives session.
-        $command = "nohup {$phpBinary} {$artisanPath} video:process {$job->id} > /dev/null 2>&1 &";
+        // 3. Construct Command
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            // Windows: Use start /B to run in background
+            // We direct output to NUL to prevent hanging
+            $command = "start /B {$phpBinary} {$artisanPath} video:process {$job->id} > NUL 2>&1";
+        } else {
+            // Linux/Mac: Use nohup
+            $command = "nohup {$phpBinary} {$artisanPath} video:process {$job->id} > /dev/null 2>&1 &";
+        }
         
         // 4. Execute
-        exec($command);
+        pclose(popen($command, "r")); // Using popen/pclose is often more reliable for detached processes on Windows than exec
 
         return response()->json([
             'message' => 'Video generation started (Async)',
