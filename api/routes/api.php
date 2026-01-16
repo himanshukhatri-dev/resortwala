@@ -6,6 +6,10 @@ use App\Http\Controllers\PropertyMasterController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\StatusController;
 
+// EMERGENCY FIX: Manually load Controller if Autoloader is stale
+if (file_exists(app_path('Http/Controllers/Admin/VoiceStudioController.php'))) {
+    require_once app_path('Http/Controllers/Admin/VoiceStudioController.php');
+}
 
 // Debug Route
 require_once __DIR__ . '/debug_route.php';
