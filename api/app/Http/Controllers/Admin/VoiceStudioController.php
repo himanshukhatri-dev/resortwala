@@ -74,7 +74,38 @@ class VoiceStudioController extends Controller
 
     public function renderVideo(Request $request, $id)
     {
-        return response()->json(['message' => 'Render Logic Placeholder']);
+        // 1. Validate
+        $request->validate([
+            'visual_type' => 'required',
+            'visual_options' => 'required|array',
+            'visual_options.property_id' => 'required'
+        ]);
+
+        // 2. Create Job
+        $job = new \App\Models\VideoRenderJob();
+        $job->property_id = $request->visual_options['property_id'];
+        $job->template_id = $request->visual_type; // 'cinematic' or 'avatar'
+        $job->status = 'pending';
+        $job->options = array_merge($request->visual_options, ['voice_project_id' => $id]);
+        $job->save();
+
+        // 3. Spawn Background Worker (Async)
+        $phpBinary = 'php'; 
+        $artisanPath = base_path('artisan');
+        // "php artisan video:process {id} > /dev/null 2>&1 &"
+        $command = "nohup {$phpBinary} {$artisanPath} video:process {$job->id} > /dev/null 2>&1 &";
+        
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            $command = "start /B php {$artisanPath} video:process {$job->id}";
+        }
+
+        exec($command);
+
+        return response()->json([
+            'message' => 'Video Rendering Started',
+            'job_id' => $job->id,
+            'status' => 'pending'
+        ]);
     }
 
     public function setupDB()
