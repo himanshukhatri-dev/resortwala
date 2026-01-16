@@ -1197,8 +1197,6 @@ export default function AddProperty() {
                                 <tr>
                                     <th className="px-2 py-2">Day</th>
                                     <th className="px-2 py-2 bg-blue-50 text-blue-700">Vendor Ask (₹)</th>
-                                    <th className="px-2 py-2 text-orange-600">Vendor Disc (%)</th>
-                                    <th className="px-2 py-2 font-bold bg-green-50 text-green-700">Our Rate (₹)</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
@@ -1207,23 +1205,12 @@ export default function AddProperty() {
                                         <td className="px-2 py-2 font-bold capitalize">{day}</td>
                                         <td className="px-2 py-2 bg-blue-50/30">
                                             <input type="number" value={pricing[day].villa.current || ''} onChange={e => handlePriceChange(day, 'villa', 'current', e.target.value)}
-                                                className="w-20 p-1 border rounded bg-white focus:border-blue-500 outline-none" placeholder="0" />
-                                        </td>
-                                        <td className="px-2 py-2">
-                                            <input type="number" value={pricing[day].villa.vendorDiscountPercentage} onChange={e => handlePriceChange(day, 'villa', 'vendorDiscountPercentage', e.target.value)}
-                                                className="w-12 p-1 border rounded bg-white focus:border-orange-500 outline-none" placeholder="0" />
-                                        </td>
-                                        <td className="px-2 py-2 bg-green-50/30 font-bold text-green-700">
-                                            <input type="number" value={Math.round(pricing[day].villa.discounted) || ''} onChange={e => handlePriceChange(day, 'villa', 'discounted', e.target.value)}
-                                                className="w-20 p-1 border rounded bg-green-50 focus:border-green-500 outline-none font-bold" />
+                                                className="w-full p-1 border rounded bg-white focus:border-blue-500 outline-none" placeholder="0" />
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                        <p className="text-[10px] text-gray-400 mt-2 px-1">
-                            * 'Our Rate' is what we sell at. The difference between Vendor Ask and Our Rate is your discount to us.
-                        </p>
                     </div>
 
                     <div className="bg-purple-50/50 p-5 rounded-xl border border-purple-100">
@@ -1647,7 +1634,7 @@ export default function AddProperty() {
     };
 
     const renderNavigation = (isTop = false) => (
-        <div className={`flex justify-between items-center ${isTop ? 'mb-4 border-b pb-4 border-gray-100' : 'fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 p-3 md:p-4 z-50 md:static md:bg-transparent md:border-0 md:p-0'}`}>
+        <div className={`flex justify-between items-center ${isTop ? 'mb-4 border-b pb-4 border-gray-100' : 'fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 p-3 md:p-4 z-50 md:static md:bg-transparent md:border-0 md:p-0 pb-[env(safe-area-inset-bottom)]'}`}>
             <button
                 onClick={() => {
                     setCurrentStep(prev => prev - 1);

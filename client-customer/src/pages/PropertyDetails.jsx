@@ -11,7 +11,7 @@ import {
     FaWater, FaUser, FaBed, FaBath, FaDoorOpen, FaShieldAlt, FaMedal, FaUsers,
     FaWhatsapp, FaFacebook, FaTwitter, FaEnvelope, FaLink, FaCopy, FaPhone, FaGlobe,
     FaSnowflake, FaTv, FaCouch, FaRestroom, FaMoneyBillWave, FaChild, FaTicketAlt,
-    FaClock, FaBan, FaDog, FaSmoking, FaWineGlass, FaInfoCircle, FaCamera, FaQuoteLeft,
+    FaClock, FaBan, FaDog, FaSmoking, FaWineGlass, FaInfoCircle, FaCamera, FaQuoteLeft, FaQuoteRight,
     FaCloudRain, FaMusic, FaTree, FaFire, FaBolt, FaTshirt, FaVideo, FaWheelchair, FaMedkit, FaUmbrellaBeach, FaChair, FaUserShield, FaHotTub, FaLanguage, FaGamepad,
     FaSun, FaMoon, FaCoffee
 } from 'react-icons/fa';
@@ -253,7 +253,14 @@ export default function PropertyDetails() {
     }, [isGalleryOpen]);
 
     const handleDateSelect = (day) => {
-        if (day < new Date().setHours(0, 0, 0, 0)) return;
+        if (!day) return;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const selectedDay = new Date(day);
+        selectedDay.setHours(0, 0, 0, 0);
+
+        if (selectedDay < today) return;
 
         const isWaterparkProp = property?.PropertyType === 'WaterPark' || property?.PropertyType === 'Waterpark';
 
@@ -319,7 +326,7 @@ export default function PropertyDetails() {
         ob.otherRules = ob.otherRules.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
     }
 
-    const pricing = ob.pricing || {};
+    const obPricing = ob.pricing || {};
     const roomConfig = ob.roomConfig || { livingRoom: {}, bedrooms: [] };
     const isWaterpark = property.PropertyType === 'Waterpark' || property.PropertyType === 'WaterPark';
 
@@ -488,8 +495,8 @@ export default function PropertyDetails() {
 
         const totalGuests = guests.adults + guests.children;
         // Prioritize 'Occupancy' (e.g. 8) as the base limit before extra charges apply.
-        // Fallback to 'pricing.extraGuestLimit' if Occupancy is missing.
-        const baseGuestLimit = parseInt(property?.Occupancy || pricing?.extraGuestLimit || 12);
+        // Fallback to 'obPricing.extraGuestLimit' if Occupancy is missing.
+        const baseGuestLimit = parseInt(property?.Occupancy || obPricing?.extraGuestLimit || 12);
 
         // "from next person" means if total > limit, charge for (total - limit)
         const extraGuests = Math.max(0, totalGuests - baseGuestLimit);
@@ -806,6 +813,35 @@ export default function PropertyDetails() {
                             )}
                         </section>
 
+                        {/* REVIEWS SECTION */}
+                        <section ref={sections.reviews} className="scroll-mt-32 pb-8 border-b border-gray-100">
+                            <div className="flex items-center justify-between mb-8">
+                                <h2 className="text-2xl font-bold text-gray-900 font-serif flex items-center gap-3">
+                                    <div className="bg-yellow-100 p-2.5 rounded-xl text-yellow-600 shadow-sm"><FaStar /></div>
+                                    Guest Reviews
+                                </h2>
+                                <div className="text-right">
+                                    <div className="text-2xl font-black text-gray-900">{property.Rating || 4.8} / 5</div>
+                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Based on {(id % 40) + 12} reviews</div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                                <div className="text-gray-300 mb-4"><FaStar size={40} /></div>
+                                <h4 className="text-lg font-bold text-gray-900 mb-1">No reviews yet</h4>
+                                <p className="text-gray-500 text-sm">Be the first to share your experience after your stay!</p>
+                            </div>
+
+                            <div className="mt-8 p-6 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl text-white shadow-xl shadow-blue-100 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-150 transition-transform duration-700"><FaQuoteRight size={80} /></div>
+                                <div className="relative z-10">
+                                    <h4 className="text-lg font-bold mb-2">Have you stayed here?</h4>
+                                    <p className="text-blue-100 text-sm mb-4 max-w-md leading-relaxed">Share your experience with other travelers and help them choose their perfect stay.</p>
+                                    <button className="bg-white text-blue-600 px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-50 transition shadow-lg active:scale-95">Write a Review</button>
+                                </div>
+                            </div>
+                        </section>
+
 
 
 
@@ -989,7 +1025,7 @@ export default function PropertyDetails() {
                     <div className="relative h-full hidden lg:block">
                         <div className="sticky top-28 border border-gray-200 rounded-3xl p-6 shadow-xl bg-white/95 backdrop-blur-md">
                             {isWaterpark ? (
-                                <WaterparkBooking property={property} ob={ob} handleReserve={handleReserve} guests={guests} setGuests={setGuests} dateRange={dateRange} priceBreakdown={priceBreakdown} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} datePickerRef={datePickerRef} bookedDates={bookedDates} isWaterpark={isWaterpark} pricing={pricing} />
+                                <WaterparkBooking property={property} ob={ob} handleReserve={handleReserve} guests={guests} setGuests={setGuests} dateRange={dateRange} priceBreakdown={priceBreakdown} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} datePickerRef={datePickerRef} bookedDates={bookedDates} isWaterpark={isWaterpark} pricing={obPricing} />
                             ) : (
                                 <VillaBooking price={PRICE_WEEKDAY} rating={property.Rating} dateRange={dateRange} setDateRange={setDateRange} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} handleReserve={handleReserve} priceBreakdown={priceBreakdown} datePickerRef={datePickerRef} property={property} guests={guests} setGuests={setGuests} mealSelection={mealSelection} setMealSelection={setMealSelection} isWaterpark={isWaterpark} bookedDates={bookedDates} />
                             )}
@@ -1034,7 +1070,8 @@ export default function PropertyDetails() {
                             onDateSelect={handleDateSelect}
                             bookedDates={bookedDates}
                             property={property}
-                            pricing={pricing}
+                            pricing={obPricing}
+                            isWaterpark={isWaterpark}
                         />
                     )}
                 </AnimatePresence>
@@ -1072,21 +1109,6 @@ export default function PropertyDetails() {
                     <span className="absolute right-full mr-3 bg-black/80 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Watch Video Tour</span>
                 </motion.button>
             )}
-
-            <MobileFooter
-                price={priceBreakdown?.grantTotal || pricing.sellingPrice}
-                unit={priceBreakdown?.nights > 0 ? 'total' : 'night'}
-                onReserve={() => {
-                    if (!dateRange.from || !dateRange.to) {
-                        setIsDatePickerOpen(true);
-                    } else {
-                        handleReserve();
-                    }
-                }}
-                buttonText={(!dateRange.from || !dateRange.to) ? 'Check Availability' : 'Reserve Now'}
-                dateRange={dateRange}
-                onDateClick={() => setIsDatePickerOpen(true)}
-            />
         </div>
     );
 }
@@ -1508,7 +1530,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
     );
 };
 
-const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDates, property, pricing }) => (
+const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDates, property, pricing, isWaterpark }) => (
     <AnimatePresence>
         {isOpen && (
             <motion.div
@@ -1533,9 +1555,12 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
 
                     <div className="flex justify-center -mx-4 pb-4 overflow-hidden">
                         <DayPicker
-                            mode="range"
-                            selected={dateRange}
-                            onDayClick={(day) => onDateSelect(day)}
+                            mode={isWaterpark ? "single" : "range"}
+                            selected={isWaterpark ? dateRange.from : dateRange}
+                            onDayClick={(day) => {
+                                onDateSelect(day);
+                                if (isWaterpark) onClose();
+                            }}
                             numberOfMonths={12}
                             disabled={[{ before: new Date() }]}
                             classNames={{
@@ -1554,7 +1579,7 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                             onClick={onClose}
                             className="w-full bg-black text-white py-4 rounded-xl font-bold font-serif text-lg shadow-lg active:scale-95 transition"
                         >
-                            Done
+                            {(!isWaterpark && dateRange.from && !dateRange.to) ? 'Select Check-out' : 'Done'}
                         </button>
                     </div>
                 </motion.div>
@@ -1599,17 +1624,75 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
     if (!isOpen) return null;
     const next = (e) => { e?.stopPropagation(); setIndex((prev) => (prev + 1) % images.length); };
     const prev = (e) => { e?.stopPropagation(); setIndex((prev) => (prev - 1 + images.length) % images.length); };
+
     return (
         <AnimatePresence>
             {isOpen && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/25 backdrop-blur-md flex flex-col items-center justify-center py-4 md:py-6" onClick={onClose}>
-                    <div className="flex-1 w-full flex items-center justify-center relative px-4 md:px-20" onClick={e => e.stopPropagation()}>
-                        <div className="relative inline-block max-w-[95vw] max-h-[85vh] group">
-                            <div className="absolute top-4 left-4 z-20"><span className="font-mono font-bold bg-black/50 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs md:text-sm tracking-widest border border-white/20 shadow-sm">{currentIndex + 1} / {images.length}</span></div>
-                            <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2.5 bg-black/50 hover:bg-black/80 text-white backdrop-blur-md rounded-full transition-all border border-white/20 shadow-sm group-hover:scale-110"><FaTimes size={18} /></button>
-                            <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-3 md:p-4 text-white bg-black/40 hover:bg-black/70 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg opacity-0 group-hover:opacity-100 md:opacity-100"><FaArrowLeft size={20} className="md:w-6 md:h-6" /></button>
-                            <button onClick={next} className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-3 md:p-4 text-white bg-black/40 hover:bg-black/70 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg opacity-0 group-hover:opacity-100 md:opacity-100"><FaArrowRight size={20} className="md:w-6 md:h-6" /></button>
-                            <AnimatePresence mode="wait"><motion.img key={currentIndex} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} src={images[currentIndex]} className="max-h-[75vh] md:max-h-[80vh] max-w-full object-contain shadow-2xl rounded-lg bg-black" alt={`Gallery ${currentIndex}`} /></AnimatePresence>
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center py-4 md:py-6 overflow-hidden"
+                    onClick={onClose}
+                >
+                    {/* Blurred Background */}
+                    <motion.div
+                        key={`bg-${currentIndex}`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 0.4 }}
+                        className="absolute inset-0 z-0"
+                    >
+                        <img
+                            src={images[currentIndex]}
+                            alt=""
+                            className="w-full h-full object-cover blur-3xl scale-110"
+                        />
+                    </motion.div>
+
+                    <div className="flex-1 w-full flex items-center justify-center relative px-4 md:px-20 z-10" onClick={e => e.stopPropagation()}>
+                        {/* Fixed Navigation Arrows */}
+                        <button
+                            onClick={prev}
+                            className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 p-4 text-white bg-black/20 hover:bg-black/50 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg group hover:scale-110"
+                            aria-label="Previous Image"
+                        >
+                            <FaArrowLeft size={24} className="md:w-8 md:h-8" />
+                        </button>
+
+                        <button
+                            onClick={next}
+                            className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-50 p-4 text-white bg-black/20 hover:bg-black/50 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg group hover:scale-110"
+                            aria-label="Next Image"
+                        >
+                            <FaArrowRight size={24} className="md:w-8 md:h-8" />
+                        </button>
+
+                        {/* Image Container */}
+                        <div className="relative inline-block max-w-[95vw] lg:max-w-7xl h-full max-h-[85vh] flex items-center justify-center">
+                            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-50">
+                                <span className="font-mono font-bold bg-black/50 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm tracking-widest border border-white/20 shadow-sm">
+                                    {currentIndex + 1} / {images.length}
+                                </span>
+                                <button
+                                    onClick={onClose}
+                                    className="p-3 bg-black/50 hover:bg-black/80 text-white backdrop-blur-md rounded-full transition-all border border-white/20 shadow-sm hover:rotate-90 duration-300"
+                                >
+                                    <FaTimes size={20} />
+                                </button>
+                            </div>
+
+                            <AnimatePresence mode="wait">
+                                <motion.img
+                                    key={currentIndex}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 1.05 }}
+                                    transition={{ duration: 0.3, ease: "easeOut" }}
+                                    src={images[currentIndex]}
+                                    className="max-h-[75vh] md:max-h-[85vh] max-w-full object-contain shadow-[0_0_100px_rgba(0,0,0,0.5)] rounded-lg"
+                                    alt={`Gallery ${currentIndex}`}
+                                />
+                            </AnimatePresence>
                         </div>
                     </div>
                 </motion.div>

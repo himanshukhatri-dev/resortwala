@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaStar, FaHeart, FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaWifi, FaSwimmingPool, FaParking, FaSnowflake, FaBed, FaBath, FaUserFriends, FaExchangeAlt } from 'react-icons/fa';
+import { FaStar, FaHeart, FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaWifi, FaSwimmingPool, FaParking, FaSnowflake, FaBed, FaBath, FaUserFriends, FaExchangeAlt, FaShieldAlt, FaCheck } from 'react-icons/fa';
 
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useWishlist } from '../../context/WishlistContext';
@@ -283,16 +283,14 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-t border-gray-50 pt-4 mt-auto gap-3 sm:gap-0">
                     <div className="flex items-center gap-3 mt-1">
-                        <div className="flex items-center -space-x-2">
-                            {[...Array(3)].map((_, i) => (
-                                <div key={i} className="w-5 h-5 rounded-full border border-white bg-gray-100 overflow-hidden flex items-center justify-center shadow-sm">
-                                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${id + i}`} alt="User" className="w-full h-full object-cover" />
-                                </div>
-                            ))}
+                        <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-lg border border-green-100 font-bold text-[10px] uppercase tracking-wider">
+                            <FaShieldAlt size={10} /> Instant Confirmation
                         </div>
-                        <div className="text-[10px] font-medium text-gray-500">
-                            <span className="font-bold text-gray-900">{(id % 5) + 3} people</span> booked this today
-                        </div>
+                        {property.is_verified && (
+                            <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 font-bold text-[10px] uppercase tracking-wider">
+                                <FaCheck size={10} /> Verified Villa
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 w-full sm:w-auto">

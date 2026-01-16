@@ -14,6 +14,17 @@ class UpdatePropertyRequest extends FormRequest
         return $this->user() && $this->user()->role === 'vendor';
     }
 
+    protected function prepareForValidation()
+    {
+        $this->merge([
+            'admin_pricing' => is_string($this->admin_pricing) ? json_decode($this->admin_pricing, true) : $this->admin_pricing,
+            'onboarding_data' => is_string($this->onboarding_data) ? json_decode($this->onboarding_data, true) : $this->onboarding_data,
+            'NoofRooms' => $this->NoofRooms ? (int)$this->NoofRooms : null,
+            'Occupancy' => $this->Occupancy ? (int)$this->Occupancy : null,
+            'MaxCapacity' => $this->MaxCapacity ? (int)$this->MaxCapacity : null,
+        ]);
+    }
+
     /**
      * Get the validation rules that apply to the request.
      */
@@ -43,7 +54,8 @@ class UpdatePropertyRequest extends FormRequest
             'onboarding_data' => 'nullable|string', // Validated as JSON in withValidator
             'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
             'videos.*' => 'file|mimes:mp4,mov,avi,m4v|max:51200',
-            'admin_pricing' => 'nullable|string',
+            'videos.*' => 'file|mimes:mp4,mov,avi,m4v|max:51200',
+            'admin_pricing' => 'nullable|array',
         ];
     }
 

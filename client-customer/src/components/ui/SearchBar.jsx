@@ -176,7 +176,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                 ${activeTab ? 'z-[101]' : ''} 
                 ${isSticky
                     ? 'rounded-full border border-gray-200 shadow-sm hover:shadow-md flex items-center h-[40px] pl-3 pr-1 mx-auto max-w-[500px]'
-                    : 'rounded-2xl md:rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.16)] border border-gray-100/50 flex flex-col md:flex-row items-stretch md:items-center p-2 md:h-[72px] ring-1 ring-black/5 gap-2 md:gap-0'}`
+                    : `rounded-2xl md:rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.16)] border border-gray-100/50 flex flex-col md:flex-row items-stretch md:items-center p-2 md:h-[72px] ring-1 ring-black/5 gap-2 md:gap-0 ${compact ? 'md:gap-0' : ''}`}`
             }>
 
                 {/* 1. WHERE */}
@@ -185,11 +185,11 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                     className={`relative cursor-pointer transition-all duration-300 px-6 py-4 md:py-0
                         ${isSticky
                             ? 'flex-1 hover:bg-gray-100/50 rounded-full'
-                            : 'w-full md:flex-[1.2] hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full h-[60px] md:h-full flex flex-col justify-center items-start text-left px-4 md:pl-8 border md:border-none border-gray-100 bg-white/50 md:bg-transparent'}
+                            : `w-full md:flex-[1.2] hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full ${compact ? 'h-[44px] md:h-full' : 'h-[60px] md:h-full'} flex flex-col justify-center items-start text-left px-4 md:pl-8 border md:border-none border-gray-100 bg-white/50 md:bg-transparent`}
                         ${activeTab === 'location' && !isSticky ? 'bg-white shadow-lg scale-100 z-20 ring-1 ring-black/5' : ''}`
                     }
                 >
-                    <label className={`text-[10px] font-bold tracking-wider text-gray-800 uppercase block mb-0.5 ${isSticky ? 'hidden' : ''}`}>Where</label>
+                    <label className={`text-[9px] md:text-[10px] font-bold tracking-wider text-gray-800 uppercase block mb-0 ${isSticky || (compact && window.innerWidth < 768) ? 'hidden' : ''}`}>Where</label>
                     <input
                         ref={inputRef}
                         type="text"
@@ -213,11 +213,11 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                     className={`relative cursor-pointer transition-all duration-300 px-6 py-4 md:py-0
                         ${isSticky
                             ? 'flex-none w-[120px] border-l border-gray-200 hover:bg-gray-100/50 flex items-center justify-center text-center'
-                            : 'w-full md:flex-1 hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full h-[60px] md:h-full flex flex-col justify-center items-start text-left px-4 md:pl-8 border md:border-none border-gray-100 bg-white/50 md:bg-transparent'}
+                            : `w-full md:flex-1 hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full ${compact ? 'h-[44px] md:h-full' : 'h-[60px] md:h-full'} flex flex-col justify-center items-start text-left px-4 md:pl-8 border md:border-none border-gray-100 bg-white/50 md:bg-transparent`}
                         ${activeTab === 'dates' && !isSticky ? 'bg-white shadow-lg scale-100 z-20 ring-1 ring-black/5' : ''}`
                     }
                 >
-                    <label className={`text-[10px] font-bold tracking-wider text-gray-800 uppercase block mb-0.5 ${isSticky ? 'hidden' : ''}`}>Check in - out</label>
+                    <label className={`text-[9px] md:text-[10px] font-bold tracking-wider text-gray-800 uppercase block mb-0 ${isSticky || (compact && window.innerWidth < 768) ? 'hidden' : ''}`}>Check in - out</label>
                     <div className={`font-semibold truncate ${dateRange.from ? 'text-gray-900' : 'text-gray-500'} ${isSticky ? 'text-sm' : 'text-sm md:text-base'}`}>
                         {dateRange.from ? (
                             <>{format(dateRange.from, 'MMM d')}{dateRange.to ? ` - ${format(dateRange.to, 'MMM d')}` : ''}</>
@@ -234,12 +234,12 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                     className={`relative cursor-pointer transition-all duration-300 px-6 py-4 md:py-0
                         ${isSticky
                             ? 'flex-none w-[100px] border-l border-gray-200 hover:bg-gray-100/50 flex items-center justify-center'
-                            : 'w-full md:flex-1 hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full h-[60px] md:h-full flex flex-row items-center justify-between px-4 md:pl-8 pr-2 border md:border-none border-gray-100 bg-white/50 md:bg-transparent'}
+                            : `w-full md:flex-1 hover:bg-gray-100/50 md:hover:bg-gray-100/50 rounded-xl md:rounded-full ${compact ? 'h-[44px] md:h-full' : 'h-[60px] md:h-full'} flex flex-row items-center justify-between px-4 md:pl-8 pr-2 border md:border-none border-gray-100 bg-white/50 md:bg-transparent`}
                         ${activeTab === 'guests' && !isSticky ? 'bg-white shadow-lg scale-100 z-20 ring-1 ring-black/5' : ''}`
                     }
                 >
                     <div className={`${isSticky ? 'text-center' : ''}`}>
-                        <label className={`text-[10px] font-bold tracking-wider text-gray-800 uppercase block mb-0.5 ${isSticky ? 'hidden' : ''}`}>Who</label>
+                        <label className={`text-[9px] md:text-[10px] font-bold tracking-wider text-gray-800 uppercase block mb-0 ${isSticky || (compact && window.innerWidth < 768) ? 'hidden' : ''}`}>Who</label>
                         <div className={`font-semibold truncate ${totalGuests > 0 ? 'text-gray-900' : 'text-gray-500'} ${isSticky ? 'text-sm' : 'text-sm md:text-base'}`}>
                             {totalGuests > 0 ? `${totalGuests} Guests` : 'Add guests'}
                         </div>
@@ -269,12 +269,12 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
 
             {/* MOBILE ONLY SEARCH BUTTON (For Hero Mode) */}
             {!isSticky && (
-                <div className="md:hidden mt-4 px-2">
+                <div className={`md:hidden ${compact ? 'mt-2' : 'mt-4'} px-2`}>
                     <button
                         onClick={handleSearchClick}
-                        className="w-full bg-gradient-to-r from-[#FF385C] to-[#E00B41] text-white rounded-xl py-3.5 shadow-lg shadow-rose-500/20 font-bold text-lg flex items-center justify-center gap-2 active:scale-95 transition"
+                        className={`w-full bg-gradient-to-r from-[#FF385C] to-[#E00B41] text-white rounded-xl ${compact ? 'py-2.5 shadow-md text-base' : 'py-3.5 shadow-lg text-lg'} shadow-rose-500/20 font-bold flex items-center justify-center gap-2 active:scale-95 transition`}
                     >
-                        <FaSearch /> Search
+                        <FaSearch size={compact ? 14 : 16} /> Search
                     </button>
                 </div>
             )}

@@ -1410,8 +1410,6 @@ export default function EditProperty() {
                                 <tr>
                                     <th className="px-2 py-2">Day</th>
                                     <th className="px-2 py-2 bg-blue-50 text-blue-700">Vendor Ask (₹)</th>
-                                    <th className="px-2 py-2 text-orange-600">Vendor Disc (%)</th>
-                                    <th className="px-2 py-2 font-bold bg-green-50 text-green-700">Our Rate (₹)</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
@@ -1420,23 +1418,12 @@ export default function EditProperty() {
                                         <td className="px-2 py-2 font-bold capitalize">{day}</td>
                                         <td className="px-2 py-2 bg-blue-50/30">
                                             <input type="number" value={pricing[day]?.villa?.current || ''} onChange={e => handlePriceChange(day, 'villa', 'current', e.target.value)}
-                                                className="w-20 p-1 border rounded bg-white focus:border-blue-500 outline-none" placeholder="0" />
-                                        </td>
-                                        <td className="px-2 py-2">
-                                            <input type="number" value={pricing[day]?.villa?.vendorDiscountPercentage} onChange={e => handlePriceChange(day, 'villa', 'vendorDiscountPercentage', e.target.value)}
-                                                className="w-12 p-1 border rounded bg-white focus:border-orange-500 outline-none" placeholder="0" />
-                                        </td>
-                                        <td className="px-2 py-2 bg-green-50/30 font-bold text-green-700">
-                                            <input type="number" value={Math.round(pricing[day]?.villa?.discounted) || ''} onChange={e => handlePriceChange(day, 'villa', 'discounted', e.target.value)}
-                                                className="w-20 p-1 border rounded bg-green-50 focus:border-green-500 outline-none font-bold" />
+                                                className="w-full p-1 border rounded bg-white focus:border-blue-500 outline-none" placeholder="0" />
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                        <p className="text-[10px] text-gray-400 mt-2 px-1">
-                            * 'Our Rate' is what we sell at. The difference between Vendor Ask and Our Rate is your discount to us.
-                        </p>
                     </div>
 
                     {/* Extra Person Policy */}

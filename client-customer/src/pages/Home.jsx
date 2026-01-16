@@ -297,7 +297,7 @@ export default function Home() {
                 description="Discover the best luxury villas, resorts, and waterparks in Lonavala and beyond. Verified stays, best prices, and instant booking."
             />
 
-            <div className="relative min-h-[85vh] md:min-h-[90vh] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-32 pb-12 md:pt-40 md:pb-20">
+            <div className="relative min-h-[80vh] md:min-h-[90vh] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-24 pb-8 md:pt-40 md:pb-20">
                 <div className="absolute inset-0 overflow-hidden">
                     <AnimatePresence mode='popLayout'>
                         <motion.img
@@ -316,12 +316,12 @@ export default function Home() {
                 </div>
 
                 <div className="relative z-50 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
-                    <h1 className="text-[1.75rem] md:text-5xl lg:text-6xl font-extrabold text-white mb-3 md:mb-6 drop-shadow-2xl font-display tracking-tight leading-tight text-center">
+                    <h1 className="text-[1.5rem] md:text-5xl lg:text-6xl font-extrabold text-white mb-2 md:mb-6 drop-shadow-2xl font-display tracking-tight leading-tight text-center">
                         Find your peace in <br className="hidden md:block" />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-2">paradise</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-1">paradise</span>
                     </h1>
 
-                    <p className="text-white/95 text-lg md:text-xl mb-6 md:mb-8 max-w-2xl text-center font-light drop-shadow-lg px-2 leading-relaxed">
+                    <p className="text-white/95 text-base md:text-xl mb-4 md:mb-8 max-w-2xl text-center font-light drop-shadow-lg px-2 leading-relaxed">
                         Discover luxury villas, water parks, and hidden gems across India.
                     </p>
 
