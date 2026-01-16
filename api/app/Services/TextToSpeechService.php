@@ -21,8 +21,36 @@ class TextToSpeechService
         if (file_exists($mockSource)) {
              copy($mockSource, $outputPath);
         } else {
-             // Create a dummy file 
-             file_put_contents($outputPath, "RIFF" . pack("V", 1000) . "WAVEfmt " . pack("V", 16) . pack("v", 1) . pack("v", 1) . pack("V", 44100) . pack("V", 88200) . pack("v", 2) . pack("v", 16) . "data" . pack("V", 0));
+             // Generate 3 Seconds of Dummy Audio (Silence)
+             // Specs: 44.1kHz, 16-bit, Stereo
+             $sampleRate = 44100;
+             $duration = 3;
+             $numSamples = $sampleRate * $duration;
+             $bitsPerSample = 16;
+             $channels = 2;
+             $byteRate = $sampleRate * $channels * ($bitsPerSample / 8);
+             $blockAlign = $channels * ($bitsPerSample / 8);
+             $dataSize = $numSamples * $blockAlign;
+             $fileSize = 36 + $dataSize;
+
+             // WAV Header
+             $header = "RIFF" . 
+                       pack("V", $fileSize) . 
+                       "WAVEfmt " . 
+                       pack("V", 16) . // Subchunk1Size
+                       pack("v", 1) .  // AudioFormat (PCM)
+                       pack("v", $channels) . 
+                       pack("V", $sampleRate) . 
+                       pack("V", $byteRate) . 
+                       pack("v", $blockAlign) . 
+                       pack("v", $bitsPerSample) . 
+                       "data" . 
+                       pack("V", $dataSize);
+             
+             // Generate Empty Data (Silence)
+             $data = str_repeat(pack("C", 0), $dataSize);
+             
+             file_put_contents($outputPath, $header . $data);
         }
 
         return $publicPath;
