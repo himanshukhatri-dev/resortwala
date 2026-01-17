@@ -573,6 +573,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/debug-tts', [\App\Http\Controllers\Admin\MediaController::class, 'debugTts']);
         Route::get('/compare/{id}', [\App\Http\Controllers\Admin\MediaController::class, 'compareImage']);
         Route::get('/backups', [\App\Http\Controllers\Admin\MediaController::class, 'index']);
+        Route::delete('/backups', [\App\Http\Controllers\Admin\MediaController::class, 'purgeBackups']); // New Purge
+        Route::post('/upload', [\App\Http\Controllers\Admin\MediaController::class, 'uploadMedia']); // New Upload
         Route::post('/restore/{id}', [\App\Http\Controllers\Admin\MediaController::class, 'restore']);
         Route::post('/watermark-batch', [\App\Http\Controllers\Admin\MediaController::class, 'triggerWatermark']);
     });

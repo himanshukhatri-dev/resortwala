@@ -20,12 +20,16 @@ class AIScriptGeneratorService
      */
     public function generateScript(PropertyMaster $property, string $vibe = 'luxury'): string
     {
-        $city = $property->city ?? 'Natural Paradise';
-        $location = $property->location_name ?? $city;
-        $name = $property->name;
-        $price = $property->starting_price ? "starting at just ₹{$property->starting_price}" : "at best rates";
+        // Fix field mapping based on PropertyMaster.php
+        $city = $property->CityName ?? 'Goa';
+        $location = $property->Location ?? $city;
+        $name = $property->Name ?? 'Our Premium Villa';
         
-        // Extract key amenities (Limit to 3)
+        // Price Logic
+        $priceVal = $property->DealPrice > 0 ? $property->DealPrice : $property->Price;
+        $price = $priceVal ? "starting at just ₹{$priceVal}" : "at best rates";
+        
+        // Extract key amenities
         $amenities = $this->getTopAmenities($property);
         $amenityText = implode(', ', $amenities);
 
@@ -79,19 +83,35 @@ class AIScriptGeneratorService
 
     private function getTopAmenities(PropertyMaster $property)
     {
-        // Logic to parse JSON amenities or relationships
-        // Fallback or rudimentary parsing
         $list = [];
-        // Assuming amenities might be in a 'facilities' column or similar, defaulting here
-        // If property has `amenities` json column:
-        if (!empty($property->amenities) && is_array($property->amenities)) {
-            $list = array_slice($property->amenities, 0, 3);
+        
+        // 1. Check Addons (if loaded)
+        if ($property->relationLoaded('addons')) {
+             foreach($property->addons as $addon) {
+                 $list[] = $addon->name;
+             }
+        }
+
+        // 2. Parse Description or Offers if empty/few
+        // Merge offers and description for keyword search
+        $desc = ($property->PropertyOffersDetails ?? '') . ' ' . ($property->LongDescription ?? '');
+        
+        if (stripos($desc, 'pool') !== false) $list[] = 'Private Pool';
+        if (stripos($desc, 'wifi') !== false) $list[] = 'High-Speed WiFi';
+        if (stripos($desc, 'lawn') !== false || stripos($desc, 'garden') !== false) $list[] = 'Lush Garden';
+        if (stripos($desc, 'beach') !== false) $list[] = 'Beach Access';
+        if (stripos($desc, 'cook') !== false || stripos($desc, 'chef') !== false) $list[] = 'Private Chef';
+        if (stripos($desc, 'parking') !== false) $list[] = 'Secure Parking';
+        if (stripos($desc, 'jacuzzi') !== false) $list[] = 'Jacuzzi';
+
+        // 3. Fallback based on Rooms
+        if (count($list) < 3) {
+            $rooms = $property->NoofRooms ?? 3;
+            $list[] = "{$rooms} Spacious Bedrooms";
+            $list[] = "Luxury Interiors";
+            $list[] = "Scenic Views";
         }
         
-        if (empty($list)) {
-            $list = ['Swimming Pool', 'Spacious Rooms', 'Garden View'];
-        }
-        
-        return $list;
+        return array_slice(array_unique($list), 0, 3);
     }
 }

@@ -64,8 +64,26 @@ const MediaRestoreConsole = () => {
             });
             toast.success("Image Restored Successfully");
             fetchBackups();
+            fetchStats();
         } catch (err) {
             toast.error(err.response?.data?.error || "Restore Failed");
+        }
+    };
+
+    const handlePurge = async () => {
+        if (!window.confirm("DANGER: This will delete ALL original backup files (Audit History). This cannot be undone.\n\nOnly do this if you are satisfied with the current watermarked images.")) return;
+
+        const toastId = toast.loading("Purging History...");
+        try {
+            const res = await axios.delete(`${API_BASE_URL}/admin/media/backups`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success(res.data.message, { id: toastId });
+            fetchBackups();
+            fetchStats();
+        } catch (err) {
+            console.error(err);
+            toast.error("Purge Failed", { id: toastId });
         }
     };
 
@@ -170,6 +188,15 @@ const MediaRestoreConsole = () => {
                     <h3 className="font-bold text-gray-700 flex items-center gap-2">
                         <FaHistory /> Audit Log & Restore
                     </h3>
+                    {backups.length > 0 && (
+                        <button
+                            onClick={handlePurge}
+                            className="text-xs text-red-500 underline hover:text-red-700 font-bold"
+                            title="Delete all original backups (Keep current watermarked versions)"
+                        >
+                            Purge History
+                        </button>
+                    )}
                 </div>
 
                 {loading ? (
@@ -179,49 +206,53 @@ const MediaRestoreConsole = () => {
                         <table className="w-full text-left text-sm">
                             <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs">
                                 <tr>
-                                    <th className="p-4">Time</th>
-                                    <th className="p-4">Batch ID</th>
-                                    <th className="p-4">Image / Path</th>
-                                    <th className="p-4">Checksum (SHA/MD5)</th>
-                                    <th className="p-4">Status</th>
-                                    <th className="p-4 text-right">Action</th>
+                                    <th className="p-2">Time</th>
+                                    <th className="p-2 hidden md:table-cell">Batch ID</th>
+                                    <th className="p-2">Image</th>
+                                    <th className="p-2 hidden lg:table-cell">Checksum</th>
+                                    <th className="p-2">Status</th>
+                                    <th className="p-2 text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {backups.map(record => (
                                     <tr key={record.id} className="hover:bg-gray-50 transition">
-                                        <td className="p-4 text-gray-600 whitespace-nowrap">
+                                        <td className="p-2 text-gray-600 whitespace-nowrap text-xs">
                                             {new Date(record.created_at).toLocaleString()}
                                         </td>
-                                        <td className="p-4 font-mono text-xs text-indigo-600">
+                                        <td className="p-2 font-mono text-xs text-indigo-600 hidden md:table-cell">
                                             {record.backup_batch_id}
                                         </td>
-                                        <td className="p-4">
-                                            <div className="font-medium text-gray-900 line-clamp-1" title={record.original_path}>{record.original_path}</div>
-                                            <div className="text-xs text-gray-400">ID: {record.image_id}</div>
+                                        <td className="p-2 max-w-[150px]">
+                                            <div className="font-medium text-gray-900 truncate" title={record.original_path}>{record.original_path}</div>
+                                            <div className="text-[10px] text-gray-400">ID: {record.image_id}</div>
                                         </td>
-                                        <td className="p-4 font-mono text-xs text-gray-500">
-                                            {record.checksum ? record.checksum.substring(0, 10) + '...' : 'N/A'}
+                                        <td className="p-2 font-mono text-[10px] text-gray-500 hidden lg:table-cell">
+                                            {record.checksum ? record.checksum.substring(0, 7) : '-'}
                                         </td>
-                                        <td className="p-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold uppercase
-                                                ${record.status === 'verified' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                        <td className="p-2">
+                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase
+                                                ${record.status === 'verified' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                                                 {record.status}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-right flex items-center justify-end gap-2">
-                                            <button
-                                                onClick={() => handleCompare(record.image_id)}
-                                                className="px-3 py-1 border border-indigo-200 text-indigo-600 rounded bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1 text-xs font-bold"
-                                            >
-                                                <FaHistory /> Compare
-                                            </button>
-                                            <button
-                                                onClick={() => handleRestore(record.id)}
-                                                className="px-3 py-1 border border-red-200 text-red-600 rounded bg-red-50 hover:bg-red-100 flex items-center gap-1 text-xs font-bold"
-                                            >
-                                                <FaUndo /> Restore
-                                            </button>
+                                        <td className="p-2 text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <button
+                                                    onClick={() => handleCompare(record.image_id)}
+                                                    className="p-1 px-2 border border-indigo-200 text-indigo-600 rounded bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1 text-[10px] font-bold"
+                                                    title="Compare"
+                                                >
+                                                    <FaHistory /> Cmp
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRestore(record.id)}
+                                                    className="p-1 px-2 border border-red-200 text-red-600 rounded bg-red-50 hover:bg-red-100 flex items-center gap-1 text-[10px] font-bold"
+                                                    title="Restore"
+                                                >
+                                                    <FaUndo /> Rst
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

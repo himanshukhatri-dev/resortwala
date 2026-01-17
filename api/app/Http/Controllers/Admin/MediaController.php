@@ -254,22 +254,23 @@ class MediaController extends Controller
             return response()->json(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()], 500);
         }
     }
+    /**
+     * Compare specific image (SRE)
+     */
     public function compareImage($id)
     {
         $image = PropertyImage::findOrFail($id);
-        $backup = \App\Models\ImageBackupVersion::where('image_id', $id)
+        $backup = ImageBackupVersion::where('image_id', $id)
                     ->where('status', 'verified')
                     ->latest()
                     ->first();
 
         // 1. Current (Live) URL
         $path = $image->image_path;
-        // Fix for missing 'properties/' directory prefix (Common issue with older uploads)
-        if (!Illuminate\Support\Str::startsWith($path, 'properties/')) {
+        if (!Str::startsWith($path, 'properties/')) {
             $path = 'properties/' . $path;
         }
         
-        // We trust the standard storage link. Browser cache might be an issue, so we append timestamp.
         $liveUrl = url('storage/' . $path) . '?t=' . time(); 
         
         // 2. Backup (Old) URL
@@ -288,6 +289,42 @@ class MediaController extends Controller
             'website_url' => $webUrl,
             'has_backup' => !!$backup,
             'backup_date' => $backup ? $backup->created_at->format('Y-m-d H:i:s') : null
+        ]);
+    }
+
+    /**
+     * DANGER: Purge all backups (Commit current state)
+     */
+    public function purgeBackups()
+    {
+        $backups = ImageBackupVersion::all();
+        $count = 0;
+        foreach ($backups as $backup) {
+             if (Storage::disk('public')->exists($backup->backup_path)) {
+                 Storage::disk('public')->delete($backup->backup_path);
+             }
+             $backup->delete();
+             $count++;
+        }
+        return response()->json(['message' => "Purged {$count} backup records."]);
+    }
+    /**
+     * Generic Media Upload (for Video Studio etc)
+     */
+    public function uploadMedia(Request $request) 
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:jpg,jpeg,png,mp4,mov,avi|max:51200' // 50MB max
+        ]);
+
+        $file = $request->file('file');
+        $path = $file->store('uploads/studio', 'public');
+        
+        return response()->json([
+            'path' => $path,
+            'url' => url('storage/' . $path),
+            'type' => Str::startsWith($file->getMimeType(), 'video') ? 'video' : 'image',
+            'name' => $file->getClientOriginalName()
         ]);
     }
 }

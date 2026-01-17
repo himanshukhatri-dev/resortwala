@@ -106,9 +106,10 @@ class ProcessWatermarkBatch implements ShouldQueue
                 $safeOutput = escapeshellarg($tempOutput);
                 
                 // Command: Input Image, Input Logo, Filter, Output
-                // boxblur=10 for slight optimization/cleanup? No, keep it pure for now.
-                // We re-encode to decent quality (q:v 2)
-                $cmd = "ffmpeg -y -i {$safeInput} -i {$safeLogo} -filter_complex \"[1:v]scale=iw*0.25:-1[wm];[0:v][wm]overlay=W-w-20:H-h-20\" -q:v 2 {$safeOutput} 2>&1";
+                // We use scale2ref to ensure the watermark is 25% of the IMAGE width, regardless of logo size.
+                // [1:v][0:v]scale2ref=w=iw*0.25:h=-1[wm][base] -> Scales Logo (1) using Base (0) as ref. Width = 0.25 * BaseWidth.
+                // [base][wm]overlay... -> Overlays scaled logo on base.
+                $cmd = "ffmpeg -y -i {$safeInput} -i {$safeLogo} -filter_complex \"[1:v][0:v]scale2ref=w=iw*0.25:h=-1[wm][base];[base][wm]overlay=W-w-20:H-h-20\" -q:v 2 {$safeOutput} 2>&1";
                 
                 $output = shell_exec($cmd);
                 

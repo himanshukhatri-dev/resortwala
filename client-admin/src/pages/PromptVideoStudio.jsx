@@ -51,6 +51,36 @@ const PromptVideoStudio = () => {
         setProcessing(false);
     };
 
+    const [uploadedFiles, setUploadedFiles] = useState([]);
+
+    const handleUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        const toastId = toast.loading("Uploading Media...");
+        const newUploads = [];
+
+        try {
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const res = await axios.post(`${API_BASE_URL}/admin/media/upload`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${localStorage.getItem('admin_token')}`
+                    }
+                });
+                newUploads.push(res.data);
+            }
+            setUploadedFiles(prev => [...prev, ...newUploads]);
+            toast.success("Upload Complete!", { id: toastId });
+        } catch (err) {
+            console.error(err);
+            toast.error("Upload failed", { id: toastId });
+        }
+    };
+
     const handleGenerateVideo = async () => {
         setProcessing(true);
         try {
@@ -60,12 +90,8 @@ const PromptVideoStudio = () => {
                 mood,
                 aspect_ratio: aspectRatio,
                 voice_id: voiceId,
-                script: generatedScript, // Pass edited script if needed? Controller regenerates it currently. 
-                // To support script editing, we should pass 'script' override to storePromptVideo?
-                // For now, storePromptVideo regenerates. 
-                // Improvement: Pass script if user edited it? 
-                // Controller line 125: $aiContext always overwrites script.
-                // We'll rely on Controller for V1.
+                script: generatedScript,
+                media_paths: uploadedFiles.map(f => f.path)
             };
 
             const res = await axios.post(`${API_BASE_URL}/admin/ai-video-generator/prompt-generate`, payload, {
@@ -175,10 +201,35 @@ const PromptVideoStudio = () => {
                                 <p className="text-sm text-gray-600 mt-1 italic">"{generatedScript}"</p>
                             </div>
 
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <FaMusic /> Auto-selected Copyright Free Music
-                                <br />
-                                <FaCloudUploadAlt /> 0 Media Uploaded (Using AI Assets)
+                            <div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-blue-100">
+                                <span className="text-xs font-bold text-blue-500 uppercase flex justify-between items-center">
+                                    Visual Assets
+                                    <label className="cursor-pointer bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-100 flex items-center gap-1 transition">
+                                        <FaCloudUploadAlt /> Add Photos/Videos
+                                        <input type="file" multiple onChange={handleUpload} className="hidden" accept="image/*,video/*" />
+                                    </label>
+                                </span>
+
+                                {uploadedFiles.length > 0 ? (
+                                    <div className="grid grid-cols-4 gap-2 mt-3">
+                                        {uploadedFiles.map((f, i) => (
+                                            <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border group">
+                                                {f.type === 'video' ? (
+                                                    <video src={f.url} className="w-full h-full object-cover" muted />
+                                                ) : (
+                                                    <img src={f.url} className="w-full h-full object-cover" />
+                                                )}
+                                                <div className="absolute top-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded">
+                                                    {f.type === 'video' ? 'VID' : 'IMG'}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-6 text-gray-400 text-sm border-2 border-dashed border-gray-100 rounded-lg mt-2">
+                                        No custom media added. <br /> System will use AI stock footage.
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
