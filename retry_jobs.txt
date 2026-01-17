@@ -1,0 +1,10 @@
+$jobs = \App\Models\VideoRenderJob::where('status', 'failed')->get();
+echo "Found " . $jobs->count() . " failed jobs.\n";
+foreach ($jobs as $j) {
+    $j->status = 'pending';
+    $j->save();
+    echo "Retrying Job " . $j->id . "\n";
+    $cmd = "nohup php " . base_path('artisan') . " video:process " . $j->id . " > /dev/null 2>&1 &";
+    exec($cmd);
+}
+exit

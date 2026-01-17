@@ -566,6 +566,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/broadcast', [\App\Http\Controllers\Admin\CommunicationController::class, 'broadcast']);
     });
 
+    // Admin Media SRE (Restore & Watermark)
+    // Admin Media SRE (Restore & Watermark)
+    Route::prefix('admin/media')->group(function () {
+        Route::get('/stats', [\App\Http\Controllers\Admin\MediaController::class, 'stats']);
+        Route::get('/debug-tts', [\App\Http\Controllers\Admin\MediaController::class, 'debugTts']);
+        Route::get('/compare/{id}', [\App\Http\Controllers\Admin\MediaController::class, 'compareImage']);
+        Route::get('/backups', [\App\Http\Controllers\Admin\MediaController::class, 'index']);
+        Route::post('/restore/{id}', [\App\Http\Controllers\Admin\MediaController::class, 'restore']);
+        Route::post('/watermark-batch', [\App\Http\Controllers\Admin\MediaController::class, 'triggerWatermark']);
+    });
+
     // Admin Settings
     Route::prefix('admin/settings')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\SettingsController::class, 'index']);
@@ -629,15 +640,29 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'index']);
         Route::post('/render', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'store']);
         Route::get('/jobs/{id}', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'show']);
+        Route::post('/jobs/{id}/retry', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'retry']);
+        // New SRE/AI Features
+        Route::get('/voices', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'getVoices']);
+        Route::post('/generate-script', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'generateScript']);
+        // New
+        Route::post('/prompt-generate', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'storePromptVideo']);
     });
 
     // AI Voice Studio
     Route::prefix('admin/voice-studio')->group(function () {
-        Route::get('/projects', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'index']); // List History
-        Route::get('/config', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'config']);
-        Route::post('/generate-audio', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'generateAudio']);
-        Route::post('/projects/{id}/render', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'renderVideo']);
-        Route::get('/setup-db', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'setupDB']); // Auto-Fix
+        Route::get('/config', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'getConfig']);
+        Route::post('/generate', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'generateAudio']);
+        // Video Generation
+        Route::post('/create-video', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'store']);
+        Route::get('/jobs/{id}', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'show']);
+        
+        // Video Jobs & Retry
+        Route::get('/projects', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'index']); // History
+        Route::get('/video-jobs', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'index']); // Video History
+        Route::post('/video-jobs/{id}/retry', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'retry']);
+        Route::delete('/video-jobs/{id}', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'destroy']);
+        Route::post('/projects/{id}/render', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'renderVideo']); // Existing route, moved
+        Route::get('/setup-db', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'setupDB']); // Auto-Fix (Existing route, moved)
     });
 
     // Admin Chatbot Management

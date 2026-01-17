@@ -7,9 +7,34 @@ use Illuminate\Support\Facades\Storage;
 
 class TextToSpeechService
 {
-    public function generateAudio(string $text, string $voiceId, string $language = 'en')
+    // STRICT VOICE MAPPING (Edge TTS)
+    const VOICE_MAP = [
+        // Male Voices
+        'atlas' => ['key' => 'en-US-GuyNeural', 'gender' => 'male'],
+        'arjun' => ['key' => 'en-IN-PrabhatNeural', 'gender' => 'male'], // Indian English
+        'neo' => ['key' => 'en-US-ChristopherNeural', 'gender' => 'male'],
+        'dev' => ['key' => 'hi-IN-MadhurNeural', 'gender' => 'male'], // Hindi
+        
+        // Female Voices
+        'aura' => ['key' => 'en-US-AriaNeural', 'gender' => 'female'],
+        'mira' => ['key' => 'en-IN-NeerjaNeural', 'gender' => 'female'], // Indian English
+        'luna' => ['key' => 'en-US-MichelleNeural', 'gender' => 'female'],
+        'zara' => ['key' => 'hi-IN-SwaraNeural', 'gender' => 'female'] // Hindi
+    ];
+
+    public function generateAudio(string $text, string $voiceId, string $language = 'en', string $expectedGender = null)
     {
-        $filename = 'tts_' . md5($text . $voiceId . time()) . '.mp3';
+        $voiceId = strtolower($voiceId);
+        // Default to Atlas if not found
+        $config = self::VOICE_MAP[$voiceId] ?? self::VOICE_MAP['atlas'];
+        
+        // 1. Strict Gender Validation
+        if ($expectedGender && $config['gender'] !== strtolower($expectedGender)) {
+             Log::emergency("Voice Gender Mismatch! Requested: {$expectedGender}, Got: {$config['gender']} (ID: {$voiceId})");
+             throw new \Exception("Voice Safety Check Failed: Selected voice '{$voiceId}' is {$config['gender']}, but {$expectedGender} was required.");
+        }
+
+        $filename = 'tts_' . $voiceId . '_' . md5($text . time()) . '.mp3';
         $outputPath = storage_path('app/public/audio/' . $filename);
         $publicPath = 'audio/' . $filename;
 
@@ -17,56 +42,41 @@ class TextToSpeechService
             mkdir(dirname($outputPath), 0755, true);
         }
 
-        // 1. Normalize Language
-        $langMap = [
-            'hinglish' => 'hi',
-            'english' => 'en',
-            'hindi' => 'hi'
-        ];
-        $targetLang = $langMap[strtolower($language)] ?? 'en';
-
-        // 2. Python gTTS Execution (Robust Arg Passing)
-        // We pass text as arguments to avoid quoting hell in -c string
-        $pythonScript = "import sys; from gtts import gTTS; gTTS(text=sys.argv[1], lang=sys.argv[2]).save(sys.argv[3])";
-        
+        // 2. Execute edge-tts
         $safeText = escapeshellarg($text);
-        $safeLang = escapeshellarg($targetLang);
         $safePath = escapeshellarg($outputPath);
-
-        $cmd = "python3 -c \"{$pythonScript}\" {$safeText} {$safeLang} {$safePath}";
+        
+        // Try direct command first, then python module fallback
+        $cmd = "edge-tts --voice \"{$config['key']}\" --text {$safeText} --write-media {$safePath}";
         
         try {
             $output = [];
             $returnCode = 0;
             
-            // Log command (redacted)
-            Log::info("Executing TTS Python: python3 -c ... [text length: " . strlen($text) . "]");
-
+            Log::info("Generating TTS with Voice: {$config['key']} ({$voiceId})");
+            // Increase timeout or execution time? CLI is fast.
             exec($cmd . " 2>&1", $output, $returnCode);
 
-            if ($returnCode === 0 && file_exists($outputPath)) {
-                // Success
-            } else {
-                throw new \Exception("Python gTTS failed (" . $returnCode . "): " . implode("\n", $output));
+            if ($returnCode !== 0 || !file_exists($outputPath)) {
+                 // Fallback: Python Module
+                 Log::warning("EdgeTTS CLI failed, trying python module...");
+                 $cmdAttempt2 = "python -m edge_tts --voice \"{$config['key']}\" --text {$safeText} --write-media {$safePath}";
+                 exec($cmdAttempt2 . " 2>&1", $output, $returnCode);
+                 
+                 if ($returnCode !== 0) {
+                     // Last Resort: python3
+                     $cmdAttempt3 = "python3 -m edge_tts --voice \"{$config['key']}\" --text {$safeText} --write-media {$safePath}";
+                     exec($cmdAttempt3 . " 2>&1", $output, $returnCode);
+
+                     if ($returnCode !== 0) {
+                        throw new \Exception("EdgeTTS failed: " . implode("\n", $output));
+                     }
+                 }
             }
 
         } catch (\Throwable $e) {
             Log::error("TTS Generation Failed: " . $e->getMessage());
-            
-            // Fallback: Generate Silence
-             $sampleRate = 44100;
-             $duration = 3;
-             $numSamples = $sampleRate * $duration;
-             $bitsPerSample = 16;
-             $channels = 2;
-             $byteRate = $sampleRate * $channels * ($bitsPerSample / 8);
-             $blockAlign = $channels * ($bitsPerSample / 8);
-             $dataSize = $numSamples * $blockAlign;
-             $fileSize = 36 + $dataSize;
-
-             $header = "RIFF" . pack("V", $fileSize) . "WAVEfmt " . pack("V", 16) . pack("v", 1) . pack("v", $channels) . pack("V", $sampleRate) . pack("V", $byteRate) . pack("v", $blockAlign) . pack("v", $bitsPerSample) . "data" . pack("V", $dataSize);
-             $data = str_repeat(pack("C", 0), $dataSize);
-             file_put_contents($outputPath, $header . $data);
+            throw $e; 
         }
 
         return $publicPath;
@@ -74,11 +84,17 @@ class TextToSpeechService
 
     public function getVoices()
     {
-        return [
-            ['id' => 'cinematic_male', 'name' => 'Deep Cinematic (Male)', 'category' => 'Marketing'],
-            ['id' => 'friendly_female', 'name' => 'Warm Friendly (Female)', 'category' => 'Storytelling'],
-            ['id' => 'motivational_male', 'name' => 'Motivational (Male)', 'category' => 'Hype'],
-            ['id' => 'premium_female', 'name' => 'Premium Brand (Female)', 'category' => 'Luxury'],
-        ];
+        $voices = [];
+        foreach (self::VOICE_MAP as $id => $cfg) {
+            // Format Name: Atlas (Male)
+            $name = ucfirst($id) . " (" . ucfirst($cfg['gender']) . ")";
+            $voices[] = [
+                'id' => $id,
+                'name' => $name,
+                'gender' => $cfg['gender'],
+                'engine_key' => $cfg['key']
+            ];
+        }
+        return $voices;
     }
 }

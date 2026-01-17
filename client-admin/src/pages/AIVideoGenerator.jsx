@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaVideo, FaImage, FaMagic, FaMusic, FaCheck, FaPlay, FaDownload, FaShareAlt, FaSpinner, FaTimes } from 'react-icons/fa';
+import { FaVideo, FaImage, FaMagic, FaMusic, FaCheck, FaPlay, FaDownload, FaShareAlt, FaSpinner, FaTimes, FaChild, FaHashtag, FaSync } from 'react-icons/fa';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
@@ -116,6 +116,19 @@ export default function AIVideoGenerator() {
         } catch (err) {
             setJobStatus('failed');
             showError("Failed to start generation");
+        }
+    };
+
+    const handleRetry = async (id) => {
+        try {
+            await axios.post(`${API_BASE_URL}/admin/voice-studio/video-jobs/${id}/retry`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchJobs();
+            showSuccess('Job retry started.');
+        } catch (error) {
+            console.error(error);
+            showError('Failed to retry job.');
         }
     };
 
@@ -407,11 +420,25 @@ export default function AIVideoGenerator() {
                                                     'bg-yellow-100 text-yellow-700 animate-pulse'}`}>
                                             {job.status}
                                         </span>
+                                        {job.status === 'failed' && job.error_message && (
+                                            <div className="text-[10px] text-red-600 mt-1 max-w-[150px] leading-tight truncate" title={job.error_message}>
+                                                {job.error_message}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="p-4 text-gray-500 text-xs">
                                         {new Date(job.created_at).toLocaleString()}
                                     </td>
                                     <td className="p-4 text-right flex justify-end gap-2">
+                                        {job.status === 'failed' && (
+                                            <button
+                                                onClick={() => handleRetry(job.id)}
+                                                className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition"
+                                                title="Retry Generation"
+                                            >
+                                                <FaSync className="animate-hover-spin" size={12} />
+                                            </button>
+                                        )}
                                         {job.status === 'completed' && (
                                             <>
                                                 <button
@@ -452,5 +479,3 @@ export default function AIVideoGenerator() {
 // Dummy Icon Components (Replace with react-icons imports at top)
 const FaHotel = () => <FaVideo />;
 const FaGlassCheers = () => <FaMusic />;
-const FaChild = () => <FaImage />;
-const FaHashtag = () => <FaShareAlt />;

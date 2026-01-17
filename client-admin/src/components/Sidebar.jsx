@@ -70,8 +70,9 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
                 { path: '/intelligence/leads', icon: <FiSearch />, label: 'Lead Discovery' },
                 { path: '/connectors', icon: <FiUsers />, label: 'Connectors' },
                 { path: '/vendor-presentation', icon: <FiTruck />, label: 'Vendor Onboarding' },
-                { path: '/ai-video-generator', icon: <FiVideo />, label: 'Video Generator' },
-                { path: '/voice-studio', icon: <FiMic />, label: 'Voice Studio' },
+                { path: '/ai-video-studio', icon: <FiVideo />, label: 'AI Social Studio' },
+                { path: '/prompt-video-studio', icon: <FiVideo />, label: 'Prompt Video Studio' },
+                // { path: '/voice-studio', icon: <FiMic />, label: 'Voice Studio' },
             ]
         },
         {

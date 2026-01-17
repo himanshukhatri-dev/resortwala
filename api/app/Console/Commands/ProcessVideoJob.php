@@ -64,6 +64,9 @@ class ProcessVideoJob extends Command
             return 0;
         } catch (\Exception $e) {
             Log::error("Video Job ID {$id} failed: " . $e->getMessage());
+            $job->status = 'failed';
+            $job->error_message = $e->getMessage();
+            $job->save();
             return 1;
         }
     }

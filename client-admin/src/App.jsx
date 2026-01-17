@@ -40,7 +40,10 @@ import LeadCrawler from './pages/Intelligence/LeadCrawler';
 import ComingSoon from './pages/ComingSoon';
 import ChatbotManager from './pages/ChatbotManager';
 import AIVideoGenerator from './pages/AIVideoGenerator';
+import AISocialVideoStudio from './pages/AISocialVideoStudio';
+import PromptVideoStudio from './pages/PromptVideoStudio';
 import VoiceStudio from './pages/VoiceStudio';
+import MediaRestoreConsole from './pages/MediaRestoreConsole';
 import './App.css';
 
 
@@ -94,7 +97,11 @@ function App() {
               <Route path="/intelligence/leads" element={<LeadCrawler />} />
               <Route path="/vendor-presentation" element={<VendorPresentation />} />
               <Route path="/ai-video-generator" element={<AIVideoGenerator />} />
+              <Route path="/ai-video-studio" element={<AISocialVideoStudio />} />
+              <Route path="/prompt-video-studio" element={<PromptVideoStudio />} />
               <Route path="/voice-studio" element={<VoiceStudio />} />
+              {/* SRE Media Tool */}
+              <Route path="/media/restore-images" element={<MediaRestoreConsole />} />
 
               {/* Settings & System */}
               <Route path="/investor-presentation" element={<InvestorPresentation />} />
