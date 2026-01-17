@@ -587,7 +587,7 @@ export default function PropertyDetails() {
     };
 
     return (
-        <div className="bg-white min-h-screen pb-20 pt-[80px]">
+        <div className="bg-white min-h-screen pb-20 pt-[110px]">
             {property && (
                 <SEO
                     title={property.display_name || property.Name}
@@ -690,7 +690,7 @@ export default function PropertyDetails() {
                 )}
 
                 {/* 2. STICKY TABS */}
-                <div className="sticky top-[72px] z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 mb-8 -mx-4 px-4 md:mx-0 md:px-0">
+                <div className="sticky top-[72px] z-40 bg-white/70 backdrop-blur-md border-b border-gray-100 mb-8 -mx-4 px-4 md:mx-0 md:px-0">
                     <div className="flex gap-8 overflow-x-auto no-scrollbar py-4 font-medium text-gray-500 text-sm md:text-base">
                         {['Overview', 'Amenities', !isWaterpark && 'Rooms', 'Policies', property.reviews?.length > 0 && 'Reviews', 'Location'].filter(Boolean).map((tab) => (
                             <button key={tab} onClick={() => scrollToSection(tab.toLowerCase())} className={`whitespace-nowrap pb-1 border-b-2 transition ${activeTab === tab.toLowerCase() ? 'border-black text-black font-bold' : 'border-transparent hover:text-gray-800'}`}>
@@ -1603,7 +1603,7 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center py-4 md:py-6 overflow-hidden"
+                    className="fixed inset-0 z-[200] bg-black/85 flex flex-col items-center justify-center py-4 md:py-6 overflow-hidden"
                     onClick={onClose}
                 >
                     {/* Blurred Background */}

@@ -2,7 +2,7 @@
 
 # Configuration
 SERVER_USER="root"
-SERVER_IP="72.61.242.42"
+SERVER_IP="77.37.47.243"
 REMOTE_PATH="/var/www/html/stagingapi.resortwala.com"
 
 # New Client ID

@@ -19,7 +19,7 @@
 #>
 
 param (
-    [string]$ServerIP = "72.61.242.42",
+    [string]$ServerIP = "77.37.47.243",
     [string]$User = "root",
     [string]$RemoteBasePath = "/var/www/html",
     [switch]$AutoDeployAll = $false,

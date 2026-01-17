@@ -149,111 +149,13 @@ Route::get('/ping', function () {
 
 Route::get('/health', [StatusController::class, 'check']); // Alias for status
 
-// DIAGNOSTIC: Video Generation Capabilities Check
-Route::get('/debug/video-capabilities', function () {
-    $results = [
-        'timestamp' => now()->toIso8601String(),
-        'os' => PHP_OS,
-        'uname' => php_uname(),
-        'php_binary' => PHP_BINARY,
-    ];
 
-    // 1. FFmpeg Check
-    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-        $path = trim(shell_exec('where ffmpeg 2>nul'));
-        $results['ffmpeg_path'] = $path ?: 'NOT FOUND (Windows)';
-    } else {
-        $path = trim(shell_exec('which ffmpeg'));
-        $results['ffmpeg_path'] = $path ?: 'NOT FOUND (Linux)';
-    }
-
-    // 2. Version Check
-    $output = [];
-    exec('ffmpeg -version 2>&1', $output, $ret);
-    $results['ffmpeg_version_head'] = array_slice($output, 0, 3);
-    $results['ffmpeg_return_code'] = $ret;
-
-    // 3. Storage Check
-    $videoDir = storage_path('app/public/videos');
-    $results['video_dir'] = $videoDir;
-    
-    if (!file_exists($videoDir)) {
-        try {
-            mkdir($videoDir, 0755, true);
-            $results['dir_creation'] = 'Created successfully';
-        } catch (\Exception $e) {
-            $results['dir_creation'] = 'Failed: ' . $e->getMessage();
-        }
-    } else {
-        $results['dir_creation'] = 'Already exists';
-    }
-
-    $results['is_writable'] = is_writable($videoDir);
-
-    // 4. Function Availability
-    $results['functions'] = [
-        'exec' => function_exists('exec'),
-        'shell_exec' => function_exists('shell_exec'),
-        'proc_open' => function_exists('proc_open'),
-        'popen' => function_exists('popen')
-    ];
-
-// 5. Music Assets Check
-    $musicDir = storage_path('app/public/music');
-    $results['music_dir'] = [
-        'path' => $musicDir,
-        'exists' => file_exists($musicDir),
-        'files' => file_exists($musicDir) ? array_diff(scandir($musicDir), ['.', '..']) : []
-    ];
-    
-    $requiredTracks = ['luxury_ambient.mp3', 'upbeat_pop.mp3', 'happy_acoustic.mp3', 'viral_beat.mp3'];
-    $results['missing_tracks'] = [];
-    foreach ($requiredTracks as $track) {
-         if (!file_exists($musicDir . '/' . $track)) {
-             $results['missing_tracks'][] = $track;
-         }
-    }
-
-    return response()->json($results);
-});
 
 // Public Holiday Route (for pricing calculation)
 Route::get('/holidays', [\App\Http\Controllers\HolidayController::class, 'index']);
 Route::get('/holidays/fix-approve', [\App\Http\Controllers\HolidayController::class, 'approveAll']);
 
-// DEBUG ROUTE - Frontend Logging
-Route::post('/debug/log', function(\Illuminate\Http\Request $request) {
-    \Illuminate\Support\Facades\Log::error("FRONTEND LOG: " . json_encode($request->all()));
-    return response()->json(['status' => 'logged']);
-}); 
 
-// DEBUG ROUTE - REMOVE AFTER FIXING 500 ERROR
-Route::get('/debug-db', function() {
-    try {
-        \Illuminate\Support\Facades\DB::connection()->getPdo();
-        $dbName = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
-        // Try reading a table
-        $count = \App\Models\User::count();
-        return response()->json([
-            'status' => 'success', 
-            'message' => "Connected to database: $dbName",
-            'user_count' => $count,
-            'env_db_host' => env('DB_HOST'),
-            'env_db_name' => env('DB_DATABASE'),
-            'env_db_user' => env('DB_USERNAME'),
-            // Do NOT print password
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
-            'message' => $e->getMessage(),
-            'code' => $e->getCode(),
-            'env_db_host' => env('DB_HOST'),
-            'env_db_name' => env('DB_DATABASE'),
-            'env_db_user' => env('DB_USERNAME'),
-        ], 500);
-    }
-});
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vendor/profile', [\App\Http\Controllers\VendorController::class, 'profile']);
@@ -298,137 +200,12 @@ Route::post('/vendor/calendar/seed', [App\Http\Controllers\VendorCalendarControl
 
 // --- Payment Gateway Routes (PhonePe) ---
 // Route::post('/payment/initiate', [\App\Http\Controllers\PaymentController::class, 'initiate'])->name('payment.initiate'); // Deprecated: Handled by BookingController
-Route::get('/debug-sdk', function () {
-    $path = base_path('vendor/phonepe');
-    if (!is_dir($path)) {
-        return "Path not found: $path";
-    }
-    
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::SELF_FIRST
-    );
-    
-    $files = [];
-    foreach ($iterator as $file) {
-        $files[] = $file->getPathname();
-    }
-    return $files;
-});
+
 Route::match(['get', 'post'], '/payment/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
     ->name('payment.callback');
 
-Route::get('/test-email-public', function (Illuminate\Http\Request $request) {
-    $email = $request->query('email', 'himanshukhatri.1988@gmail.com');
-    try {
-        \Illuminate\Support\Facades\Mail::raw('This is a public test from ResortWala API. Time: ' . now(), function ($msg) use ($email) {
-            $msg->to($email)
-                ->subject('ResortWala Public Test Email');
-        });
-        return response()->json(['status' => 'success', 'message' => "Email sent to $email"]);
-    } catch (\Exception $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-    }
-});
 
-/**
- * COMPREHENSIVE EMAIL TEST SUITE
- * Triggers all 4 main template types to the provided email.
- * Usage: /test-email-suite?email=your@email.com
- */
-Route::get('/test-email-suite', function (Illuminate\Http\Request $request) {
-    $email = $request->query('email');
-    if (!$email) return response()->json(['error' => 'Please provide ?email=...'], 400);
-
-    $results = [];
-
-    // --- DUMMY DATA ---
-    $vendor = new \App\Models\User(['name' => 'Test Vendor', 'email' => $email]);
-    $client = new \App\Models\User(['name' => 'Test Client', 'email' => $email]);
-    
-    $property = new \App\Models\PropertyMaster();
-    $property->Name = "Grand Resort Lonavala";
-    $property->Location = "Lonavala";
-    $property->vendor = $vendor;
-    
-    $booking = new \App\Models\Booking();
-    $booking->BookingId = 1001;
-    $booking->booking_reference = "TEST-REF-1001";
-    $booking->CustomerName = "Test Client";
-    $booking->CustomerEmail = $email;
-    $booking->CheckInDate = now()->addDays(2);
-    $booking->CheckOutDate = now()->addDays(4);
-    $booking->Guests = 2;
-    $booking->TotalAmount = 5000;
-    $booking->Status = "Confirmed";
-    $booking->property = $property;
-
-    $coupon = (object)['code' => 'WELCOME50', 'amount' => 500];
-
-    // --- HELPER ---
-    $send = function($key, $mailable) use (&$results, $email) {
-        try {
-            \Illuminate\Support\Facades\Mail::to($email)->send($mailable);
-            $results[$key] = 'Sent';
-        } catch (\Exception $e) { $results[$key] = 'Error: ' . $e->getMessage(); }
-    };
-
-    // --- PHASES START ---
-
-    // 1. AUTH / ONBOARDING
-    $send('1_OtpMail', new \App\Mail\OtpMail('999999', 'login'));
-    $send('2_VendorWelcome', new \App\Mail\UserOnboardingMail("New Vendor", "http://link", "vendor", "welcome"));
-    $send('3_VendorApproved', new \App\Mail\UserOnboardingMail("New Vendor", "http://link", "vendor", "approved"));
-    $send('4_VendorRejected', new \App\Mail\UserOnboardingMail("New Vendor", "http://link", "vendor", "rejected"));
-    $send('5_ClientWelcome', new \App\Mail\ClientWelcomeMail($client));
-
-    // 2. PROPERTY LIFECYCLE
-    $send('6_PropertyAdded', new \App\Mail\PropertyAddedMail($property, $vendor));
-    $send('7_PropertyApproved', new \App\Mail\PropertyActionMail($property, 'approved'));
-    $send('8_PropertyRejected', new \App\Mail\PropertyActionMail($property, 'rejected')); // Rejection reason optional in template?
-    $send('9_PropertyDeleted', new \App\Mail\PropertyActionMail($property, 'deleted'));
-
-    // 3. PROPERTY EDITS
-    $send('10_EditSubmitted', new \App\Mail\PropertyEditMail($property, 'submitted'));
-    $send('11_EditApproved', new \App\Mail\PropertyEditMail($property, 'approved'));
-    $send('12_EditRejected', new \App\Mail\PropertyEditMail($property, 'rejected'));
-
-    // 4. CALENDAR
-    $send('13_PriceUpdate', new \App\Mail\CalendarUpdateMail($property, 'price_update', now(), now(), 5000));
-    $send('14_DateFreeze', new \App\Mail\CalendarUpdateMail($property, 'freeze', now(), now()));
-    
-    // 5. MANUAL BOOKING / REQUESTS
-    $send('15_ClientRequest', new \App\Mail\ManualBookingMail($booking, 'client_request'));
-    $send('16_VendorApprove', new \App\Mail\ManualBookingMail($booking, 'vendor_approve'));
-    $send('17_VendorReject', new \App\Mail\ManualBookingMail($booking, 'vendor_reject'));
-
-    // 6. BOOKING FLOW (APP)
-    $send('18_BookingNewAdmin', new \App\Mail\BookingMail($booking, 'new_request_admin')); // Admin Alert
-    $send('19_BookingNewVendor', new \App\Mail\BookingMail($booking, 'new_request_vendor')); // Vendor Alert
-    $send('20_BookingConfirmedClient', new \App\Mail\BookingMail($booking, 'confirmed_customer')); // Customer Receipt
-    $send('21_StayReminder', new \App\Mail\StayReminderMail($booking));
-    $send('22_Cancellation', new \App\Mail\BookingCancellationMail($booking));
-
-    // 7. COUPONS & REFUNDS
-    $send('23_CouponPurchased', new \App\Mail\CouponPurchasedMail($coupon, $client));
-    $send('24_RefundInitiated', new \App\Mail\RefundInitiatedMail($booking));
-    $send('25_RefundCompleted', new \App\Mail\RefundCompletedMail($booking));
-
-    // 8. WHATSAPP (Simulation)
-    try {
-        $wa = new \App\Services\WhatsApp\WhatsAppService();
-        $wa->send(\App\Services\WhatsApp\WhatsAppMessage::template('919876543210', 'test_full_suite', ['param' => 'check_logs']));
-        $results['26_WhatsApp_Sim'] = 'Logged';
-    } catch (\Exception $e) { $results['26_WhatsApp_Sim'] = $e->getMessage(); }
-
-    return response()->json([
-        'status' => 'Completed Full Suite',
-        'target_email' => $email,
-        'results' => $results,
-        'total_sent' => count($results)
-    ]);
-});
 
 Route::post('/payment/simulate', [\App\Http\Controllers\PaymentSimulationController::class, 'simulate']);
 
@@ -692,14 +469,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/audit-logs', [\App\Http\Controllers\Internal\DbControlController::class, 'auditLogs']);
     });
 
-    // Server Migration Manager
-    Route::prefix('admin/server-migration')->group(function () {
-        Route::post('/connect', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'checkConnection']);
-        Route::post('/keys', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'generateKeys']);
-        Route::post('/auto-setup', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'autoSetup']);
-        Route::post('/scan', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'scanSource']);
-        Route::post('/migrate-asset', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'migrateAsset']); // Real Migration
-    });
+
 });
 
 
