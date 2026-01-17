@@ -575,6 +575,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/backups', [\App\Http\Controllers\Admin\MediaController::class, 'index']);
         Route::delete('/backups', [\App\Http\Controllers\Admin\MediaController::class, 'purgeBackups']); // New Purge
         Route::post('/upload', [\App\Http\Controllers\Admin\MediaController::class, 'uploadMedia']); // New Upload
+        Route::post('/restore-batch', [\App\Http\Controllers\Admin\MediaController::class, 'restoreBatch']); // New Batch Restore
         Route::post('/restore/{id}', [\App\Http\Controllers\Admin\MediaController::class, 'restore']);
         Route::post('/watermark-batch', [\App\Http\Controllers\Admin\MediaController::class, 'triggerWatermark']);
     });
@@ -646,7 +647,6 @@ Route::middleware('auth:sanctum')->group(function () {
         // New SRE/AI Features
         Route::get('/voices', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'getVoices']);
         Route::post('/generate-script', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'generateScript']);
-        // New
         Route::post('/prompt-generate', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'storePromptVideo']);
     });
 
@@ -689,6 +689,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/backups/{id}/download', [\App\Http\Controllers\Internal\DbControlController::class, 'download']);
         Route::post('/backups/{id}/restore', [\App\Http\Controllers\Internal\DbControlController::class, 'restore']);
         Route::get('/audit-logs', [\App\Http\Controllers\Internal\DbControlController::class, 'auditLogs']);
+    });
+
+    // Server Migration Manager
+    Route::prefix('admin/server-migration')->group(function () {
+        Route::post('/connect', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'checkConnection']);
+        Route::post('/keys', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'generateKeys']);
+        Route::get('/scan', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'scanSource']);
     });
 });
 

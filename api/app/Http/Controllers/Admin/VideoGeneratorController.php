@@ -18,7 +18,7 @@ class VideoGeneratorController extends Controller
     public function storePromptVideo(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'prompt' => 'required|string|max:1000',
+            'prompt' => 'required|string|max:5000',
             'mood' => 'nullable|string',
             'aspect_ratio' => 'nullable|string|in:9:16,1:1', // '9:16' (Reel), '1:1' (Post)
             'voice_id' => 'nullable|string',
@@ -186,7 +186,7 @@ class VideoGeneratorController extends Controller
 
         try {
             $this->service->processJob($newJob);
-            return response()->json(['message' => 'Retrying Job', 'job_id' => $newJob->id]);
+            return response()->json(['status' => 'success', 'message' => 'Retrying Job', 'job_id' => $newJob->id]);
         } catch (\Exception $e) {
              $newJob->status = 'failed';
              $newJob->error_message = $e->getMessage();
@@ -221,11 +221,19 @@ class VideoGeneratorController extends Controller
     {
         $request->validate([
             'property_id' => 'required',
-            'vibe' => 'nullable|string'
+            'vibe' => 'nullable|string', 
+            'topic' => 'nullable|string'
         ]);
 
-        $property = PropertyMaster::findOrFail($request->property_id);
-        $script = $this->scriptService->generateScript($property, $request->vibe ?? 'luxury');
+        if ($request->property_id == 0) {
+            // Prompt-based generation (No Property)
+            $topic = $request->topic ?? 'Luxury Stay';
+            $script = $this->scriptService->generateFromPrompt($topic, $request->vibe ?? 'luxury');
+        } else {
+            // Property-based generation
+            $property = PropertyMaster::findOrFail($request->property_id);
+            $script = $this->scriptService->generateScript($property, $request->vibe ?? 'luxury');
+        }
 
         return response()->json(['script' => $script]);
     }

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FaMagic, FaVideo, FaMusic, FaMicrophoneAlt, FaCloudUploadAlt, FaPlayCircle } from 'react-icons/fa';
+import { FaMagic, FaVideo, FaMusic, FaMicrophoneAlt, FaCloudUploadAlt, FaPlayCircle, FaUndo } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 
-const API_BASE_URL = 'https://api.resortwala.com/api';
+import { API_BASE_URL } from '../config';
 
 const PromptVideoStudio = () => {
     const [step, setStep] = useState(1); // 1: Input, 2: Review, 3: Generating
@@ -14,7 +14,7 @@ const PromptVideoStudio = () => {
 
     const [generatedScript, setGeneratedScript] = useState('');
     const [jobId, setJobId] = useState(null);
-    const [processing, setProcessing] = useState(false);
+    const [jobs, setJobs] = useState([]);
 
     // Mock Voices (Should fetch from API ideally)
     const voices = [
@@ -23,6 +23,50 @@ const PromptVideoStudio = () => {
         { id: 'echo', name: 'Echo (Male)' },
         { id: 'shimmer', name: 'Shimmer (Female)' }
     ];
+
+    const fetchJobs = async () => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/admin/video-generator`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+            });
+            setJobs(res.data);
+        } catch (err) {
+            console.error("Failed to load jobs", err);
+        }
+    };
+
+    useEffect(() => {
+        fetchJobs();
+        const interval = setInterval(fetchJobs, 10000); // Poll every 10s
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleEdit = (job) => {
+        setPrompt(job.options?.prompt || '');
+        setMood(job.options?.music_mood || 'energetic');
+        setAspectRatio(job.options?.aspect_ratio || '9:16');
+        if (job.options?.script) setGeneratedScript(job.options.script);
+
+        // Restore Media (Important for retrying custom media jobs)
+        if (job.options?.media_paths && Array.isArray(job.options.media_paths)) {
+            const restoredFiles = job.options.media_paths.map(path => ({
+                path: path,
+                url: `${API_BASE_URL}/storage/${path}`, // Construct URL for preview
+                type: path.match(/\.(mp4|mov|avi)$/i) ? 'video' : 'image'
+            }));
+            setUploadedFiles(restoredFiles);
+        } else {
+            setUploadedFiles([]);
+        }
+
+        setStep(1);
+        toast.success("Loaded settings from Job #" + job.id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // ... (Use multi_replace usually, but here I can reach both likely? No, they are far apart. Using single replace for handleEdit first)
+
+    const [processing, setProcessing] = useState(false);
 
     const handleSubmitPrompt = async () => {
         if (!prompt) return toast.error("Please enter a prompt!");
@@ -33,7 +77,7 @@ const PromptVideoStudio = () => {
         // OR we can generate script first.
         try {
             // Let's analyze script first
-            const res = await axios.post(`${API_BASE_URL}/admin/ai-video-generator/generate-script`, {
+            const res = await axios.post(`${API_BASE_URL}/admin/video-generator/generate-script`, {
                 property_id: 0, // Generic
                 topic: prompt, // Use prompt as topic
                 language: 'en'
@@ -94,7 +138,7 @@ const PromptVideoStudio = () => {
                 media_paths: uploadedFiles.map(f => f.path)
             };
 
-            const res = await axios.post(`${API_BASE_URL}/admin/ai-video-generator/prompt-generate`, payload, {
+            const res = await axios.post(`${API_BASE_URL}/admin/video-generator/prompt-generate`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -110,6 +154,31 @@ const PromptVideoStudio = () => {
         }
     };
 
+    const handleRetry = async (job) => {
+        if (!confirm('Retry this video generation?')) return;
+
+        const toastId = toast.loading("Retrying job...");
+        try {
+            // Using the new explicit retry endpoint
+            const res = await axios.post(`${API_BASE_URL}/admin/video-generator/jobs/${job.id}/retry`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (res.data.status === 'success') {
+                toast.success("Retry initiated!", { id: toastId });
+                // Refresh list
+                const listRes = await axios.get(`${API_BASE_URL}/admin/video-generator`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setJobs(listRes.data);
+            } else {
+                toast.error("Retry failed to start.", { id: toastId });
+            }
+        } catch (err) {
+            toast.error("Retry Error: " + (err.response?.data?.message || err.message), { id: toastId });
+        }
+    };
+
     return (
         <div className="p-6 max-w-5xl mx-auto">
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600 mb-2 flex items-center gap-2">
@@ -118,7 +187,6 @@ const PromptVideoStudio = () => {
             <p className="text-gray-500 mb-8">Turn text into viral Instagram Reels automatically.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
                 {/* LEFT: Inputs */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <div className="mb-6">
@@ -241,7 +309,7 @@ const PromptVideoStudio = () => {
                                     <FaPlayCircle className="text-5xl mx-auto mb-4 text-green-500" />
                                     <h3 className="font-bold text-xl">Rendering Started!</h3>
                                     <p className="mt-2 text-sm">Job ID: #{jobId}</p>
-                                    <p className="text-xs mt-4">Check "Job History" for status.</p>
+                                    <p className="text-xs mt-4">Check "Job History" below for status.</p>
                                     <button onClick={() => setStep(1)} className="mt-6 text-green-800 underline font-bold">Create Another</button>
                                 </div>
                             ) : (
@@ -249,6 +317,71 @@ const PromptVideoStudio = () => {
                             )}
                         </div>
                     )}
+                </div>
+            </div>
+
+            {/* NEW: Job History */}
+            <div className="mt-12">
+                <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+                    <FaVideo className="text-purple-600" /> Recent Video Jobs
+                </h2>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                                <th className="p-4">ID / Date</th>
+                                <th className="p-4">Prompt</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4">Remarks</th>
+                                <th className="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-sm">
+                            {jobs.map(job => (
+                                <tr key={job.id} className="hover:bg-gray-50/50">
+                                    <td className="p-4">
+                                        <span className="font-bold text-gray-700">#{job.id}</span>
+                                        <div className="text-xs text-gray-400">{new Date(job.created_at).toLocaleString()}</div>
+                                    </td>
+                                    <td className="p-4 max-w-xs truncate" title={job.options?.prompt || job.options?.title}>
+                                        {job.options?.prompt || job.options?.title || 'No Prompt'}
+                                    </td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize
+                                            ${job.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                job.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}
+                                        `}>
+                                            {job.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-red-500 text-xs max-w-xs">
+                                        {job.error_message || '-'}
+                                    </td>
+                                    <td className="p-4 text-right flex justify-end gap-2">
+                                        {job.status === 'completed' && job.output_path && (
+                                            <a href={`https://resortwala.com/storage/${job.output_path}`} target="_blank" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Watch">
+                                                <FaPlayCircle size={18} />
+                                            </a>
+                                        )}
+                                        {job.status === 'failed' ? (
+                                            <button onClick={() => handleRetry(job)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-1 text-xs font-bold" title="Retry with same settings">
+                                                <FaUndo /> Retry
+                                            </button>
+                                        ) : (
+                                            <button onClick={() => handleEdit(job)} className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition" title="Reuse Settings">
+                                                ✏️
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                            {jobs.length === 0 && (
+                                <tr>
+                                    <td colSpan="5" className="p-8 text-center text-gray-400">No videos generated yet.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

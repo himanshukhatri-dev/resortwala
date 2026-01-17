@@ -13,6 +13,7 @@ const MediaRestoreConsole = () => {
     const [processing, setProcessing] = useState(false);
     const [compareData, setCompareData] = useState(null);
     const [showCompare, setShowCompare] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
 
     // Fetch Backups
     const fetchBackups = async () => {
@@ -64,9 +65,58 @@ const MediaRestoreConsole = () => {
             });
             toast.success("Image Restored Successfully");
             fetchBackups();
-            fetchStats();
+            // fetchStats(); // fetchBackups already fetches stats
         } catch (err) {
             toast.error(err.response?.data?.error || "Restore Failed");
+        }
+    };
+
+    const toggleSelect = (id) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === backups.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(backups.map(b => b.id));
+        }
+    };
+
+    const handleBatchRestore = async () => {
+        if (selectedIds.length === 0) return;
+        if (!window.confirm(`Are you sure you want to restore ${selectedIds.length} images?`)) return;
+
+        const toastId = toast.loading(`Restoring ${selectedIds.length} images...`);
+        try {
+            await axios.post(`${API_BASE_URL}/admin/media/restore-batch`, { ids: selectedIds }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success(`Restored ${selectedIds.length} images`, { id: toastId });
+            fetchBackups(); // Refresh all backups and stats
+            setSelectedIds([]);
+        } catch (err) {
+            toast.error("Batch restore failed", { id: toastId });
+        }
+    };
+
+    const handleBatchProtect = async () => {
+        if (selectedIds.length === 0) return;
+        // Map backup IDs back to Image IDs using the backups data
+        const imageIds = backups.filter(b => selectedIds.includes(b.id)).map(b => b.image_id);
+
+        if (!window.confirm(`Re-Apply Watermark to ${imageIds.length} images? This will overwrite them again.`)) return;
+
+        const toastId = toast.loading("Queuing Watermark Job...");
+        try {
+            await axios.post(`${API_BASE_URL}/admin/media/watermark-batch`, { ids: imageIds, sync: true }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success("Watermark Applied Successfully!", { id: toastId });
+            fetchBackups();
+            setSelectedIds([]);
+        } catch (err) {
+            toast.error("Failed to apply watermark", { id: toastId });
         }
     };
 
@@ -80,7 +130,7 @@ const MediaRestoreConsole = () => {
             });
             toast.success(res.data.message, { id: toastId });
             fetchBackups();
-            fetchStats();
+            // fetchStats(); // fetchBackups already fetches stats
         } catch (err) {
             console.error(err);
             toast.error("Purge Failed", { id: toastId });
@@ -188,15 +238,33 @@ const MediaRestoreConsole = () => {
                     <h3 className="font-bold text-gray-700 flex items-center gap-2">
                         <FaHistory /> Audit Log & Restore
                     </h3>
-                    {backups.length > 0 && (
-                        <button
-                            onClick={handlePurge}
-                            className="text-xs text-red-500 underline hover:text-red-700 font-bold"
-                            title="Delete all original backups (Keep current watermarked versions)"
-                        >
-                            Purge History
-                        </button>
-                    )}
+                    <div className="flex gap-3">
+                        {selectedIds.length > 0 && (
+                            <>
+                                <button
+                                    onClick={handleBatchRestore}
+                                    className="text-xs bg-green-100 text-green-600 px-3 py-1 rounded font-bold hover:bg-green-200 transition flex items-center gap-1"
+                                >
+                                    <FaUndo /> Restore Selected ({selectedIds.length})
+                                </button>
+                                <button
+                                    onClick={handleBatchProtect}
+                                    className="text-xs bg-pink-100 text-pink-600 px-3 py-1 rounded font-bold hover:bg-pink-200 transition flex items-center gap-1"
+                                >
+                                    <FaWater /> Protect ({selectedIds.length})
+                                </button>
+                            </>
+                        )}
+                        {backups.length > 0 && (
+                            <button
+                                onClick={handlePurge}
+                                className="text-xs text-red-500 underline hover:text-red-700 font-bold"
+                                title="Delete all original backups (Keep current watermarked versions)"
+                            >
+                                Purge History
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {loading ? (
@@ -206,6 +274,9 @@ const MediaRestoreConsole = () => {
                         <table className="w-full text-left text-sm">
                             <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs">
                                 <tr>
+                                    <th className="p-2 border-b w-10">
+                                        <input type="checkbox" checked={backups.length > 0 && selectedIds.length === backups.length} onChange={toggleSelectAll} className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500" />
+                                    </th>
                                     <th className="p-2">Time</th>
                                     <th className="p-2 hidden md:table-cell">Batch ID</th>
                                     <th className="p-2">Image</th>
@@ -217,6 +288,9 @@ const MediaRestoreConsole = () => {
                             <tbody className="divide-y divide-gray-100">
                                 {backups.map(record => (
                                     <tr key={record.id} className="hover:bg-gray-50 transition">
+                                        <td className="p-2 border-b">
+                                            <input type="checkbox" checked={selectedIds.includes(record.id)} onChange={() => toggleSelect(record.id)} className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500" />
+                                        </td>
                                         <td className="p-2 text-gray-600 whitespace-nowrap text-xs">
                                             {new Date(record.created_at).toLocaleString()}
                                         </td>
@@ -301,10 +375,10 @@ const MediaRestoreConsole = () => {
                                         <span className="text-xs text-green-700 bg-green-100 px-2 rounded-full">Live</span>
                                     </div>
                                     <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden relative">
-                                        <img src={compareData.live_url} className="w-full h-full object-contain" />
+                                        <img src={`${compareData.live_url}${compareData.live_url.includes('?') ? '&' : '?'}t=${Date.now()}`} className="w-full h-full object-contain" />
                                     </div>
                                     <div className="mt-2 text-center flex gap-4 justify-center">
-                                        <a href={compareData.live_url} target="_blank" className="text-xs text-blue-600 underline">Open Image</a>
+                                        <a href={`${compareData.live_url}${compareData.live_url.includes('?') ? '&' : '?'}t=${Date.now()}`} target="_blank" className="text-xs text-blue-600 underline">Open Image</a>
                                         <a href={compareData.website_url} target="_blank" className="text-xs font-bold text-indigo-600 underline">View Property on Site</a>
                                     </div>
                                 </div>

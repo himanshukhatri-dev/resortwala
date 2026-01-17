@@ -57,6 +57,11 @@ class VideoRenderingService
                 
                 if ($returnCodeReel !== 0) throw new \Exception("Reel Gen failed: " . implode("\n", $outputReel));
 
+                // Generate Thumbnail (Poster)
+                $thumbPath = str_replace('.mp4', '.jpg', $reelPath);
+                $cmdThumb = "ffmpeg -y -i " . escapeshellarg($reelPath) . " -ss 00:00:01.000 -vframes 1 -q:v 2 " . escapeshellarg($thumbPath) . " 2>&1";
+                exec($cmdThumb);
+
                 // 2. Generate POST (1:1) - Secondary (If Bundle Mode)
                 $postPublicPath = null;
                 if ($job->bundle_mode || ($job->options['bundle_mode'] ?? false)) {
@@ -130,15 +135,10 @@ class VideoRenderingService
             // Prompt Studio Flow (Uploaded or AI Selected)
             $images = $mediaPaths;
         } else {
-            // Prompt Studio (Mode A: No Media) -> Use Placeholders
-            // In a real AI system, we would generate these.
-            // For V1, we repeat the Logo or generic placeholders?
-            // Let's use a fail-safe fallback to prevent crash.
-            // We'll assume the client uploads at least one, or we use a "No Image" placeholder.
-            // But User said "AI generates visuals".
-            // Implementation: We will use `assets/placeholders/{1..5}.jpg`.
-            // Check if they exist? If not, use Logo.
-            $images = ['resortwala-logo.png', 'resortwala-logo.png', 'resortwala-logo.png'];
+            // Mode A: AI Visuals (No Media Provided)
+            // Generate dynamic gradients based on 'visual_theme'
+            $theme = $job->options['visual_theme'] ?? 'luxury';
+            $images = $this->generateDynamicBackgrounds($theme, 6); 
         }
 
         // Limit
@@ -182,8 +182,23 @@ class VideoRenderingService
         $filterComplex = "";
         
         // 2. Build Inputs
+        // 2. Build Inputs
         foreach ($images as $i => $path) {
-            $fullPath = str_starts_with($path, 'http') ? $path : storage_path('app/public/' . (str_starts_with($path, 'properties/') ? $path : 'properties/' . $path));
+            $fullPath = $path;
+            
+            // If it's a URL, keep it.
+            if (str_starts_with($path, 'http')) {
+                $fullPath = $path;
+            } 
+            // If it's NOT absolute (doesn't start with / or X:), assume it's relative storage path
+            elseif (str_starts_with($path, '/') || preg_match('/^[a-zA-Z]:\\\\/', $path)) {
+                 $fullPath = $path;
+            }
+            else {
+                 $relPart = (str_starts_with($path, 'properties/') || str_starts_with($path, 'uploads/')) ? $path : 'properties/' . $path;
+                 $fullPath = storage_path('app/public/' . $relPart);
+            }
+
              // Quotes for safety
             $inputs .= "-loop 1 -t " . ($inputDuration) . " -i \"{$fullPath}\" ";
         }
@@ -377,5 +392,43 @@ class VideoRenderingService
             \Illuminate\Support\Facades\Log::error("Failed to get duration: " . $e->getMessage());
         }
         return 0;
+    }
+    /**
+     * Generate temporary gradient backgrounds for AI Mode.
+     */
+    private function generateDynamicBackgrounds($theme, $count)
+    {
+        $dir = storage_path('app/public/temp_bg');
+        if (!file_exists($dir)) mkdir($dir, 0755, true);
+
+        // Theme Palette Config
+        $palettes = [
+            'luxury' => ['black', 'darkblue', '#2c5364'], 
+            'party' => ['purple', 'magenta', '#fc466b'],
+            'nature' => ['forestgreen', 'lime', '#a8ff78'],
+            'minimal' => ['white', 'lightgray', '#f7f8f8'],
+        ];
+        
+        $colors = $palettes[$theme] ?? $palettes['luxury'];
+        $paths = [];
+
+        for ($i = 0; $i < $count; $i++) {
+            $filename = "bg_{$theme}_{$i}_" . uniqid() . ".jpg";
+            $path = $dir . '/' . $filename;
+            
+            // Cycle colors
+            $c1 = $colors[$i % count($colors)];
+            
+            // Generate Solid Color Background
+            $cmdSafe = "ffmpeg -y -f lavfi -i \"color=c={$c1}:s=720x1280\" -frames:v 1 " . escapeshellarg($path) . " 2>&1";
+            
+            exec($cmdSafe);
+            
+            if (file_exists($path)) {
+                $paths[] = $path;
+            }
+        }
+        
+        return empty($paths) ? ['resortwala-logo.png'] : $paths;
     }
 }

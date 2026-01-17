@@ -44,6 +44,7 @@ import AISocialVideoStudio from './pages/AISocialVideoStudio';
 import PromptVideoStudio from './pages/PromptVideoStudio';
 import VoiceStudio from './pages/VoiceStudio';
 import MediaRestoreConsole from './pages/MediaRestoreConsole';
+import ServerMigration from './pages/ServerMigration/ServerMigration';
 import './App.css';
 
 
@@ -115,6 +116,7 @@ function App() {
               <Route path="/coupons" element={<Coupons />} />
               <Route path="/connectors" element={<Connectors />} /> {/* New Route */}
               <Route path="/reconciliation" element={<Reconciliation />} /> {/* New Route */}
+              <Route path="/server-migration" element={<ServerMigration />} />
               <Route path="/communications" element={<Communications />} /> {/* New Route */}
 
               <Route path="/notifications" element={<Notifications />} />

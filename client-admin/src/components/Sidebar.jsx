@@ -119,6 +119,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
                 { path: '/communications', icon: <FiMessageSquare />, label: 'Communications' },
                 { path: '/notifications', icon: <FiBell />, label: 'Push Notifications' },
                 { path: '/analytics', icon: <FiDatabase />, label: 'System Logs' },
+                { path: '/server-migration', icon: <FiTruck />, label: 'Server Migration' },
                 { path: '/settings', icon: <FiSettings />, label: 'App Settings' },
             ]
         },

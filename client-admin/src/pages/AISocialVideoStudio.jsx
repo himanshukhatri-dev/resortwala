@@ -3,7 +3,7 @@ import { Reorder } from "framer-motion";
 import {
     FaVideo, FaImage, FaMagic, FaMusic, FaCheck, FaPlay, FaDownload,
     FaShareAlt, FaSpinner, FaTimes, FaChild, FaHashtag, FaSync,
-    FaLayerGroup, FaPalette, FaInstagram
+    FaLayerGroup, FaPalette, FaInstagram, FaCloudUploadAlt
 } from 'react-icons/fa';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
@@ -143,6 +143,44 @@ export default function AISocialVideoStudio() {
         return `${API_BASE_URL.replace('/api', '')}/storage/${url}`;
     };
 
+    const [uploadedFiles, setUploadedFiles] = useState([]);
+
+    const handleUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        const toastId = toast.loading("Uploading Media...");
+        const newUploads = [];
+
+        try {
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const res = await axios.post(`${API_BASE_URL}/admin/media/upload`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${localStorage.getItem('admin_token')}`
+                    }
+                });
+                newUploads.push({
+                    id: 'custom-' + Date.now() + Math.random(),
+                    url: res.data.url, // URL for preview
+                    path: res.data.path, // Path for backend
+                    type: res.data.type,
+                    selected: true,
+                    isCustom: true
+                });
+            }
+            // Add to main media list for selection
+            setMediaFiles(prev => [...prev, ...newUploads]);
+            toast.success("Upload Complete!", { id: toastId });
+        } catch (err) {
+            console.error(err);
+            toast.error("Upload failed", { id: toastId });
+        }
+    };
+
     const handleAutoGenerateScript = async () => {
         if (!selectedProperty) return showError("Select a property first");
         setIsGeneratingScript(true);
@@ -174,7 +212,8 @@ export default function AISocialVideoStudio() {
                 options: {
                     title: selectedProperty.Name,
                     subtitle: selectedProperty.Location,
-                    media_ids: selectedIds,
+                    media_ids: selectedIds.filter(id => !String(id).startsWith('custom-')), // Only real IDs
+                    media_paths: mediaFiles.filter(m => m.selected && m.isCustom).map(m => m.path), // Custom paths
                     mood: mood,
                     script: useVoiceover ? script : null,
                     voice_id: useVoiceover ? voiceId : null
@@ -256,9 +295,43 @@ export default function AISocialVideoStudio() {
                                     <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs">2</span>
                                     Curate Media ({mediaFiles.filter(m => m.selected).length})
                                 </h3>
-                                <button className="text-xs text-pink-600 font-bold hover:underline">Select All</button>
+                                <div className="flex gap-2">
+                                    <label className="cursor-pointer bg-pink-50 text-pink-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-pink-100 flex items-center gap-1 transition">
+                                        <FaCloudUploadAlt /> Upload Media
+                                        <input type="file" multiple onChange={handleUpload} className="hidden" accept="image/*,video/*" />
+                                    </label>
+                                    <button className="text-xs text-gray-400 hover:text-gray-600" onClick={() => setMediaFiles(mediaFiles.map(m => ({ ...m, selected: true })))}>Select All</button>
+                                </div>
                             </div>
                             <p className="text-xs text-gray-400 mb-2 italic">Drag images to reorder sequence. Click to toggle selection.</p>
+
+                            <Reorder.Group axis="y" values={mediaFiles} onReorder={setMediaFiles} className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                {mediaFiles.map((item) => (
+                                    <Reorder.Item key={item.id} value={item} className="relative">
+                                        <div
+                                            onClick={() => toggleMedia(item.id)}
+                                            className={`relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all group ${item.selected ? 'border-pink-500 ring-2 ring-pink-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                        >
+                                            {item.type === 'video' ? (
+                                                <video src={getImageUrl(item.url)} className="w-full h-full object-cover" muted />
+                                            ) : (
+                                                <img src={getImageUrl(item.url)} alt="media" className="w-full h-full object-cover" />
+                                            )}
+
+                                            {item.selected && (
+                                                <div className="absolute top-2 right-2 bg-pink-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs shadow-md">
+                                                    <FaCheck />
+                                                </div>
+                                            )}
+                                            {item.isCustom && (
+                                                <div className="absolute bottom-2 right-2 bg-blue-500 text-white text-[10px] px-1 rounded shadow-md">
+                                                    Custom
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Reorder.Item>
+                                ))}
+                            </Reorder.Group>
                             <Reorder.Group axis="x" values={mediaFiles} onReorder={setMediaFiles} className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar">
                                 {mediaFiles.map((media) => (
                                     <Reorder.Item key={media.id} value={media} className="flex-shrink-0 w-24 h-24">

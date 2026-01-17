@@ -105,12 +105,19 @@ class ProcessWatermarkBatch implements ShouldQueue
                 $safeLogo = escapeshellarg($logoPath);
                 $safeOutput = escapeshellarg($tempOutput);
                 
-                // Command: Input Image, Input Logo, Filter, Output
-                // We use scale2ref to ensure the watermark is 25% of the IMAGE width, regardless of logo size.
-                // [1:v][0:v]scale2ref=w=iw*0.25:h=-1[wm][base] -> Scales Logo (1) using Base (0) as ref. Width = 0.25 * BaseWidth.
-                // [base][wm]overlay... -> Overlays scaled logo on base.
-                $cmd = "ffmpeg -y -i {$safeInput} -i {$safeLogo} -filter_complex \"[1:v][0:v]scale2ref=w=iw*0.25:h=-1[wm][base];[base][wm]overlay=W-w-20:H-h-20\" -q:v 2 {$safeOutput} 2>&1";
+                // Command: Fixed Width 350px (Robust fallback since scale2ref failed)
+                // We scales the logo [1:v] to 350px width, maintaining aspect ratio.
+                // Then overlay at bottom-right with padding.
+                // Command: Dynamic Relative Scaling using scale2ref
+                // Scale logo [1:v] relative to base [0:v]. 
+                // Set logo height to 20% of base height (ih*0.2), maintain aspect ratio.
+                $filter = "[1:v][0:v]scale2ref=h=ih*0.15:w=oh*mdar[wm][base];[base][wm]overlay=W-w-30:H-h-30";
+                $safeFilter = escapeshellarg($filter);
                 
+                $cmd = "ffmpeg -y -i {$safeInput} -i {$safeLogo} -filter_complex {$safeFilter} -q:v 2 {$safeOutput} 2>&1";
+                
+                \Illuminate\Support\Facades\Log::info("Watermark Command [0.40]: " . $cmd);
+
                 $output = shell_exec($cmd);
                 
                 // 3. VERIFY OUTPUT

@@ -114,4 +114,38 @@ class AIScriptGeneratorService
         
         return array_slice(array_unique($list), 0, 3);
     }
+    /**
+     * Generate script solely from a Text Prompt (No Property Object).
+     */
+    public function generateFromPrompt(string $prompt, string $mood = 'energetic'): string
+    {
+        // 1. Extract Location (Simple Heuristic for now)
+        $location = 'India';
+        if (stripos($prompt, 'Goa') !== false) $location = 'Goa';
+        if (stripos($prompt, 'Mumbai') !== false) $location = 'Mumbai';
+        if (stripos($prompt, 'Lonavala') !== false) $location = 'Lonavala';
+        if (stripos($prompt, 'Manali') !== false) $location = 'Manali';
+        
+        // 2. Extract Keywords for Context
+        $keywords = [];
+        if (stripos($prompt, 'pool') !== false) $keywords[] = 'Private Pool';
+        if (stripos($prompt, 'party') !== false) $keywords[] = 'Party Vibes';
+        if (stripos($prompt, 'luxury') !== false) $keywords[] = 'Luxury Stay';
+        if (stripos($prompt, 'couple') !== false) $keywords[] = 'Romantic Gateway';
+        
+        $context = empty($keywords) ? "Beautiful Stays" : implode(", ", $keywords);
+        
+        // 3. Generate based on Mood
+        // We reuse the Templates but with generic names
+        $name = "ResortWala Premium Stays";
+        
+        if ($mood === 'party') {
+             return $this->partyTemplate($name, $location, $context, "at best offers");
+        } elseif ($mood === 'luxury') {
+             return $this->luxuryTemplate($name, $location, $context, "starting @ ₹4999");
+        } else {
+             // Generic / Travel
+             return "Discover the best stays in {$location} with ResortWala. {$context} ka mazaa lijiye. Book your perfect getaway today at resortwala.com. Best prices guaranteed!";
+        }
+    }
 }

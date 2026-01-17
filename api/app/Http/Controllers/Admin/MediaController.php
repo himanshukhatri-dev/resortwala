@@ -8,6 +8,7 @@ use App\Models\ImageBackupVersion;
 use App\Models\PropertyImage;
 use App\Services\BackupService;
 use App\Jobs\ProcessWatermarkBatch;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MediaController extends Controller
@@ -37,8 +38,20 @@ class MediaController extends Controller
     public function restore(Request $request, $id)
     {
         try {
+            // Restore functionality
             $this->backupService->restoreBackup($id);
-            return response()->json(['message' => 'Image restored successfully']);
+
+            // Fetch record to delete file
+            $backup = ImageBackupVersion::find($id);
+            if ($backup) {
+                // Delete physical backup file to save space
+                if (Storage::disk('public')->exists($backup->backup_path)) {
+                    Storage::disk('public')->delete($backup->backup_path);
+                }
+                $backup->delete();
+            }
+
+            return response()->json(['message' => 'Image restored and backup entry removed.']);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
@@ -53,12 +66,17 @@ class MediaController extends Controller
         $limit = $request->input('limit', 10); // Default reduced to 10 for safety
         $sync = $request->boolean('sync', false);
 
-        // Find images that are NOT protected yet
-        $protectedIds = ImageBackupVersion::pluck('image_id')->toArray();
-        $images = PropertyImage::whereNotIn('id', $protectedIds)->limit($limit)->pluck('id')->toArray();
+        if ($request->has('ids') && is_array($request->input('ids'))) {
+            // Manual selection mode
+            $images = $request->input('ids');
+        } else {
+            // Auto-find unprotected
+            $protectedIds = ImageBackupVersion::pluck('image_id')->toArray();
+            $images = PropertyImage::whereNotIn('id', $protectedIds)->limit($limit)->pluck('id')->toArray();
+        }
         
         if (empty($images)) {
-             return response()->json(['message' => 'All images are already protected!', 'count' => 0]);
+             return response()->json(['message' => 'No images eligible for processing.', 'count' => 0]);
         }
 
         $batchId = 'manual-' . now()->format('Ymd-His') . '-' . Str::random(6);
@@ -306,7 +324,47 @@ class MediaController extends Controller
              $backup->delete();
              $count++;
         }
-        return response()->json(['message' => "Purged {$count} backup records."]);
+        return response()->json(['message' => "Purged {$count} history records."]);
+    }
+
+    /**
+     * Restore multiple backups (Selected or All)
+     */
+    public function restoreBatch(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:image_backup_versions,id'
+        ]);
+
+        $ids = $request->input('ids');
+        $successCount = 0;
+        $errors = [];
+
+        foreach ($ids as $id) {
+            try {
+                // Restore Logic Reuse
+                $this->backupService->restoreBackup($id);
+                
+                // Cleanup
+                $backup = ImageBackupVersion::find($id);
+                if ($backup) {
+                    if (Storage::disk('public')->exists($backup->backup_path)) {
+                        Storage::disk('public')->delete($backup->backup_path);
+                    }
+                    $backup->delete();
+                }
+                $successCount++;
+            } catch (\Exception $e) {
+                $errors[] = "ID {$id}: " . $e->getMessage();
+            }
+        }
+
+        return response()->json([
+            'message' => "Restored {$successCount} images.", 
+            'errors' => $errors,
+            'success_count' => $successCount
+        ]);
     }
     /**
      * Generic Media Upload (for Video Studio etc)
