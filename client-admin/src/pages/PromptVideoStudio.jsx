@@ -159,23 +159,32 @@ const PromptVideoStudio = () => {
 
         const toastId = toast.loading("Retrying job...");
         try {
-            // Using the new explicit retry endpoint
+            const token = localStorage.getItem('admin_token');
             const res = await axios.post(`${API_BASE_URL}/admin/video-generator/jobs/${job.id}/retry`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             if (res.data.status === 'success') {
                 toast.success("Retry initiated!", { id: toastId });
-                // Refresh list
-                const listRes = await axios.get(`${API_BASE_URL}/admin/video-generator`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setJobs(listRes.data);
+                fetchJobs();
             } else {
                 toast.error("Retry failed to start.", { id: toastId });
             }
         } catch (err) {
             toast.error("Retry Error: " + (err.response?.data?.message || err.message), { id: toastId });
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm('Are you sure you want to delete this video job? This cannot be undone.')) return;
+        try {
+            await axios.delete(`${API_BASE_URL}/admin/video-generator/jobs/${id}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+            });
+            toast.success("Job Deleted");
+            fetchJobs();
+        } catch (err) {
+            toast.error("Delete Failed: " + (err.response?.data?.message || err.message));
         }
     };
 
@@ -372,6 +381,12 @@ const PromptVideoStudio = () => {
                                                 ✏️
                                             </button>
                                         )}
+                                        <button onClick={() => handleDelete(job.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete Job">
+                                            🗑️
+                                        </button>
+                                        <button onClick={() => handleDelete(job.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete Job">
+                                            🗑️
+                                        </button>
                                     </td>
                                 </tr>
                             ))}

@@ -648,6 +648,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/voices', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'getVoices']);
         Route::post('/generate-script', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'generateScript']);
         Route::post('/prompt-generate', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'storePromptVideo']);
+        Route::delete('/jobs/{id}', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'destroy']);
     });
 
     // AI Voice Studio
@@ -695,7 +696,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('admin/server-migration')->group(function () {
         Route::post('/connect', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'checkConnection']);
         Route::post('/keys', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'generateKeys']);
-        Route::get('/scan', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'scanSource']);
+        Route::post('/auto-setup', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'autoSetup']);
+        Route::post('/scan', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'scanSource']);
+        Route::post('/migrate-asset', [\App\Http\Controllers\Admin\ServerMigrationController::class, 'migrateAsset']); // Real Migration
     });
 });
 

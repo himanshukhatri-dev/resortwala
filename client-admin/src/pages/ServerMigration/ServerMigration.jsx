@@ -26,11 +26,118 @@ export default function ServerMigration() {
         sudo_access: false
     });
 
+    const [sourceConfig, setSourceConfig] = useState({
+        ip: '', // Optional Source IP for SSH-Loopback
+        user: 'root',
+        host: '127.0.0.1',
+        dbUser: 'root',
+        dbPass: ''
+    });
+
     // SSH Key State
     const [sshKeys, setSshKeys] = useState(null);
 
     // Scan Data
     const [scanData, setScanData] = useState(null);
+    const [selectedAssets, setSelectedAssets] = useState({ databases: [], sites: [], media: [], codebases: [] });
+    const [migrationProgress, setMigrationProgress] = useState(0);
+    const [migrating, setMigrating] = useState(false);
+
+    // Pre-select all assets when scan completes
+    React.useEffect(() => {
+        if (scanData) {
+            setSelectedAssets({
+                databases: scanData.databases.map(d => d.name),
+                sites: scanData.web_roots.map(s => s.site), // Configs
+                codebases: scanData.codebases ? scanData.codebases.map(c => c.path) : [], // Full Code
+                media: scanData.media ? scanData.media.map(m => m.path) : []
+            });
+        }
+    }, [scanData]);
+
+    // Migration Runner (Real API)
+    const runMigrationList = async () => {
+        setMigrating(true);
+        let completed = 0;
+
+        // Build flat list of tasks
+        const tasks = [
+            ...selectedAssets.databases.map(name => ({ type: 'database', name })),
+            ...selectedAssets.sites.map(name => ({ type: 'site', name })), // Nginx Config
+            ...selectedAssets.codebases.map(name => ({ type: 'codebase', name })), // Source Code
+            ...selectedAssets.media.map(name => ({ type: 'media', name }))
+        ];
+
+        const total = tasks.length;
+        if (total === 0) {
+            toast.success("Nothing to migrate!");
+            setMigrating(false);
+            return;
+        }
+
+        try {
+            for (let i = 0; i < total; i++) {
+                const task = tasks[i];
+                addLog(`[PULL] Downloading ${task.type}: ${task.name} from ${connection.ip}...`, "info");
+
+                // Real API Call
+                const res = await axios.post(`${API_BASE_URL}/admin/server-migration/migrate-asset`, {
+                    ...task,
+                    ip: connection.ip,
+                    user: connection.user,
+                    source_ip: sourceConfig.ip,
+                    source_user: sourceConfig.user,
+                    source_host: sourceConfig.host,
+                    source_db_user: sourceConfig.dbUser,
+                    source_db_pass: sourceConfig.dbPass
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (res.data.status === 'success') {
+                    addLog(`Done: ${res.data.message}`, "success");
+                } else {
+                    addLog(`Failed: ${res.data.message}`, "error");
+                }
+
+                completed++;
+                setMigrationProgress(Math.round((completed / total) * 100));
+            }
+
+            toast.success("Migration Process Completed!");
+            addLog("All tasks finished.", "success");
+        } catch (err) {
+            addLog("Migration Error: " + (err.response?.data?.message || err.message), "error");
+            toast.error("Migration interrupted.");
+        } finally {
+            setMigrating(false);
+        }
+    };
+
+    // Auto-Run when entering step
+    React.useEffect(() => {
+        if (step === STEP_MIGRATE && !migrating && migrationProgress === 0) {
+            runMigrationList();
+        }
+    }, [step]);
+
+    // Manual Start / Retry
+    const handleStartMigration = () => {
+        if (migrating) return;
+        setStep(STEP_MIGRATE);
+        runMigrationList();
+    };
+
+    const toggleAsset = (type, value) => {
+        setSelectedAssets(prev => {
+            const list = prev[type];
+            const exists = list.includes(value);
+            return {
+                ...prev,
+                [type]: exists ? list.filter(item => item !== value) : [...list, value]
+            };
+        });
+    };
 
     const addLog = (msg, type = 'info') => {
         setLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg, type }]);
@@ -89,6 +196,28 @@ export default function ServerMigration() {
         }
     };
 
+    const handleAutoSetup = async (password) => {
+        if (!password) return toast.error("Password required");
+        setLoading(true);
+        addLog("Attempting Auto-Key Installation...", "info");
+        try {
+            await axios.post(`${API_BASE_URL}/admin/server-migration/auto-setup`, {
+                ip: connection.ip,
+                user: connection.user,
+                password: password
+            }, { headers: { Authorization: `Bearer ${token}` } });
+
+            addLog("Key Installed! Retrying Connection...", "success");
+            toast.success("Key Installed");
+            handleTestConnection(); // Retry immediately
+        } catch (error) {
+            addLog("Auto-Setup Failed: " + (error.response?.data?.message || error.message), "error");
+            toast.error("Auto-Setup Failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Trigger scan when entering SCAN step
     React.useEffect(() => {
         if (step === STEP_SCAN && !scanData) {
@@ -103,7 +232,13 @@ export default function ServerMigration() {
         try {
             const { data } = await axios.post(`${API_BASE_URL}/admin/server-migration/scan`, {
                 ip: connection.ip,
-                user: connection.user
+                user: connection.user,
+                // New Source Config for Local Scan
+                source_ip: sourceConfig.ip,
+                source_user: sourceConfig.user,
+                source_host: sourceConfig.host,
+                source_db_user: sourceConfig.dbUser,
+                source_db_pass: sourceConfig.dbPass
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -164,10 +299,10 @@ export default function ServerMigration() {
                 <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
                     <div className="bg-gray-50 px-4 py-2 border-b font-bold text-xs uppercase text-gray-500 flex justify-between">
                         <span>Web Sites (Nginx)</span>
-                        <span>{scanData.nginx.length}</span>
+                        <span>{scanData.nginx ? scanData.nginx.length : 0}</span>
                     </div>
                     <div className="divide-y max-h-40 overflow-y-auto">
-                        {scanData.web_roots.map((site, i) => (
+                        {scanData.web_roots && scanData.web_roots.map((site, i) => (
                             <div key={i} className="px-4 py-2 flex justify-between items-center text-sm">
                                 <div className="flex flex-col">
                                     <span className="font-bold text-gray-800">{site.site}</span>
@@ -176,7 +311,23 @@ export default function ServerMigration() {
                                 <FaServer className="text-gray-300" />
                             </div>
                         ))}
-                        {scanData.nginx.length === 0 && <div className="p-4 text-center text-gray-400 text-sm">No Nginx sites found</div>}
+                    </div>
+                </div>
+
+                {/* Media Assets (New) */}
+                <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-gray-50 px-4 py-2 border-b font-bold text-xs uppercase text-gray-500 flex justify-between">
+                        <span>Media & Storage</span>
+                        <span>{scanData.media ? scanData.media.length : 0} Sources</span>
+                    </div>
+                    <div className="divide-y max-h-40 overflow-y-auto">
+                        {scanData.media && scanData.media.map((m, i) => (
+                            <div key={i} className="px-4 py-2 flex justify-between items-center text-sm">
+                                <span className="font-mono text-gray-600 text-xs truncate w-2/3" title={m.path}>{m.path}</span>
+                                <span className="font-bold text-blue-600 bg-blue-50 px-2 rounded">{m.size}</span>
+                            </div>
+                        ))}
+                        {(!scanData.media || scanData.media.length === 0) && <div className="p-4 text-center text-gray-400 text-sm">No specific media folders found</div>}
                     </div>
                 </div>
 
@@ -215,13 +366,98 @@ export default function ServerMigration() {
                     {step === STEP_CONNECT && (
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                <FaNetworkWired /> Source Connection
+                                <FaNetworkWired /> Connection Setup
                             </h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                {/* SOURCE BLOCK */}
+                                <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="bg-blue-100 text-blue-600 p-2 rounded-lg"><FaServer /></div>
+                                        <div>
+                                            <span className="text-xs font-bold text-gray-500 uppercase block">Source (This Server)</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold">Source IP (Optional SSH)</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. 1.2.3.4"
+                                                    value={sourceConfig.ip}
+                                                    onChange={e => setSourceConfig({ ...sourceConfig, ip: e.target.value })}
+                                                    className="w-full text-xs p-1 border rounded"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold">SSH User</label>
+                                                <input
+                                                    type="text"
+                                                    value={sourceConfig.user}
+                                                    onChange={e => setSourceConfig({ ...sourceConfig, user: e.target.value })}
+                                                    className="w-full text-xs p-1 border rounded"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-gray-500 font-bold">Source DB Host</label>
+                                            <input
+                                                type="text"
+                                                value={sourceConfig.host}
+                                                onChange={e => setSourceConfig({ ...sourceConfig, host: e.target.value })}
+                                                className="w-full text-xs p-1 border rounded"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold">DB User</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="root"
+                                                    value={sourceConfig.dbUser}
+                                                    onChange={e => setSourceConfig({ ...sourceConfig, dbUser: e.target.value })}
+                                                    className="w-full text-xs p-1 border rounded"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold">DB Pass</label>
+                                                <input
+                                                    type="password"
+                                                    placeholder="Optional"
+                                                    value={sourceConfig.dbPass}
+                                                    onChange={e => setSourceConfig({ ...sourceConfig, dbPass: e.target.value })}
+                                                    className="w-full text-xs p-1 border rounded"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* DESTINATION BLOCK */}
+                                <div className="bg-purple-50 border border-purple-200 p-4 rounded-xl">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="bg-purple-100 text-purple-600 p-2 rounded-lg"><FaArrowRight /></div>
+                                        <div>
+                                            <span className="text-xs font-bold text-gray-500 uppercase block">Destination (Remote)</span>
+                                            <span className="font-bold text-gray-800">Target Server</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mb-2">
+                                        Data will be <strong>sent TO</strong> this address.
+                                    </p>
+                                    <div className="bg-white p-2 border rounded text-xs font-mono text-gray-600 flex items-center gap-1">
+                                        <span>Target:</span>
+                                        <span className="font-bold text-purple-700">{connection.ip || 'Not Set'}</span>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Source IP Address</label>
+                                        <label className="block text-sm font-medium text-gray-700">Destination IP Address</label>
                                         <input
                                             type="text"
                                             value={connection.ip}
@@ -267,26 +503,50 @@ export default function ServerMigration() {
                                                 </button>
                                             </div>
                                             <p className="text-xs text-gray-600 mb-2">
-                                                Run this on the <strong>SOURCE</strong> server to allow access:
+                                                Copy this key and run it on the <strong>DESTINATION</strong> server to allow access:
                                             </p>
-                                            <code className="block bg-black text-green-400 p-2 rounded text-xs overflow-x-auto">
+                                            <code className="block bg-black text-green-400 p-2 rounded text-xs overflow-x-auto select-all">
                                                 echo "{sshKeys.public_key.trim()}" &gt;&gt; ~/.ssh/authorized_keys
                                             </code>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="pt-4 flex justify-end">
-                                    <button
-                                        onClick={handleTestConnection}
-                                        disabled={!sshKeys || loading || !connection.ip}
-                                        className={`px-6 py-2 rounded font-bold text-white transition-colors ${(!sshKeys || !connection.ip) ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                                            }`}
-                                    >
-                                        {loading ? 'Testing...' : '2. Test & Continue'} <FaArrowRight className="inline ml-2" />
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={handleTestConnection}
+                                    disabled={!sshKeys || loading || !connection.ip}
+                                    className={`px-6 py-2 rounded font-bold text-white transition-colors ${(!sshKeys || !connection.ip) ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                                        }`}
+                                >
+                                    {loading ? 'Testing...' : '2. Test & Continue'} <FaArrowRight className="inline ml-2" />
+                                </button>
                             </div>
+
+                            {/* Auto Setup Fallback */}
+                            {connection.status === 'error' && (
+                                <div className="bg-yellow-50 p-4 rounded border border-yellow-200 mt-4">
+                                    <h4 className="font-bold text-yellow-800 text-sm mb-2 flex items-center gap-2">
+                                        <FaExclamationTriangle /> Connection Failed?
+                                    </h4>
+                                    <p className="text-xs text-yellow-700 mb-3">
+                                        If you can't manually add the key, enter the <strong>root password</strong> below and we will validly install it for you.
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="password"
+                                            placeholder="Enter Root Password for Auto-Setup"
+                                            className="flex-1 p-2 border rounded text-sm"
+                                            id="auto-pass"
+                                        />
+                                        <button
+                                            onClick={() => handleAutoSetup(document.getElementById('auto-pass').value)}
+                                            className="bg-yellow-600 text-white text-xs px-4 rounded font-bold hover:bg-yellow-700"
+                                        >
+                                            Auto-Install Key
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -305,6 +565,166 @@ export default function ServerMigration() {
                             ) : renderScanResults()}
                         </div>
                     )}
+
+                    {/* STEP 3: SELECT ASSETS */}
+                    {step === STEP_SELECT && (
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                <FaCheck className="text-green-600" /> Select Assets to Migrate
+                            </h2>
+
+                            {/* Destination Info (Clarification) */}
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6 flex justify-between items-center">
+                                <div>
+                                    <span className="text-xs font-bold text-blue-500 uppercase tracking-wider">Destination (This Server)</span>
+                                    <div className="font-mono text-gray-700 text-sm mt-1">/var/www/html/api.resortwala.com</div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-xs font-bold text-blue-500 uppercase tracking-wider">Database Host</span>
+                                    <div className="font-mono text-gray-700 text-sm mt-1">localhost (MySQL)</div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                {/* Databases */}
+                                <div>
+                                    <h3 className="font-bold text-gray-700 mb-2 flex justify-between">
+                                        <span>Databases</span>
+                                        <span className="text-xs font-normal text-gray-500">{selectedAssets.databases.length} selected</span>
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        {scanData?.databases.map(db => (
+                                            <label key={db.name} className={`flex items-center gap-3 p-3 rounded border cursor-pointer ${selectedAssets.databases.includes(db.name) ? 'bg-blue-50 border-blue-200' : 'bg-gray-50'}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedAssets.databases.includes(db.name)}
+                                                    onChange={() => toggleAsset('databases', db.name)}
+                                                    className="w-4 h-4 text-blue-600"
+                                                />
+                                                <div>
+                                                    <div className="font-mono font-bold text-sm text-gray-700">{db.name}</div>
+                                                    <div className="text-xs text-gray-500">{db.size_mb} MB</div>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Media */}
+                                <div>
+                                    <h3 className="font-bold text-gray-700 mb-2 flex justify-between">
+                                        <span>Media & Code</span>
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {scanData?.web_roots.map(site => (
+                                            <label key={site.site} className={`flex items-center gap-3 p-3 rounded border cursor-pointer ${selectedAssets.sites.includes(site.site) ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedAssets.sites.includes(site.site)}
+                                                    onChange={() => toggleAsset('sites', site.site)}
+                                                    className="w-4 h-4 text-green-600"
+                                                />
+                                                <div className="flex-1">
+                                                    <div className="font-bold text-sm text-gray-800">Site: {site.site}</div>
+                                                    <div className="text-xs font-mono text-gray-500">{site.root}</div>
+                                                </div>
+                                            </label>
+                                        ))}
+                                        {scanData?.media?.map(m => (
+                                            <label key={m.path} className={`flex items-center gap-3 p-3 rounded border cursor-pointer ${selectedAssets.media.includes(m.path) ? 'bg-purple-50 border-purple-200' : 'bg-gray-50'}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedAssets.media.includes(m.path)}
+                                                    onChange={() => toggleAsset('media', m.path)}
+                                                    className="w-4 h-4 text-purple-600"
+                                                />
+                                                <div>
+                                                    <div className="font-mono text-xs text-gray-700">{m.path}</div>
+                                                    <div className="text-xs text-blue-600 font-bold w-16">{m.size}</div>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Project Codebases (New) */}
+                                {scanData?.codebases && scanData.codebases.length > 0 && (
+                                    <div>
+                                        <h3 className="font-bold text-gray-700 mb-2 flex justify-between">
+                                            <span>Project Source Code (Entire Root)</span>
+                                            <span className="text-xs font-normal text-gray-500">{selectedAssets.codebases.length} selected</span>
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {scanData.codebases.map(code => (
+                                                <label key={code.path} className={`flex items-center gap-3 p-3 rounded border cursor-pointer ${selectedAssets.codebases.includes(code.path) ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50'}`}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedAssets.codebases.includes(code.path)}
+                                                        onChange={() => toggleAsset('codebases', code.path)}
+                                                        className="w-4 h-4 text-indigo-600"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <div className="font-bold text-sm text-gray-800 break-all">{code.path}</div>
+                                                        <div className="text-xs text-gray-500">Includes all files in this directory</div>
+                                                    </div>
+                                                    <div className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                                                        {code.size}
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-between pt-6 border-t mt-6">
+                                <button
+                                    onClick={() => setStep(STEP_SCAN)}
+                                    className="text-gray-500 hover:text-gray-800 font-medium px-4 py-2 rounded flex items-center gap-2"
+                                >
+                                    &larr; Back to Scan Results
+                                </button>
+                                <button
+                                    onClick={handleStartMigration}
+                                    disabled={!selectedAssets.databases.length && !selectedAssets.sites.length && !selectedAssets.media.length && !selectedAssets.codebases.length}
+                                    className="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:shadow-none"
+                                >
+                                    <FaNetworkWired /> Start Migration
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* STEP 4: MIGRATE (Progress) */}
+                    {
+                        step === STEP_MIGRATE && (
+                            <div className="bg-white p-10 rounded-xl shadow text-center">
+                                <div className="animate-pulse text-6xl mb-4">🚀</div>
+                                <h2 className="text-2xl font-bold text-gray-800">Migration In Progress</h2>
+                                <p className="text-gray-500 mt-2">Moving {selectedAssets.databases.length} DBs, {selectedAssets.codebases.length} Projects, {selectedAssets.sites.length} Configs, and {selectedAssets.media.length} Media Folders...</p>
+
+                                <div className="mt-8 relative w-full bg-gray-100 rounded-full h-4 overflow-hidden">
+                                    <div
+                                        className="bg-blue-600 h-full transition-all duration-500"
+                                        style={{ width: `${migrationProgress}%` }}
+                                    ></div>
+                                </div>
+                                <div className="flex justify-between text-xs text-gray-400 mt-2">
+                                    <span>{migrationProgress}% Complete</span>
+                                    <span>Check Console &rarr;</span>
+                                </div>
+
+                                <div className="mt-8 bg-black/5 p-4 rounded text-left font-mono text-xs text-gray-600 h-32 overflow-y-auto">
+                                    <div className="text-gray-400 mb-2 border-b border-gray-300 pb-1">Recent Activity:</div>
+                                    {logs.slice(-5).map((l, i) => (
+                                        <div key={i} className="truncate">
+                                            <span className="text-gray-400">[{l.time}]</span> {l.msg}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    }
 
                 </div>
 
