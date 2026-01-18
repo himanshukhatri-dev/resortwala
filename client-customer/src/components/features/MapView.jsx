@@ -118,7 +118,7 @@ function MapUpdater({ markers, userLocation }) {
         }
 
         if (bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13, animate: true, duration: 1.5 });
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: true, duration: 1.5 });
         }
     }, [markers, map, userLocation]);
     return null;

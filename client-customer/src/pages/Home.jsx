@@ -12,6 +12,7 @@ import { useSearch } from '../context/SearchContext';
 import { useCompare } from '../context/CompareContext';
 import CompareModal from '../components/features/CompareModal';
 import SEO from '../components/SEO';
+import { PropertyCardSkeleton } from '../components/ui/Skeleton';
 
 const CATEGORIES = [
     { id: 'all', label: 'All', icon: <FaHome /> },
@@ -245,7 +246,7 @@ export default function Home() {
 
         if (shouldScroll) {
             setTimeout(() => {
-                if (resultsRef.current) {
+                if (resultsRef.current && window.innerWidth >= 768) { // Disable auto-scroll on mobile
                     const yOffset = -100; // Offset for sticky header
                     const y = resultsRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
                     window.scrollTo({ top: y, behavior: 'smooth' });
@@ -374,7 +375,7 @@ export default function Home() {
             <div ref={resultsRef} className="container mx-auto px-4 py-8 min-h-[50vh] scroll-mt-28 mt-4">
 
                 {/* Full Width Filter Bar (Desktop) */}
-                <div className="hidden lg:block sticky top-20 z-40 bg-white/90 backdrop-blur-xl border-b border-gray-100 px-4 py-3 mb-6 -mx-4 shadow-sm transition-all duration-300">
+                <div className="hidden lg:block sticky top-[calc(80px+env(safe-area-inset-top))] z-40 bg-white/90 backdrop-blur-xl border-b border-gray-100 px-4 py-3 mb-6 -mx-4 shadow-sm transition-all duration-300">
                     <FilterBar filters={filters} onFilterChange={handleFilterChange} availableLocations={[]} />
                 </div>
 
@@ -386,7 +387,7 @@ export default function Home() {
 
                     <div className="w-full relative">
 
-                        <div className="lg:hidden sticky top-20 z-40 bg-white shadow-md rounded-xl p-2 mb-4 flex items-center justify-between">
+                        <div className="lg:hidden sticky top-[calc(80px+env(safe-area-inset-top))] z-40 bg-white shadow-md rounded-xl p-2 mb-4 flex items-center justify-between transition-all duration-300">
                             <button onClick={() => setIsFilterModalOpen(true)} className="flex items-center gap-2 px-4 py-2 font-bold text-sm bg-gray-50 rounded-lg text-gray-700">
                                 <FaFilter /> Filters
                             </button>
@@ -419,9 +420,10 @@ export default function Home() {
                             </div>
 
                             {loading ? (
-                                <div className="flex flex-col justify-center items-center py-20">
-                                    <div className="w-16 h-16 border-4 border-gray-200 border-t-[#EAB308] rounded-full animate-spin mb-4"></div>
-                                    <p className="text-gray-400 animate-pulse font-bold">Finding the perfect stay...</p>
+                                <div className="grid grid-cols-1 gap-6">
+                                    {[1, 2, 3, 4, 5].map((i) => (
+                                        <PropertyCardSkeleton key={i} />
+                                    ))}
                                 </div>
                             ) : (
                                 <>

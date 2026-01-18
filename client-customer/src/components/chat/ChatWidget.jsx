@@ -45,7 +45,7 @@ export default function ChatWidget() {
     if (loading) return null;
 
     return (
-        <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-4 font-sans antialiased text-gray-900 bg-transparent pointer-events-none">
+        <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-[9999] flex flex-col items-end gap-4 font-sans antialiased text-gray-900 bg-transparent pointer-events-none">
 
             {/* Window */}
             <div className="pointer-events-auto">

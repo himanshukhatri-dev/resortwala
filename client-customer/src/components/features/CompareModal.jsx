@@ -52,6 +52,14 @@ const SECTIONS = [
 export default function CompareModal({ isOpen, onClose }) {
     const { compareList, removeFromCompare, clearCompare } = useCompare();
 
+    // Body Scroll Lock
+    React.useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+            return () => { document.body.style.overflow = ''; };
+        }
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     return (
@@ -91,100 +99,170 @@ export default function CompareModal({ isOpen, onClose }) {
                             </div>
 
                             {/* Content - Scrollable */}
-                            <div className="flex-1 overflow-auto custom-scrollbar p-6">
+                            <div className="flex-1 overflow-auto custom-scrollbar bg-gray-50/50">
                                 {compareList.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center h-full text-center">
+                                    <div className="flex flex-col items-center justify-center h-full text-center p-8">
                                         <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                                             <FaHome className="text-gray-300 text-3xl" />
                                         </div>
                                         <h3 className="text-xl font-bold text-gray-800">No properties to compare</h3>
-                                        <p className="text-gray-500">Add properties from the list to see them here.</p>
+                                        <p className="text-gray-500 mt-2">Add properties from the list to see them here.</p>
                                     </div>
                                 ) : (
-                                    <div className="min-w-max">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr>
-                                                    <th className="p-4 w-48 sticky left-0 bg-white z-20 border-b-2 border-transparent">
-                                                        {/* Empty corner */}
-                                                    </th>
-                                                    {compareList.map(prop => (
-                                                        <th key={prop.id} className="p-4 w-72 align-top border-b border-gray-100 min-w-[280px]">
-                                                            <div className="relative group">
-                                                                <div className="aspect-[4/3] rounded-2xl overflow-hidden mb-3 shadow-md">
-                                                                    <img
-                                                                        src={prop.primary_image?.image_url || prop.image_url || prop.images?.[0]?.image_url || prop.images?.[0] || 'https://via.placeholder.com/400x300'}
-                                                                        alt={prop.Name}
-                                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                                                    />
-                                                                </div>
-                                                                <h3 className="text-lg font-bold text-gray-900 leading-tight mb-1">{prop.Name}</h3>
-                                                                <p className="text-sm text-gray-500 flex items-center gap-1">
-                                                                    <FaMapMarkerAlt className="text-[#EAB308]" /> {prop.Location || prop.detailed_address?.city || prop.City}
-                                                                </p>
-                                                                <button
-                                                                    onClick={() => removeFromCompare(prop.id)}
-                                                                    className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white/90 backdrop-blur rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:scale-110"
-                                                                >
-                                                                    <FaTrash size={12} />
-                                                                </button>
-                                                            </div>
+                                    <>
+                                        {/* --- DESKTOP VIEW (Table) --- */}
+                                        <div className="hidden md:block min-w-max p-6">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead>
+                                                    <tr>
+                                                        <th className="p-4 w-48 sticky left-0 bg-white z-30 border-b-2 border-transparent shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                                            {/* Empty corner */}
                                                         </th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {SECTIONS.map((section, idx) => (
-                                                    <React.Fragment key={idx}>
-                                                        <tr>
-                                                            <td colSpan={compareList.length + 1} className="p-4 pt-8 sticky left-0 bg-white z-10">
-                                                                <h4 className="flex items-center gap-2 text-sm font-black text-gray-400 uppercase tracking-widest pl-2 border-l-4 border-[#EAB308]">
-                                                                    {section.title}
-                                                                </h4>
-                                                            </td>
-                                                        </tr>
-                                                        {section.items.map((item, itemIdx) => (
-                                                            <tr key={itemIdx} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                                                                <td className="p-4 text-sm font-bold text-gray-600 sticky left-0 bg-white/95 backdrop-blur z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-gray-400">{item.icon}</span>
-                                                                        {item.label}
+                                                        {compareList.map(prop => (
+                                                            <th key={prop.id} className="p-4 w-72 align-top border-b border-gray-100 min-w-[280px]">
+                                                                <div className="relative group">
+                                                                    <div className="aspect-[4/3] rounded-2xl overflow-hidden mb-3 shadow-md">
+                                                                        <img
+                                                                            src={prop.primary_image?.image_url || prop.image_url || prop.images?.[0]?.image_url || prop.images?.[0] || 'https://via.placeholder.com/400x300'}
+                                                                            alt={prop.Name}
+                                                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                                        />
                                                                     </div>
-                                                                </td>
-                                                                {compareList.map(prop => {
-                                                                    let content = null;
-                                                                    if (item.render) {
-                                                                        content = item.render(prop);
-                                                                    } else if (item.check) {
-                                                                        const val = get(prop, item.check);
-                                                                        content = val
-                                                                            ? <div className="flex items-center gap-1 text-green-700 font-bold bg-green-50 px-2 py-1 rounded-md w-fit text-xs"><FaCheckCircle className="text-green-500" /> Yes</div>
-                                                                            : <div className="flex items-center gap-1 text-gray-400 text-xs"><FaTimesCircle /> No</div>;
-                                                                    }
-                                                                    return (
-                                                                        <td key={prop.id} className="p-4 text-sm font-medium text-gray-800">
-                                                                            {content}
-                                                                        </td>
-                                                                    );
-                                                                })}
-                                                            </tr>
+                                                                    <h3 className="text-lg font-bold text-gray-900 leading-tight mb-1">{prop.Name}</h3>
+                                                                    <p className="text-sm text-gray-500 flex items-center gap-1">
+                                                                        <FaMapMarkerAlt className="text-[#EAB308]" /> {prop.Location || prop.detailed_address?.city || prop.City}
+                                                                    </p>
+                                                                    <button
+                                                                        onClick={() => removeFromCompare(prop.id)}
+                                                                        className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white/90 backdrop-blur rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:scale-110"
+                                                                    >
+                                                                        <FaTrash size={12} />
+                                                                    </button>
+                                                                </div>
+                                                            </th>
                                                         ))}
-                                                    </React.Fragment>
-                                                ))}
-                                                {/* Action Row */}
-                                                <tr>
-                                                    <td className="p-4 sticky left-0 bg-white"></td>
-                                                    {compareList.map(prop => (
-                                                        <td key={prop.id} className="p-4">
-                                                            <button className="w-full bg-black text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition shadow-lg active:scale-95">
-                                                                View Details
-                                                            </button>
-                                                        </td>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {SECTIONS.map((section, idx) => (
+                                                        <React.Fragment key={idx}>
+                                                            <tr>
+                                                                <td colSpan={compareList.length + 1} className="p-4 pt-8 sticky left-0 bg-white z-10">
+                                                                    <h4 className="flex items-center gap-2 text-sm font-black text-gray-400 uppercase tracking-widest pl-2 border-l-4 border-[#EAB308]">
+                                                                        {section.title}
+                                                                    </h4>
+                                                                </td>
+                                                            </tr>
+                                                            {section.items.map((item, itemIdx) => (
+                                                                <tr key={itemIdx} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                                                    <td className="p-4 text-sm font-bold text-gray-600 sticky left-0 bg-white/95 backdrop-blur z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-gray-400">{item.icon}</span>
+                                                                            {item.label}
+                                                                        </div>
+                                                                    </td>
+                                                                    {compareList.map(prop => {
+                                                                        let content = null;
+                                                                        if (item.render) {
+                                                                            content = item.render(prop);
+                                                                        } else if (item.check) {
+                                                                            const val = get(prop, item.check);
+                                                                            content = val
+                                                                                ? <div className="flex items-center gap-1 text-green-700 font-bold bg-green-50 px-2 py-1 rounded-md w-fit text-xs"><FaCheckCircle className="text-green-500" /> Yes</div>
+                                                                                : <div className="flex items-center gap-1 text-gray-400 text-xs"><FaTimesCircle /> No</div>;
+                                                                        }
+                                                                        return (
+                                                                            <td key={prop.id} className="p-4 text-sm font-medium text-gray-800">
+                                                                                {content}
+                                                                            </td>
+                                                                        );
+                                                                    })}
+                                                                </tr>
+                                                            ))}
+                                                        </React.Fragment>
                                                     ))}
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                    {/* Action Row */}
+                                                    <tr>
+                                                        <td className="p-4 sticky left-0 bg-white"></td>
+                                                        {compareList.map(prop => (
+                                                            <td key={prop.id} className="p-4">
+                                                                <button className="w-full bg-black text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition shadow-lg active:scale-95">
+                                                                    View Details
+                                                                </button>
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* --- MOBILE VIEW (Pointwise Blocks) --- */}
+                                        <div className="md:hidden p-4 space-y-4 pb-12">
+                                            {/* Property Header Scroller (Sticky) - Compact */}
+                                            <div className="sticky top-0 bg-white/95 backdrop-blur z-30 -mx-4 px-4 py-2 shadow-sm flex gap-3 overflow-x-auto no-scrollbar snap-x border-b border-gray-100">
+                                                {compareList.map(prop => (
+                                                    <div key={prop.id} className="min-w-[100px] w-[100px] snap-start relative flex-shrink-0">
+                                                        <div className="h-16 rounded-lg overflow-hidden relative border border-gray-200">
+                                                            <img
+                                                                src={prop.primary_image?.image_url || prop.image_url || 'https://via.placeholder.com/150'}
+                                                                className="w-full h-full object-cover opacity-90"
+                                                                alt={prop.Name}
+                                                            />
+                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-1.5">
+                                                                <p className="text-white text-[10px] font-bold leading-tight truncate">{prop.Name}</p>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => removeFromCompare(prop.id)}
+                                                                className="absolute top-0.5 right-0.5 bg-black/50 text-white rounded-full p-0.5 hover:bg-red-500"
+                                                            >
+                                                                <FaTimes size={8} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {SECTIONS.map((section, idx) => (
+                                                <div key={idx} className="space-y-2">
+                                                    <h4 className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest pb-0.5">
+                                                        {section.title}
+                                                    </h4>
+
+                                                    <div className="grid gap-2">
+                                                        {section.items.map((item, itemIdx) => (
+                                                            <div key={itemIdx} className="bg-white p-2.5 rounded-lg border border-gray-100 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+                                                                <div className="flex items-center gap-1.5 mb-1.5 text-gray-500 text-[10px] font-bold uppercase tracking-wide">
+                                                                    {item.icon && <span className="text-[#EAB308] text-xs">{item.icon}</span>}
+                                                                    {item.label}
+                                                                </div>
+
+                                                                <div className="grid grid-cols-2 gap-2 divide-x divide-gray-50">
+                                                                    {compareList.map(prop => {
+                                                                        let content = null;
+                                                                        if (item.render) {
+                                                                            content = item.render(prop);
+                                                                        } else if (item.check) {
+                                                                            const val = get(prop, item.check);
+                                                                            content = val
+                                                                                ? <span className="text-green-600 flex items-center gap-1 text-[10px] font-bold"><FaCheckCircle /> Yes</span>
+                                                                                : <span className="text-gray-300 flex items-center gap-1 text-[10px]"><FaTimesCircle /> No</span>;
+                                                                        }
+
+                                                                        return (
+                                                                            <div key={prop.id} className="flex flex-col pl-2 first:pl-0">
+                                                                                <span className="text-[10px] text-gray-400 truncate mb-0.5 leading-none">{prop.Name.split(' ')[0]}</span>
+                                                                                <span className="text-xs font-bold text-gray-800 leading-tight">{content}</span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </div>

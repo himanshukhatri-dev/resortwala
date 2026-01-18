@@ -104,7 +104,10 @@ export default function PropertyDetails() {
     const [isVideoOpen, setIsVideoOpen] = useState(false);
     const [photoIndex, setPhotoIndex] = useState(0);
     const [videoIndex, setVideoIndex] = useState(0);
+    const [mobileIndex, setMobileIndex] = useState(0); // Dedicated state for mobile swipe
     const datePickerRef = useRef(null);
+    const mobileGalleryRef = useRef(null);
+
     const { isWishlisted, toggleWishlist } = useWishlist();
     const [isSaved, setIsSaved] = useState(false);
 
@@ -251,6 +254,28 @@ export default function PropertyDetails() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isGalleryOpen]);
+
+    // Track Mobile Scroll for Index (IntersectionObserver)
+    const mobileSlidesRef = useRef([]);
+    useEffect(() => {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    const index = Number(entry.target.getAttribute('data-index'));
+                    if (!isNaN(index)) setMobileIndex(index);
+                }
+            });
+        }, { threshold: 0.5, root: mobileGalleryRef.current });
+
+        if (mobileSlidesRef.current) {
+            mobileSlidesRef.current.forEach(slide => {
+                if (slide) observer.observe(slide);
+            });
+        }
+
+        return () => observer.disconnect();
+    }, [galleryImages]); // Re-run when images load
+
 
     const handleDateSelect = (day) => {
         if (!day) return;
@@ -674,17 +699,42 @@ export default function PropertyDetails() {
                 {/* MOBILE GALLERY (Swipeable) */}
                 {galleryImages.length > 0 && (
                     <div className="md:hidden -mx-4 mb-6 relative group">
-                        <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar h-[320px]">
+                        <div
+                            ref={mobileGalleryRef}
+                            className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar h-[320px] scroll-smooth"
+                        >
                             {galleryImages.map((img, idx) => (
-                                <div key={idx} className="flex-none w-[90vw] snap-center first:pl-4 last:pr-4 mx-2" onClick={() => handleGalleryOpen(idx)}>
+                                <div
+                                    key={idx}
+                                    data-index={idx}
+                                    ref={el => mobileSlidesRef.current[idx] = el}
+                                    className="flex-none w-full snap-center px-1"
+                                    onClick={() => handleGalleryOpen(idx)}
+                                >
                                     <div className="w-full h-full rounded-2xl overflow-hidden relative shadow-sm">
-                                        <img src={img} alt={`Slide ${idx}`} className="w-full h-full object-cover" />
+                                        <img src={img} alt={`Slide ${idx}`} className="w-full h-full object-cover" loading="lazy" />
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <div className="absolute bottom-4 right-8 bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-md pointer-events-none">
-                            1 / {galleryImages.length}
+
+                        {/* Pagination Dots & Counter */}
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none">
+                            <div className="flex gap-1.5">
+                                {galleryImages.slice(0, 5).map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className={`transition-all duration-300 rounded-full shadow-sm ${(i === mobileIndex || (i === 4 && mobileIndex > 4))
+                                            ? 'w-4 h-1.5 bg-white'
+                                            : 'w-1.5 h-1.5 bg-white/50'
+                                            }`}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="absolute bottom-4 right-4 bg-black/60 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-md pointer-events-none border border-white/10">
+                            {mobileIndex + 1} / {galleryImages.length}
                         </div>
                     </div>
                 )}
@@ -1596,6 +1646,12 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
     const next = (e) => { e?.stopPropagation(); setIndex((prev) => (prev + 1) % images.length); };
     const prev = (e) => { e?.stopPropagation(); setIndex((prev) => (prev - 1 + images.length) % images.length); };
 
+    // Swipe Threshold
+    const swipeConfidenceThreshold = 10000;
+    const swipePower = (offset, velocity) => {
+        return Math.abs(offset) * velocity;
+    };
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -1603,7 +1659,7 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[2000] bg-black/85 flex flex-col items-center justify-center py-4 md:py-6 overflow-hidden"
+                    className="fixed inset-0 z-[2000] bg-black/95 flex flex-col items-center justify-center py-4 md:py-6 overflow-hidden touch-none" // touch-none prevents browser scroll
                     onClick={onClose}
                 >
                     {/* Blurred Background */}
@@ -1620,48 +1676,62 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
                         />
                     </motion.div>
 
-                    <div className="flex-1 w-full flex items-center justify-center relative px-4 md:px-20 z-10" onClick={e => e.stopPropagation()}>
-                        {/* Fixed Navigation Arrows */}
+                    <div className="flex-1 w-full flex items-center justify-center relative px-2 md:px-20 z-10" onClick={e => e.stopPropagation()}>
+                        {/* Fixed Navigation Arrows (Hidden on Mobile if Swipe is easy, but keeping for accessibility) */}
                         <button
                             onClick={prev}
-                            className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 p-4 text-white bg-black/20 hover:bg-black/50 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg group hover:scale-110"
-                            aria-label="Previous Image"
+                            className="hidden md:block absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 p-4 text-white bg-black/20 hover:bg-black/50 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg group hover:scale-110"
                         >
                             <FaArrowLeft size={24} className="md:w-8 md:h-8" />
                         </button>
 
                         <button
                             onClick={next}
-                            className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-50 p-4 text-white bg-black/20 hover:bg-black/50 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg group hover:scale-110"
-                            aria-label="Next Image"
+                            className="absolute hidden md:block right-4 md:right-8 top-1/2 -translate-y-1/2 z-50 p-4 text-white bg-black/20 hover:bg-black/50 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg group hover:scale-110"
                         >
                             <FaArrowRight size={24} className="md:w-8 md:h-8" />
                         </button>
 
                         {/* Image Container */}
-                        <div className="relative inline-block max-w-[95vw] lg:max-w-7xl h-full max-h-[85vh] flex items-center justify-center">
-                            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-50">
-                                <span className="font-mono font-bold bg-black/50 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm tracking-widest border border-white/20 shadow-sm">
+                        <div className="relative inline-block w-full h-full max-h-[85vh] flex items-center justify-center">
+                            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-50 pointer-events-none"> {/* pointer-events-none to let swipe pass through spaces */}
+                                <span className="font-mono font-bold bg-black/50 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm tracking-widest border border-white/20 shadow-sm pointer-events-auto">
                                     {currentIndex + 1} / {images.length}
                                 </span>
                                 <button
                                     onClick={onClose}
-                                    className="p-3 bg-black/50 hover:bg-black/80 text-white backdrop-blur-md rounded-full transition-all border border-white/20 shadow-sm hover:rotate-90 duration-300"
+                                    className="p-3 bg-black/50 hover:bg-black/80 text-white backdrop-blur-md rounded-full transition-all border border-white/20 shadow-sm pointer-events-auto"
                                 >
                                     <FaTimes size={20} />
                                 </button>
                             </div>
 
-                            <AnimatePresence mode="wait">
+                            <AnimatePresence mode="popLayout" initial={false}>
                                 <motion.img
                                     key={currentIndex}
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 1.05 }}
-                                    transition={{ duration: 0.3, ease: "easeOut" }}
                                     src={images[currentIndex]}
-                                    className="max-h-[75vh] md:max-h-[85vh] max-w-full object-contain shadow-[0_0_100px_rgba(0,0,0,0.5)] rounded-lg"
+
+                                    // Swipe Logic
+                                    drag="x"
+                                    dragConstraints={{ left: 0, right: 0 }}
+                                    dragElastic={1}
+                                    onDragEnd={(e, { offset, velocity }) => {
+                                        const swipe = swipePower(offset.x, velocity.x);
+                                        if (swipe < -swipeConfidenceThreshold) {
+                                            next();
+                                        } else if (swipe > swipeConfidenceThreshold) {
+                                            prev();
+                                        }
+                                    }}
+
+                                    initial={{ opacity: 0, x: 100, scale: 0.9 }}
+                                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                                    exit={{ opacity: 0, x: -100, scale: 0.9 }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+
+                                    className="max-h-[75vh] md:max-h-[85vh] max-w-full object-contain shadow-2xl rounded-lg cursor-grab active:cursor-grabbing"
                                     alt={`Gallery ${currentIndex}`}
+                                    draggable="false" // Prevent browser native drag
                                 />
                             </AnimatePresence>
                         </div>

@@ -117,29 +117,29 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                 {/* COMPARE BUTTON */}
                 <div
                     onClick={(e) => { e.stopPropagation(); toggleCompare(property); }}
-                    className={`absolute top-4 left-4 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-all backdrop-blur-md cursor-pointer shadow-sm ${compareList?.find(p => p.id === id || p.PropertyId === id)
+                    className={`absolute top-4 left-4 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all backdrop-blur-md cursor-pointer shadow-sm ${compareList?.find(p => p.id === id || p.PropertyId === id)
                         ? 'bg-black text-white'
                         : 'bg-white/70 text-gray-700 hover:bg-white hover:text-black'
                         }`}
                     title="Compare"
                 >
-                    <FaExchangeAlt size={12} />
+                    <FaExchangeAlt size={14} />
                 </div>
 
                 {/* HEART BUTTON */}
                 <div
                     onClick={handleWishlist}
-                    className={`absolute top-4 right-4 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-all backdrop-blur-md ${active ? 'bg-red-500 text-white' : 'bg-white/70 text-gray-700 hover:bg-white hover:text-red-500'}`}
+                    className={`absolute top-4 right-4 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all backdrop-blur-md shadow-sm active:scale-90 ${active ? 'bg-red-500 text-white' : 'bg-white/70 text-gray-700 hover:bg-white hover:text-red-500'}`}
                 >
                     <FaHeart className={active ? "fill-current" : "text-lg"} />
                 </div>
 
-                {/* SLIDER CONTROLS */}
-                <div className="absolute inset-0 flex items-center justify-between px-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={prevImage} className="w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-800 hover:bg-white transition-all shadow-md">
+                {/* SLIDER CONTROLS - Larger touch areas */}
+                <div className="absolute inset-0 flex items-center justify-between px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <button onClick={prevImage} className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-800 hover:bg-white transition-all shadow-md pointer-events-auto active:scale-90">
                         <FaChevronLeft size={10} />
                     </button>
-                    <button onClick={nextImage} className="w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-800 hover:bg-white transition-all shadow-md">
+                    <button onClick={nextImage} className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-800 hover:bg-white transition-all shadow-md pointer-events-auto active:scale-90">
                         <FaChevronRight size={10} />
                     </button>
                 </div>
@@ -306,7 +306,7 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                                 </span>
                             </div>
                         </div>
-                        <button className="flex-1 sm:flex-none px-6 py-3 bg-white border-2 border-gray-100 text-gray-900 rounded-xl font-bold text-sm hover:border-black hover:bg-black hover:text-white transition-all shadow-sm active:scale-95 flex items-center gap-2 justify-center">
+                        <button className="flex-1 sm:flex-none px-6 py-3.5 bg-white border-2 border-gray-100 text-gray-900 rounded-xl font-bold text-sm hover:border-black hover:bg-black hover:text-white transition-all shadow-sm active:scale-95 flex items-center gap-2 justify-center min-h-[44px]">
                             View Details <FaChevronRight size={10} />
                         </button>
                     </div>

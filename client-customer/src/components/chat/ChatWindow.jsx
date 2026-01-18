@@ -248,7 +248,7 @@ export default function ChatWindow({ config, onClose, isOpen }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-[80px] left-3 right-3 md:bottom-20 md:right-6 md:left-auto md:w-[380px] h-[72vh] md:h-[620px] bg-white/95 backdrop-blur-2xl rounded-[1.8rem] shadow-[0_15px_50px_-10px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden border border-white/40 z-[9999] ring-1 ring-black/5"
+            className="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-3 right-3 md:bottom-20 md:right-6 md:left-auto md:w-[380px] h-[72vh] md:h-[620px] bg-white/95 backdrop-blur-2xl rounded-[1.8rem] shadow-[0_15px_50px_-10px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden border border-white/40 z-[9999] ring-1 ring-black/5"
         >
             {/* Header Redesign */}
             <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between shrink-0 relative overflow-hidden">

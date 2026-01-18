@@ -116,19 +116,23 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                 setDateRange({ from: day, to: undefined });
             } else {
                 setDateRange({ from: dateRange.from, to: day });
-                // Slight delay to allow visual confirmation before processing or closing
-                setTimeout(() => {
-                    const filters = {
-                        location,
-                        dates: {
-                            start: format(dateRange.from, 'yyyy-MM-dd'),
-                            end: format(day, 'yyyy-MM-dd')
-                        },
-                        guests
-                    };
-                    if (onSearch) onSearch(filters);
-                    setActiveTab(null);
-                }, 100);
+
+                // ONLY close automatically on Desktop. 
+                // Mobile users expect to click "Search" or "Close" manually.
+                if (window.innerWidth >= 768) {
+                    setTimeout(() => {
+                        const filters = {
+                            location,
+                            dates: {
+                                start: format(dateRange.from, 'yyyy-MM-dd'),
+                                end: format(day, 'yyyy-MM-dd')
+                            },
+                            guests
+                        };
+                        if (onSearch) onSearch(filters);
+                        setActiveTab(null);
+                    }, 200);
+                }
             }
         }
     };
@@ -198,10 +202,9 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                         onChange={handleLocationChange}
                         onFocus={() => setActiveTab('location')}
                         onClick={(e) => { e.stopPropagation(); setActiveTab('location'); }}
-                        className={`w-full bg-transparent border-none outline-none text-gray-900 placeholder-gray-500 font-semibold truncate ${isSticky ? 'text-sm' : 'text-sm md:text-base'}`}
+                        className={`w-full bg-transparent border-none outline-none text-gray-900 placeholder-gray-500 font-bold truncate ${isSticky ? 'text-sm' : 'text-sm md:text-base'} placeholder:opacity-50`}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()}
                     />
-                    {/* Redundant span removed to fix "Anywhere Anywhere" duplication */}
                 </div>
 
                 {/* DIVIDER */}
@@ -353,11 +356,12 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                                             .rdp-day_selected { background-color: #000 !important; color: white !important; font-weight: bold; }
                                             .rdp-caption_label { font-size: 0.85rem; font-weight: 700; color: #1f2937; margin-bottom: 0.5rem; }
                                             .rdp-head_cell { font-size: 0.7rem; color: #9ca3af; font-weight: 500; }
-                                            .rdp-nav_button { width: 24px; height: 24px; }
+                                            .rdp-nav_button { width: 32px; height: 32px; } /* Larger nav buttons */
                                             @media (max-width: 768px) {
                                                 .rdp-month { width: 100%; }
                                                 .rdp-table { width: 100%; max-width: 100%; }
-                                                .rdp-cell { height: 44px; width: 14%; }
+                                                .rdp-cell { height: 48px; width: 14%; max-width: 48px; } /* Min 44px tap target */
+                                                .rdp-day { width: 100%; height: 100%; font-size: 1rem; }
                                             }
                                         `}</style>
                                         <DayPicker

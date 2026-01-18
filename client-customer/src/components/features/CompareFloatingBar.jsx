@@ -14,7 +14,7 @@ export default function CompareFloatingBar() {
                 initial={{ y: 100, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 100, opacity: 0 }}
-                className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-6 flex justify-center pointer-events-none"
+                className="fixed bottom-0 left-0 right-0 z-[10000] p-4 pb-6 flex justify-center pointer-events-none"
             >
                 <div className="bg-white/90 backdrop-blur-xl border border-gray-200 shadow-2xl rounded-2xl p-3 pl-5 md:min-w-[400px] pointer-events-auto flex items-center justify-between gap-6">
 
@@ -23,7 +23,7 @@ export default function CompareFloatingBar() {
                             {compareList.map((item) => (
                                 <div key={item.id} className="relative group">
                                     <img
-                                        src={item.image || "https://placewaifu.com/image/100/100"}
+                                        src={item.image || item.primary_image?.image_url || item.images?.[0] || "https://via.placeholder.com/100"}
                                         alt={item.name}
                                         className="w-12 h-12 rounded-full border-2 border-white object-cover shadow-md"
                                     />

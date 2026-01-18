@@ -83,16 +83,16 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
 
                     <div
                         onClick={() => setMenuOpen(!menuOpen)}
-                        className="flex items-center gap-2 border border-gray-200 bg-white rounded-full p-1.5 pl-3 hover:shadow-md transition cursor-pointer"
+                        className="flex items-center gap-2 border border-gray-200 bg-white rounded-full p-2 pl-3 hover:shadow-md transition cursor-pointer min-h-[44px] min-w-[44px] justify-center"
                     >
-                        <FaBars className="text-gray-600" size={14} />
+                        <FaBars className="text-gray-600" size={16} />
                         <div className="bg-gray-500 text-white rounded-full p-0.5 overflow-hidden">
                             {user ? (
                                 <div className="w-7 h-7 flex items-center justify-center bg-black text-[10px] font-black rounded-full uppercase">
                                     {(user.name || user.Name || 'U').charAt(0)}
                                 </div>
                             ) : (
-                                <FaUserCircle size={26} className="text-gray-300 bg-white rounded-full" />
+                                <FaUserCircle size={28} className="text-gray-300 bg-white rounded-full" />
                             )}
                         </div>
                     </div>
@@ -104,7 +104,7 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
                                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.95 }}
-                                className="absolute top-14 right-0 w-64 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] py-2 border border-gray-100 overflow-hidden"
+                                className="absolute top-16 right-0 w-72 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] py-2 border border-gray-100 overflow-hidden z-[1002]"
                             >
                                 {user ? (
                                     <>
@@ -112,16 +112,16 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
                                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Logged in as</p>
                                             <p className="font-bold text-sm text-gray-900">{(user.name || user.Name)}</p>
                                         </div>
-                                        <Link to="/profile" className="block px-5 py-3.5 hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors">Personal Profile</Link>
-                                        <Link to="/bookings" className="block px-5 py-3.5 hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors">My Stays & Bookings</Link>
-                                        <Link to="/wishlist" className="block px-5 py-3.5 hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors">My Wishlist</Link>
+                                        <Link to="/profile" onClick={() => setMenuOpen(false)} className="block px-5 py-3.5 hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors">Personal Profile</Link>
+                                        <Link to="/bookings" onClick={() => setMenuOpen(false)} className="block px-5 py-3.5 hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors">My Stays & Bookings</Link>
+                                        <Link to="/wishlist" onClick={() => setMenuOpen(false)} className="block px-5 py-3.5 hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors">My Wishlist</Link>
                                         <div className="border-t border-gray-50 my-1"></div>
-                                        <button onClick={logout} className="block w-full text-left px-5 py-3.5 hover:bg-gray-50 text-sm text-red-500 font-bold">Log out</button>
+                                        <button onClick={() => { logout(); setMenuOpen(false); }} className="block w-full text-left px-5 py-3.5 hover:bg-gray-50 text-sm text-red-500 font-bold">Log out</button>
                                     </>
                                 ) : (
                                     <>
-                                        <Link to="/login" className="block px-5 py-4 hover:bg-gray-50 text-sm font-black text-gray-900 uppercase tracking-widest">Login</Link>
-                                        <Link to="/signup" className="block px-5 py-3 hover:bg-gray-50 text-sm font-medium text-gray-600">Signup</Link>
+                                        <Link to="/login" onClick={() => setMenuOpen(false)} className="block px-5 py-4 hover:bg-gray-50 text-sm font-black text-gray-900 uppercase tracking-widest">Login</Link>
+                                        <Link to="/signup" onClick={() => setMenuOpen(false)} className="block px-5 py-3 hover:bg-gray-50 text-sm font-medium text-gray-600">Signup</Link>
                                     </>
                                 )}
                             </motion.div>

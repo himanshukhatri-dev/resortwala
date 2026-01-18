@@ -21,21 +21,21 @@ export default function Footer() {
                     {/* Links 1 */}
                     <div>
                         <h4 className="font-bold text-white mb-3 text-sm uppercase tracking-wider font-serif">Support</h4>
-                        <ul className="space-y-1.5 text-sm">
-                            <li><a href="/contact" className="hover:text-primary transition">Help Center</a></li>
-                            <li><a href="/policy/safety" className="hover:text-primary transition">Safety information</a></li>
-                            <li><a href="/policy/cancellation" className="hover:text-primary transition">Cancellation options</a></li>
+                        <ul className="space-y-3 text-sm">
+                            <li><a href="/contact" className="hover:text-primary transition py-2 block">Help Center</a></li>
+                            <li><a href="/policy/safety" className="hover:text-primary transition py-2 block">Safety information</a></li>
+                            <li><a href="/policy/cancellation" className="hover:text-primary transition py-2 block">Cancellation options</a></li>
                         </ul>
                     </div>
 
                     {/* Links 2 */}
                     <div>
                         <h4 className="font-bold text-white mb-3 text-sm uppercase tracking-wider font-serif">Company</h4>
-                        <ul className="space-y-1.5 text-sm">
-                            <li><a href="/about" className="hover:text-primary transition">About us</a></li>
-                            <li><a href="/policy/terms" className="hover:text-primary transition">Terms of Service</a></li>
-                            <li><a href="/policy/privacy" className="hover:text-primary transition">Privacy Policy</a></li>
-                            <li><a href="/" className="hover:text-primary transition">Villas & Resorts</a></li>
+                        <ul className="space-y-3 text-sm">
+                            <li><a href="/about" className="hover:text-primary transition py-2 block">About us</a></li>
+                            <li><a href="/policy/terms" className="hover:text-primary transition py-2 block">Terms of Service</a></li>
+                            <li><a href="/policy/privacy" className="hover:text-primary transition py-2 block">Privacy Policy</a></li>
+                            <li><a href="/" className="hover:text-primary transition py-2 block">Villas & Resorts</a></li>
                         </ul>
                     </div>
 
@@ -43,9 +43,9 @@ export default function Footer() {
                     <div>
                         <h4 className="font-bold text-white mb-3 text-sm uppercase tracking-wider font-serif">Follow us</h4>
                         <div className="flex gap-4">
-                            <a href="https://www.facebook.com/people/ResortWala/61574769120799/?rdid=WH84Mo0HyfYDJavP" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition"><FaFacebook size={18} /></a>
-                            <a href="https://www.instagram.com/resortwala.official/?igsh=MXByb3FnaXNmaHJxdw%3D%3D" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition"><FaInstagram size={18} /></a>
-                            <a href="https://www.youtube.com/@ResortWala.official" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition"><FaYoutube size={18} /></a>
+                            <a href="https://www.facebook.com/people/ResortWala/61574769120799/?rdid=WH84Mo0HyfYDJavP" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition p-2"><FaFacebook size={24} /></a>
+                            <a href="https://www.instagram.com/resortwala.official/?igsh=MXByb3FnaXNmaHJxdw%3D%3D" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition p-2"><FaInstagram size={24} /></a>
+                            <a href="https://www.youtube.com/@ResortWala.official" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition p-2"><FaYoutube size={24} /></a>
                         </div>
                     </div>
                 </div>
