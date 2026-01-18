@@ -269,12 +269,26 @@ function Deploy-Component {
 
 # Execution Logic
 if ($AutoDeployAll) {
-    Write-Host "Auto-Deploying ALL components..." -ForegroundColor Magenta
-    if (Build-ReactApp "Customer" $Paths.Customer) { Deploy-Component "Customer" $Paths.Customer }
-    if (Build-ReactApp "Admin" $Paths.Admin) { Deploy-Component "Admin" $Paths.Admin }
+    Write-Host "Auto-Deploying ALL components (PARALLEL BUILD)..." -ForegroundColor Magenta
+    
+    # 1. Start Background Builds
+    $BuildJobs = @()
+    $BuildJobs += Start-Job -Name "Build_Customer" -ScriptBlock { param($p, $c) Push-Location $p; npm install; npm run build; Pop-Location } -ArgumentList $Paths.Customer.LocalSource, $Paths.Customer
+    $BuildJobs += Start-Job -Name "Build_Admin" -ScriptBlock { param($p, $c) Push-Location $p; npm install; npm run build; Pop-Location } -ArgumentList $Paths.Admin.LocalSource, $Paths.Admin
+    $BuildJobs += Start-Job -Name "Build_Vendor" -ScriptBlock { param($p, $c) Push-Location $p; npm install; npm run build; Pop-Location } -ArgumentList $Paths.Vendor.LocalSource, $Paths.Vendor
+    
+    # API build is fast (composer), so we can do it synchronously or in parallel
     if (Build-Laravel "API" $Paths.API) { Deploy-Component "API" $Paths.API }
-    if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor }
-    exit
+
+    Write-Host "Waiting for Frontend Builds to complete..." -ForegroundColor Yellow
+    $BuildJobs | Wait-Job | Receive-Job
+    
+    # 2. Deploy (Sequential uploads for bandwidth/server stability)
+    Deploy-Component "Customer" $Paths.Customer
+    Deploy-Component "Admin" $Paths.Admin
+    Deploy-Component "Vendor" $Paths.Vendor
+    
+    export
 }
 
 if ($Component) {

@@ -143,6 +143,46 @@ class VoiceStudioController extends Controller
 
     public function setupDB()
     {
+        // 1. Run Migrations
+        try {
+            \Illuminate\Support\Facades\Artisan::call('migrate --force');
+        } catch (\Exception $e) {}
+
         return response()->json(['message' => 'Online']);
+    }
+
+    public function fixStorage()
+    {
+        $log = [];
+        
+        // 1. Symlink
+        try {
+            \Illuminate\Support\Facades\Artisan::call('storage:link');
+            $log[] = "Storage Link: " . \Illuminate\Support\Facades\Artisan::output();
+        } catch (\Exception $e) {
+            $log[] = "Storage Link Error: " . $e->getMessage();
+        }
+
+        // 2. Permissions (Attempt)
+        try {
+            $path = storage_path('app/public');
+            chmod($path, 0755);
+            $log[] = "Chmod 755 on $path";
+            
+            // Fix subfolders specific to our app
+            $audio = storage_path('app/public/audio');
+            if (file_exists($audio)) chmod($audio, 0755);
+            
+            $videos = storage_path('app/public/videos');
+            if (file_exists($videos)) chmod($videos, 0755);
+
+        } catch (\Exception $e) {
+            $log[] = "Permission Error: " . $e->getMessage();
+        }
+
+        return response()->json([
+            'message' => 'Storage Fix Attempted',
+            'log' => $log
+        ]);
     }
 }

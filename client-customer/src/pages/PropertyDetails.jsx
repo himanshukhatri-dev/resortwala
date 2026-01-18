@@ -1603,7 +1603,7 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[200] bg-black/85 flex flex-col items-center justify-center py-4 md:py-6 overflow-hidden"
+                    className="fixed inset-0 z-[2000] bg-black/85 flex flex-col items-center justify-center py-4 md:py-6 overflow-hidden"
                     onClick={onClose}
                 >
                     {/* Blurred Background */}

@@ -217,6 +217,15 @@ Route::prefix('admin/intelligence')->middleware(['auth:sanctum', 'verified'])->g
     Route::put('/data/{table}/{id}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'updateTableData']);
     Route::delete('/data/{table}/{id}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'deleteTableData']);
     
+    // 🧾 Accounts Center
+    Route::prefix('accounts')->group(function () {
+        Route::get('/summary', [\App\Http\Controllers\Admin\AccountsController::class, 'summary']);
+        Route::get('/', [\App\Http\Controllers\Admin\AccountsController::class, 'index']);
+        Route::get('/{id}', [\App\Http\Controllers\Admin\AccountsController::class, 'show']);
+        Route::post('/adjust', [\App\Http\Controllers\Admin\AccountsController::class, 'adjust']);
+    });
+
+    // Dashboard
     // Database Backups
     Route::get('/backups', [App\Http\Controllers\Admin\BackupController::class, 'index']);
     Route::post('/backups', [App\Http\Controllers\Admin\BackupController::class, 'create']); // Changed from store to create to match controller
@@ -442,7 +451,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/video-jobs/{id}/retry', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'retry']);
         Route::delete('/video-jobs/{id}', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'destroy']);
         Route::post('/projects/{id}/render', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'renderVideo']); // Existing route, moved
-        Route::get('/setup-db', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'setupDB']); // Auto-Fix (Existing route, moved)
+        Route::get('/setup-db', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'setupDB']); // Auto-Fix
+        Route::get('/fix-storage', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'fixStorage']); // Permission Fix (Existing route, moved)
     });
 
     // Admin Chatbot Management
