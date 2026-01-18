@@ -411,6 +411,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin Connector Management
     Route::prefix('admin/connectors')->group(function () {
+        Route::get('/connectors/reports/stats', [\App\Http\Controllers\Admin\ConnectorReportController::class, 'stats']);
+        Route::get('/connectors/reports/earnings', [\App\Http\Controllers\Admin\ConnectorReportController::class, 'earnings']);
+        Route::post('/connectors/payouts/process', [\App\Http\Controllers\Admin\ConnectorReportController::class, 'processPayout']);
+        
         Route::get('/', [\App\Http\Controllers\Admin\ConnectorController::class, 'index']);
         Route::post('/', [\App\Http\Controllers\Admin\ConnectorController::class, 'store']);
         Route::put('/{id}', [\App\Http\Controllers\Admin\ConnectorController::class, 'update']);
