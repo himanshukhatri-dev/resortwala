@@ -154,36 +154,43 @@ class VoiceStudioController extends Controller
     public function fixStorage()
     {
         $log = [];
+        $log['user'] = exec('whoami');
         
-        // 1. Symlink
+        // 1. Force Re-Link
         try {
+            $linkPath = public_path('storage');
+            if (file_exists($linkPath)) {
+                unlink($linkPath);
+                $log[] = "Deleted existing symlink: $linkPath";
+            }
+            
             \Illuminate\Support\Facades\Artisan::call('storage:link');
-            $log[] = "Storage Link: " . \Illuminate\Support\Facades\Artisan::output();
+            $log[] = "Ran storage:link: " . \Illuminate\Support\Facades\Artisan::output();
         } catch (\Exception $e) {
-            $log[] = "Storage Link Error: " . $e->getMessage();
+            $log[] = "Link Error: " . $e->getMessage();
         }
 
-        // 2. Permissions (Attempt)
+        // 2. Permissions & Directories
         try {
-            $path = storage_path('app/public');
-            if (!file_exists($path)) mkdir($path, 0755, true);
-            chmod($path, 0755);
+            $target = storage_path('app/public');
             
-            // Fix subfolders specific to our app
-            $audio = storage_path('app/public/audio');
-            if (!file_exists($audio)) mkdir($audio, 0755, true);
-            if (file_exists($audio)) chmod($audio, 0755);
-            
-            $videos = storage_path('app/public/videos');
-            if (!file_exists($videos)) mkdir($videos, 0755, true);
-            if (file_exists($videos)) chmod($videos, 0755);
+            // Ensure directories exist
+            if (!file_exists($target)) mkdir($target, 0755, true);
+            if (!file_exists($target.'/audio')) mkdir($target.'/audio', 0755, true);
+            if (!file_exists($target.'/videos')) mkdir($target.'/videos', 0755, true);
 
+            // Attempt chmod (may fail if not owner)
+            @chmod($target, 0755);
+            @chmod($target.'/audio', 0755);
+            @chmod($target.'/videos', 0755);
+
+            $log[] = "Verified directories at: $target";
         } catch (\Exception $e) {
             $log[] = "Permission Error: " . $e->getMessage();
         }
-
+        
         return response()->json([
-            'message' => 'Storage Fix Attempted',
+            'message' => 'Aggressive Storage Fix Executed',
             'log' => $log
         ]);
     }
