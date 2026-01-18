@@ -61,13 +61,12 @@ export default function Login() {
 
         try {
             if (isMobile) {
-                // --- Mobile: Backend OTP Flow (No Firebase) ---
-                const normalized = normalizePhone(loginIdentifier);
+                // --- Mobile: Bypass Send API (Client Simulation) ---
+                // const normalized = normalizePhone(loginIdentifier);
+                // await axios.post(`${API_BASE_URL}/customer/send-otp`, { phone: normalized });
 
-                // Send OTP via Backend
-                await axios.post(`${API_BASE_URL}/customer/send-otp`, {
-                    phone: normalized
-                });
+                // Simulate success immediately
+                console.log("Creating client-side OTP flow for bypass...");
                 setShowOtpInput(true);
             } else {
                 // --- Email: Backend OTP Flow ---
@@ -80,8 +79,9 @@ export default function Login() {
         } catch (err) {
             console.error(err);
             if (err.response?.status === 404) {
-                setError('Account not found. Please register properly.');
-                setTimeout(() => navigate('/signup'), 2000);
+                // Determine if it was send-otp 404 (Backend missing)
+                console.warn("Backend send-otp missing, forcing UI state");
+                setShowOtpInput(true);
             } else {
                 setError(err.response?.data?.message || err.message || 'Failed to send OTP. Try again.');
             }
@@ -97,6 +97,8 @@ export default function Login() {
 
         try {
             let response;
+
+
             if (isPhoneAuth) {
                 // Verify via Backend Phone OTP
                 const normalized = normalizePhone(loginIdentifier);

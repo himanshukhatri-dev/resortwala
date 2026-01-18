@@ -169,13 +169,7 @@ class CustomerAuthController extends Controller
             ->first();
 
         if (!$customer) {
-            // Register new customer
-            $customer = Customer::create([
-                'name' => 'Guest ' . substr($request->phone, -4),
-                'email' => $digits . '@resortwala.com', // Placeholder unique email
-                'phone' => $request->phone, // Store input format
-                'password' => Hash::make(\Illuminate\Support\Str::random(16)),
-            ]);
+            return response()->json(['message' => 'Account not found. Please sign up first.'], 404);
         }
 
         $token = $customer->createToken('customer-token')->plainTextToken;
