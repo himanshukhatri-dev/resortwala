@@ -166,14 +166,16 @@ class VoiceStudioController extends Controller
         // 2. Permissions (Attempt)
         try {
             $path = storage_path('app/public');
+            if (!file_exists($path)) mkdir($path, 0755, true);
             chmod($path, 0755);
-            $log[] = "Chmod 755 on $path";
             
             // Fix subfolders specific to our app
             $audio = storage_path('app/public/audio');
+            if (!file_exists($audio)) mkdir($audio, 0755, true);
             if (file_exists($audio)) chmod($audio, 0755);
             
             $videos = storage_path('app/public/videos');
+            if (!file_exists($videos)) mkdir($videos, 0755, true);
             if (file_exists($videos)) chmod($videos, 0755);
 
         } catch (\Exception $e) {
