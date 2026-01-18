@@ -43,6 +43,7 @@ import AIVideoGenerator from './pages/AIVideoGenerator';
 import AISocialVideoStudio from './pages/AISocialVideoStudio';
 import PromptVideoStudio from './pages/PromptVideoStudio';
 import VoiceStudio from './pages/VoiceStudio';
+import ConnectorReports from './pages/ConnectorReports';
 import MediaRestoreConsole from './pages/MediaRestoreConsole';
 import ServerMigration from './pages/ServerMigration/ServerMigration';
 import './App.css';
@@ -96,6 +97,8 @@ function App() {
 
               <Route path="/intelligence" element={<Intelligence />} />
               <Route path="/intelligence/leads" element={<LeadCrawler />} />
+              <Route path="/connectors" element={<Connectors />} />
+              <Route path="/connectors/reports" element={<ConnectorReports />} />
               <Route path="/vendor-presentation" element={<VendorPresentation />} />
               <Route path="/ai-video-generator" element={<AIVideoGenerator />} />
               <Route path="/ai-video-studio" element={<AISocialVideoStudio />} />
