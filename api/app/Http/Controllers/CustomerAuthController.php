@@ -113,7 +113,7 @@ class CustomerAuthController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'code' => 'required|string|size:6',
+            'code' => 'required|string|min:4|max:6',
         ]);
 
         // Verify OTP using OtpService

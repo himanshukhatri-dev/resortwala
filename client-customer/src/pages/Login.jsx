@@ -89,10 +89,12 @@ export default function Login() {
         }
     };
 
-    const handleVerifyOtp = async (e) => {
-        e.preventDefault();
+    const handleVerifyOtp = async (e, forcedOtp = null) => {
+        if (e) e.preventDefault();
         setError('');
         setIsLoading(true);
+
+        const codeToVerify = forcedOtp || otp;
 
         try {
             let response;
@@ -103,13 +105,13 @@ export default function Login() {
                 const normalized = normalizePhone(loginIdentifier);
                 response = await axios.post(`${API_BASE_URL}/customer/login-otp`, {
                     phone: normalized,
-                    otp: otp
+                    otp: codeToVerify
                 });
             } else {
                 // Verify via Backend Email OTP
                 response = await axios.post(`${API_BASE_URL}/customer/login-email-otp`, {
                     email: loginIdentifier,
-                    code: otp
+                    code: codeToVerify
                 });
             }
 
@@ -228,7 +230,7 @@ export default function Login() {
                                         setOtp(val);
                                         // Auto-submit for 6 digits OR magic '1234' bypass
                                         if (val.length === 6 || val === '1234') {
-                                            setTimeout(() => handleVerifyOtp({ preventDefault: () => { } }), 300);
+                                            setTimeout(() => handleVerifyOtp({ preventDefault: () => { } }, val), 300);
                                         }
                                     }}
                                     autoFocus

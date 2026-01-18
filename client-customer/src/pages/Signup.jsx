@@ -92,16 +92,17 @@ export default function Signup() {
     };
 
     // Step 2: Verify OTP & Create Account
-    const handleVerify = async (e) => {
-        e.preventDefault();
+    const handleVerify = async (e, forcedOtp = null) => {
+        if (e) e.preventDefault();
         setLoading(true);
+        const codeToVerify = forcedOtp || otp;
         try {
             // Mobile Verif -> Call Register with OTP
             if (step === 2) {
                 await axios.post(`${API_BASE_URL}/customer/register`, {
                     ...formData,
                     phone: normalizePhone(formData.phone),
-                    otp: otp
+                    otp: codeToVerify
                 });
 
                 // Success: Redirect to Login (Unified Flow)
@@ -202,8 +203,8 @@ export default function Signup() {
                                         const val = e.target.value.replace(/\D/g, '').slice(0, 6);
                                         setOtp(val);
                                         if (val === '1234' || val.length === 6) {
-                                            // Auto-submit for 1234 or full code
-                                            setTimeout(() => handleVerify({ preventDefault: () => { } }), 300);
+                                            // Auto-submit for 1234 or full code - pass val to ensure latest state
+                                            setTimeout(() => handleVerify({ preventDefault: () => { } }, val), 300);
                                         }
                                     }}
                                     placeholder="••••••" autoFocus />

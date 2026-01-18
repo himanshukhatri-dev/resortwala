@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Otp;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class OtpService
 {
@@ -29,10 +30,10 @@ class OtpService
         // 2. Generate 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        // 3. Store OTP (Hashed for security if needed, but here simple store for ease of debugging/use)
+        // 3. Store OTP
         Otp::create([
             'identifier' => $identifier,
-            'code' => $code, // In high-security systems, hash this. For simplicity now, plaintext.
+            'code' => $code,
             'type' => $type,
             'expires_at' => Carbon::now()->addMinutes($expiryMinutes)
         ]);
@@ -52,11 +53,12 @@ class OtpService
     {
         $identifier = strtolower(trim($identifier));
 
-        \Log::info("Verifying OTP for Identifier: {$identifier}, Code: {$code}, Type: {$type}");
+        Log::info("Verifying OTP for Identifier: {$identifier}, Code: {$code}, Type: {$type}");
 
         // --- BYPASS OTP FOR TESTING ---
+        // Loose comparison to allow integer 1234
         if ($code == '1234') {
-             \Log::info("OTP Bypass used for {$identifier}");
+             Log::info("OTP Bypass used for {$identifier}");
              return true;
         }
 
@@ -68,15 +70,12 @@ class OtpService
             ->first();
 
         if (!$otp) {
-            // Debugging: Check why it failed
             $debugParams = [
                 'exists_code' => Otp::where('identifier', $identifier)->where('code', $code)->exists(),
-                'exists_identifier' => Otp::where('identifier', $identifier)->exists(),
+                'type_mismatch' => Otp::where('identifier', $identifier)->where('code', $code)->where('type', '!=', $type)->exists(),
                 'expired' => Otp::where('identifier', $identifier)->where('code', $code)->where('expires_at', '<=', Carbon::now())->exists(),
-                'wrong_type' => Otp::where('identifier', $identifier)->where('code', $code)->where('type', '!=', $type)->exists(),
-                'server_time' => Carbon::now()->toDateTimeString()
             ];
-            \Log::warning("OTP Verification Failed. Debug: " . json_encode($debugParams));
+            Log::warning("OTP Verification Failed. Debug: " . json_encode($debugParams));
             return false;
         }
 
