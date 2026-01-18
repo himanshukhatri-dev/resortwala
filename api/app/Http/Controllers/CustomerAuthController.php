@@ -93,7 +93,7 @@ class CustomerAuthController extends Controller
             'code' => 'required|string|size:6',
         ]);
 
-        // Verify OTP using OtpService (manual check here for simplicity if service is not injected)
+        // Verify OTP using OtpService
         $otpService = app(\App\Services\OtpService::class);
         $isValid = $otpService->verify($request->email, $request->code, 'login');
 
@@ -105,9 +105,6 @@ class CustomerAuthController extends Controller
         $customer = Customer::where('email', $request->email)->first();
 
         if (!$customer) {
-            // Optional: for Login flow, we might want to check if they should signup first.
-            // But if we want "Easy to use", we just create them if they don't exist?
-            // User usually wants "Login or Signup" in one flow.
             $customer = Customer::create([
                 'name' => 'Guest ' . explode('@', $request->email)[0],
                 'email' => $request->email,
@@ -123,29 +120,47 @@ class CustomerAuthController extends Controller
         ]);
     }
 
+    public function sendOtp(Request $request)
+    {
+        $request->validate(['phone' => 'required|string']);
+
+        // Normalize
+        $digits = preg_replace('/\D/', '', $request->phone);
+        if (strlen($digits) === 12 && substr($digits, 0, 2) === '91') {
+            $digits = substr($digits, 2);
+        }
+
+        $otpService = app(\App\Services\OtpService::class);
+        $code = $otpService->generate($digits, 'login');
+
+        try {
+            $notificationService = app(\App\Services\NotificationService::class);
+            $notificationService->sendSMSOTP($request->phone, $code, 'login');
+        } catch (\Exception $e) {
+            \Log::error("Failed to send login SMS to {$request->phone}: " . $e->getMessage());
+        }
+
+        return response()->json(['message' => 'OTP sent successfully']);
+    }
+
     public function loginOtp(Request $request)
     {
         $request->validate([
             'phone' => 'required|string',
-            'firebase_token' => 'nullable|string', 
+            'otp' => 'required|string',
         ]);
 
-        // BYPASS LOGIC: If token is our secret, skip verification
-        if ($request->firebase_token !== 'bypass-otp-secret') {
-             // TODO: Verify this token with Google (Currently skipped in codebase, but good practice to have)
-        }
-
-        // Find customer by phone
-        // Normalize phone number if needed (e.g., remove +91 if stored without it)
-        // Normalize phone: Remove non-digits
         $digits = preg_replace('/\D/', '', $request->phone);
-        
-        // Remove 91 prefix if present (12 digits)
         if (strlen($digits) === 12 && substr($digits, 0, 2) === '91') {
             $digits = substr($digits, 2);
         }
-        // Also handle if user passed 10 digits (already cleaned) - checking $digits
         
+        // Verify OTP
+        $otpService = app(\App\Services\OtpService::class);
+        if (!$otpService->verify($digits, $request->otp, 'login')) {
+             return response()->json(['message' => 'Invalid OTP'], 400);
+        }
+
         // Find customer matching various formats
         $customer = Customer::where('phone', $digits)
             ->orWhere('phone', '+91' . $digits)
@@ -155,12 +170,11 @@ class CustomerAuthController extends Controller
 
         if (!$customer) {
             // Register new customer
-            // We use placeholder email/password since they authenticated via Phone
             $customer = Customer::create([
                 'name' => 'Guest ' . substr($request->phone, -4),
-                'email' => $request->phone . '@resortwala.com', // Placeholder unique email
-                'phone' => $request->phone,
-                'password' => Hash::make(\Illuminate\Support\Str::random(16)), // Random password
+                'email' => $digits . '@resortwala.com', // Placeholder unique email
+                'phone' => $request->phone, // Store input format
+                'password' => Hash::make(\Illuminate\Support\Str::random(16)),
             ]);
         }
 
@@ -186,6 +200,7 @@ class CustomerAuthController extends Controller
             'message' => 'Logged out successfully'
         ]);
     }
+
     public function updateDeviceToken(Request $request)
     {
         $request->validate([

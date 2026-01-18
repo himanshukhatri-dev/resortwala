@@ -22,13 +22,13 @@ const ComingSoonGuard = ({ children }) => {
             const bypassParam = searchParams.get('testali');
 
             if (bypassParam === '1') {
-                sessionStorage.setItem('coming_soon_bypass', '1');
+                localStorage.setItem('coming_soon_bypass', '1');
             } else if (bypassParam === '0') {
-                sessionStorage.removeItem('coming_soon_bypass');
+                localStorage.removeItem('coming_soon_bypass');
             }
 
-            const hasSessionBypass = sessionStorage.getItem('coming_soon_bypass') === '1';
-            const isBypassed = (bypassParam === '1') || (hasSessionBypass && bypassParam !== '0');
+            const hasStorageBypass = localStorage.getItem('coming_soon_bypass') === '1';
+            const isBypassed = (bypassParam === '1') || (hasStorageBypass && bypassParam !== '0');
 
             // Logic: Show Coming Soon IF (Pre-Launch AND Production AND NOT Bypassed)
             if (isPreLaunch && isProduction && !isBypassed) {

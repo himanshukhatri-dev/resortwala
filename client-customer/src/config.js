@@ -4,7 +4,7 @@ const getApiBaseUrl = () => {
         return import.meta.env.VITE_API_BASE_URL;
     }
 
-    // 2. Production / Staging Fallback (Relative path assumes proxy)
+    // 2. Production / Staging Environment Check
     if (import.meta.env.PROD) {
         return '/api';
     }

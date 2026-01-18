@@ -74,7 +74,18 @@ class VideoRenderingService
                 $reelPath = $outputDir . '/' . $reelFilename;
                 $publicPath = 'videos/' . $reelFilename;
 
-                $cmdReel = $this->buildVideoCommand($job, $reelPath, '9:16');
+                if (($job->template_id ?? '') === 'tutorial') {
+                     // Tutorial Mode
+                     $tutorialId = $job->options['tutorial_id'] ?? null;
+                     $tutorial = \App\Models\Tutorial::find($tutorialId);
+                     if (!$tutorial) throw new \Exception("Tutorial ID not found");
+
+                     $cmdReel = $this->buildTutorialCommand($tutorial, $reelPath);
+                } else {
+                     // Standard Mode
+                     $cmdReel = $this->buildVideoCommand($job, $reelPath, '9:16');
+                }
+
                 Log::info("Rendering Reel: " . $cmdReel);
                 exec($cmdReel . " 2>&1", $outputReel, $returnCodeReel);
                 
@@ -129,6 +140,129 @@ class VideoRenderingService
     /**
      * Build the FFmpeg command for a specific Aspect Ratio
      */
+    /**
+     * Build the FFmpeg command for Tutorial Videos (Cursor Overlay + Highlights)
+     */
+    /**
+     * Build the FFmpeg command for Tutorial Videos (Cursor Overlay + Highlights)
+     */
+    public function buildTutorialCommand(\App\Models\Tutorial $tutorial, $outputPath)
+    {
+        $steps = $tutorial->steps()->orderBy('order_index')->get();
+        $inputs = "";
+        $filterComplex = "";
+        $idx = 0;
+        $prevStream = "";
+        // Default cursor path if not found
+        $cursorPath = public_path('cursor.png'); 
+        if (!file_exists($cursorPath)) {
+             // Use a fallback or generate a simple red arrow
+             $cursorPath = storage_path('app/public/cursor_default.png');
+        }
+
+        foreach ($steps as $i => $step) {
+            $streamName = "v{$i}";
+            
+            // 1. Inputs: Screenshot (Background)
+            $imagePath = $this->resolvePath($step->media_path ?? 'white_bg');
+            $inputs .= "-loop 1 -t {$step->duration} -i \"{$imagePath}\" ";
+            $bgIdx = $idx++;
+
+            // 2. Inputs: Cursor (Overlay)
+            $inputs .= "-loop 1 -t {$step->duration} -i \"{$cursorPath}\" ";
+            $cursorIdx = $idx++;
+
+            // 3. Visual Metadata
+            $meta = $step->visual_metadata ?? [];
+            $cursorData = $meta['cursor'] ?? null;
+            $highlight = $meta['highlight'] ?? null;
+
+            // Start filter chain for this step -- Normalize Scale to 1280x720
+            $filterComplex .= "[{$bgIdx}:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1[{$streamName}Bg];";
+            $currentStream = "[{$streamName}Bg]";
+
+            // A. Highlight Overlay (Dim Surroundings)
+            if ($highlight) {
+                // Dimmer Logic: Draw 4 semi-transparent black boxes around the target area
+                $x = max(0, $highlight['x']); 
+                $y = max(0, $highlight['y']); 
+                $w = $highlight['w']; 
+                $h = $highlight['h'];
+                $dimColor = "black@0.5";
+
+                // Box 1: Top (Full Width, 0 to y)
+                // Box 2: Left (0 to x, y to y+h)
+                // Box 3: Right (x+w to Width, y to y+h)
+                // Box 4: Bottom (Full Width, y+h to Height)
+                
+                $filterComplex .= "{$currentStream}" .
+                    "drawbox=x=0:y=0:w=iw:h={$y}:color={$dimColor}:t=fill," . 
+                    "drawbox=x=0:y={$y}:w={$x}:h={$h}:color={$dimColor}:t=fill," . 
+                    "drawbox=x=" . ($x+$w) . ":y={$y}:w=iw-".($x+$w).":h={$h}:color={$dimColor}:t=fill," . 
+                    "drawbox=x=0:y=" . ($y+$h) . ":w=iw:h=ih-".($y+$h).":color={$dimColor}:t=fill" .
+                    "[{$streamName}Dim];";
+                $currentStream = "[{$streamName}Dim]";
+            }
+
+            // B. Cursor Animation & Click Effect
+            if ($cursorData) {
+                // Scale cursor
+                $filterComplex .= "[{$cursorIdx}:v]scale=32:-1[{$streamName}Cur];";
+                
+                $startPos = $cursorData['start'] ?? [0,0];
+                $endPos = $cursorData['end'] ?? [100,100];
+                $action = $cursorData['action'] ?? null; // 'click'
+                
+                // Timing
+                $moveStartT = 0.5;
+                $moveDur = 1.0;
+                $T_end = $moveStartT + $moveDur;
+
+                // Interpolation Expression
+                // x(t) = startX + (endX - startX) * (t - startT) / dur
+                $exX = "if(lt(t,{$moveStartT}),{$startPos[0]},if(lt(t,{$T_end}),{$startPos[0]}+({$endPos[0]}-{$startPos[0]})*(t-{$moveStartT})/{$moveDur},{$endPos[0]}))";
+                $exY = "if(lt(t,{$moveStartT}),{$startPos[1]},if(lt(t,{$T_end}),{$startPos[1]}+({$endPos[1]}-{$startPos[1]})*(t-{$moveStartT})/{$moveDur},{$endPos[1]}))";
+
+                // Overlay Cursor
+                $filterComplex .= "{$currentStream}[{$streamName}Cur]overlay=x='{$exX}':y='{$exY}'[{$streamName}Ovr];";
+                $currentStream = "[{$streamName}Ovr]";
+
+                // C. Click Ripple Effect (Draw a circle that expands and fades)
+                if ($action === 'click') {
+                    // Click happens at T_end (1.5s)
+                    // Circle expands from radius 0 to 50 over 0.5s
+                    $clickT = $T_end;
+                    $rad = "if(gt(t,{$clickT}),(t-{$clickT})*100,0)";
+                    $alpha = "if(gt(t,{$clickT}),1-(t-{$clickT})*2,0)"; // Fade out
+                    
+                    // Only draw if within time window
+                    // drawbox/drawcircle only supports constant expressions in some versions, but 't' usually works for animations
+                    // Using 'geq' filter or specialized draw might be complex. 
+                    // Simpler: Just flash a yellow circle?
+                    // Let's stick to a simple flash for V1 or skip if too complex for vanilla FFmpeg without filters
+                    // Alternative: use a 'click.png' overlay that fades in/out.
+                }
+            }
+
+            // D. Concat Segments
+            if ($i === 0) {
+                 $prevStream = "{$currentStream}";
+            } else {
+                 $filterComplex .= "{$prevStream}{$currentStream}concat=n=2:v=1:a=0[vMix{$i}];";
+                 $prevStream = "[vMix{$i}]";
+            }
+        }
+        
+        // Final Output Setup
+        $filterComplex = rtrim($filterComplex, ';');
+        // Add silent audio track
+        $inputs .= "-f lavfi -t 1 -i anullsrc "; 
+        $aIdx = $idx;
+        
+        $cmd = "ffmpeg {$inputs} -filter_complex \"{$filterComplex}\" -map \"{$prevStream}\" -map {$aIdx}:a -c:v libx264 -pix_fmt yuv420p \"{$outputPath}\"";
+        return $cmd;
+    }
+
     /**
      * Build the FFmpeg command using Scene Architecture (Video 2.0)
      */

@@ -59,56 +59,18 @@ export default function Login() {
         const isMobile = isValidMobile(loginIdentifier);
         setIsPhoneAuth(isMobile);
 
-        // --- BYPASS LOGIC FOR HIMANSHU ---
-        const TEST_NUMBERS = ['9034195000', '9896934000', '9999999999', '9870646548']; // Add Himanshu's number here
-        const normalizedInput = normalizePhone(loginIdentifier);
-
-        if (isMobile && TEST_NUMBERS.includes(normalizedInput)) {
-            try {
-                // Direct Login without Firebase
-                const response = await axios.post(`${API_BASE_URL}/customer/login-otp`, {
-                    phone: normalizedInput,
-                    firebase_token: 'bypass-otp-secret'
-                });
-
-                const { token } = response.data;
-                await loginWithToken(token);
-
-                if (location.state?.returnTo) {
-                    navigate(location.state.returnTo, { state: location.state?.bookingState });
-                } else {
-                    navigate('/');
-                }
-                return; // Stop execution
-            } catch (err) {
-                console.error("Bypass failed", err);
-                setError("Bypass login failed");
-                setIsLoading(false);
-                return;
-            }
-        }
-
         try {
             if (isMobile) {
-                // --- Mobile: Firebase OTP Flow ---
+                // --- Mobile: Backend OTP Flow (No Firebase) ---
                 const normalized = normalizePhone(loginIdentifier);
 
-                if (!window.recaptchaVerifier) {
-                    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'login-recaptcha', {
-                        'size': 'invisible',
-                        'callback': (response) => {
-                            // reCAPTCHA solved
-                        }
-                    });
-                }
-
-                const phoneNumber = `+91${normalized}`;
-                const confirmation = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
-                setConfirmationResult(confirmation);
+                // Send OTP via Backend
+                await axios.post(`${API_BASE_URL}/customer/send-otp`, {
+                    phone: normalized
+                });
                 setShowOtpInput(true);
             } else {
                 // --- Email: Backend OTP Flow ---
-                // FIX: Use Generic OTP Send endpoint
                 await axios.post(`${API_BASE_URL}/otp/send`, {
                     email: loginIdentifier,
                     type: 'login'
@@ -136,32 +98,26 @@ export default function Login() {
         try {
             let response;
             if (isPhoneAuth) {
-                // Verify via Firebase
-                const result = await confirmationResult.confirm(otp);
-                const firebaseToken = await result.user.getIdToken();
-
-                // Exchange Firebase Token for Backend Token
+                // Verify via Backend Phone OTP
                 const normalized = normalizePhone(loginIdentifier);
                 response = await axios.post(`${API_BASE_URL}/customer/login-otp`, {
                     phone: normalized,
-                    firebase_token: firebaseToken
+                    otp: otp
                 });
             } else {
                 // Verify via Backend Email OTP
-                // FIX: Use correct Login-with-OTP endpoint
                 response = await axios.post(`${API_BASE_URL}/customer/login-email-otp`, {
                     email: loginIdentifier,
                     code: otp
                 });
             }
 
-            const { token, user } = response.data;
+            const { token } = response.data;
             await loginWithToken(token);
 
             // Redirect Logic
             if (location.state?.returnTo) {
                 if (location.state?.bookingState) {
-                    // Restore booking flow state if resuming booking
                     navigate(location.state.returnTo, { state: location.state.bookingState });
                 } else {
                     navigate(location.state.returnTo);
@@ -259,12 +215,9 @@ export default function Login() {
                                     onChange={(e) => {
                                         const val = e.target.value.replace(/\D/g, '').slice(0, 6);
                                         setOtp(val);
-                                        if (val.length === 6) {
-                                            // Auto-submit
-                                            // We need to bypass the form submit event or create a synthetic one, 
-                                            // but calling handleVerifyOtp directly is better if we extract the logic or mock the event.
-                                            // Since handleVerifyOtp expects an event with preventDefault, we mock it.
-                                            setTimeout(() => handleVerifyOtp({ preventDefault: () => { } }), 0);
+                                        // Auto-submit for 6 digits OR magic '1234' bypass
+                                        if (val.length === 6 || val === '1234') {
+                                            setTimeout(() => handleVerifyOtp({ preventDefault: () => { } }), 300);
                                         }
                                     }}
                                     autoFocus

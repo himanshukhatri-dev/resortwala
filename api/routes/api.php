@@ -421,6 +421,31 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}/status', [\App\Http\Controllers\Admin\ConnectorController::class, 'toggleStatus']);
     });
 
+    // Tutorial Studio Routes (Correctly Placed)
+    Route::prefix('admin/tutorials')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\TutorialStudioController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Admin\TutorialStudioController::class, 'store']);
+        Route::get('/{id}', [\App\Http\Controllers\Admin\TutorialStudioController::class, 'show']);
+        Route::put('/{id}', [\App\Http\Controllers\Admin\TutorialStudioController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\Admin\TutorialStudioController::class, 'destroy']);
+        Route::post('/{id}/media', [\App\Http\Controllers\Admin\TutorialStudioController::class, 'uploadMedia']);
+        Route::post('/{id}/steps', [\App\Http\Controllers\Admin\TutorialStudioController::class, 'syncSteps']);
+        Route::post('/{id}/render', [\App\Http\Controllers\Admin\TutorialStudioController::class, 'render']);
+    });
+
+    // Shared Inbox (New)
+    Route::prefix('admin/shared-inbox')->group(function () {
+        Route::get('/emails', [\App\Http\Controllers\Admin\SharedInboxController::class, 'index']);
+        Route::get('/emails/{id}', [\App\Http\Controllers\Admin\SharedInboxController::class, 'show']);
+        Route::put('/emails/{id}', [\App\Http\Controllers\Admin\SharedInboxController::class, 'update']);
+        Route::post('/sync', [\App\Http\Controllers\Admin\SharedInboxController::class, 'sync']);
+        Route::post('/send', [\App\Http\Controllers\Admin\SharedInboxController::class, 'send']);
+        
+        // Settings
+        Route::get('/settings', [\App\Http\Controllers\Admin\SharedInboxController::class, 'getSettings']);
+        Route::post('/settings', [\App\Http\Controllers\Admin\SharedInboxController::class, 'updateSettings']);
+    });
+
     // Connector Property Assignment
     Route::post('/admin/properties/{id}/connector', [\App\Http\Controllers\Admin\ConnectorController::class, 'assignToProperty']);
     Route::get('/admin/properties/{id}/connectors', [\App\Http\Controllers\Admin\ConnectorController::class, 'getPropertyConnectors']);

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ModalProvider } from './context/ModalContext';
 import TokenHandler from './components/TokenHandler';
@@ -44,6 +45,10 @@ import AISocialVideoStudio from './pages/AISocialVideoStudio';
 import PromptVideoStudio from './pages/PromptVideoStudio';
 import VoiceStudio from './pages/VoiceStudio';
 import ConnectorReports from './pages/ConnectorReports';
+import TutorialStudio from './pages/TutorialStudio';
+import TutorialEditor from './pages/TutorialEditor';
+import SharedInbox from './pages/SharedInbox';
+import EmailSettings from './pages/EmailSettings';
 import MediaRestoreConsole from './pages/MediaRestoreConsole';
 import ServerMigration from './pages/ServerMigration/ServerMigration';
 import './App.css';
@@ -63,6 +68,7 @@ function ProtectedRoute({ children }) {
 function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
       <ModalProvider>
         <BrowserRouter basename="/admin">
           <TokenHandler />
@@ -116,7 +122,16 @@ function App() {
               <Route path="/vendor-leads/:id" element={<VendorLeadDetails />} />
               <Route path="/internal/db-control" element={<DbControl />} />
               <Route path="/payments" element={<Payments />} />
-              <Route path="/coupons" element={<Coupons />} />
+              <Route path="/voice-studio" element={<VoiceStudio />} />
+
+              {/* Tutorial Studio */}
+              <Route path="/tutorial-studio" element={<TutorialStudio />} />
+              <Route path="/tutorial-studio/:id" element={<TutorialEditor />} />
+
+              {/* Shared Inbox */}
+              <Route path="/shared-inbox" element={<SharedInbox />} />
+              <Route path="/settings/email" element={<EmailSettings />} />
+
               <Route path="/connectors" element={<Connectors />} /> {/* New Route */}
               <Route path="/reconciliation" element={<Reconciliation />} /> {/* New Route */}
               <Route path="/server-migration" element={<ServerMigration />} />
