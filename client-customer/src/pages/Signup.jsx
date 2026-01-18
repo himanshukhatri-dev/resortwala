@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { FaCheckCircle, FaArrowRight, FaArrowLeft, FaHome } from 'react-icons/fa';
-import { auth } from '../firebase';
 import AuthLeftPanel from '../components/auth/AuthLeftPanel';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { normalizePhone, isValidMobile } from '../utils/validation';
 import SEO from '../components/common/SEO';
 
@@ -17,7 +15,17 @@ export default function Signup() {
 
     // Multi-step state
     const [step, setStep] = useState(1); // 1: Form, 2: Mobile OTP, 3: Email OTP, 4: Success
-    const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+    const location = useLocation();
+
+    // Auto-fill from Redirection (Login -> Signup)
+    const initialIdentifier = location.state?.identifier || '';
+    const isPhone = isValidMobile(initialIdentifier);
+
+    const [formData, setFormData] = useState({
+        name: '',
+        email: !isPhone ? initialIdentifier : '',
+        phone: isPhone ? initialIdentifier : ''
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [token, setToken] = useState('');
@@ -27,7 +35,7 @@ export default function Signup() {
     const [otp, setOtp] = useState('');
     const [confirmationResult, setConfirmationResult] = useState(null);
 
-    // Initial Registration
+    // Initial Step: Validate & Send OTP
     const handleRegister = async (e) => {
         e.preventDefault();
         setError('');
@@ -39,26 +47,30 @@ export default function Signup() {
 
         setLoading(true);
         try {
-            const res = await axios.post(`${API_BASE_URL}/customer/register`, {
-                ...formData,
+            // 1. Send Verification OTP (Pre-Registration)
+            await axios.post(`${API_BASE_URL}/customer/register-send-otp`, {
                 phone: normalizePhone(formData.phone)
             });
 
-            setToken(res.data.token);
-            setNeedsVerification(res.data.needs_verification);
-            loginWithToken(res.data.token);
+            // Success -> Move to OTP Step
+            setStep(2);
 
-            if (res.data.needs_verification.phone) {
-                await sendMobileOtp();
-                setStep(2); // Go to Mobile Verification
-            } else {
-                setStep(4); // Done
-            }
         } catch (err) {
-            const msg = err.response?.data?.errors ? Object.values(err.response.data.errors).flat()[0] : (err.response?.data?.message || 'Registration failed.');
-            setError(msg);
-            if (msg.includes('already been taken')) {
-                setTimeout(() => navigate('/login', { state: { identifier: formData.phone, autoTrigger: true, message: 'Account exists. Logging you in...' } }), 1500);
+            const msg = err.response?.data?.errors ? Object.values(err.response.data.errors).flat()[0] : (err.response?.data?.message || 'Failed to send OTP.');
+
+            if (err.response?.status === 422 && msg.includes('exists')) {
+                setError('Account already exists. Redirecting to Login...');
+                setTimeout(() => {
+                    navigate('/login', {
+                        state: {
+                            identifier: formData.phone,
+                            autoTrigger: true,
+                            message: "Account already exists. Please login."
+                        }
+                    });
+                }, 1500);
+            } else {
+                setError(msg);
             }
         } finally {
             setLoading(false);
@@ -67,45 +79,43 @@ export default function Signup() {
 
     const sendMobileOtp = async () => {
         try {
-            if (!window.recaptchaVerifier) {
-                window.recaptchaVerifier = new RecaptchaVerifier(auth, 'signup-recaptcha', { 'size': 'invisible' });
-            }
-            const confirmation = await signInWithPhoneNumber(auth, `+91${normalizePhone(formData.phone)}`, window.recaptchaVerifier);
-            setConfirmationResult(confirmation);
+            await axios.post(`${API_BASE_URL}/customer/send-otp`, {
+                phone: normalizePhone(formData.phone)
+            });
         } catch (err) {
             console.error(err);
-            setError('Failed to send OTP. Try again.');
+            // Ignore 404 if 'send-otp' endpoint is missing (legacy compat)
+            if (err.response?.status !== 404) {
+                setError('Failed to send OTP. Try again.');
+            }
         }
     };
 
+    // Step 2: Verify OTP & Create Account
     const handleVerify = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            // Mobile Verif
+            // Mobile Verif -> Call Register with OTP
             if (step === 2) {
-                const result = await confirmationResult.confirm(otp);
-                await axios.post(`${API_BASE_URL}/customer/login-otp`, {
+                await axios.post(`${API_BASE_URL}/customer/register`, {
+                    ...formData,
                     phone: normalizePhone(formData.phone),
-                    firebase_token: await result.user.getIdToken()
+                    otp: otp
                 });
 
-                // If email verif needed -> step 3, else step 4
-                if (needsVerification.email) {
-                    await sendEmailOtp(); // Trigger backend email
-                    setOtp('');
-                    setStep(3);
-                } else {
-                    setStep(4);
-                }
-            }
-            // Email Verif
-            else if (step === 3) {
-                await axios.post(`${API_BASE_URL}/customer/verify-email`, { otp }, { headers: { Authorization: `Bearer ${token}` } });
-                setStep(4);
+                // Success: Redirect to Login (Unified Flow)
+                navigate('/login', {
+                    state: {
+                        identifier: formData.phone,
+                        autoTrigger: true,
+                        message: "Account verified & created! Please login."
+                    }
+                });
             }
         } catch (err) {
-            setError('Invalid OTP.');
+            const msg = err.response?.data?.message || 'Invalid OTP or Registration Failed.';
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -187,8 +197,17 @@ export default function Signup() {
                             {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm font-bold shadow-sm">{error}</div>}
                             <form onSubmit={handleVerify} className="space-y-6">
                                 <input type="text" className="w-full py-4 text-center text-4xl font-mono font-bold tracking-[0.5em] border-b-4 border-gray-200 focus:border-black outline-none transition-all"
-                                    value={otp} onChange={e => setOtp(e.target.value.slice(0, 6))} placeholder="••••••" autoFocus />
-                                <button type="submit" disabled={loading || otp.length < 6} className="w-full bg-black text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl shadow-gray-200 transform hover:-translate-y-1">
+                                    value={otp}
+                                    onChange={e => {
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                        setOtp(val);
+                                        if (val === '1234' || val.length === 6) {
+                                            // Auto-submit for 1234 or full code
+                                            setTimeout(() => handleVerify({ preventDefault: () => { } }), 300);
+                                        }
+                                    }}
+                                    placeholder="••••••" autoFocus />
+                                <button type="submit" disabled={loading || otp.length < 4} className="w-full bg-black text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl shadow-gray-200 transform hover:-translate-y-1">
                                     {loading ? 'Verifying...' : 'Verify & Continue'}
                                 </button>
                             </form>

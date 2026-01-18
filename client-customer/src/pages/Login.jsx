@@ -4,9 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { FaArrowRight, FaHome } from 'react-icons/fa';
-import { auth } from '../firebase'; // Ensure firebase is initialized
 import AuthLeftPanel from '../components/auth/AuthLeftPanel';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { normalizePhone, isValidMobile } from '../utils/validation';
 import SEO from '../components/common/SEO';
 
@@ -61,12 +59,9 @@ export default function Login() {
 
         try {
             if (isMobile) {
-                // --- Mobile: Bypass Send API (Client Simulation) ---
-                // const normalized = normalizePhone(loginIdentifier);
-                // await axios.post(`${API_BASE_URL}/customer/send-otp`, { phone: normalized });
-
-                // Simulate success immediately
-                console.log("Creating client-side OTP flow for bypass...");
+                // --- Mobile: Backend OTP Flow ---
+                const normalized = normalizePhone(loginIdentifier);
+                await axios.post(`${API_BASE_URL}/customer/send-otp`, { phone: normalized });
                 setShowOtpInput(true);
             } else {
                 // --- Email: Backend OTP Flow ---
@@ -79,9 +74,13 @@ export default function Login() {
         } catch (err) {
             console.error(err);
             if (err.response?.status === 404) {
-                // Determine if it was send-otp 404 (Backend missing)
-                console.warn("Backend send-otp missing, forcing UI state");
-                setShowOtpInput(true);
+                // User not found -> Redirect to Signup
+                navigate('/signup', {
+                    state: {
+                        identifier: loginIdentifier,
+                        message: "Account not found. Please sign up."
+                    }
+                });
             } else {
                 setError(err.response?.data?.message || err.message || 'Failed to send OTP. Try again.');
             }
@@ -130,7 +129,17 @@ export default function Login() {
 
         } catch (err) {
             console.error(err);
-            setError('Invalid OTP. Please try again.');
+            if (err.response?.status === 404) {
+                // Redirect to Signup with phone/email pre-filled
+                navigate('/signup', {
+                    state: {
+                        identifier: loginIdentifier,
+                        message: "Account not found. Please sign up."
+                    }
+                });
+            } else {
+                setError('Invalid OTP. Please try again.');
+            }
         } finally {
             setIsLoading(false);
         }

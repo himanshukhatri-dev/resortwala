@@ -9,57 +9,80 @@ use Illuminate\Validation\ValidationException;
 
 class CustomerAuthController extends Controller
 {
+    public function registerSendOtp(Request $request)
+    {
+        $request->validate(['phone' => 'required|string']);
+
+        // Check if user already exists
+        $digits = preg_replace('/\D/', '', $request->phone);
+        if (strlen($digits) === 12 && substr($digits, 0, 2) === '91') $digits = substr($digits, 2);
+
+        $exists = Customer::where('phone', $digits)
+            ->orWhere('phone', '+91' . $digits)
+            ->orWhere('phone', '91' . $digits)
+            ->orWhere('phone', $request->phone)
+            ->exists();
+
+        if ($exists) {
+             return response()->json(['message' => 'Account already exists. Please login.', 'exists' => true], 422);
+        }
+
+        $otpService = app(\App\Services\OtpService::class);
+        $code = $otpService->generate($digits, 'signup'); // Use 'signup' type
+
+        try {
+            $notificationService = app(\App\Services\NotificationService::class);
+            $notificationService->sendSMSOTP($request->phone, $code, 'signup');
+        } catch (\Exception $e) {
+             \Log::error("Failed to send signup SMS to {$request->phone}");
+        }
+
+        return response()->json(['message' => 'OTP sent for verification.']);
+    }
+
     public function register(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|string|email|max:255|unique:customers',
             'phone' => 'required|string|max:20|unique:customers',
-            'password' => 'nullable|string|min:6', // Password optional
+            'otp' => 'required|string', // OTP is now REQUIRED
+            'password' => 'nullable|string|min:6', 
         ]);
+
+        $digits = preg_replace('/\D/', '', $request->phone);
+        if (strlen($digits) === 12 && substr($digits, 0, 2) === '91') $digits = substr($digits, 2);
+
+        \Log::info("Registering: Phone={$digits}, OTP={$request->otp}");
+
+        // 1. Verify OTP BEFORE Creation
+        $otp = trim($request->otp);
+        $otpService = app(\App\Services\OtpService::class);
+        if (!$otpService->verify($digits, $otp, 'signup')) {
+            return response()->json(['message' => 'Invalid or expired OTP.'], 400);
+        }
+
+        // 2. Create User (Now verified)
+        // Fallback email if null (Migration failed, bypassing constraint)
+        $email = $request->email;
+        if (empty($email)) {
+            $email = 'noemail_' . $digits . '@resortwala.com';
+        }
 
         $customer = Customer::create([
             'name' => $request->name,
-            'email' => $request->email,
+            'email' => $email,
             'phone' => $request->phone,
             'password' => $request->password ? Hash::make($request->password) : Hash::make(\Illuminate\Support\Str::random(16)),
+            'phone_verified_at' => now(), // Mark as verified immediately
         ]);
 
         $token = $customer->createToken('customer-token')->plainTextToken;
 
-        // --- DUAL OTP GENERATION ---
-        
-        // 1. Email OTP (if email exists)
-        if ($customer->email) {
-            $emailOtp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
-            $customer->update(['email_verification_token' => $emailOtp]);
-            
-            try {
-                // Send Welcome/Verification Email
-                \Mail::to($customer->email)->send(new \App\Mail\OtpMail($emailOtp, 'signup'));
-            } catch (\Exception $e) {
-                \Log::error("Failed to send signup email to {$customer->email}: " . $e->getMessage());
-            }
-        }
-
-        // 2. SMS OTP (Always, since phone is required)
-        $smsOtp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        $customer->update(['phone_verification_token' => $smsOtp]);
-
-        try {
-            $notificationService = app(\App\Services\NotificationService::class);
-            $notificationService->sendSMSOTP($customer->phone, $smsOtp, 'signup');
-        } catch (\Exception $e) {
-             \Log::error("Failed to send signup SMS to {$customer->phone}: " . $e->getMessage());
-        }
-
         return response()->json([
             'customer' => $customer,
             'token' => $token,
-            'needs_verification' => [
-                'email' => !empty($request->email),
-                'phone' => true 
-            ]
+            'needs_verification' => [ 'email' => false, 'phone' => false ]
         ], 201);
     }
 
@@ -131,6 +154,18 @@ class CustomerAuthController extends Controller
         }
 
         $otpService = app(\App\Services\OtpService::class);
+        
+        // Check if customer exists
+        $customer = Customer::where('phone', $digits)
+            ->orWhere('phone', '+91' . $digits)
+            ->orWhere('phone', '91' . $digits)
+            ->orWhere('phone', $request->phone)
+            ->first();
+
+        if (!$customer) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
         $code = $otpService->generate($digits, 'login');
 
         try {
@@ -156,8 +191,10 @@ class CustomerAuthController extends Controller
         }
         
         // Verify OTP
+        \Log::info("Login OTP Attempt: Phone={$digits}, OTP={$request->otp}, Type=login");
         $otpService = app(\App\Services\OtpService::class);
         if (!$otpService->verify($digits, $request->otp, 'login')) {
+             \Log::warning("Login OTP Failed for {$digits}");
              return response()->json(['message' => 'Invalid OTP'], 400);
         }
 

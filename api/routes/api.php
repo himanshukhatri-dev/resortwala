@@ -78,9 +78,11 @@ Route::get('/chatbot/search', [\App\Http\Controllers\ChatbotController::class, '
 // Route::post('/register', [AuthController::class, 'register']);
 
 Route::post('/customer/register', [\App\Http\Controllers\CustomerAuthController::class, 'register']);
+Route::post('/customer/register-send-otp', [\App\Http\Controllers\CustomerAuthController::class, 'registerSendOTP']);
 Route::post('/customer/login', [\App\Http\Controllers\CustomerAuthController::class, 'login']);
 Route::post('/customer/login-otp', [\App\Http\Controllers\CustomerAuthController::class, 'loginOtp']);
 Route::post('/customer/login-email-otp', [\App\Http\Controllers\CustomerAuthController::class, 'loginWithEmailOtp']);
+Route::post('/customer/send-otp', [\App\Http\Controllers\CustomerAuthController::class, 'sendOtp']);
 
 // Customer Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
