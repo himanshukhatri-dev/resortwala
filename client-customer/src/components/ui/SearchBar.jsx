@@ -101,17 +101,26 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
     };
 
     const handleDateSelect = (day, modifiers) => {
-        if (day < new Date().setHours(0, 0, 0, 0)) return;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (day < today) return;
 
+        // If we have both or none, start a new range (Click 1)
         if ((dateRange.from && dateRange.to) || !dateRange.from) {
             setDateRange({ from: day, to: undefined });
             return;
         }
 
+        // If we have 'from' but no 'to' (Click 2)
         if (dateRange.from && !dateRange.to) {
             if (day < dateRange.from) {
+                // If user clicks before 'from', move 'from' to this new day
                 setDateRange({ from: day, to: undefined });
+            } else if (day.getTime() === dateRange.from.getTime()) {
+                // Reset if same day clicked
+                setDateRange({ from: undefined, to: undefined });
             } else {
+                // Set 'to'
                 setDateRange({ from: dateRange.from, to: day });
 
                 // ONLY close automatically on Desktop. 
@@ -363,7 +372,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                                             mode="range"
                                             selected={dateRange}
                                             onDayClick={(day) => handleDateSelect(day)}
-                                            disabled={{ before: new Date() }}
+                                            disabled={dateRange.from && !dateRange.to ? [{ before: dateRange.from }] : [{ before: new Date() }]}
                                             numberOfMonths={window.innerWidth < 768 ? 1 : 2}
                                             pagedNavigation={window.innerWidth >= 768}
                                         />

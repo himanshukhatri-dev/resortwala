@@ -206,8 +206,12 @@ export default function PropertyDetails() {
     // -- HANDLERS --
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (datePickerRef.current && !datePickerRef.current.contains(event.target)) {
-                setIsDatePickerOpen(false);
+            // Only trigger click-outside logic if the date picker is open AND it's not the mobile modal
+            // (The mobile modal has its own backdrop for closing)
+            if (window.innerWidth >= 1024) { // Desktop only for this ref-based closing
+                if (datePickerRef.current && !datePickerRef.current.contains(event.target)) {
+                    setIsDatePickerOpen(false);
+                }
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -344,15 +348,16 @@ export default function PropertyDetails() {
         }
 
         if (!dateRange.from || (dateRange.from && dateRange.to)) {
-            // Selecting Check-In Date
+            // Selecting Check-In Date (Click 1)
             if (isBooked) {
                 toast.error("Selected date is unavailable for Check-In.");
                 return;
             }
             setDateRange({ from: selectedDay, to: undefined });
         } else {
-            // Selecting Check-Out Date
+            // Selecting Check-Out Date (Click 2)
             if (selectedDay <= dateRange.from) {
+                // If user clicks same day or before, treat as new check-in
                 if (isBooked) {
                     toast.error("Selected date is unavailable for Check-In.");
                     return;
@@ -365,7 +370,12 @@ export default function PropertyDetails() {
                     return;
                 }
                 setDateRange({ from: dateRange.from, to: selectedDay });
-                setIsDatePickerOpen(false);
+
+                // ONLY close automatically on Desktop.
+                // Mobile users will see the "Done" button in the modal.
+                if (window.innerWidth >= 1024) {
+                    setIsDatePickerOpen(false);
+                }
             }
         }
     };
@@ -1596,7 +1606,10 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                             }}
                             numberOfMonths={1}
                             pagedNavigation
-                            disabled={[{ before: startOfDay(new Date()) }]}
+                            disabled={[
+                                { before: startOfDay(new Date()) },
+                                ...(dateRange.from && !dateRange.to && !isWaterpark ? [{ before: dateRange.from }] : [])
+                            ]}
                             classNames={{
                                 day_button: "h-12 w-12 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
                                 selected: "!bg-[#FF385C] !text-white hover:!bg-[#e31c5f] hover:!text-white",

@@ -118,6 +118,8 @@ function App() {
               <Route path="/internal/db-control" element={<DbControl />} />
               <Route path="/payments" element={<Payments />} />
               <Route path="/voice-studio" element={<VoiceStudio />} />
+              <Route path="/ai-video-studio" element={<AISocialVideoStudio />} />
+              <Route path="/prompt-video-studio" element={<PromptVideoStudio />} />
 
               {/* Tutorial Studio */}
               <Route path="/tutorial-studio" element={<TutorialStudio />} />
