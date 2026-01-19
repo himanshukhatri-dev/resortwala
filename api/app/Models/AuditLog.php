@@ -2,21 +2,33 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class AuditLog extends Model
 {
-    public $timestamps = false;
+    use HasFactory;
 
     protected $fillable = [
-        'user_id', 'auditable_type', 'auditable_id', 'event', 
-        'old_values', 'new_values', 'url', 'ip_address', 'user_agent', 'tags'
+        'user_id',
+        'auditable_type',
+        'auditable_id',
+        'event',
+        'old_values',
+        'new_values',
+        'url',
+        'ip_address',
+        'user_agent',
+        'action', // Handling both schema versions (trait vs middleware)
+        'module',
+        'target_id',
+        'payload'
     ];
 
     protected $casts = [
         'old_values' => 'array',
         'new_values' => 'array',
-        'created_at' => 'datetime'
+        'payload' => 'array'
     ];
 
     public function user()

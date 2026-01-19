@@ -80,6 +80,23 @@ class NotificationTemplateSeeder extends Seeder
                         </div>
                     </div>',
                 'variables' => ['name', 'login_url']
+            ],
+            [
+                'name' => 'email_admin_login_alert',
+                'subject' => 'Security Alert: New Admin Login 🔐',
+                'content' => '
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                        <h2 style="color: #DC2626; text-align: center;">Security Alert</h2>
+                        <p>A new login was detected for your account on the ResortWala Admin Panel.</p>
+                        <div style="background: #F9FAFB; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <p><strong>User:</strong> {{name}} ({{email}})</p>
+                            <p><strong>Time:</strong> {{time}}</p>
+                            <p><strong>IP Address:</strong> {{ip}}</p>
+                            <p><strong>User Agent:</strong> {{user_agent}}</p>
+                        </div>
+                        <p style="color: #666; font-size: 12px;">If this was not you, please contact the developer immediately.</p>
+                    </div>',
+                'variables' => ['name', 'email', 'time', 'ip', 'user_agent']
             ]
         ];
 
@@ -106,6 +123,11 @@ class NotificationTemplateSeeder extends Seeder
                 'name' => 'sms_vendor_new_booking',
                 'content' => 'New Booking Alert! Property: {{property_name}}, Date: {{CheckInDate}}. Check app for details. - ResortWala',
                 'variables' => ['property_name', 'CheckInDate']
+            ],
+            [
+                'name' => 'sms_admin_login_alert',
+                'content' => 'Security Alert: New login to your ResortWala Admin account from {{ip}} at {{time}}. - ResortWala',
+                'variables' => ['ip', 'time']
             ]
         ];
 
@@ -118,10 +140,12 @@ class NotificationTemplateSeeder extends Seeder
 
         // --- 3. Triggers Mapping ---
         $mappings = [
-            'auth.otp' => ['email' => 'email_auth_otp', 'sms' => 'sms_auth_otp'],
+            'otp.email' => ['email' => 'email_auth_otp', 'sms' => null],
+            'otp.sms' => ['email' => null, 'sms' => 'sms_auth_otp'],
             'booking.confirmed_customer' => ['email' => 'email_booking_confirmed_customer', 'sms' => 'sms_booking_confirmed'],
             'booking.new_request_vendor' => ['email' => 'email_booking_request_vendor', 'sms' => 'sms_vendor_new_booking'],
             'vendor.approved' => ['email' => 'email_vendor_approved', 'sms' => null],
+            'admin.login' => ['email' => 'email_admin_login_alert', 'sms' => 'sms_admin_login_alert'],
         ];
 
         foreach ($mappings as $event => $tpls) {

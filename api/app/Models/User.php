@@ -8,12 +8,13 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+use Spatie\Permission\Traits\HasRoles;
 use App\Traits\Auditable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, Auditable;
+    use HasFactory, Notifiable, HasApiTokens, Auditable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -24,7 +25,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
+        'role', // Keeping for legacy fallback, will migrate to Roles
         'vendor_type',
         'business_name',
         'phone',
@@ -36,6 +37,9 @@ class User extends Authenticatable
         'zip_code',
         'description',
         'is_approved',
+        'is_active',
+        'force_password_change',
+        'last_login_at',
     ];
 
     /**
@@ -57,7 +61,10 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
+            'force_password_change' => 'boolean',
         ];
     }
 

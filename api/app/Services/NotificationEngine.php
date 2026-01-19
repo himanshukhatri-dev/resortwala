@@ -95,28 +95,50 @@ class NotificationEngine
     protected function sendSMS($templateId, $mobile, $data, $eventName)
     {
         try {
-            // SMS Templates in notification_templates are just containers/labels
-            // The actual content is enforced by DLT Registry if we are strict.
-            // Or, we store the content in `notification_templates` but validate against DLT.
-            
             $template = NotificationTemplate::find($templateId);
             if (!$template || !$template->is_active) return;
 
-            // Find DLT mapping if strict mode
-            // For now, we assume the content in template is the DLT content.
-            
             $content = $this->resolveVariables($template->content, $data);
-
-            // TODO: Integrate actual SMS Provider (MSG91/Twilio)
-            // Http::post(...)
             
-            // Mock Success
-            Log::info("NotificationEngine: SMS Mock Send to {$mobile}: {$content}");
+            // Normalize mobile
+            $mobile = preg_replace('/\D/', '', $mobile);
+            if (strlen($mobile) === 10) $mobile = '91' . $mobile;
 
-            $this->log('sms', $mobile, null, $content, $template->name, $eventName, 'sent');
+            // SMS API Integration (alldigitalgrowth.in)
+            $apiKey = config('services.sms.api_key') ?? env('SMS_API_KEY');
+            $username = config('services.sms.username') ?? 'Resortwala';
+            $senderId = config('services.sms.sender_id') ?? env('SMS_SENDER_ID', 'ResWla');
+            $dltEntityId = config('services.sms.dlt_entity_id') ?? env('SMS_DLT_ENTITY_ID');
+            
+            // Fetch DLT Template ID if exists for this notification template
+            $dltTemplateId = '';
+            $dltRegistry = DltRegistry::where('sender_id', $senderId)->where('approved_content', 'LIKE', '%' . substr($template->content, 0, 10) . '%')->first();
+            if ($dltRegistry) {
+                $dltTemplateId = $dltRegistry->template_id;
+            }
+
+            $response = Http::get('http://sms.alldigitalgrowth.in/sendSMS', [
+                'username' => $username,
+                'message' => $content,
+                'sendername' => $senderId,
+                'smstype' => 'TRANS',
+                'numbers' => $mobile,
+                'apikey' => $apiKey,
+                'templateid' => $dltTemplateId,
+                'dltentityid' => $dltEntityId
+            ]);
+
+            if ($response->successful()) {
+                Log::info("NotificationEngine: SMS Sent to {$mobile}: {$content}");
+                $this->log('sms', $mobile, null, $content, $template->name, $eventName, 'sent');
+            } else {
+                Log::error("NotificationEngine: SMS failed for {$mobile}. Status: " . $response->status());
+                $this->log('sms', $mobile, null, $content, $template->name, $eventName, 'failed', $response->body());
+            }
 
         } catch (\Exception $e) {
             $this->log('sms', $mobile, null, $e->getMessage(), $template->name ?? 'Unknown', $eventName, 'failed', $e->getMessage());
+            Log::error("NotificationEngine: SMS Exception - " . $e->getMessage());
         }
     }
 

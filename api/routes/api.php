@@ -245,27 +245,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/stats', [\App\Http\Controllers\AdminController::class, 'getStats']);
     Route::get('/admin/stats/sidebar', [\App\Http\Controllers\AdminController::class, 'getSidebarStats']);
     Route::get('/admin/search', [\App\Http\Controllers\AdminController::class, 'globalSearch']);
-    Route::get('/admin/vendors', [\App\Http\Controllers\AdminController::class, 'getAllVendors']);
-    Route::get('/admin/vendors/pending', [\App\Http\Controllers\AdminController::class, 'getPendingVendors']);
-    Route::get('/admin/vendors/{id}', [\App\Http\Controllers\AdminController::class, 'getVendor']);
-    Route::post('/admin/vendors/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveVendor']);
-    Route::delete('/admin/vendors/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectVendor']);
+    Route::get('/admin/vendors', [\App\Http\Controllers\AdminController::class, 'getAllVendors'])->middleware('acl:users.manage');
+    Route::get('/admin/vendors/pending', [\App\Http\Controllers\AdminController::class, 'getPendingVendors'])->middleware('acl:users.manage');
+    Route::get('/admin/vendors/{id}', [\App\Http\Controllers\AdminController::class, 'getVendor'])->middleware('acl:users.manage');
+    Route::post('/admin/vendors/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveVendor'])->middleware('acl:users.manage');
+    Route::delete('/admin/vendors/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectVendor'])->middleware('acl:users.manage');
     
     // Admin Property Management
-    Route::get('/admin/bulk-upload/template', [\App\Http\Controllers\Admin\BulkUploadController::class, 'downloadTemplate']);
-    Route::prefix('admin/bulk-upload')->group(function () {
+    Route::get('/admin/bulk-upload/template', [\App\Http\Controllers\Admin\BulkUploadController::class, 'downloadTemplate'])->middleware('acl:properties.create');
+    Route::prefix('admin/bulk-upload')->middleware('acl:properties.create')->group(function () {
         Route::post('init', [\App\Http\Controllers\Admin\BulkUploadController::class, 'initUpload']);
         Route::get('{id}', [\App\Http\Controllers\Admin\BulkUploadController::class, 'show']);
         Route::get('{id}/entries', [\App\Http\Controllers\Admin\BulkUploadController::class, 'entries']);
         Route::post('{id}/import', [\App\Http\Controllers\Admin\BulkUploadController::class, 'import']);
     });
-    Route::post('/admin/properties', [\App\Http\Controllers\AdminPropertyController::class, 'store']);
-    Route::get('/admin/properties', [\App\Http\Controllers\AdminController::class, 'getAllProperties']);
+    Route::post('/admin/properties', [\App\Http\Controllers\AdminPropertyController::class, 'store'])->middleware('acl:properties.create');
+    Route::get('/admin/properties', [\App\Http\Controllers\AdminController::class, 'getAllProperties'])->middleware('acl:properties.view');
     Route::get('/admin/properties/pending', [\App\Http\Controllers\AdminController::class, 'getPendingProperties']);
     Route::get('/admin/properties/{id}/calendar', [\App\Http\Controllers\AdminPropertyController::class, 'getCalendar']);
     
     // Analytics routes (Admin)
-    Route::prefix('admin/analytics')->group(function () {
+    Route::prefix('admin/analytics')->middleware('acl:analytics.view')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\Admin\AnalyticsController::class, 'dashboard']);
         Route::get('/events', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventLogs']);
         Route::get('/stats', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventStats']);
@@ -273,7 +273,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     
     // Vendor CRM routes
-    Route::prefix('admin/crm')->group(function () {
+    Route::prefix('admin/crm')->middleware('acl:crm.leads')->group(function () {
         Route::get('/leads', [\App\Http\Controllers\Admin\VendorCrmController::class, 'index']);
         Route::post('/leads', [\App\Http\Controllers\Admin\VendorCrmController::class, 'store']);
         Route::get('/leads/{id}', [\App\Http\Controllers\Admin\VendorCrmController::class, 'show']);
@@ -287,7 +287,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Admin Notification Center (Phase 11)
-    Route::prefix('admin/notifications/setup')->group(function () {
+    // Admin Notification Center (Phase 11) - Protected
+    Route::prefix('admin/notifications/setup')->middleware('acl:notifications.manage_templates')->group(function () {
         Route::get('/templates', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'getTemplates']);
         Route::post('/templates', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'saveTemplate']);
         
@@ -308,7 +309,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Admin Coupon Management
-    Route::prefix('admin/coupons')->group(function () {
+    Route::prefix('admin/coupons')->middleware('acl:accounts.manage')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\CouponManagementController::class, 'index']);
         Route::post('/', [\App\Http\Controllers\Admin\CouponManagementController::class, 'store']);
         Route::put('/{id}', [\App\Http\Controllers\Admin\CouponManagementController::class, 'update']);
@@ -316,7 +317,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Admin Reconciliation (Phase 9)
-    Route::prefix('admin/finance/reconciliation')->group(function () {
+    // Admin Reconciliation (Phase 9)
+    Route::prefix('admin/finance/reconciliation')->middleware('acl:accounts.manage')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\ReconciliationController::class, 'index']);
         Route::post('/upload', [\App\Http\Controllers\Admin\ReconciliationController::class, 'upload']);
         Route::get('/{id}', [\App\Http\Controllers\Admin\ReconciliationController::class, 'show']);
@@ -364,14 +366,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/bookings/{id}/resend-email', [\App\Http\Controllers\BookingController::class, 'resendConfirmation']);
     
     // Admin Communications
-    Route::prefix('admin/communications')->group(function () {
+    Route::prefix('admin/communications')->middleware('acl:notifications.manage_templates')->group(function () {
         Route::get('/logs', [\App\Http\Controllers\Admin\CommunicationController::class, 'index']);
         Route::post('/broadcast', [\App\Http\Controllers\Admin\CommunicationController::class, 'broadcast']);
     });
 
     // Admin Media SRE (Restore & Watermark)
     // Admin Media SRE (Restore & Watermark)
-    Route::prefix('admin/media')->group(function () {
+    Route::prefix('admin/media')->middleware('acl:properties.view')->group(function () {
         Route::get('/stats', [\App\Http\Controllers\Admin\MediaController::class, 'stats']);
         Route::get('/debug-tts', [\App\Http\Controllers\Admin\MediaController::class, 'debugTts']);
         Route::get('/compare/{id}', [\App\Http\Controllers\Admin\MediaController::class, 'compareImage']);
@@ -384,7 +386,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Admin Settings
-    Route::prefix('admin/settings')->group(function () {
+    Route::prefix('admin/settings')->middleware('acl:system.manage_settings')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\SettingsController::class, 'index']);
         Route::post('/update', [\App\Http\Controllers\Admin\SettingsController::class, 'update']);
     });
@@ -517,7 +519,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Internal DevOps Control (Developer Only)
     // NOTE: Restricted to Super Admin / Dev roles in middleware/controller
-    Route::prefix('internal/db-control')->group(function () {
+    // Internal DevOps Control (Developer Only)
+    // NOTE: Restricted to Super Admin / Dev roles in middleware/controller
+    Route::prefix('internal/db-control')->middleware('acl:system.backup_db')->group(function () {
         Route::get('/backups', [\App\Http\Controllers\Internal\DbControlController::class, 'index']);
         Route::post('/backups', [\App\Http\Controllers\Internal\DbControlController::class, 'triggerBackup']);
         Route::get('/backups/{id}/download', [\App\Http\Controllers\Internal\DbControlController::class, 'download']);
@@ -525,6 +529,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/audit-logs', [\App\Http\Controllers\Internal\DbControlController::class, 'auditLogs']);
     });
 
+    // --- ACL Management Routes (New Phase 2) ---
+    Route::prefix('admin/acl')->middleware('acl:system.manage_acl')->group(function () {
+        Route::get('/matrix', [\App\Http\Controllers\Admin\AclController::class, 'getMatrix']);
+        Route::put('/roles/{id}/permissions', [\App\Http\Controllers\Admin\AclController::class, 'updateRolePermissions']);
+        Route::get('/users', [\App\Http\Controllers\Admin\AclController::class, 'getUsers']);
+        Route::post('/users/{id}/role', [\App\Http\Controllers\Admin\AclController::class, 'assignRole']);
+        Route::get('/audit-logs', [\App\Http\Controllers\Admin\AclController::class, 'getAuditLogs']);
+    });
 
 });
 

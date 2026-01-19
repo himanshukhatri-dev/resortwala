@@ -238,11 +238,12 @@ function Deploy-Component {
                 "chmod -R 755 public && " +
                 "chmod -R 777 storage/logs && " +
                 "export COMPOSER_ALLOW_SUPERUSER=1 && " +
-                "composer install --no-dev --optimize-autoloader --no-interaction && " +
+                "php -d memory_limit=-1 /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction && " +
                 "chown -R www-data:www-data storage bootstrap/cache vendor public && " +
                 "chmod -R 775 storage bootstrap/cache && " +
                 "chmod -R 755 public && " +
                 "php artisan migrate --force && " +
+                "php artisan db:seed --class=NotificationTemplateSeeder --force && " +
                 "php artisan storage:link && " +
                 "php artisan optimize:clear"
 

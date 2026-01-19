@@ -16,7 +16,8 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "^3.1",
-        "phonepe/phonepe-pg-php-sdk": "dev-main"
+        "phonepe/phonepe-pg-php-sdk": "dev-main",
+        "spatie/laravel-permission": "^6.0"
     },
     "require-dev": {
         "laravel/pail": "^1.2.2",

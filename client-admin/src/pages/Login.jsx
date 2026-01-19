@@ -24,7 +24,8 @@ export default function Login() {
 
         try {
             const response = await axios.post(`${API_BASE_URL}/admin/login`, formData);
-            login(response.data.token, response.data.user);
+            const { token, user, roles, permissions } = response.data;
+            login(token, user, roles, permissions);
             navigate('/dashboard');
         } catch (err) {
             console.error('Login error:', err);

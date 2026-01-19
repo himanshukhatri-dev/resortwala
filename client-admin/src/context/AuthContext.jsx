@@ -10,6 +10,9 @@ export function AuthProvider({ children }) {
     const [token, setToken] = useState(localStorage.getItem('admin_token'));
     const [loading, setLoading] = useState(true);
 
+    const [roles, setRoles] = useState([]);
+    const [permissions, setPermissions] = useState([]);
+
     // Fetch user profile when component mounts if token exists
     useEffect(() => {
         const initAuth = async () => {
@@ -20,6 +23,8 @@ export function AuthProvider({ children }) {
                         headers: { Authorization: `Bearer ${storedToken}` }
                     });
                     setUser(res.data.user);
+                    setRoles(res.data.roles || []);
+                    setPermissions(res.data.permissions || []);
                     setToken(storedToken);
                     // Set user context for analytics
                     if (res.data.user && res.data.user.id) {
@@ -30,6 +35,8 @@ export function AuthProvider({ children }) {
                     localStorage.removeItem('admin_token');
                     setToken(null);
                     setUser(null);
+                    setRoles([]);
+                    setPermissions([]);
                 }
             }
             setLoading(false);
@@ -38,10 +45,12 @@ export function AuthProvider({ children }) {
         initAuth();
     }, []); // Only run once on mount
 
-    const login = (newToken, userData) => {
+    const login = (newToken, userData, userRoles = [], userPermissions = []) => {
         localStorage.setItem('admin_token', newToken);
         setToken(newToken);
         setUser(userData);
+        setRoles(userRoles);
+        setPermissions(userPermissions);
         setLoading(false);
         // Set user context for analytics
         if (userData && userData.id) {
@@ -53,6 +62,17 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('admin_token');
         setToken(null);
         setUser(null);
+        setRoles([]);
+        setPermissions([]);
+    };
+
+    const hasPermission = (permission) => {
+        if (roles.includes('Developer')) return true;
+        return permissions.includes(permission);
+    };
+
+    const hasRole = (role) => {
+        return roles.includes(role);
     };
 
     const loginWithToken = (newToken) => {
@@ -62,7 +82,11 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, loading, loginWithToken }}>
+        <AuthContext.Provider value={{
+            user, token, roles, permissions,
+            login, logout, loading, loginWithToken,
+            hasPermission, hasRole
+        }}>
             {children}
         </AuthContext.Provider>
     );

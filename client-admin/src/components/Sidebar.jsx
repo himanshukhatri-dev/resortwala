@@ -10,13 +10,13 @@ import {
     FiDatabase, FiDollarSign, FiCalendar, FiSettings,
     FiMessageSquare, FiTruck, FiActivity, FiLayers,
     FiPlusCircle, FiUploadCloud, FiBarChart2, FiCpu,
-    FiHash, FiArchive, FiBell, FiSearch, FiVideo, FiMic
+    FiHash, FiArchive, FiBell, FiSearch, FiVideo, FiMic, FiLock
 } from 'react-icons/fi';
 
 export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile, onToggle }) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { token, logout } = useAuth();
+    const { token, logout, hasPermission, hasRole } = useAuth();
     const { showConfirm } = useModal();
     const [expandedMenu, setExpandedMenu] = useState(null);
     const [isHovered, setIsHovered] = useState(false);
@@ -37,7 +37,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             bgLight: 'bg-blue-50',
             items: [
                 { path: '/dashboard', icon: <FiPieChart />, label: 'Overview' },
-                { path: '/analytics', icon: <FiActivity />, label: 'Analytics' },
+                { path: '/analytics', icon: <FiActivity />, label: 'Analytics', permission: 'analytics.view' },
             ]
         },
         {
@@ -50,12 +50,13 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
                     id: 'properties',
                     icon: <FiLayout />,
                     label: 'Properties',
+                    permission: 'properties.view',
                     subItems: [
-                        { path: '/properties', icon: <FiLayers />, label: 'All Assets' },
-                        { path: '/properties/pending', icon: <FiPlusCircle />, label: 'Pending Approvals' },
-                        { path: '/bulk-upload', icon: <FiUploadCloud />, label: 'Bulk Upload' },
-                        { path: '/revenue/full-rate-control', icon: <FiDollarSign />, label: 'Rate Control' },
-                        { path: '/property-changes', icon: <FiActivity />, label: 'Update Requests' },
+                        { path: '/properties', icon: <FiLayers />, label: 'All Assets', permission: 'properties.view' },
+                        { path: '/properties/pending', icon: <FiPlusCircle />, label: 'Pending Approvals', permission: 'properties.view' },
+                        { path: '/bulk-upload', icon: <FiUploadCloud />, label: 'Bulk Upload', permission: 'properties.create' },
+                        { path: '/revenue/full-rate-control', icon: <FiDollarSign />, label: 'Rate Control', permission: 'properties.view' },
+                        { path: '/property-changes', icon: <FiActivity />, label: 'Update Requests', permission: 'properties.view' },
                     ]
                 }
             ]
@@ -66,15 +67,14 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             textColor: 'text-emerald-600',
             bgLight: 'bg-emerald-50',
             items: [
-                { path: '/vendor-leads', icon: <FiBriefcase />, label: 'Vendor CRM' },
-                { path: '/intelligence/leads', icon: <FiSearch />, label: 'Lead Discovery' },
-                { path: '/connectors', icon: <FiUsers />, label: 'Connectors' },
-                { path: '/connectors/reports', icon: <FiBarChart2 />, label: 'Commissions' },
-                { path: '/vendor-presentation', icon: <FiTruck />, label: 'Vendor Onboarding' },
-                { path: '/tutorial-studio', icon: <FiVideo />, label: 'Tutorial Studio' },
-                { path: '/ai-video-studio', icon: <FiVideo />, label: 'AI Social Studio' },
-                { path: '/prompt-video-studio', icon: <FiVideo />, label: 'Prompt Video Studio' },
-                // { path: '/voice-studio', icon: <FiMic />, label: 'Voice Studio' },
+                { path: '/vendor-leads', icon: <FiBriefcase />, label: 'Vendor CRM', permission: 'crm.leads' },
+                { path: '/intelligence/leads', icon: <FiSearch />, label: 'Lead Discovery', permission: 'crm.leads' },
+                { path: '/connectors', icon: <FiUsers />, label: 'Connectors', permission: 'crm.connectors' },
+                { path: '/connectors/reports', icon: <FiBarChart2 />, label: 'Commissions', permission: 'crm.connectors' },
+                { path: '/vendor-presentation', icon: <FiTruck />, label: 'Vendor Onboarding', permission: 'crm.leads' },
+                { path: '/tutorial-studio', icon: <FiVideo />, label: 'Tutorial Studio', permission: 'social.manage' },
+                { path: '/ai-video-studio', icon: <FiVideo />, label: 'AI Social Studio', permission: 'social.manage' },
+                { path: '/prompt-video-studio', icon: <FiVideo />, label: 'Prompt Video Studio', permission: 'social.manage' },
             ]
         },
         {
@@ -83,9 +83,9 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             textColor: 'text-amber-600',
             bgLight: 'bg-amber-50',
             items: [
-                { path: '/bookings', icon: <FiCalendar />, label: 'Reservations' },
-                { path: '/calendar', icon: <FiHash />, label: 'Master View' },
-                { path: '/holidays', icon: <FiArchive />, label: 'Manage Holidays' },
+                { path: '/bookings', icon: <FiCalendar />, label: 'Reservations', permission: 'bookings.view' },
+                { path: '/calendar', icon: <FiHash />, label: 'Master View', permission: 'bookings.view' },
+                { path: '/holidays', icon: <FiArchive />, label: 'Manage Holidays', permission: 'bookings.view' },
             ]
         },
         {
@@ -94,10 +94,10 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             textColor: 'text-rose-600',
             bgLight: 'bg-rose-50',
             items: [
-                { path: '/payments', icon: <FiDollarSign />, label: 'Payments Dashboard' },
-                { path: '/accounts-center', icon: <FiActivity />, label: 'Accounts Center' },
-                { path: '/coupons', icon: <FiHash />, label: 'Coupon Management' },
-                { path: '/reconciliation', icon: <FiBarChart2 />, label: 'Reconciliation' }
+                { path: '/payments', icon: <FiDollarSign />, label: 'Payments Dashboard', permission: 'accounts.view' },
+                { path: '/accounts-center', icon: <FiActivity />, label: 'Accounts Center', permission: 'accounts.view' },
+                { path: '/coupons', icon: <FiHash />, label: 'Coupon Management', permission: 'accounts.manage' },
+                { path: '/reconciliation', icon: <FiBarChart2 />, label: 'Reconciliation', permission: 'accounts.manage' }
             ]
         },
         {
@@ -106,9 +106,9 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             textColor: 'text-violet-600',
             bgLight: 'bg-violet-50',
             items: [
-                { path: '/users', icon: <FiUsers />, label: 'Administrators' },
-                { path: '/vendors', icon: <FiUsers />, label: 'Vendor Partners' },
-                { path: '/customers', icon: <FiUsers />, label: 'Customers' },
+                { path: '/users', icon: <FiUsers />, label: 'Administrators', permission: 'users.manage' },
+                { path: '/vendors', icon: <FiUsers />, label: 'Vendor Partners', permission: 'users.manage' },
+                { path: '/customers', icon: <FiUsers />, label: 'Customers', permission: 'users.manage' },
             ]
         },
         {
@@ -117,15 +117,24 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             textColor: 'text-slate-800',
             bgLight: 'bg-slate-50',
             items: [
-                { path: '/intelligence', icon: <FiCpu />, label: 'Control Plane' },
-                { path: '/chatbot', icon: <FiMessageSquare />, label: 'Chatbot AI' },
-                { path: '/communications', icon: <FiMessageSquare />, label: 'Communications' },
-                { path: '/notifications', icon: <FiBell />, label: 'Push Notifications' },
-                { path: '/analytics', icon: <FiDatabase />, label: 'System Logs' },
-                { path: '/server-migration', icon: <FiTruck />, label: 'Server Migration' },
-                { path: '/settings', icon: <FiSettings />, label: 'App Settings' },
+                { path: '/intelligence', icon: <FiCpu />, label: 'Control Plane', permission: 'system.manage_settings', developerOnly: true },
+                { path: '/chatbot', icon: <FiMessageSquare />, label: 'Chatbot AI', permission: 'chatbot.manage' },
+                { path: '/communications', icon: <FiMessageSquare />, label: 'Communications', permission: 'notifications.manage_templates' },
+                { path: '/notifications', icon: <FiBell />, label: 'Push Notifications', permission: 'notifications.manage_templates' },
+                { path: '/analytics', icon: <FiDatabase />, label: 'System Logs', permission: 'analytics.view' },
+                { path: '/settings', icon: <FiSettings />, label: 'App Settings', permission: 'system.manage_settings' },
             ]
         },
+        {
+            title: 'Security',
+            activeColor: 'bg-red-700',
+            textColor: 'text-red-700',
+            bgLight: 'bg-red-50',
+            items: [
+                { path: '/security/acl', icon: <FiLock />, label: 'Access Control', permission: 'system.manage_acl', developerOnly: true },
+                { path: '/security/audit', icon: <FiActivity />, label: 'Audit Logs', permission: 'system.manage_acl', developerOnly: true },
+            ]
+        }
     ];
 
     useEffect(() => {
@@ -232,123 +241,136 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar py-4 px-3 space-y-6">
-                    {menuGroups.map((group, gIdx) => (
-                        <div key={gIdx} className="space-y-1">
-                            {(isMobile || isHovered) && (
-                                <div className={`px-3 mb-2 text-[10px] font-black uppercase tracking-widest truncate ${group.textColor} opacity-60`}>
-                                    {group.title}
-                                </div>
-                            )}
+                    {menuGroups.map((group, gIdx) => {
+                        // Filter items in the group
+                        const visibleItems = group.items.filter(item => {
+                            if (item.developerOnly && !hasRole('Developer')) return false;
+                            return !item.permission || hasPermission(item.permission);
+                        });
 
-                            {group.items.map((item) => {
-                                const hasSubItems = !!item.subItems;
-                                const isExpanded = expandedMenu === item.id;
-                                const isActive = location.pathname === item.path || (hasSubItems && item.subItems.some(s => s.path === location.pathname));
-                                const parentBadge = hasSubItems ? item.subItems.reduce((acc, sub) => acc + (getBadgeCount(sub.path) || 0), 0) : getBadgeCount(item.path);
+                        // If no items are visible in this group, hide the group header too
+                        if (visibleItems.length === 0) return null;
 
-                                if (hasSubItems) {
-                                    return (
-                                        <div key={item.id} className="relative">
-                                            <button
-                                                onClick={() => toggleMenu(item.id)}
-                                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 
+                        return (
+                            <div key={gIdx} className="space-y-1">
+                                {(isMobile || isHovered) && (
+                                    <div className={`px-3 mb-2 text-[10px] font-black uppercase tracking-widest truncate ${group.textColor} opacity-60`}>
+                                        {group.title}
+                                    </div>
+                                )}
+
+                                {visibleItems.map((item) => {
+                                    const hasSubItems = !!item.subItems;
+                                    const isExpanded = expandedMenu === item.id;
+                                    const isActive = location.pathname === item.path || (hasSubItems && item.subItems.some(s => s.path === location.pathname));
+                                    const parentBadge = hasSubItems ? item.subItems.reduce((acc, sub) => acc + (getBadgeCount(sub.path) || 0), 0) : getBadgeCount(item.path);
+
+                                    if (hasSubItems) {
+                                        return (
+                                            <div key={item.id} className="relative">
+                                                <button
+                                                    onClick={() => toggleMenu(item.id)}
+                                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 
                                                     ${isActive ? `${group.textColor} ${group.bgLight}` : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}
                                                     ${!isMobile && !isHovered ? 'justify-center' : 'justify-start'}
                                                     relative group
                                                 `}
-                                            >
-                                                <span className="text-lg transition-transform relative">
-                                                    {item.icon}
-                                                    {!isExpanded && !isMobile && !isHovered && parentBadge > 0 && (
-                                                        <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm border border-white">
-                                                            {parentBadge}
-                                                        </span>
-                                                    )}
-                                                </span>
-                                                {(isMobile || isHovered) && (
-                                                    <>
-                                                        <span className="flex-1 text-left font-bold text-xs uppercase tracking-tight truncate flex items-center gap-2">
-                                                            {item.label}
-                                                            {parentBadge > 0 && !isExpanded && (
-                                                                <span className="bg-rose-100 text-rose-600 text-[9px] px-1.5 py-0.5 rounded-md font-black">
-                                                                    {parentBadge}
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                        <span className={`text-xs transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                                            <FiChevronDown />
-                                                        </span>
-                                                    </>
-                                                )}
-                                            </button>
-
-                                            {(isExpanded && (isMobile || isHovered)) && (
-                                                <div className="mt-1 ml-4 pl-3 border-l border-gray-100 space-y-1">
-                                                    {item.subItems.map(sub => {
-                                                        const subBadge = getBadgeCount(sub.path);
-                                                        return (
-                                                            <Link
-                                                                key={sub.path}
-                                                                to={sub.path}
-                                                                onClick={() => isMobile && onClose && onClose()}
-                                                                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-colors justify-between
-                                                                    ${location.pathname === sub.path
-                                                                        ? `${group.textColor} ${group.bgLight} font-bold`
-                                                                        : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50 font-medium'}
-                                                                `}
-                                                            >
-                                                                <span className="truncate">{sub.label}</span>
-                                                                {subBadge > 0 && (
-                                                                    <span className="bg-rose-500 text-white px-1.5 py-0.5 rounded text-[9px] font-black">{subBadge}</span>
+                                                >
+                                                    <span className="text-lg transition-transform relative">
+                                                        {item.icon}
+                                                        {!isExpanded && !isMobile && !isHovered && parentBadge > 0 && (
+                                                            <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm border border-white">
+                                                                {parentBadge}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    {(isMobile || isHovered) && (
+                                                        <>
+                                                            <span className="flex-1 text-left font-bold text-xs uppercase tracking-tight truncate flex items-center gap-2">
+                                                                {item.label}
+                                                                {parentBadge > 0 && !isExpanded && (
+                                                                    <span className="bg-rose-100 text-rose-600 text-[9px] px-1.5 py-0.5 rounded-md font-black">
+                                                                        {parentBadge}
+                                                                    </span>
                                                                 )}
-                                                            </Link>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                }
+                                                            </span>
+                                                            <span className={`text-xs transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                                                <FiChevronDown />
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </button>
 
-                                return (
-                                    <Link
-                                        key={item.path}
-                                        to={item.path}
-                                        onClick={() => isMobile && onClose && onClose()}
-                                        className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative
+                                                {(isExpanded && (isMobile || isHovered)) && (
+                                                    <div className="mt-1 ml-4 pl-3 border-l border-gray-100 space-y-1">
+                                                        {item.subItems
+                                                            .filter(sub => !sub.permission || hasPermission(sub.permission))
+                                                            .map(sub => {
+                                                                const subBadge = getBadgeCount(sub.path);
+                                                                return (
+                                                                    <Link
+                                                                        key={sub.path}
+                                                                        to={sub.path}
+                                                                        onClick={() => isMobile && onClose && onClose()}
+                                                                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-colors justify-between
+                                                                        ${location.pathname === sub.path
+                                                                                ? `${group.textColor} ${group.bgLight} font-bold`
+                                                                                : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50 font-medium'}
+                                                                    `}
+                                                                    >
+                                                                        <span className="truncate">{sub.label}</span>
+                                                                        {subBadge > 0 && (
+                                                                            <span className="bg-rose-500 text-white px-1.5 py-0.5 rounded text-[9px] font-black">{subBadge}</span>
+                                                                        )}
+                                                                    </Link>
+                                                                );
+                                                            })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <Link
+                                            key={item.path}
+                                            to={item.path}
+                                            onClick={() => isMobile && onClose && onClose()}
+                                            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative
                                             ${isActive
-                                                ? `${group.activeColor} text-white font-bold shadow-md shadow-indigo-100/50`
-                                                : `text-gray-500 hover:${group.bgLight} hover:${group.textColor} font-medium`}
+                                                    ? `${group.activeColor} text-white font-bold shadow-md shadow-indigo-100/50`
+                                                    : `text-gray-500 hover:${group.bgLight} hover:${group.textColor} font-medium`}
                                             ${!isMobile && !isHovered ? 'justify-center' : 'justify-start'}
                                         `}
-                                        title={!isHovered && !isMobile ? item.label : ''}
-                                    >
-                                        <span className={`text-lg transition-transform group-hover:scale-110 relative`}>
-                                            {item.icon}
-                                            {!isMobile && !isHovered && parentBadge > 0 && (
-                                                <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm border border-white">
-                                                    {parentBadge}
-                                                </span>
-                                            )}
-                                        </span>
-                                        {(isMobile || isHovered) && (
-                                            <span className="text-xs font-bold uppercase tracking-tight truncate w-full flex justify-between items-center">
-                                                {item.label}
-                                                {parentBadge > 0 && (
-                                                    <span className={`${isActive ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-600'} px-1.5 py-0.5 rounded text-[9px]`}>
+                                            title={!isHovered && !isMobile ? item.label : ''}
+                                        >
+                                            <span className={`text-lg transition-transform group-hover:scale-110 relative`}>
+                                                {item.icon}
+                                                {!isMobile && !isHovered && parentBadge > 0 && (
+                                                    <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm border border-white">
                                                         {parentBadge}
                                                     </span>
                                                 )}
                                             </span>
-                                        )}
-                                        {isActive && !isMobile && !isHovered && (
-                                            <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full" />
-                                        )}
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    ))}
+                                            {(isMobile || isHovered) && (
+                                                <span className="text-xs font-bold uppercase tracking-tight truncate w-full flex justify-between items-center">
+                                                    {item.label}
+                                                    {parentBadge > 0 && (
+                                                        <span className={`${isActive ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-600'} px-1.5 py-0.5 rounded text-[9px]`}>
+                                                            {parentBadge}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            )}
+                                            {isActive && !isMobile && !isHovered && (
+                                                <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full" />
+                                            )}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })}
                 </nav>
 
                 {/* System Info Widget */}

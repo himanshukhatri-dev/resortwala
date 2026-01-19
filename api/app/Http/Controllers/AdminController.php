@@ -13,7 +13,7 @@ use App\Mail\HolidayStatusUpdatedMail;
 
 class AdminController extends Controller
 {
-    public function login(Request $request)
+    public function login(Request $request, \App\Services\NotificationEngine $notifications)
     {
         $request->validate([
             'email' => 'required|email',
@@ -28,23 +28,44 @@ class AdminController extends Controller
             ]);
         }
 
-        if ($user->role !== 'admin') {
+        // Check if user has admin role (legacy) OR any Spatie role
+        $hasAdminRole = $user->role === 'admin' || $user->roles()->exists();
+
+        if (!$hasAdminRole) {
             return response()->json(['message' => 'Unauthorized. Admin access only.'], 403);
         }
 
         $token = $user->createToken('admin-token')->plainTextToken;
 
+        // Dispatch Login Alert
+        try {
+            $notifications->dispatch('admin.login', $user, [
+                'name' => $user->name,
+                'email' => $user->email,
+                'time' => now()->format('d M Y H:i:s'),
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent()
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to dispatch admin login notification: " . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Login successful',
             'user' => $user,
-            'token' => $token
+            'token' => $token,
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name')
         ]);
     }
 
     public function profile(Request $request)
     {
+        $user = $request->user();
         return response()->json([
-            'user' => $request->user()
+            'user' => $user,
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name')
         ]);
     }
 

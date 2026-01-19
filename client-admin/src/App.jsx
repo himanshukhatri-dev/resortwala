@@ -51,21 +51,14 @@ import TutorialEditor from './pages/TutorialEditor';
 import SharedInbox from './pages/SharedInbox';
 import EmailSettings from './pages/EmailSettings';
 import MediaRestoreConsole from './pages/MediaRestoreConsole';
-import ServerMigration from './pages/ServerMigration/ServerMigration';
 import AccountsCenter from './pages/AccountsCenter';
+import AclManagement from './pages/AclManagement';
+import AuditLogs from './pages/AuditLogs';
+import { ProtectedRoute, PermissionGate } from './components/ACL';
 import './App.css';
 
 
 
-function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>Loading...</div>;
-  }
-
-  return user ? children : <Navigate to="/login" />;
-}
 
 function App() {
   return (
@@ -85,14 +78,14 @@ function App() {
               </ProtectedRoute>
             }>
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/users" element={<Users />} />
-              <Route path="/vendors" element={<Vendors />} />
-              <Route path="/customers" element={<Customers />} />
+              <Route path="/users" element={<ProtectedRoute permission="users.manage"><Users /></ProtectedRoute>} />
+              <Route path="/vendors" element={<ProtectedRoute permission="users.manage"><Vendors /></ProtectedRoute>} />
+              <Route path="/customers" element={<ProtectedRoute permission="users.manage"><Customers /></ProtectedRoute>} />
               <Route path="/vendors/:id" element={<VendorDetails />} />
-              <Route path="/bookings" element={<Bookings />} />
-              <Route path="/calendar" element={<AdminCalendar />} />
-              <Route path="/analytics" element={<AdminEventLogs />} />
-              <Route path="/intelligence/logs" element={<AdminEventLogs />} />
+              <Route path="/bookings" element={<ProtectedRoute permission="bookings.view"><Bookings /></ProtectedRoute>} />
+              <Route path="/calendar" element={<ProtectedRoute permission="bookings.view"><AdminCalendar /></ProtectedRoute>} />
+              <Route path="/analytics" element={<ProtectedRoute permission="analytics.view"><AdminEventLogs /></ProtectedRoute>} />
+              <Route path="/intelligence/logs" element={<ProtectedRoute permission="analytics.view"><AdminEventLogs /></ProtectedRoute>} />
               <Route path="/properties" element={<Properties />} />
               <Route path="/properties/pending" element={<Properties initialFilter="pending" />} />
               <Route path="/properties/add" element={<AddProperty />} />
@@ -136,13 +129,17 @@ function App() {
 
               <Route path="/connectors" element={<Connectors />} /> {/* New Route */}
               <Route path="/reconciliation" element={<Reconciliation />} /> {/* New Route */}
-              <Route path="/server-migration" element={<ServerMigration />} />
               <Route path="/communications" element={<Communications />} />
 
-              <Route path="/notifications" element={<NotificationCenter />} />
-              <Route path="/accounts-center" element={<AccountsCenter />} />
-              <Route path="/chatbot" element={<ChatbotManager />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/notifications" element={<ProtectedRoute permission="notifications.manage_templates"><NotificationCenter /></ProtectedRoute>} />
+              <Route path="/accounts-center" element={<ProtectedRoute permission="accounts.view"><AccountsCenter /></ProtectedRoute>} />
+              <Route path="/chatbot" element={<ProtectedRoute permission="chatbot.manage"><ChatbotManager /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute permission="system.manage_settings"><Settings /></ProtectedRoute>} />
+
+              {/* ACL Management Tool */}
+              <Route path="/security/acl" element={<ProtectedRoute permission="system.manage_acl"><AclManagement /></ProtectedRoute>} />
+              <Route path="/security/audit" element={<ProtectedRoute permission="system.manage_acl"><AuditLogs /></ProtectedRoute>} />
+
               <Route path="*" element={<div className="p-20 text-center font-bold text-red-500">404: Route Not Found. Path: {window.location.pathname}</div>} />
             </Route>
 
