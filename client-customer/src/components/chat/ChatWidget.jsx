@@ -63,7 +63,6 @@ export default function ChatWidget() {
             {/* Toggle Button (Premium Glassmorphism + Gradient) */}
             <motion.button
                 id="chatbot-toggle-btn"
-                layout
                 onClick={trackOpen}
                 className="pointer-events-auto flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-tr from-gray-900 to-black text-white shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 relative group border border-white/10"
                 initial={{ scale: 0, opacity: 0 }}

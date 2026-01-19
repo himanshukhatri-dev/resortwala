@@ -80,10 +80,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
     // Helper to get current filters for live updates
     const getFilters = (overrideLocation) => ({
         location: overrideLocation !== undefined ? overrideLocation : location,
-        dates: {
-            start: dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : null,
-            end: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : null
-        },
+        dateRange: dateRange,
         guests
     });
 
@@ -123,10 +120,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                     setTimeout(() => {
                         const filters = {
                             location,
-                            dates: {
-                                start: format(dateRange.from, 'yyyy-MM-dd'),
-                                end: format(day, 'yyyy-MM-dd')
-                            },
+                            dateRange: { from: dateRange.from, to: day },
                             guests
                         };
                         if (onSearch) onSearch(filters);
@@ -142,7 +136,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
     return (
         <div
             ref={searchRef}
-            className={`transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] z-[100] ${isSticky
+            className={`transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${activeTab ? 'z-[1001]' : 'z-[50]'} ${isSticky
                 ? 'w-full max-w-2xl mx-auto'
                 : 'w-full max-w-4xl mx-auto relative'}`}
         >
@@ -156,7 +150,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                             key={cat.id}
                             onClick={() => {
                                 setActiveCategory(cat.id);
-                                if (onSearch) onSearch({ location, dates: { start: null, end: null }, guests });
+                                if (onSearch) onSearch({ location, dateRange: { from: undefined, to: undefined }, guests });
                             }}
                             className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 backdrop-blur-sm border whitespace-nowrap 
                                 ${activeCategory === cat.id
@@ -202,7 +196,8 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                         onChange={handleLocationChange}
                         onFocus={() => setActiveTab('location')}
                         onClick={(e) => { e.stopPropagation(); setActiveTab('location'); }}
-                        className={`w-full bg-transparent border-none outline-none text-gray-900 placeholder-gray-500 font-bold truncate ${isSticky ? 'text-sm' : 'text-sm md:text-base'} placeholder:opacity-50`}
+                        className={`w-full bg-transparent border-none outline-none text-black placeholder-gray-500 font-bold ${isSticky ? 'text-sm' : 'text-sm md:text-base'} placeholder:opacity-50`}
+                        style={{ colorScheme: 'light' }}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()}
                     />
                 </div>
@@ -221,7 +216,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                     }
                 >
                     <label className={`text-[9px] md:text-[10px] font-bold tracking-wider text-gray-800 uppercase block mb-0 ${isSticky || (compact && window.innerWidth < 768) ? 'hidden' : ''}`}>Check in - out</label>
-                    <div className={`font-semibold truncate ${dateRange.from ? 'text-gray-900' : 'text-gray-500'} ${isSticky ? 'text-sm' : 'text-sm md:text-base'}`}>
+                    <div className={`font-semibold ${isSticky ? 'truncate text-sm' : 'whitespace-normal md:truncate text-sm md:text-base'} ${dateRange.from ? 'text-gray-900' : 'text-gray-500'}`}>
                         {dateRange.from ? (
                             <>{format(dateRange.from, 'MMM d')}{dateRange.to ? ` - ${format(dateRange.to, 'MMM d')}` : ''}</>
                         ) : 'Any Week'}
@@ -350,16 +345,16 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                                 {activeTab === 'dates' && (
                                     <div className="flex justify-center h-full items-start md:items-center">
                                         <style>{`
-                                            .rdp { --rdp-cell-size: 30px; --rdp-accent-color: #000; --rdp-background-color: #f3f4f6; margin: 0; width: 100%; }
+                                            .rdp { --rdp-cell-size: 30px; --rdp-accent-color: #000; --rdp-background-color: #f3f4f6; margin: 0; width: 100%; padding: 10px; }
                                             .rdp-months { justify-content: center; gap: 1rem; }
                                             .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f3f4f6; }
                                             .rdp-day_selected { background-color: #000 !important; color: white !important; font-weight: bold; }
-                                            .rdp-caption_label { font-size: 0.85rem; font-weight: 700; color: #1f2937; margin-bottom: 0.5rem; }
-                                            .rdp-head_cell { font-size: 0.7rem; color: #9ca3af; font-weight: 500; }
+                                            .rdp-caption_label { font-size: 1rem; font-weight: 800; color: #000; margin-bottom: 0.8rem; text-align: center; }
+                                            .rdp-head_cell { font-size: 0.8rem; color: #111; font-weight: 700; text-transform: uppercase; }
                                             .rdp-nav_button { width: 32px; height: 32px; } /* Larger nav buttons */
                                             @media (max-width: 768px) {
                                                 .rdp-month { width: 100%; }
-                                                .rdp-table { width: 100%; max-width: 100%; }
+                                                .rdp-table { width: 100%; max-width: 100%; margin: 0 auto; }
                                                 .rdp-cell { height: 48px; width: 14%; max-width: 48px; } /* Min 44px tap target */
                                                 .rdp-day { width: 100%; height: 100%; font-size: 1rem; }
                                             }
@@ -409,8 +404,11 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                             <div className="md:hidden p-4 border-t border-gray-100 bg-white sticky bottom-0 z-10 flex justify-between items-center bg-white/95 backdrop-blur-sm">
                                 <button
                                     onClick={() => {
+                                        setLocation('');
                                         setSuggestions([]);
                                         setDateRange({ from: undefined, to: undefined });
+                                        setGuests({ adults: 1, children: 0, rooms: 1 });
+                                        if (onSearch) onSearch({ location: '', dateRange: { from: undefined, to: undefined }, guests: { adults: 1, children: 0, rooms: 1 } }, false);
                                     }}
                                     className="text-sm font-semibold text-gray-500 underline"
                                 >

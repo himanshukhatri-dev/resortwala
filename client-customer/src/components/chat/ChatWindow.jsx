@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import {
     FaRobot, FaWhatsapp, FaArrowRight, FaTimes, FaMapMarkerAlt, FaStar,
     FaPhoneAlt, FaChevronLeft, FaListUl, FaCalendarCheck, FaCreditCard,
@@ -116,6 +117,65 @@ export default function ChatWindow({ config, onClose, isOpen }) {
         }, 800);
     };
 
+    const handleFreeSearch = async (query) => {
+        setMessages(prev => [...prev, { id: Date.now(), type: 'user', text: query }]);
+        setIsTyping(true);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/chatbot/search?query=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            setIsTyping(false);
+
+            if (data.success && data.data && data.data.length > 0) {
+                setMessages(prev => [...prev, {
+                    id: Date.now() + 1,
+                    type: 'bot',
+                    text: data.answer || "I found something for you:",
+                    action: data.action_type,
+                    payload: data.action_payload
+                }]);
+            } else if (data.show_escalation_form) {
+                setMessages(prev => [...prev, {
+                    id: Date.now() + 1,
+                    type: 'bot',
+                    text: data.message || "I couldn't find an exact answer. Would you like to talk to our team?",
+                }]);
+                setShowEscalationForm(true);
+            } else {
+                setMessages(prev => [...prev, {
+                    id: Date.now() + 1,
+                    type: 'bot',
+                    text: data.message || "I'm not sure about that. Try asking something else or talk to our live support."
+                }]);
+            }
+        } catch (e) {
+            setIsTyping(false);
+            setMessages(prev => [...prev, { id: Date.now(), type: 'bot', text: "Sorry, I'm having trouble connecting right now." }]);
+        }
+    };
+
+    const handleEscalationSubmit = async (e) => {
+        e.preventDefault();
+        setIsTyping(true);
+        try {
+            await fetch(`${API_BASE_URL}/chatbot/escalate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...userData, question: messages[messages.length - 1]?.text })
+            });
+            setIsTyping(false);
+            setShowEscalationForm(false);
+            setMessages(prev => [...prev, {
+                id: Date.now(),
+                type: 'bot',
+                text: `Thanks **${userData.name}**! Our team will contact you on **${userData.mobile}** shortly.`
+            }]);
+        } catch (e) {
+            setIsTyping(false);
+            alert("Error sending request. Please try again.");
+        }
+    };
+
     const handleBackToMenu = () => {
         setViewMode('MAIN_MENU');
         setSelectedCategory(null);
@@ -133,12 +193,12 @@ export default function ChatWindow({ config, onClose, isOpen }) {
         }, 300);
     };
 
-    const handlePropertySearch = async (location = '') => {
-        setMessages(prev => [...prev, { id: Date.now(), type: 'user', text: "🔍 Find available villas" }]);
+    const handleMiniSearch = async (location, typeContext) => {
+        setMessages(prev => [...prev, { id: Date.now(), type: 'user', text: `Searching for ${typeContext} in ${location}` }]);
         setIsTyping(true);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/chatbot/search?location=${location}`);
+            const res = await fetch(`${API_BASE_URL}/chatbot/search?location=${location}&type=${typeContext}`);
             const data = await res.json();
             setIsTyping(false);
 
@@ -146,17 +206,75 @@ export default function ChatWindow({ config, onClose, isOpen }) {
                 setMessages(prev => [...prev, {
                     id: Date.now() + 1,
                     type: 'bot',
-                    text: `Excellent choice! I found ${data.data.length} premium properties for you:`,
-                    isPropertyCard: true,
-                    payload: data.data
+                    text: `Excellent choice! I found ${data.data.length} premium ${typeContext} for you in ${location}:`,
+                    isPropertyGrid: true, // Changed from isPropertyCard
+                    properties: data.data // Changed from payload
                 }]);
             } else {
                 setMessages(prev => [...prev, {
                     id: Date.now(),
                     type: 'bot',
-                    text: "I couldn't find any specific matches right now. Would you like to view all our handpicked villas?",
+                    text: `I couldn't find any specific ${typeContext} in ${location} right now. Would you like to view all our handpicked ${typeContext}?`,
                     action: 'link',
-                    payload: JSON.stringify({ url: '/' })
+                    payload: JSON.stringify({ url: typeContext === 'waterpark' ? '/waterpark' : '/' })
+                }]);
+            }
+        } catch (e) {
+            setIsTyping(false);
+            setMessages(prev => [...prev, {
+                id: Date.now(),
+                type: 'bot',
+                text: "Searching... Please wait a moment."
+            }]);
+            // Fallback: Just show home
+            window.location.href = typeContext === 'waterpark' ? '/waterpark' : '/';
+        }
+    };
+
+    const handlePropertySearch = async (searchLocation = '') => {
+        setMessages(prev => [...prev, { id: Date.now(), type: 'user', text: "🔍 Find available villas" }]);
+        setIsTyping(true);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/chatbot/search?location=${searchLocation}`);
+            setIsTyping(false); // Moved here to ensure it's set even if JSON parsing fails
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.type === 'action_trigger' && data.action === 'FORM_SEARCH') {
+                    // Trigger Mini Search Flow
+                    const typeContext = window.location.pathname.includes('waterpark') ? 'waterpark' : 'villas';
+
+                    setMessages(prev => [...prev, {
+                        id: Date.now() + 2,
+                        type: 'bot',
+                        text: data.message || "Where are you looking to stay?",
+                        isMiniSearch: true,
+                        searchContext: { type: typeContext }
+                    }]);
+                } else if (data.success && data.data && data.data.length > 0) { // Existing logic for direct property display
+                    setMessages(prev => [...prev, {
+                        id: Date.now() + 1,
+                        type: 'bot',
+                        text: `Excellent choice! I found ${data.data.length} premium properties for you:`,
+                        isPropertyGrid: true, // Changed from isPropertyCard
+                        properties: data.data // Changed from payload
+                    }]);
+                } else {
+                    setMessages(prev => [...prev, {
+                        id: Date.now(),
+                        type: 'bot',
+                        text: "I couldn't find any specific matches right now. Would you like to view all our handpicked villas?",
+                        action: 'link',
+                        payload: JSON.stringify({ url: '/' })
+                    }]);
+                }
+            } else {
+                // Handle non-200 responses
+                setMessages(prev => [...prev, {
+                    id: Date.now(),
+                    type: 'bot',
+                    text: "Sorry, I encountered an error while searching. Please try again later."
                 }]);
             }
         } catch (e) {
@@ -248,7 +366,7 @@ export default function ChatWindow({ config, onClose, isOpen }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-3 right-3 md:bottom-20 md:right-6 md:left-auto md:w-[380px] h-[72vh] md:h-[620px] bg-white/95 backdrop-blur-2xl rounded-[1.8rem] shadow-[0_15px_50px_-10px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden border border-white/40 z-[9999] ring-1 ring-black/5"
+            className="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-3 right-3 md:bottom-20 md:right-6 md:left-auto md:w-[380px] h-[72vh] md:h-[620px] bg-white/95 backdrop-blur-2xl rounded-[1.8rem] shadow-[0_15px_50px_-10px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden border border-white/40 z-[999] ring-1 ring-black/5"
         >
             {/* Header Redesign */}
             <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between shrink-0 relative overflow-hidden">
@@ -288,7 +406,7 @@ export default function ChatWindow({ config, onClose, isOpen }) {
                             className={`flex flex-col relative z-10 ${msg.type === 'user' ? 'items-end' : 'items-start'}`}
                         >
                             {/* Standard Message Bubble */}
-                            {!msg.isQuestionList && !msg.isPropertyCard && (
+                            {!msg.isQuestionList && !msg.isPropertyGrid && !msg.isMiniSearch && ( // Updated condition
                                 <div className={`
                                     px-4 py-3 text-[13px] leading-[1.5] shadow-sm break-words whitespace-pre-wrap max-w-[90%]
                                     ${msg.type === 'user'
@@ -311,7 +429,11 @@ export default function ChatWindow({ config, onClose, isOpen }) {
                                         <motion.button
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.98 }}
-                                            onClick={() => window.location.href = JSON.parse(msg.payload || '{}')?.url}
+                                            onClick={() => {
+                                                const payload = typeof msg.payload === 'string' ? JSON.parse(msg.payload || '{}') : (msg.payload || {});
+                                                const url = payload.url || msg.payload;
+                                                if (url) window.location.href = url;
+                                            }}
                                             className="mt-4 flex items-center gap-2 bg-blue-600 text-white px-5 py-3 rounded-xl text-xs font-bold w-full justify-center transition-all shadow-md"
                                         >
                                             <FaHome size={16} /> Visit Page
@@ -328,35 +450,57 @@ export default function ChatWindow({ config, onClose, isOpen }) {
                                 </div>
                             )}
 
-                            {/* Property Cards */}
-                            {msg.isPropertyCard && (
-                                <div className="flex overflow-x-auto gap-4 py-4 px-1 w-full mt-2 custom-scrollbar snap-x relative z-10 pb-6">
-                                    {msg.payload.map(p => (
+                            {/* Mini Search Location Buttons */}
+                            {msg.isMiniSearch && (
+                                <div className="w-full max-w-[95%]">
+                                    <div className={`
+                                        px-4 py-3 text-[13px] leading-[1.5] shadow-sm break-words whitespace-pre-wrap max-w-[90%]
+                                        bg-white text-slate-800 border border-slate-100 rounded-2xl rounded-bl-sm
+                                    `}>
+                                        <div dangerouslySetInnerHTML={{ __html: msg.text }} />
+                                    </div>
+                                    <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                                        {['Lonavala', 'Igatpuri', 'Karjat', 'Alibaug'].map(loc => (
+                                            <button
+                                                key={loc}
+                                                onClick={() => handleMiniSearch(loc, msg.searchContext?.type)}
+                                                className="whitespace-nowrap bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-xs font-bold border border-blue-100 hover:bg-blue-100 transition"
+                                            >
+                                                {loc}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Property Cards (Grid) */}
+                            {msg.isPropertyGrid && ( // Changed from isPropertyCard
+                                <div className="flex overflow-x-auto gap-4 py-4 px-1 w-full mt-2 custom-scrollbar snap-x relative z-10 pb-6 -mx-2">
+                                    {msg.properties.map(p => ( // Changed from msg.payload
                                         <motion.div
                                             key={p.id}
                                             whileHover={{ y: -5 }}
-                                            className="min-w-[310px] w-[310px] bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-100 shrink-0 cursor-pointer snap-center group"
+                                            className="flex-none w-[220px] bg-white rounded-2xl p-3 border border-slate-100 shadow-xl snap-start transform transition hover:scale-[1.02]" // 3. Fix Property Card width and scaling issues.
                                             onClick={() => window.open(`/property/${p.id}`, '_blank')}
                                         >
-                                            <div className="h-44 bg-slate-200 relative overflow-hidden">
-                                                <img src={p.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={p.name} />
-                                                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
-                                                    <FaStar size={12} className="text-yellow-500" />
-                                                    <span className="text-[12px] font-bold text-slate-800">{p.rating}</span>
+                                            <div className="h-28 rounded-xl bg-slate-100 mb-3 overflow-hidden relative">
+                                                <img src={p.image} className="w-full h-full object-cover" alt={p.name} />
+                                                <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-1.5 py-0.5 rounded-lg text-[10px] font-black flex items-center gap-1 shadow-sm">
+                                                    <FaStar className="text-yellow-400" /> {p.rating}
                                                 </div>
                                             </div>
-                                            <div className="p-5">
-                                                <h4 className="font-extrabold text-[16px] text-slate-800 truncate mb-1">{p.name}</h4>
-                                                <p className="text-[12px] text-slate-500 flex items-center gap-1 mb-3">
-                                                    <FaMapMarkerAlt size={12} /> {p.location}
-                                                </p>
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <span className="text-[10px] text-slate-400 block font-bold uppercase leading-none mb-1">Starting from</span>
-                                                        <span className="text-blue-600 font-extrabold text-xl">₹{p.price}</span>
-                                                    </div>
-                                                    <button className="bg-slate-900 text-white text-[12px] font-bold px-6 py-3 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200">View Villa</button>
-                                                </div>
+                                            <h4 className="font-bold text-xs line-clamp-1 text-slate-900 mb-1">{p.name}</h4>
+                                            <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-3">
+                                                <FaMapMarkerAlt size={8} /> {p.location}
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-black text-blue-600 text-xs">₹{p.price.toLocaleString()}</span>
+                                                <button
+                                                    onClick={() => window.location.href = `/property/${p.id}`}
+                                                    className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[9px] font-bold hover:bg-blue-600 transition shadow-sm"
+                                                >
+                                                    View
+                                                </button>
                                             </div>
                                         </motion.div>
                                     ))}
@@ -365,6 +509,33 @@ export default function ChatWindow({ config, onClose, isOpen }) {
                         </motion.div>
                     ))}
                 </AnimatePresence>
+
+                {/* Escalation Form Modal-like Overlay inside chat */}
+                {showEscalationForm && (
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white border border-blue-100 rounded-2xl p-4 shadow-xl mb-4 relative z-20">
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="font-bold text-sm text-slate-800">Talk to a Human</h4>
+                            <button onClick={() => setShowEscalationForm(false)}><FaTimes size={12} className="text-slate-400" /></button>
+                        </div>
+                        <form onSubmit={handleEscalationSubmit} className="space-y-3">
+                            <input
+                                required
+                                type="text" placeholder="Your Name"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                value={userData.name} onChange={e => setUserData({ ...userData, name: e.target.value })}
+                            />
+                            <input
+                                required
+                                type="tel" placeholder="Mobile Number"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                value={userData.mobile} onChange={e => setUserData({ ...userData, mobile: e.target.value })}
+                            />
+                            <button type="submit" className="w-full bg-blue-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-blue-700 transition">
+                                Request Callback
+                            </button>
+                        </form>
+                    </motion.div>
+                )}
 
                 {/* Loading Indicator */}
                 {isTyping && (
@@ -380,33 +551,54 @@ export default function ChatWindow({ config, onClose, isOpen }) {
 
             {/* Bottom Actions Area */}
             <div className="bg-white border-t border-slate-100 p-4 shrink-0 relative z-20">
-                <div className="flex gap-2 items-stretch">
-                    {viewMode === 'MAIN_MENU' ? (
-                        <div className="w-full">
-                            <p className="text-[9px] font-black text-slate-400 text-center mb-2 uppercase tracking-[0.2em]">Explore Topics</p>
-                            {renderMainMenu()}
-                        </div>
-                    ) : (
-                        <>
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={handleBackToMenu}
-                                className="flex-1 bg-slate-50 border border-slate-200 text-slate-700 py-3.5 rounded-2xl font-bold text-sm shadow-sm hover:bg-slate-100 flex items-center justify-center gap-2 transition-all"
-                            >
-                                <FaChevronLeft size={12} /> Menu
-                            </motion.button>
+                <div className="space-y-3">
+                    {/* Free Text Input */}
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Type your question..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all pr-12"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && e.target.value.trim()) {
+                                    const val = e.target.value;
+                                    e.target.value = '';
+                                    handleFreeSearch(val);
+                                }
+                            }}
+                        />
+                        <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition">
+                            <FaArrowRight size={14} />
+                        </button>
+                    </div>
 
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => window.open('https://wa.me/919022510122', '_blank')}
-                                className="flex-[1.5] bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white py-3.5 rounded-2xl font-bold text-sm shadow-lg shadow-green-100 flex items-center justify-center gap-2"
-                            >
-                                <FaWhatsapp size={20} /> Talk to Human
-                            </motion.button>
-                        </>
-                    )}
+                    <div className="flex gap-2 items-stretch">
+                        {viewMode === 'MAIN_MENU' ? (
+                            <div className="w-full">
+                                <p className="text-[9px] font-black text-slate-400 text-center mb-2 uppercase tracking-[0.2em]">Quick Explore</p>
+                                {renderMainMenu()}
+                            </div>
+                        ) : (
+                            <>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={handleBackToMenu}
+                                    className="flex-1 bg-slate-50 border border-slate-200 text-slate-700 py-3 rounded-2xl font-bold text-sm shadow-sm hover:bg-slate-100 flex items-center justify-center gap-2 transition-all"
+                                >
+                                    <FaChevronLeft size={12} /> Menu
+                                </motion.button>
+
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => window.open('https://wa.me/919022510122', '_blank')}
+                                    className="flex-[1.5] bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white py-3 rounded-2xl font-bold text-sm shadow-lg shadow-green-100 flex items-center justify-center gap-2"
+                                >
+                                    <FaWhatsapp size={20} /> Talk to Human
+                                </motion.button>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
             <style jsx>{`

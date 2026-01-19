@@ -25,8 +25,11 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
         ratingLabel = property?.display_rating_label
     } = property || {};
 
-    // Re-calculate pricing object with the correct base price
-    const pricing = getPricing({ ...property, Price: price });
+    // Re-calculate pricing object with the correct base price and date context
+    const pricing = getPricing(
+        { ...property, Price: price },
+        searchParams?.dates?.start || null
+    );
 
     // Collect all available images
     const allImages = [

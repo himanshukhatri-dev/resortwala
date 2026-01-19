@@ -10,17 +10,24 @@ class NotificationLog extends Model
     use HasFactory;
 
     protected $fillable = [
-        'title',
-        'body',
-        'audience_type',
-        'audience_data',
-        'sent_count',
-        'success_count',
-        'failure_count',
-        'created_by'
+        'channel', // email, sms, whatsapp
+        'recipient',
+        'subject',
+        'content',
+        'template_name',
+        'event_name',
+        'status', // sent, failed, queued
+        'error_message',
+        'metadata',
+        'created_by' // optional for manual sends
     ];
 
     protected $casts = [
-        'audience_data' => 'array',
+        'metadata' => 'array',
     ];
+
+    // Status Constants
+    const STATUS_SENT = 'sent';
+    const STATUS_FAILED = 'failed';
+    const STATUS_QUEUED = 'queued';
 }

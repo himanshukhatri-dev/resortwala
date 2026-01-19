@@ -37,6 +37,7 @@ import Reconciliation from './pages/Reconciliation';
 import Communications from './pages/Communications';
 import Connectors from './pages/Connectors';
 import Notifications from './pages/Notifications';
+import NotificationCenter from './pages/NotificationCenter/NotificationCenter';
 import LeadCrawler from './pages/Intelligence/LeadCrawler';
 import ComingSoon from './pages/ComingSoon';
 import ChatbotManager from './pages/ChatbotManager';
@@ -51,6 +52,7 @@ import SharedInbox from './pages/SharedInbox';
 import EmailSettings from './pages/EmailSettings';
 import MediaRestoreConsole from './pages/MediaRestoreConsole';
 import ServerMigration from './pages/ServerMigration/ServerMigration';
+import AccountsCenter from './pages/AccountsCenter';
 import './App.css';
 
 
@@ -135,9 +137,10 @@ function App() {
               <Route path="/connectors" element={<Connectors />} /> {/* New Route */}
               <Route path="/reconciliation" element={<Reconciliation />} /> {/* New Route */}
               <Route path="/server-migration" element={<ServerMigration />} />
-              <Route path="/communications" element={<Communications />} /> {/* New Route */}
+              <Route path="/communications" element={<Communications />} />
 
-              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/notifications" element={<NotificationCenter />} />
+              <Route path="/accounts-center" element={<AccountsCenter />} />
               <Route path="/chatbot" element={<ChatbotManager />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<div className="p-20 text-center font-bold text-red-500">404: Route Not Found. Path: {window.location.pathname}</div>} />

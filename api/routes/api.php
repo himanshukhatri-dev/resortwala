@@ -286,6 +286,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/export', [\App\Http\Controllers\Admin\VendorCrmController::class, 'export']);
     });
 
+    // Admin Notification Center (Phase 11)
+    Route::prefix('admin/notifications/setup')->group(function () {
+        Route::get('/templates', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'getTemplates']);
+        Route::post('/templates', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'saveTemplate']);
+        
+        Route::get('/dlt', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'getDltRegistries']);
+        Route::post('/dlt', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'saveDltRegistry']);
+        
+        Route::get('/triggers', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'getTriggers']);
+        Route::post('/triggers', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'saveTrigger']);
+        Route::post('/gateway', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'saveGateway']);
+        
+        Route::post('/test', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'sendTest']);
+    });
+
     // Admin Finance & Reconciliation (Phase 7)
     Route::prefix('admin/finance')->group(function () {
         Route::get('/transactions', [\App\Http\Controllers\Admin\FinanceController::class, 'index']);

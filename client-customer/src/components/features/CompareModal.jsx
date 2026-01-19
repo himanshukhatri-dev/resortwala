@@ -236,7 +236,7 @@ export default function CompareModal({ isOpen, onClose }) {
                                                                     {item.label}
                                                                 </div>
 
-                                                                <div className="grid grid-cols-2 gap-2 divide-x divide-gray-50">
+                                                                <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-2.5 px-2.5 pb-2">
                                                                     {compareList.map(prop => {
                                                                         let content = null;
                                                                         if (item.render) {
@@ -249,9 +249,9 @@ export default function CompareModal({ isOpen, onClose }) {
                                                                         }
 
                                                                         return (
-                                                                            <div key={prop.id} className="flex flex-col pl-2 first:pl-0">
+                                                                            <div key={prop.id} className="min-w-[100px] w-[100px] flex-shrink-0 flex flex-col border-r border-gray-50 last:border-0 pr-2">
                                                                                 <span className="text-[10px] text-gray-400 truncate mb-0.5 leading-none">{prop.Name.split(' ')[0]}</span>
-                                                                                <span className="text-xs font-bold text-gray-800 leading-tight">{content}</span>
+                                                                                <span className="text-xs font-bold text-gray-800 leading-tight whitespace-normal break-words">{content}</span>
                                                                             </div>
                                                                         );
                                                                     })}

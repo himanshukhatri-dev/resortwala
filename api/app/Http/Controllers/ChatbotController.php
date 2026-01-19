@@ -163,22 +163,38 @@ class ChatbotController extends Controller
     public function searchProperties(Request $request)
     {
         $location = $request->input('location');
+        $type = $request->input('type');
         
         $query = PropertyMaster::where('is_approved', 1)->limit(5);
 
         if ($location) {
-             $query->where('Location', 'like', "%$location%")
-                   ->orWhere('CityName', 'like', "%$location%");
+             $query->where(function($q) use ($location) {
+                 $q->where('Location', 'like', "%$location%")
+                   ->orWhere('CityName', 'like', "%$location%")
+                   ->orWhere('Name', 'like', "%$location%");
+             });
         }
 
-        $properties = $query->get()->map(function($p) {
+        if ($type) {
+            if ($type == 'waterpark') {
+                $query->where(function($q) {
+                    $q->where('PropertyType', 'like', '%Resort%')
+                      ->orWhere('Name', 'like', '%Water%');
+                });
+            } else {
+                $query->where('PropertyType', 'like', "%$type%");
+            }
+        }
+
+        $properties = $query->with('images')->get()->map(function($p) {
             return [
-                'id' => $p->PropertyId, // or id
+                'id' => $p->PropertyId,
                 'name' => $p->Name,
                 'location' => $p->Location,
                 'price' => $p->Price,
                 'image' => $p->images->first()->image_url ?? $p->image_url ?? '',
-                'rating' => $p->Rating ?? 4.5
+                'rating' => $p->Rating ?? 4.5,
+                'url' => "/property/" . $p->PropertyId
             ];
         });
 

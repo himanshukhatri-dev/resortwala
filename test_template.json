@@ -1,0 +1,10 @@
+{
+    "name": "test_template_v1",
+    "channel": "email",
+    "subject": "Test Verification Subject",
+    "content": "<h1>Hello {{name}}</h1><p>Verification Successful.</p>",
+    "variables": [
+        "name"
+    ],
+    "is_active": true
+}

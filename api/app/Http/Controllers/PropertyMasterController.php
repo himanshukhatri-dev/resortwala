@@ -101,18 +101,29 @@ class PropertyMasterController extends Controller
                  $query->where('Price', '<=', $request->input('max_price'));
             }
             
-            // 4. Guests Filter
+            // 4. Guests & Bedrooms Filter
             if ($request->has('guests') && $request->input('guests') > 1) {
-                $guests = $request->input('guests');
+                $guests = intval($request->input('guests'));
                 $query->where(function($q) use ($guests) {
                      $q->where('MaxGuests', '>=', $guests)
                        ->orWhere('MaxCapacity', '>=', $guests);
                 });
             }
 
+            if ($request->has('bedrooms')) {
+                $bedrooms = intval($request->input('bedrooms'));
+                $query->where(function($q) use ($bedrooms) {
+                    $q->where('NoofRooms', '>=', $bedrooms);
+                });
+            }
+
             // 5. Veg Only
             if ($request->has('veg_only') && $request->input('veg_only') == 'true') {
-                 // Logic to be implemented if VegOnly column exists
+                 // Check common column names
+                 $query->where(function($q) {
+                     $q->where('IsVeg', 1)
+                       ->orWhere('FoodType', 'Veg');
+                 });
             }
 
             // Pagination

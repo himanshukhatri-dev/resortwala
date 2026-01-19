@@ -57,7 +57,7 @@ export default function FilterSidebar({ filters, onFilterChange }) {
                     <FaFilter className="text-gray-400 text-sm" /> Filters
                 </div>
                 <button
-                    onClick={() => onFilterChange({ min_price: '', max_price: '', type: 'all', amenities: [], guests: 1, veg_only: false })}
+                    onClick={() => onFilterChange({ minPrice: '', maxPrice: '', type: 'all', amenities: [], guests: 1, veg_only: false, location: '', sort: 'newest', distance: { center: null, maxKm: 200 }, page: 1 })}
                     className="text-xs font-bold text-red-500 hover:text-red-600 uppercase tracking-widest transition"
                 >
                     Clear All
@@ -94,8 +94,8 @@ export default function FilterSidebar({ filters, onFilterChange }) {
                         <input
                             type="number"
                             placeholder="Min"
-                            value={localFilters.min_price || ''}
-                            onChange={(e) => handleChange('min_price', e.target.value)}
+                            value={localFilters.minPrice || ''}
+                            onChange={(e) => handleChange('minPrice', e.target.value)}
                             className="w-full pl-6 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold outline-none focus:border-black transition"
                         />
                     </div>
@@ -105,8 +105,8 @@ export default function FilterSidebar({ filters, onFilterChange }) {
                         <input
                             type="number"
                             placeholder="Max"
-                            value={localFilters.max_price || ''}
-                            onChange={(e) => handleChange('max_price', e.target.value)}
+                            value={localFilters.maxPrice || ''}
+                            onChange={(e) => handleChange('maxPrice', e.target.value)}
                             className="w-full pl-6 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold outline-none focus:border-black transition"
                         />
                     </div>
@@ -118,14 +118,31 @@ export default function FilterSidebar({ filters, onFilterChange }) {
                 <h4 className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-4">Guests</h4>
                 <div className="flex items-center justify-between bg-gray-50 p-2 rounded-xl">
                     <button
-                        onClick={() => handleChange('guests', Math.max(1, (localFilters.guests || 1) - 1))}
+                        onClick={() => {
+                            if (typeof localFilters.guests === 'object') {
+                                handleChange('guests', { ...localFilters.guests, adults: Math.max(1, localFilters.guests.adults - 1) });
+                            } else {
+                                handleChange('guests', Math.max(1, (localFilters.guests || 1) - 1));
+                            }
+                        }}
                         className="w-8 h-8 flex items-center justify-center bg-white rounded-lg shadow-sm text-gray-600 hover:text-black hover:shadow-md transition"
                     >
                         -
                     </button>
-                    <span className="font-bold text-gray-900">{localFilters.guests || 1} Guests</span>
+                    <span className="font-bold text-gray-900">
+                        {typeof localFilters.guests === 'object'
+                            ? (localFilters.guests.adults + localFilters.guests.children)
+                            : (localFilters.guests || 1)
+                        } Guests
+                    </span>
                     <button
-                        onClick={() => handleChange('guests', (localFilters.guests || 1) + 1)}
+                        onClick={() => {
+                            if (typeof localFilters.guests === 'object') {
+                                handleChange('guests', { ...localFilters.guests, adults: localFilters.guests.adults + 1 });
+                            } else {
+                                handleChange('guests', (localFilters.guests || 1) + 1);
+                            }
+                        }}
                         className="w-8 h-8 flex items-center justify-center bg-white rounded-lg shadow-sm text-gray-600 hover:text-black hover:shadow-md transition"
                     >
                         +

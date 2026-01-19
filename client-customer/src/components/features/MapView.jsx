@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Link } from 'react-router-dom';
@@ -28,7 +28,11 @@ const CITY_COORDS = {
 
 function getApproxCoords(property, index) {
     if (property.Latitude && property.Longitude) {
-        return [property.Latitude, property.Longitude];
+        const lat = parseFloat(property.Latitude);
+        const lon = parseFloat(property.Longitude);
+        if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
+            return [lat, lon];
+        }
     }
 
     const city = (property.CityName || property.Location || "").toLowerCase();
@@ -102,7 +106,7 @@ const createPriceIcon = (price, distance) => {
 
 function MapUpdater({ markers, userLocation }) {
     const map = useMap();
-    React.useEffect(() => {
+    useEffect(() => {
         if (markers.length === 0 && !userLocation) return;
 
         const bounds = L.latLngBounds([]);
@@ -174,8 +178,8 @@ export default function MapView({ properties, onLocationSelect, currentUserLocat
         });
     }, [properties, currentUserLocation]);
 
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [isSearching, setIsSearching] = React.useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
 
     const handleSearch = async (e) => {
         e.preventDefault();
@@ -205,10 +209,10 @@ export default function MapView({ properties, onLocationSelect, currentUserLocat
         }
     };
 
-    const [userLocation, setUserLocation] = React.useState(null);
+    const [userLocation, setUserLocation] = useState(null);
 
     // Sync prop location to local state
-    React.useEffect(() => {
+    useEffect(() => {
         if (currentUserLocation) {
             setUserLocation([currentUserLocation.lat, currentUserLocation.lon]);
         }

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
+import { useWishlist } from '../context/WishlistContext';
 import axios from 'axios';
 import VerificationModal from '../components/VerificationModal';
 import { FaEdit, FaSave, FaTimes, FaCheckCircle, FaExclamationCircle, FaHeart } from 'react-icons/fa';
 
 export default function Profile() {
     const { user, token, logout, setUser } = useAuth();
+    const { wishlist } = useWishlist();
     const navigate = useNavigate();
     const location = useLocation();
     const [editMode, setEditMode] = useState(false);
@@ -244,16 +246,21 @@ export default function Profile() {
                             </div>
 
                             {/* Wishlist Link */}
-                            <a href="/wishlist" className="block border-b pb-4 group cursor-pointer">
+                            <Link to="/wishlist" className="block border-b pb-4 group cursor-pointer">
                                 <label className="block text-sm font-medium text-gray-500 mb-1 group-hover:text-primary transition-colors">Saved Properties</label>
                                 <div className="text-lg font-medium flex items-center justify-between">
                                     <span className="flex items-center gap-2">
                                         <FaHeart className="text-red-500" />
                                         My Wishlist
+                                        {wishlist?.length > 0 && (
+                                            <span className="bg-red-50 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full border border-red-100">
+                                                {wishlist.length} Items
+                                            </span>
+                                        )}
                                     </span>
                                     <span className="text-gray-400 text-sm group-hover:translate-x-1 transition-transform">View &rarr;</span>
                                 </div>
-                            </a>
+                            </Link>
 
                             {/* Action Buttons */}
                             {editMode ? (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/ui/FilterBar';
@@ -13,6 +13,7 @@ import { useCompare } from '../context/CompareContext';
 import CompareModal from '../components/features/CompareModal';
 import SEO from '../components/SEO';
 import { PropertyCardSkeleton } from '../components/ui/Skeleton';
+import { getPricing } from '../utils/pricing';
 
 const CATEGORIES = [
     { id: 'all', label: 'All', icon: <FaHome /> },
@@ -31,18 +32,151 @@ export default function Home() {
     const [viewMode, setViewMode] = useState('list');
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-    const [filters, setFilters] = useState({
-        location: '',
-        type: 'all',
-        minPrice: '',
-        maxPrice: '',
-        guests: 1,
-        veg_only: false,
-        amenities: [],
-        sort: 'newest',
-        distance: { center: null, maxKm: 200 },
-        page: 1
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const [filters, setFilters] = useState(() => {
+        // Initialize from URL Params for persistence
+        const p = searchParams;
+        const from = p.get('check_in');
+        const to = p.get('check_out');
+
+        return {
+            location: p.get('location') || '',
+            type: p.get('type') || 'all',
+            minPrice: p.get('min_price') || '',
+            maxPrice: p.get('max_price') || '',
+            guests: {
+                adults: parseInt(p.get('adults')) || 1,
+                children: parseInt(p.get('children')) || 0,
+                rooms: parseInt(p.get('rooms')) || 1
+            },
+            veg_only: p.get('veg_only') === 'true',
+            amenities: p.getAll('amenities') || [],
+            sort: p.get('sort') || 'newest',
+            distance: (p.get('lat') && p.get('lon')) ? {
+                center: { lat: parseFloat(p.get('lat')), lon: parseFloat(p.get('lon')), name: p.get('loc_name') || 'Selected Location' },
+                maxKm: parseInt(p.get('radius')) || 200
+            } : { center: null, maxKm: 200 },
+            page: parseInt(p.get('page')) || 1,
+            dateRange: from ? {
+                from: new Date(from),
+                to: to ? new Date(to) : undefined
+            } : { from: undefined, to: undefined }
+        };
     });
+
+    // Sync Filters to URL
+    useEffect(() => {
+        const params = {};
+        if (filters.location) params.location = filters.location;
+        if (filters.type && filters.type !== 'all') params.type = filters.type;
+        if (filters.minPrice) params.min_price = filters.minPrice;
+        if (filters.maxPrice) params.max_price = filters.maxPrice;
+
+        if (filters.guests?.adults > 1) params.adults = filters.guests.adults;
+        if (filters.guests?.children > 0) params.children = filters.guests.children;
+        if (filters.guests?.rooms > 1) params.rooms = filters.guests.rooms;
+
+        if (filters.veg_only) params.veg_only = 'true';
+        if (filters.sort && filters.sort !== 'newest') params.sort = filters.sort;
+        if (filters.amenities && filters.amenities.length > 0) params.amenities = filters.amenities;
+
+        if (filters.distance?.center) {
+            params.lat = filters.distance.center.lat;
+            params.lon = filters.distance.center.lon;
+            params.radius = filters.distance.maxKm;
+            if (filters.distance.center.name) params.loc_name = filters.distance.center.name;
+        }
+
+        if (filters.dateRange?.from) {
+            params.check_in = filters.dateRange.from.toISOString().split('T')[0];
+            if (filters.dateRange.to) {
+                params.check_out = filters.dateRange.to.toISOString().split('T')[0];
+            }
+        }
+
+        if (filters.page > 1) params.page = filters.page;
+
+        setSearchParams(params, { replace: true });
+    }, [filters, setSearchParams]);
+
+    const {
+        setLocation: setContextLocation,
+        setDateRange: setContextDateRange,
+        setGuests: setContextGuests,
+        setActiveCategory: setContextCategory
+    } = useSearch();
+
+    // Sync context with URL/State (Ensures SearchBar reflects current search)
+    useEffect(() => {
+        if (filters.location !== undefined) setContextLocation(filters.location);
+        if (filters.dateRange) setContextDateRange(filters.dateRange);
+        if (filters.type) setContextCategory(filters.type);
+        if (filters.guests) setContextGuests(filters.guests);
+    }, [filters.location, filters.dateRange, filters.type, filters.guests, setContextLocation, setContextDateRange, setContextCategory, setContextGuests]);
+
+    // Listen to URL changes for browser navigation (Back/Forward)
+    useEffect(() => {
+        const p = searchParams;
+        const from = p.get('check_in');
+        const to = p.get('check_out');
+        const amenities = p.getAll('amenities') || [];
+
+        setFilters(prev => {
+            // HELPER: Deep compare simple filter values
+            const hasDatesChanged =
+                (from !== (prev.dateRange?.from?.toISOString().split('T')[0] || null)) ||
+                (to !== (prev.dateRange?.to?.toISOString().split('T')[0] || null));
+
+            const hasAmenitiesChanged =
+                amenities.length !== (prev.amenities?.length || 0) ||
+                amenities.some((a, i) => a !== prev.amenities[i]);
+
+            const hasDistanceChanged =
+                p.get('lat') !== (prev.distance?.center?.lat?.toString() || null) ||
+                p.get('lon') !== (prev.distance?.center?.lon?.toString() || null) ||
+                p.get('radius') !== (prev.distance?.maxKm?.toString() || null);
+
+            const hasBasicChanged =
+                p.get('location') !== (prev.location || null) && !(p.get('location') === null && prev.location === '') ||
+                p.get('type') !== (prev.type || 'all') ||
+                p.get('min_price') !== (prev.minPrice || '') ||
+                p.get('max_price') !== (prev.maxPrice || '') ||
+                p.get('guests') !== (prev.guests?.toString() || '1') ||
+                p.get('veg_only') !== (prev.veg_only?.toString() || 'false') ||
+                p.get('sort') !== (prev.sort || 'newest') ||
+                p.get('page') !== (prev.page?.toString() || '1');
+
+            if (!hasDatesChanged && !hasAmenitiesChanged && !hasDistanceChanged && !hasBasicChanged) {
+                return prev; // No actual change, skip update
+            }
+
+            return {
+                ...prev,
+                location: p.get('location') || '',
+                type: p.get('type') || 'all',
+                minPrice: p.get('min_price') || '',
+                maxPrice: p.get('max_price') || '',
+                guests: {
+                    adults: parseInt(p.get('adults')) || 1,
+                    children: parseInt(p.get('children')) || 0,
+                    rooms: parseInt(p.get('rooms')) || 1
+                },
+                veg_only: p.get('veg_only') === 'true',
+                amenities: amenities,
+                sort: p.get('sort') || 'newest',
+                distance: (p.get('lat') && p.get('lon')) ? {
+                    center: { lat: parseFloat(p.get('lat')), lon: parseFloat(p.get('lon')), name: p.get('loc_name') || 'Selected Location' },
+                    maxKm: parseInt(p.get('radius')) || 200
+                } : { center: null, maxKm: 200 },
+                page: parseInt(p.get('page')) || 1,
+                dateRange: from ? {
+                    from: new Date(from),
+                    to: to ? new Date(to) : undefined
+                } : { from: undefined, to: undefined }
+            };
+        });
+    }, [searchParams]);
 
     const location = useLocation();
     const resultsRef = useRef(null);
@@ -130,7 +264,15 @@ export default function Home() {
             if (filters.minPrice) params.append('min_price', filters.minPrice);
             if (filters.maxPrice) params.append('max_price', filters.maxPrice);
 
-            if (filters.guests > 1) params.append('guests', filters.guests);
+            // Handle Guests (Number or Object)
+            let guestCount = 1;
+            if (typeof filters.guests === 'object') {
+                guestCount = (filters.guests.adults || 0) + (filters.guests.children || 0);
+                if (filters.guests.rooms > 0) params.append('bedrooms', filters.guests.rooms);
+            } else {
+                guestCount = filters.guests;
+            }
+            if (guestCount > 1) params.append('guests', guestCount);
             if (filters.veg_only) params.append('veg_only', 'true');
             if (filters.sort) params.append('sort', filters.sort);
             if (filters.amenities && filters.amenities.length > 0) {
@@ -210,8 +352,18 @@ export default function Home() {
         filters.distance // Trigger fetch on distance change now!
     ]);
 
-    // REMOVED Client-Side Filtering for Distance (Now Backend)
-    const filteredProperties = properties;
+    // Client-Side Filtering for Price Safety (Backstop for API)
+    const filteredProperties = useMemo(() => {
+        return properties.filter(p => {
+            // Price Filter
+            if (filters.minPrice || filters.maxPrice) {
+                const price = getPricing(p).sellingPrice || p.Price || 0;
+                if (filters.minPrice && price < parseFloat(filters.minPrice)) return false;
+                if (filters.maxPrice && price > parseFloat(filters.maxPrice)) return false;
+            }
+            return true;
+        });
+    }, [properties, filters.minPrice, filters.maxPrice]);
 
     const handleFilterChange = (newFiltersOrFn) => {
         setFilters(prev => {
@@ -317,7 +469,7 @@ export default function Home() {
                 </div>
 
                 <div className="relative z-50 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
-                    <h1 className="text-[1.5rem] md:text-5xl lg:text-6xl font-extrabold text-white mb-2 md:mb-6 drop-shadow-2xl font-display tracking-tight leading-tight text-center">
+                    <h1 className="text-4xl md:text-5xl lg:text-7xl font-extrabold text-white mb-2 md:mb-6 drop-shadow-2xl font-display tracking-tight leading-tight text-center">
                         Find your peace in <br className="hidden md:block" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-1">paradise</span>
                     </h1>

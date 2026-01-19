@@ -288,7 +288,7 @@ if ($AutoDeployAll) {
     Deploy-Component "Admin" $Paths.Admin
     Deploy-Component "Vendor" $Paths.Vendor
     
-    export
+    exit
 }
 
 if ($Component) {
@@ -349,10 +349,24 @@ switch ($Selection) {
         if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor }
     }
     "5" {
-        if (Build-ReactApp "Customer" $Paths.Customer) { Deploy-Component "Customer" $Paths.Customer }
-        if (Build-ReactApp "Admin" $Paths.Admin) { Deploy-Component "Admin" $Paths.Admin }
+        Write-Host "Deploying ALL components (PARALLEL BUILD)..." -ForegroundColor Magenta
+        
+        # 1. Start Background Builds for Frontends
+        $BuildJobs = @()
+        $BuildJobs += Start-Job -Name "Build_Customer" -ScriptBlock { param($p) Set-Location $p; npm install; npm run build } -ArgumentList $Paths.Customer.LocalSource
+        $BuildJobs += Start-Job -Name "Build_Admin" -ScriptBlock { param($p) Set-Location $p; npm install; npm run build } -ArgumentList $Paths.Admin.LocalSource
+        $BuildJobs += Start-Job -Name "Build_Vendor" -ScriptBlock { param($p) Set-Location $p; npm install; npm run build } -ArgumentList $Paths.Vendor.LocalSource
+        
+        # 2. Build and Deploy API (Synchronous since it's fast)
         if (Build-Laravel "API" $Paths.API) { Deploy-Component "API" $Paths.API }
-        if (Build-ReactApp "Vendor" $Paths.Vendor) { Deploy-Component "Vendor" $Paths.Vendor }
+
+        Write-Host "Waiting for Frontend Builds to complete..." -ForegroundColor Yellow
+        $BuildJobs | Wait-Job | Receive-Job
+        
+        # 3. Deploy Frontend Components
+        Deploy-Component "Customer" $Paths.Customer
+        Deploy-Component "Admin" $Paths.Admin
+        Deploy-Component "Vendor" $Paths.Vendor
     }
     "6" {
         if (Build-ReactApp "Beta" $Paths.Beta) { 

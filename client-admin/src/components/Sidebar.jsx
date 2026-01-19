@@ -95,6 +95,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             bgLight: 'bg-rose-50',
             items: [
                 { path: '/payments', icon: <FiDollarSign />, label: 'Payments Dashboard' },
+                { path: '/accounts-center', icon: <FiActivity />, label: 'Accounts Center' },
                 { path: '/coupons', icon: <FiHash />, label: 'Coupon Management' },
                 { path: '/reconciliation', icon: <FiBarChart2 />, label: 'Reconciliation' }
             ]

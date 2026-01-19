@@ -1,23 +1,24 @@
-export const getPricing = (property) => {
+export const getPricing = (property, dateOverride = null) => {
     // Safely parse values
     const ob = property?.onboarding_data || {};
     const pricing = ob.pricing || {};
     const adminPricing = property?.admin_pricing || {};
 
-    // Determine current day for mapping
+    // Determine target date for mapping (Default to today)
+    const targetDate = dateOverride ? new Date(dateOverride) : new Date();
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const todayIndex = new Date().getDay(); // 0 (Sun) - 6 (Sat)
-    const todayName = days[todayIndex];
+    const dayIndex = targetDate.getDay(); // 0 (Sun) - 6 (Sat)
+    const dayName = days[dayIndex];
 
     const isWaterpark = property?.PropertyType?.toLowerCase() === 'waterpark';
-    const isWeekend = ['friday', 'saturday', 'sunday'].includes(todayName);
+    const isWeekend = ['friday', 'saturday', 'sunday'].includes(dayName);
     const wpKey = isWeekend ? 'adult_weekend' : 'adult_weekday';
 
     // 1. Determine Market Price (Vendor Ask / Base Rate)
     let marketPrice = parseFloat(
         (isWaterpark
             ? (adminPricing[wpKey]?.current || adminPricing.adult_rate?.current || adminPricing.adult?.current)
-            : adminPricing[todayName]?.villa?.current) ||
+            : adminPricing[dayName]?.villa?.current) ||
         adminPricing.mon_thu?.villa?.current || // Legacy fallback
         property?.display_price ||
         property?.lowest_price_next_30 ||
@@ -36,7 +37,7 @@ export const getPricing = (property) => {
         property?.lowest_price_next_30 ||
         (isWaterpark
             ? (adminPricing[wpKey]?.final || adminPricing.adult_rate?.discounted || adminPricing.adult?.discounted)
-            : adminPricing[todayName]?.villa?.final) ||
+            : adminPricing[dayName]?.villa?.final) ||
         property?.ResortWalaRate ||
         property?.resort_wala_rate ||
         0

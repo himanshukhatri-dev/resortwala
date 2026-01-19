@@ -231,6 +231,8 @@ export default function PropertyDetails() {
 
     const rawImages = property?.images?.length ? property.images.map(img => img.image_url) : (property?.image_url ? [property.image_url] : []);
     const galleryImages = rawImages;
+    // Prepare objects for Lightbox (preserve detailed info including category)
+    const lightboxImages = property?.images?.length ? property.images : (property?.image_url ? [{ image_url: property.image_url, category: 'All' }] : []);
 
     const handleGalleryOpen = (index = 0) => {
         setPhotoIndex(index);
@@ -257,6 +259,48 @@ export default function PropertyDetails() {
 
     // Track Mobile Scroll for Index (IntersectionObserver)
     const mobileSlidesRef = useRef([]);
+
+    const getPriceForDate = (date) => {
+        if (!date) return 0;
+        const w = date.getDay(); // 0 (Sun) - 6 (Sat)
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayName = dayNames[w];
+        const dStr = format(date, 'yyyy-MM-dd');
+
+        // 1. Holiday Check
+        const holiday = property?.holidays?.find(h => {
+            const hStart = h.from_date ? h.from_date.substring(0, 10) : '';
+            const hEnd = h.to_date ? h.to_date.substring(0, 10) : '';
+            return dStr >= hStart && dStr <= hEnd;
+        });
+        if (holiday) return parseFloat(holiday.base_price);
+
+        // 2. 7-Day Matrix from admin_pricing
+        const adminPricing = property?.admin_pricing || {};
+        if (adminPricing[dayName]?.villa?.final) {
+            return parseFloat(adminPricing[dayName].villa.final);
+        }
+
+        // 3. Waterpark Logic
+        if (property?.PropertyType?.toLowerCase() === 'waterpark') {
+            const isWeekend = (w === 0 || w === 6 || w === 5);
+            const wpKey = isWeekend ? 'adult_weekend' : 'adult_weekday';
+            if (adminPricing[wpKey]?.final) return parseFloat(adminPricing[wpKey].final);
+        }
+
+        // 4. Legacy Buckets / Fallback
+        const obData = typeof property?.onboarding_data === 'string' ? JSON.parse(property.onboarding_data) : (property?.onboarding_data || {});
+        const pricingMeta = obData.pricing || {};
+        const baseRate = property?.Price || property?.ResortWalaRate || 0;
+        const PRICE_WEEKDAY = parseFloat(property?.price_mon_thu || pricingMeta.weekday || baseRate);
+        const PRICE_FRISUN = parseFloat(property?.price_fri_sun || pricingMeta.weekend || baseRate);
+        const PRICE_SATURDAY = parseFloat(property?.price_sat || pricingMeta.saturday || baseRate);
+
+        if (w === 6) return PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
+        if (w === 0 || w === 5) return PRICE_FRISUN || PRICE_WEEKDAY;
+        return PRICE_WEEKDAY;
+    };
+
     useEffect(() => {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
@@ -279,53 +323,48 @@ export default function PropertyDetails() {
 
     const handleDateSelect = (day) => {
         if (!day) return;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const selectedDay = new Date(day);
-        selectedDay.setHours(0, 0, 0, 0);
+        const today = startOfDay(new Date());
+        const selectedDay = startOfDay(day);
 
         if (selectedDay < today) return;
 
-        const isWaterparkProp = property?.PropertyType === 'WaterPark' || property?.PropertyType === 'Waterpark';
+        const isWaterparkProp = property?.PropertyType?.toLowerCase() === 'waterpark';
 
-        // Helper to check if a specific day is booked (unavailable for Check-In)
-        // But might be available for Check-Out (if it's the day someone checks in)
-        const isBooked = isDateUnavailable(day);
+        // Helper to check if a specific day is booked
+        const isBooked = isDateUnavailable(selectedDay);
 
         if (isWaterparkProp) {
             if (isBooked) {
                 toast.error("Date is not available.");
                 return;
             }
-            setDateRange({ from: day, to: day });
+            setDateRange({ from: selectedDay, to: selectedDay });
             setIsDatePickerOpen(false);
             return;
         }
 
-        if ((dateRange.from && dateRange.to) || !dateRange.from) {
+        if (!dateRange.from || (dateRange.from && dateRange.to)) {
             // Selecting Check-In Date
             if (isBooked) {
                 toast.error("Selected date is unavailable for Check-In.");
                 return;
             }
-            setDateRange({ from: day, to: undefined });
-            return;
-        }
-
-        if (dateRange.from && !dateRange.to) {
+            setDateRange({ from: selectedDay, to: undefined });
+        } else {
             // Selecting Check-Out Date
-            if (day < dateRange.from) {
+            if (selectedDay <= dateRange.from) {
                 if (isBooked) {
                     toast.error("Selected date is unavailable for Check-In.");
                     return;
                 }
-                setDateRange({ from: day, to: undefined });
+                setDateRange({ from: selectedDay, to: undefined });
             } else {
-                // We ALLOW selecting a booked date as Check-Out (provided the range is valid)
-                // The checkRangeAvailability effect will validate if we are crossing unwanted boundaries.
-                // However, strictly speaking, picking a booked date as checkout is valid.
-                setDateRange({ from: dateRange.from, to: day });
+                // Check if any date in between is booked
+                if (!checkRangeAvailability(dateRange.from, selectedDay)) {
+                    toast.error("Some dates in this range are already booked.");
+                    return;
+                }
+                setDateRange({ from: dateRange.from, to: selectedDay });
                 setIsDatePickerOpen(false);
             }
         }
@@ -353,7 +392,7 @@ export default function PropertyDetails() {
 
     const obPricing = ob.pricing || {};
     const roomConfig = ob.roomConfig || { livingRoom: {}, bedrooms: [] };
-    const isWaterpark = property.PropertyType === 'Waterpark' || property.PropertyType === 'WaterPark';
+    const isWaterpark = property.PropertyType?.toLowerCase() === 'waterpark';
 
     const handleReserve = () => {
         if (!dateRange.from || (!isWaterpark && !dateRange.to)) { setIsDatePickerOpen(true); return; }
@@ -474,14 +513,13 @@ export default function PropertyDetails() {
             totalMarketRate += marketDayRate;
 
             if (isWaterpark) {
-                let aRate = PRICE_WEEKDAY;
-                if (w === 6) aRate = PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
-                else if (w === 0 || w === 5) aRate = PRICE_FRISUN || PRICE_WEEKDAY;
+                const typeSuffix = isWeekend ? 'weekend' : 'weekday';
 
-                let cRate = parseFloat(ob.childCriteria?.monFriPrice || ob.childCriteria?.price || 500);
-                if (isWeekend && ob.childCriteria?.satSunPrice) {
-                    cRate = parseFloat(ob.childCriteria.satSunPrice);
-                }
+                // Priority for Waterpark: admin_pricing[adult_weekday/weekend] -> Legacy PRICE
+                let aRate = parseFloat(adminPricing[`adult_${typeSuffix}`]?.final || adminPricing[`adult_${typeSuffix}`] || (isWeekend ? (PRICE_SATURDAY || PRICE_FRISUN) : PRICE_WEEKDAY));
+
+                // Priority for Child: admin_pricing[child_weekday/weekend] -> ob.childCriteria -> legacy
+                let cRate = parseFloat(adminPricing[`child_${typeSuffix}`]?.final || adminPricing[`child_${typeSuffix}`] || ob.childCriteria?.[`${typeSuffix}Price`] || ob.childCriteria?.price || 500);
 
                 totalAdultTicket += (aRate * guests.adults);
                 totalChildTicket += (cRate * guests.children);
@@ -846,21 +884,35 @@ export default function PropertyDetails() {
                             )}
 
                             {/* Other Attractions */}
-                            {Array.isArray(ob.otherAttractions) && ob.otherAttractions.length > 0 && (
-                                <div className="mt-8 bg-blue-50/50 rounded-2xl p-6 border border-blue-100">
-                                    <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2 font-serif text-lg">
-                                        <FaMapMarkerAlt className="text-blue-600" /> Nearby Attractions
-                                    </h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {ob.otherAttractions.map((attr, idx) => (
-                                            <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-blue-50 shadow-sm hover:shadow-md transition cursor-default">
-                                                <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0 ml-1"></div>
-                                                <span className="text-gray-800 font-medium text-sm">{attr}</span>
-                                            </div>
-                                        ))}
+                            {(() => {
+                                const genericAttractions = ['bhushi dam', 'tiger point', 'lonavala lake', 'karla caves', 'lohagad fort', 'lions point', 'narayani dham'];
+                                const city = property.City?.toLowerCase() || '';
+                                const isLonavala = city.includes('lonavala') || city.includes('khandala');
+
+                                const filteredAttractions = (Array.isArray(ob.otherAttractions) ? ob.otherAttractions : [])
+                                    .filter(attr => {
+                                        if (isLonavala) return true;
+                                        return !genericAttractions.some(g => attr.toLowerCase().includes(g));
+                                    });
+
+                                if (filteredAttractions.length === 0) return null;
+
+                                return (
+                                    <div className="mt-8 bg-blue-50/50 rounded-2xl p-6 border border-blue-100">
+                                        <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2 font-serif text-lg">
+                                            <FaMapMarkerAlt className="text-blue-600" /> Nearby Attractions
+                                        </h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {filteredAttractions.map((attr, idx) => (
+                                                <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-blue-50 shadow-sm hover:shadow-md transition cursor-default">
+                                                    <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0 ml-1"></div>
+                                                    <span className="text-gray-800 font-medium text-sm">{attr}</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
                         </section>
 
 
@@ -1048,9 +1100,9 @@ export default function PropertyDetails() {
                     <div className="relative h-full hidden lg:block">
                         <div className="sticky top-28 border border-gray-200 rounded-3xl p-6 shadow-xl bg-white/95 backdrop-blur-md">
                             {isWaterpark ? (
-                                <WaterparkBooking property={property} ob={ob} handleReserve={handleReserve} guests={guests} setGuests={setGuests} dateRange={dateRange} priceBreakdown={priceBreakdown} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} datePickerRef={datePickerRef} bookedDates={bookedDates} isWaterpark={isWaterpark} pricing={obPricing} />
+                                <WaterparkBooking property={property} ob={ob} handleReserve={handleReserve} guests={guests} setGuests={setGuests} dateRange={dateRange} priceBreakdown={priceBreakdown} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} datePickerRef={datePickerRef} bookedDates={bookedDates} isWaterpark={isWaterpark} pricing={obPricing} getPriceForDate={getPriceForDate} />
                             ) : (
-                                <VillaBooking price={PRICE_WEEKDAY} rating={property.Rating} dateRange={dateRange} setDateRange={setDateRange} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} handleReserve={handleReserve} priceBreakdown={priceBreakdown} datePickerRef={datePickerRef} property={property} guests={guests} setGuests={setGuests} mealSelection={mealSelection} setMealSelection={setMealSelection} isWaterpark={isWaterpark} bookedDates={bookedDates} />
+                                <VillaBooking price={PRICE_WEEKDAY} rating={property.Rating} dateRange={dateRange} setDateRange={setDateRange} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} handleReserve={handleReserve} priceBreakdown={priceBreakdown} datePickerRef={datePickerRef} property={property} guests={guests} setGuests={setGuests} mealSelection={mealSelection} setMealSelection={setMealSelection} isWaterpark={isWaterpark} bookedDates={bookedDates} getPriceForDate={getPriceForDate} />
                             )}
                         </div>
                         <div className="mt-6 text-center text-gray-400 text-xs flex items-center justify-center gap-1"><FaShieldAlt /> Secure Booking via ResortWala</div>
@@ -1180,28 +1232,7 @@ const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navi
 
 
 
-const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, dateRange, priceBreakdown, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, datePickerRef, bookedDates = [], isWaterpark, pricing }) => {
-    const getPriceForDate = (date) => {
-        const w = date.getDay();
-        const p = ob?.pricing || {};
-
-        // Holiday Check
-        const dStr = format(date, 'yyyy-MM-dd');
-        const holiday = property?.holidays?.find(h => {
-            const hStart = h.from_date ? h.from_date.substring(0, 10) : '';
-            const hEnd = h.to_date ? h.to_date.substring(0, 10) : '';
-            return dStr >= hStart && dStr <= hEnd;
-        });
-
-        if (holiday) return parseFloat(holiday.base_price);
-
-        const PRICE_WEEKDAY = parseFloat(property?.price_mon_thu || p.weekday || property?.Price || 0);
-        const PRICE_FRISUN = parseFloat(property?.price_fri_sun || p.weekend || property?.Price || 0);
-        const PRICE_SATURDAY = parseFloat(property?.price_sat || p.saturday || property?.Price || 0);
-        if (w === 6) return PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
-        if (w === 0 || w === 5) return PRICE_FRISUN || PRICE_WEEKDAY;
-        return PRICE_WEEKDAY;
-    };
+const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, dateRange, priceBreakdown, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, datePickerRef, bookedDates = [], isWaterpark, pricing, getPriceForDate }) => {
     const effectiveDate = dateRange?.from ? new Date(dateRange.from) : new Date();
     const adultRate = getPriceForDate(effectiveDate);
 
@@ -1290,6 +1321,11 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                                         );
                                     }
                                 }}
+                                classNames={{
+                                    day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
+                                    selected: "!bg-blue-600 !text-white hover:!bg-blue-700 hover:!text-white",
+                                    day_selected: "!bg-blue-600 !text-white"
+                                }}
                             />
                         </motion.div>
                     )}
@@ -1327,13 +1363,13 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                 }}
                 className="w-full font-bold py-3.5 rounded-xl transition mb-4 text-white text-lg bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
             >
-                {!dateRange.from ? 'Select Visit Date' : 'Book Tickets'}
+                {!dateRange.from ? 'Select Visit Date' : 'Book Tickets Now'}
             </button>
         </div >
     );
 };
 
-const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, handleReserve, priceBreakdown, datePickerRef, property, guests, setGuests, mealSelection, setMealSelection, isWaterpark, bookedDates = [] }) => {
+const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, handleReserve, priceBreakdown, datePickerRef, property, guests, setGuests, mealSelection, setMealSelection, isWaterpark, bookedDates = [], getPriceForDate }) => {
     const ob = property?.onboarding_data || {};
     const maxCapacity = parseInt(property?.MaxCapacity || ob.pricing?.maxCapacity || 20);
     const baseCapacity = parseInt(property?.Occupancy || ob.pricing?.extraGuestLimit || 12);
@@ -1341,31 +1377,6 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
     const rates = priceBreakdown?.rates || ob.foodRates || {};
 
     const pricing = getPricing(property);
-
-    const getPriceForDate = (date) => {
-        const w = date.getDay();
-        const p = ob?.pricing || {};
-
-        // Holiday Check
-        const dStr = format(date, 'yyyy-MM-dd');
-        const holiday = property?.holidays?.find(h => {
-            const hStart = h.from_date ? h.from_date.substring(0, 10) : '';
-            const hEnd = h.to_date ? h.to_date.substring(0, 10) : '';
-            return dStr >= hStart && dStr <= hEnd;
-        });
-
-        if (holiday) return parseFloat(holiday.base_price);
-
-        // Use pricing.sellingPrice as the base rate instead of raw property data if available
-        const baseRate = pricing.sellingPrice || parseFloat(property?.Price || 0);
-        const PRICE_WEEKDAY = parseFloat(property?.price_mon_thu || p.weekday || baseRate);
-        const PRICE_FRISUN = parseFloat(property?.price_fri_sun || p.weekend || baseRate);
-        const PRICE_SATURDAY = parseFloat(property?.price_sat || p.saturday || baseRate);
-
-        if (w === 6) return PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
-        if (w === 0 || w === 5) return PRICE_FRISUN || PRICE_WEEKDAY;
-        return PRICE_WEEKDAY;
-    };
 
     const MealCounter = ({ label, rate, count, type }) => (
         <div className="flex flex-col items-center bg-gray-50 border border-gray-100 rounded-lg p-1.5">
@@ -1419,8 +1430,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                     modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
                                     disabled={[{ before: startOfDay(new Date()) }]}
                                     classNames={{
-                                        day: "p-0",
-                                        button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
+                                        day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
                                         selected: "!bg-black !text-white hover:!bg-black hover:!text-white",
                                         day_selected: "!bg-black !text-white"
                                     }}
@@ -1547,6 +1557,8 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                 </button>
             </div>
             {/* Removed Booking Fees Text as per request */}
+
+
         </div>
     );
 };
@@ -1582,11 +1594,11 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                 onDateSelect(day);
                                 if (isWaterpark) onClose();
                             }}
-                            numberOfMonths={12}
-                            disabled={[{ before: new Date() }]}
+                            numberOfMonths={1}
+                            pagedNavigation
+                            disabled={[{ before: startOfDay(new Date()) }]}
                             classNames={{
-                                day: "p-0",
-                                button: "h-12 w-12 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
+                                day_button: "h-12 w-12 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
                                 selected: "!bg-[#FF385C] !text-white hover:!bg-[#e31c5f] hover:!text-white",
                                 range_middle: "!bg-[#FF385C]/10 !text-black",
                                 range_start: "!bg-[#FF385C] !text-white rounded-l-lg",
@@ -1609,48 +1621,114 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
     </AnimatePresence>
 );
 
-const MobileFooter = ({ price, unit, onReserve, buttonText, dateRange, onDateClick }) => (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 z-40 flex justify-between items-center shadow-[0_-5px_20px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
-        <div className="flex flex-col cursor-pointer" onClick={onDateClick}>
-            {dateRange?.from ? (
-                <>
-                    <div className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1">
-                        {format(new Date(dateRange.from), 'dd MMM')}
-                        {dateRange.to ? ` - ${format(new Date(dateRange.to), 'dd MMM')}` : ''}
-                        <FaArrowRight size={8} className="rotate-[-45deg] text-blue-500" />
-                    </div>
-                    <div className="font-bold text-lg leading-tight">
-                        ₹{Math.round(price).toLocaleString()} <span className="text-xs font-normal text-gray-500">total</span>
-                    </div>
-                </>
-            ) : (
-                <>
-                    <div className="font-bold text-lg leading-tight">
-                        ₹{Math.round(price).toLocaleString()} <span className="text-xs font-normal text-gray-500">{unit}</span>
-                    </div>
-                    <div className="text-[10px] font-bold text-blue-600 underline">Select Dates</div>
-                </>
-            )}
+function MobileFooter({ price, unit, onReserve, buttonText, dateRange, onDateClick }) {
+    return (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 z-40 flex justify-between items-center shadow-[0_-5px_20px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
+            <div className="flex flex-col cursor-pointer" onClick={onDateClick}>
+                {dateRange?.from ? (
+                    <>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1">
+                            {format(new Date(dateRange.from), 'dd MMM')}
+                            {dateRange.to ? ` - ${format(new Date(dateRange.to), 'dd MMM')}` : ''}
+                            <FaArrowRight size={8} className="rotate-[-45deg] text-blue-500" />
+                        </div>
+                        <div className="font-bold text-lg leading-tight">
+                            ₹{Math.round(price).toLocaleString()} <span className="text-xs font-normal text-gray-500">total</span>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="font-bold text-lg leading-tight">
+                            ₹{Math.round(price).toLocaleString()} <span className="text-xs font-normal text-gray-500">{unit}</span>
+                        </div>
+                        <div className="text-[10px] font-bold text-blue-600 underline">Select Dates</div>
+                    </>
+                )}
+            </div>
+            <button
+                onClick={onReserve}
+                className="bg-[#FF385C] active:bg-[#d9324e] text-white px-6 py-3 rounded-xl font-bold shadow-lg text-sm flex items-center gap-2"
+            >
+                {buttonText || 'Reserve'}
+            </button>
         </div>
-        <button
-            onClick={onReserve}
-            className="bg-[#FF385C] active:bg-[#d9324e] text-white px-6 py-3 rounded-xl font-bold shadow-lg text-sm flex items-center gap-2"
-        >
-            {buttonText || 'Reserve'}
-        </button>
-    </div>
-);
+    );
+}
 
 const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
+    const [activeTab, setActiveTab] = useState('All');
+
+    // Derived state: categories and filtered images
+    const { categories, filteredImages, globalIndices } = React.useMemo(() => {
+        if (!images || images.length === 0) return { categories: ['All'], filteredImages: [], globalIndices: [] };
+
+        // Extract categories
+        const cats = new Set(images.map(img => img.category || 'General'));
+        const categoryList = ['All', ...Array.from(cats).filter(c => c !== 'General').sort(), 'General']; // 'General' last
+
+        // Filter
+        let filtered = [];
+        let indices = [];
+
+        if (activeTab === 'All') {
+            filtered = images;
+            indices = images.map((_, i) => i);
+        } else {
+            filtered = images.filter(img => (img.category || 'General') === activeTab);
+            indices = images.map((img, i) => (img.category || 'General') === activeTab ? i : -1).filter(i => i !== -1);
+        }
+
+        return { categories: categoryList.filter(c => c !== 'General' || cats.has('General')), filteredImages: filtered, globalIndices: indices };
+    }, [images, activeTab]);
+
+    // Map global currentIndex to local index in filtered list
+    const localIndex = activeTab === 'All'
+        ? currentIndex
+        : filteredImages.findIndex(img => img === images[currentIndex]);
+
+    // Handle Tab Switch
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        // Find first image of this category and jump to it
+        if (tab !== 'All') {
+            const firstIdx = images.findIndex(img => (img.category || 'General') === tab);
+            if (firstIdx !== -1) setIndex(firstIdx);
+        }
+    };
+
     if (!isOpen) return null;
-    const next = (e) => { e?.stopPropagation(); setIndex((prev) => (prev + 1) % images.length); };
-    const prev = (e) => { e?.stopPropagation(); setIndex((prev) => (prev - 1 + images.length) % images.length); };
+
+    const next = (e) => {
+        e?.stopPropagation();
+        if (activeTab === 'All') {
+            setIndex((prev) => (prev + 1) % images.length);
+        } else {
+            // Cyclical in filtered list
+            const newLocal = (localIndex + 1) % filteredImages.length;
+            setIndex(globalIndices[newLocal]);
+        }
+    };
+
+    const prev = (e) => {
+        e?.stopPropagation();
+        if (activeTab === 'All') {
+            setIndex((prev) => (prev - 1 + images.length) % images.length);
+        } else {
+            const newLocal = (localIndex - 1 + filteredImages.length) % filteredImages.length;
+            setIndex(globalIndices[newLocal]);
+        }
+    };
+
+    // Helper to render image source (handle object vs string)
+    const getSrc = (img) => typeof img === 'string' ? img : (img?.image_url || '');
 
     // Swipe Threshold
     const swipeConfidenceThreshold = 10000;
     const swipePower = (offset, velocity) => {
         return Math.abs(offset) * velocity;
     };
+
+    const currentImageSrc = getSrc(images[currentIndex]);
 
     return (
         <AnimatePresence>
@@ -1659,9 +1737,42 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[2000] bg-black/95 flex flex-col items-center justify-center py-4 md:py-6 overflow-hidden touch-none" // touch-none prevents browser scroll
+                    className="fixed inset-0 z-[2000] bg-black/95 flex flex-col items-center justify-center py-4 md:py-6 overflow-hidden touch-none"
                     onClick={onClose}
                 >
+                    {/* Categories Header */}
+                    <div className="absolute top-0 left-0 right-0 z-50 p-4 flex flex-col gap-4 pointer-events-none">
+                        <div className="flex justify-between items-start w-full">
+                            <span className="font-mono font-bold bg-black/50 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs md:text-sm tracking-widest border border-white/20 shadow-sm pointer-events-auto">
+                                {activeTab === 'All' ? `${currentIndex + 1} / ${images.length}` : `${localIndex + 1} / ${filteredImages.length}`}
+                            </span>
+                            <button
+                                onClick={onClose}
+                                className="p-3 bg-black/50 hover:bg-black/80 text-white backdrop-blur-md rounded-full transition-all border border-white/20 shadow-sm pointer-events-auto"
+                            >
+                                <FaTimes size={20} />
+                            </button>
+                        </div>
+
+                        {/* Tabs */}
+                        {categories.length > 1 && (
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar pointer-events-auto max-w-2xl mx-auto pb-2">
+                                {categories.map(cat => (
+                                    <button
+                                        key={cat}
+                                        onClick={(e) => { e.stopPropagation(); handleTabChange(cat); }}
+                                        className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeTab === cat
+                                            ? 'bg-white text-black border-white'
+                                            : 'bg-black/40 text-white border-white/30 hover:bg-black/60'
+                                            }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                     {/* Blurred Background */}
                     <motion.div
                         key={`bg-${currentIndex}`}
@@ -1670,14 +1781,13 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
                         className="absolute inset-0 z-0"
                     >
                         <img
-                            src={images[currentIndex]}
+                            src={currentImageSrc}
                             alt=""
                             className="w-full h-full object-cover blur-3xl scale-110"
                         />
                     </motion.div>
 
                     <div className="flex-1 w-full flex items-center justify-center relative px-2 md:px-20 z-10" onClick={e => e.stopPropagation()}>
-                        {/* Fixed Navigation Arrows (Hidden on Mobile if Swipe is easy, but keeping for accessibility) */}
                         <button
                             onClick={prev}
                             className="hidden md:block absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 p-4 text-white bg-black/20 hover:bg-black/50 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg group hover:scale-110"
@@ -1687,31 +1797,17 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
 
                         <button
                             onClick={next}
-                            className="absolute hidden md:block right-4 md:right-8 top-1/2 -translate-y-1/2 z-50 p-4 text-white bg-black/20 hover:bg-black/50 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg group hover:scale-110"
+                            className="hidden md:block absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-50 p-4 text-white bg-black/20 hover:bg-black/50 backdrop-blur-md rounded-full transition-all border border-white/10 shadow-lg group hover:scale-110"
                         >
                             <FaArrowRight size={24} className="md:w-8 md:h-8" />
                         </button>
 
                         {/* Image Container */}
-                        <div className="relative inline-block w-full h-full max-h-[85vh] flex items-center justify-center">
-                            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-50 pointer-events-none"> {/* pointer-events-none to let swipe pass through spaces */}
-                                <span className="font-mono font-bold bg-black/50 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm tracking-widest border border-white/20 shadow-sm pointer-events-auto">
-                                    {currentIndex + 1} / {images.length}
-                                </span>
-                                <button
-                                    onClick={onClose}
-                                    className="p-3 bg-black/50 hover:bg-black/80 text-white backdrop-blur-md rounded-full transition-all border border-white/20 shadow-sm pointer-events-auto"
-                                >
-                                    <FaTimes size={20} />
-                                </button>
-                            </div>
-
+                        <div className="relative inline-block w-full h-full max-h-[75vh] md:max-h-[85vh] flex items-center justify-center mt-12 md:mt-0">
                             <AnimatePresence mode="popLayout" initial={false}>
                                 <motion.img
                                     key={currentIndex}
-                                    src={images[currentIndex]}
-
-                                    // Swipe Logic
+                                    src={currentImageSrc}
                                     drag="x"
                                     dragConstraints={{ left: 0, right: 0 }}
                                     dragElastic={1}
@@ -1723,15 +1819,13 @@ const Lightbox = ({ isOpen, onClose, images, currentIndex, setIndex }) => {
                                             prev();
                                         }
                                     }}
-
                                     initial={{ opacity: 0, x: 100, scale: 0.9 }}
                                     animate={{ opacity: 1, x: 0, scale: 1 }}
                                     exit={{ opacity: 0, x: -100, scale: 0.9 }}
                                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
-
-                                    className="max-h-[75vh] md:max-h-[85vh] max-w-full object-contain shadow-2xl rounded-lg cursor-grab active:cursor-grabbing"
+                                    className="max-h-full max-w-full object-contain shadow-2xl rounded-lg cursor-grab active:cursor-grabbing"
                                     alt={`Gallery ${currentIndex}`}
-                                    draggable="false" // Prevent browser native drag
+                                    draggable="false"
                                 />
                             </AnimatePresence>
                         </div>
