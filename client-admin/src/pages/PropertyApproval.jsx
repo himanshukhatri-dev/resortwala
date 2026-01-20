@@ -162,6 +162,10 @@ export default function PropertyApproval() {
     // Track deleted images
     const [deletedImages, setDeletedImages] = useState([]);
 
+    // Cover Photo State
+    const [coverPhoto, setCoverPhoto] = useState(null);
+    const [selectedPrimaryImageId, setSelectedPrimaryImageId] = useState(null);
+
     // Modal State
     const [modalConfig, setModalConfig] = useState({
         isOpen: false,
@@ -525,39 +529,52 @@ export default function PropertyApproval() {
         if (saving) return;
         setSaving(true);
         try {
-            const payload = {
-                admin_pricing: formData.PropertyType === 'Waterpark' ? waterparkPricing : pricing,
-                PropertyType: formData.PropertyType,
-                Website: formData.Website,
-                GoogleMapLink: formData.GoogleMapLink,
-                Name: formData.Name,
-                Location: formData.Location,
-                ShortDescription: formData.ShortDescription,
-                LongDescription: formData.LongDescription,
-                Occupancy: formData.Occupancy,
-                MaxCapacity: formData.MaxCapacity,
-                NoofRooms: formData.NoofRooms,
-                checkInTime: formData.checkInTime,
-                checkOutTime: formData.checkOutTime,
-                PropertyRules: formData.PropertyRules,
-                BookingSpecailMessage: formData.BookingSpecailMessage,
-                RoomConfig: formData.RoomConfig,
-                Amenities: formData.Amenities,
-                ContactPerson: formData.ContactPerson,
-                MobileNo: formData.MobileNo,
-                Email: formData.Email,
+            const submitData = new FormData();
 
-                Address: formData.Address,
-                otherAmenities: formData.otherAmenities || [], // Submit
-                otherAttractions: formData.otherAttractions || [], // Submit
-                otherRules: formData.otherRules || [], // Submit
-                latitude: formData.latitude,
-                longitude: formData.longitude,
-                deletedImages: deletedImages,
-            };
+            // Append simple fields
+            submitData.append('PropertyType', formData.PropertyType);
+            submitData.append('Website', formData.Website);
+            submitData.append('GoogleMapLink', formData.GoogleMapLink);
+            submitData.append('Name', formData.Name);
+            submitData.append('Location', formData.Location);
+            submitData.append('ShortDescription', formData.ShortDescription);
+            submitData.append('LongDescription', formData.LongDescription);
+            submitData.append('Occupancy', formData.Occupancy);
+            submitData.append('MaxCapacity', formData.MaxCapacity);
+            submitData.append('NoofRooms', formData.NoofRooms);
+            submitData.append('checkInTime', formData.checkInTime);
+            submitData.append('checkOutTime', formData.checkOutTime);
+            submitData.append('PropertyRules', formData.PropertyRules);
+            submitData.append('BookingSpecailMessage', formData.BookingSpecailMessage);
+            submitData.append('ContactPerson', formData.ContactPerson);
+            submitData.append('MobileNo', formData.MobileNo);
+            submitData.append('Email', formData.Email);
+            submitData.append('Address', formData.Address);
+            submitData.append('latitude', formData.latitude);
+            submitData.append('longitude', formData.longitude);
 
-            const res = await axios.put(`${API_BASE_URL}/admin/properties/${id}/approve`, payload, {
-                headers: { Authorization: `Bearer ${token}` }
+            // Append Arrays/Objects as JSON strings or array items
+            submitData.append('admin_pricing', JSON.stringify(formData.PropertyType === 'Waterpark' ? waterparkPricing : pricing));
+            submitData.append('RoomConfig', JSON.stringify(formData.RoomConfig));
+            submitData.append('Amenities', JSON.stringify(formData.Amenities));
+
+            (formData.otherAmenities || []).forEach(item => submitData.append('otherAmenities[]', item));
+            (formData.otherAttractions || []).forEach(item => submitData.append('otherAttractions[]', item));
+            (formData.otherRules || []).forEach(item => submitData.append('otherRules[]', item));
+            (deletedImages || []).forEach(item => submitData.append('deletedImages[]', item));
+
+            // Append Cover Photo
+            if (coverPhoto) {
+                submitData.append('Image', coverPhoto);
+            } else if (selectedPrimaryImageId) {
+                submitData.append('primary_image_id', selectedPrimaryImageId);
+            }
+
+            const res = await axios.post(`${API_BASE_URL}/admin/properties/${id}/approve`, submitData, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
+                }
             });
             if (res.data.property) setProperty(res.data.property);
             setShowSuccessModal(true);
@@ -1166,42 +1183,61 @@ export default function PropertyApproval() {
                                 <div>
                                     <div className="flex justify-between items-center mb-4">
                                         <h3 className="font-bold text-gray-800">Photos</h3>
-                                        <label className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer transition-colors">
-                                            <FaCamera /> Add Photos
-                                            <input
-                                                type="file"
-                                                multiple
-                                                accept="image/*"
-                                                className="hidden"
-                                                onChange={async (e) => {
-                                                    const files = Array.from(e.target.files);
-                                                    if (files.length === 0) return;
+                                        <div className="flex gap-2">
+                                            {/* Cover Photo Upload UI */}
+                                            <div className="flex items-center gap-2 bg-purple-50 px-3 py-1 rounded-lg border border-purple-100 mr-2">
+                                                <span className="text-xs text-purple-700 font-bold uppercase">New Cover:</span>
+                                                {coverPhoto && (
+                                                    <div className="flex items-center gap-2">
+                                                        <img src={URL.createObjectURL(coverPhoto)} className="w-6 h-6 rounded object-cover border" alt="New" />
+                                                        <button onClick={() => setCoverPhoto(null)} className="text-red-500 hover:bg-red-50 rounded-full p-1"><FaTimes size={10} /></button>
+                                                    </div>
+                                                )}
+                                                <label className="cursor-pointer text-purple-600 hover:text-purple-800 text-sm flex items-center gap-1">
+                                                    <FaCamera />
+                                                    <span className="underline decoration-dotted">{coverPhoto ? 'Replace' : 'Upload'}</span>
+                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => setCoverPhoto(e.target.files[0])} />
+                                                </label>
+                                            </div>
 
-                                                    const uploadFormData = new FormData();
-                                                    files.forEach(file => uploadFormData.append('images[]', file));
+                                            <label className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer transition-colors">
+                                                <FaCamera /> Add Photos
+                                                <input
+                                                    type="file"
+                                                    multiple
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={async (e) => {
+                                                        const files = Array.from(e.target.files);
+                                                        if (files.length === 0) return;
 
-                                                    try {
-                                                        setSaving(true);
-                                                        const res = await axios.post(`${API_BASE_URL}/admin/properties/${id}/photos`, uploadFormData, {
-                                                            headers: {
-                                                                Authorization: `Bearer ${token}`,
-                                                                'Content-Type': 'multipart/form-data'
-                                                            }
-                                                        });
-                                                        // Refresh property data
-                                                        const updatedRes = await axios.get(`${API_BASE_URL}/admin/properties/${id}`, {
-                                                            headers: { Authorization: `Bearer ${token}` }
-                                                        });
-                                                        setProperty(updatedRes.data);
-                                                    } catch (err) {
-                                                        console.error("Upload failed", err);
-                                                        alert("Failed to upload photos");
-                                                    } finally {
-                                                        setSaving(false);
-                                                    }
-                                                }}
-                                            />
-                                        </label>
+                                                        const uploadFormData = new FormData();
+                                                        files.forEach(file => uploadFormData.append('images[]', file));
+
+                                                        try {
+                                                            setSaving(true);
+                                                            const res = await axios.post(`${API_BASE_URL}/admin/properties/${id}/photos`, uploadFormData, {
+                                                                headers: {
+                                                                    Authorization: `Bearer ${token}`,
+                                                                    'Content-Type': 'multipart/form-data'
+                                                                }
+                                                            });
+                                                            // Refresh property data
+                                                            const updatedRes = await axios.get(`${API_BASE_URL}/admin/properties/${id}`, {
+                                                                headers: { Authorization: `Bearer ${token}` }
+                                                            });
+                                                            setProperty(updatedRes.data);
+                                                        } catch (err) {
+                                                            console.error("Upload failed", err);
+                                                            alert("Failed to upload photos");
+                                                            // showAlert("Failed to upload photos", "Error");
+                                                        } finally {
+                                                            setSaving(false);
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         {(() => {
@@ -1218,8 +1254,28 @@ export default function PropertyApproval() {
 
                                             return uniqueImages.map(img => (
                                                 <div key={img.id} className="relative group aspect-square rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                                                    <img src={img.image_url} alt="Property" className="w-full h-full object-cover transition duration-500 group-hover:scale-110" />
-                                                    {img.is_primary && <div className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">Cover</div>}
+                                                    <img src={img.image_url} alt="Property" className={`w-full h-full object-cover transition duration-500 group-hover:scale-110 ${selectedPrimaryImageId === img.id ? 'opacity-80' : ''}`} />
+
+                                                    {/* Cover Badge */}
+                                                    {/* Cover Badge (Star) */}
+                                                    {(selectedPrimaryImageId === img.id || (img.is_primary && !selectedPrimaryImageId)) && (
+                                                        <div className="absolute top-2 left-2 text-yellow-400 z-10 drop-shadow-md filter">
+                                                            <FaStar size={24} className="drop-shadow-sm stroke-yellow-600 stroke-1" style={{ strokeWidth: '20px', stroke: '#b45309' }} />
+                                                        </div>
+                                                    )}
+
+                                                    {/* Set Cover Button (Overlay) */}
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                        {(!img.is_primary || selectedPrimaryImageId) && selectedPrimaryImageId !== img.id && (
+                                                            <button
+                                                                onClick={(e) => { e.preventDefault(); setSelectedPrimaryImageId(img.id); setCoverPhoto(null); }}
+                                                                className="bg-white text-gray-900 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                                            >
+                                                                Set Cover
+                                                            </button>
+                                                        )}
+                                                    </div>
+
                                                     <button
                                                         onClick={(e) => {
                                                             e.preventDefault();
@@ -1231,7 +1287,7 @@ export default function PropertyApproval() {
                                                                 onConfirm: () => setDeletedImages(prev => [...prev, img.id])
                                                             });
                                                         }}
-                                                        className="absolute top-2 right-2 bg-white text-red-500 p-1.5 rounded-full shadow-lg hover:bg-red-50 hover:scale-110 transition-all z-10"
+                                                        className="absolute top-2 right-2 bg-white text-red-500 p-1.5 rounded-full shadow-lg hover:bg-red-50 hover:scale-110 transition-all z-20"
                                                     >
                                                         <FaTimes />
                                                     </button>

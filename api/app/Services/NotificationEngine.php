@@ -106,18 +106,31 @@ class NotificationEngine
 
             // SMS API Integration (alldigitalgrowth.in)
             $apiKey = config('services.sms.api_key') ?? env('SMS_API_KEY');
-            $username = config('services.sms.username') ?? 'Resortwala';
+            $username = config('services.sms.username') ?? env('SMS_USERNAME') ?? 'Resortwala';
             $senderId = config('services.sms.sender_id') ?? env('SMS_SENDER_ID', 'ResWla');
             $dltEntityId = config('services.sms.dlt_entity_id') ?? env('SMS_DLT_ENTITY_ID');
             
             // Fetch DLT Template ID if exists for this notification template
             $dltTemplateId = '';
-            $dltRegistry = DltRegistry::where('sender_id', $senderId)->where('approved_content', 'LIKE', '%' . substr($template->content, 0, 10) . '%')->first();
+            
+            // Normalize content for DLT lookup: Replace {{variable}} with {#var#}
+            // This ensures "Dear User, {{otp}}..." matches "Dear User, {#var#}..."
+            $normalizedContent = preg_replace('/\{\{[^}]+\}\}/', '{#var#}', $template->content);
+            
+            // Use 15 chars prefix of NORMALIZED content
+            $search = substr($normalizedContent, 0, 15);
+            
+            $dltRegistry = DltRegistry::where('sender_id', $senderId)
+                ->where('approved_content', 'LIKE', $search . '%')
+                ->first();
+                
             if ($dltRegistry) {
                 $dltTemplateId = $dltRegistry->template_id;
+            } else {
+                Log::warning("NotificationEngine: DLT Template Not Found for '{$template->name}' using search '{$search}%'");
             }
 
-            $response = Http::get('http://sms.alldigitalgrowth.in/sendSMS', [
+            $queryParams = [
                 'username' => $username,
                 'message' => $content,
                 'sendername' => $senderId,
@@ -125,14 +138,31 @@ class NotificationEngine
                 'numbers' => $mobile,
                 'apikey' => $apiKey,
                 'templateid' => $dltTemplateId,
-                'dltentityid' => $dltEntityId
-            ]);
+                'entityid' => $dltEntityId, 
+            ];
+
+            // Send GET request
+            // Send GET request
+            // Use standard encoding (spaces as +) to match working curl script
+            $url = 'http://sms.alldigitalgrowth.in/sendSMS?' . http_build_query($queryParams);
+            
+            Log::info("NotificationEngine: Sending SMS", ['url' => $url, 'mobile' => $mobile]);
+
+            $response = Http::get($url);
+
+            Log::info("NotificationEngine: SMS Response", ['status' => $response->status(), 'body' => $response->body()]);
 
             if ($response->successful()) {
-                Log::info("NotificationEngine: SMS Sent to {$mobile}: {$content}");
-                $this->log('sms', $mobile, null, $content, $template->name, $eventName, 'sent');
+                // Check for logical error in body (e.g. INVALID_USER)
+                if (stripos($response->body(), 'INVALID') !== false || stripos($response->body(), 'ERROR') !== false) {
+                     Log::error("NotificationEngine: SMS Logical Failure: " . $response->body());
+                     $this->log('sms', $mobile, null, $content, $template->name, $eventName, 'failed', $response->body());
+                } else {
+                     Log::info("NotificationEngine: SMS Sent Successfully to {$mobile}");
+                     $this->log('sms', $mobile, null, $content, $template->name, $eventName, 'sent');
+                }
             } else {
-                Log::error("NotificationEngine: SMS failed for {$mobile}. Status: " . $response->status());
+                Log::error("NotificationEngine: SMS HTTP Failure: " . $response->status());
                 $this->log('sms', $mobile, null, $content, $template->name, $eventName, 'failed', $response->body());
             }
 

@@ -197,46 +197,61 @@ export default function CompareModal({ isOpen, onClose }) {
                                         </div>
 
                                         {/* --- MOBILE VIEW (Pointwise Blocks) --- */}
-                                        <div className="md:hidden p-4 space-y-4 pb-12">
-                                            {/* Property Header Scroller (Sticky) - Compact */}
-                                            <div className="sticky top-0 bg-white/95 backdrop-blur z-30 -mx-4 px-4 py-2 shadow-sm flex gap-3 overflow-x-auto no-scrollbar snap-x border-b border-gray-100">
-                                                {compareList.map(prop => (
-                                                    <div key={prop.id} className="min-w-[100px] w-[100px] snap-start relative flex-shrink-0">
-                                                        <div className="h-16 rounded-lg overflow-hidden relative border border-gray-200">
-                                                            <img
-                                                                src={prop.primary_image?.image_url || prop.image_url || 'https://via.placeholder.com/150'}
-                                                                className="w-full h-full object-cover opacity-90"
-                                                                alt={prop.Name}
-                                                            />
-                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-1.5">
-                                                                <p className="text-white text-[10px] font-bold leading-tight truncate">{prop.Name}</p>
-                                                            </div>
-                                                            <button
-                                                                onClick={() => removeFromCompare(prop.id)}
-                                                                className="absolute top-0.5 right-0.5 bg-black/50 text-white rounded-full p-0.5 hover:bg-red-500"
-                                                            >
-                                                                <FaTimes size={8} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            {SECTIONS.map((section, idx) => (
-                                                <div key={idx} className="space-y-2">
-                                                    <h4 className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest pb-0.5">
-                                                        {section.title}
-                                                    </h4>
-
-                                                    <div className="grid gap-2">
-                                                        {section.items.map((item, itemIdx) => (
-                                                            <div key={itemIdx} className="bg-white p-2.5 rounded-lg border border-gray-100 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                                                                <div className="flex items-center gap-1.5 mb-1.5 text-gray-500 text-[10px] font-bold uppercase tracking-wide">
-                                                                    {item.icon && <span className="text-[#EAB308] text-xs">{item.icon}</span>}
-                                                                    {item.label}
+                                        {/* --- MOBILE VIEW: Matrix Table Style (Zigwheels) --- */}
+                                        <div className="md:hidden flex-1 overflow-auto relative custom-scrollbar bg-white">
+                                            <table className="w-max border-collapse relative">
+                                                <thead>
+                                                    <tr>
+                                                        {/* Sticky Top-Left Corner */}
+                                                        <th className="sticky top-0 left-0 z-40 bg-white border-b border-r border-gray-100 p-2 min-w-[100px] w-[100px] align-bottom shadow-[2px_2px_5px_rgba(0,0,0,0.05)]">
+                                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Features</span>
+                                                        </th>
+                                                        {/* Sticky Top Headers (Properties) */}
+                                                        {compareList.map(prop => (
+                                                            <th key={prop.id} className="sticky top-0 z-30 bg-white border-b border-gray-100 p-1.5 min-w-[120px] w-[120px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] align-bottom">
+                                                                <div className="relative">
+                                                                    <div className="h-16 w-full rounded-lg overflow-hidden mb-1.5 border border-gray-100 bg-gray-50">
+                                                                        <img
+                                                                            src={prop.primary_image?.image_url || prop.image_url || 'https://via.placeholder.com/150'}
+                                                                            className="w-full h-full object-cover"
+                                                                            alt={prop.Name}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="h-8 flex items-center justify-center">
+                                                                        <p className="text-[10px] font-bold text-gray-900 leading-tight line-clamp-2 text-center">{prop.Name}</p>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => removeFromCompare(prop.id)}
+                                                                        className="absolute -top-1 -right-1 bg-white text-gray-400 rounded-full p-1 shadow-sm border border-gray-100 hover:text-red-500 z-50"
+                                                                    >
+                                                                        <FaTimes size={10} />
+                                                                    </button>
                                                                 </div>
-
-                                                                <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-2.5 px-2.5 pb-2">
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {SECTIONS.map((section, idx) => (
+                                                        <React.Fragment key={idx}>
+                                                            {/* Section Header */}
+                                                            <tr className="bg-gray-50/50">
+                                                                <td className="sticky left-0 z-20 bg-gray-50 border-y border-r border-gray-100 p-1.5 px-2 font-bold text-[10px] text-gray-500 uppercase tracking-wider text-left">
+                                                                    {section.title}
+                                                                </td>
+                                                                <td colSpan={compareList.length} className="border-y border-gray-100 bg-gray-50"></td>
+                                                            </tr>
+                                                            {/* Feature Rows */}
+                                                            {section.items.map((item, i) => (
+                                                                <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors">
+                                                                    {/* Sticky Left Label */}
+                                                                    <td className="sticky left-0 z-20 bg-white border-r border-gray-50 p-2 text-[10px] font-bold text-gray-600 align-middle shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                                                                        <div className="flex items-center gap-1">
+                                                                            {item.icon && <span className="text-[#EAB308] opacity-80">{item.icon}</span>}
+                                                                            {item.label}
+                                                                        </div>
+                                                                    </td>
+                                                                    {/* Property Values */}
                                                                     {compareList.map(prop => {
                                                                         let content = null;
                                                                         if (item.render) {
@@ -244,23 +259,32 @@ export default function CompareModal({ isOpen, onClose }) {
                                                                         } else if (item.check) {
                                                                             const val = get(prop, item.check);
                                                                             content = val
-                                                                                ? <span className="text-green-600 flex items-center gap-1 text-[10px] font-bold"><FaCheckCircle /> Yes</span>
-                                                                                : <span className="text-gray-300 flex items-center gap-1 text-[10px]"><FaTimesCircle /> No</span>;
+                                                                                ? <FaCheckCircle className="text-green-500 mx-auto" size={12} />
+                                                                                : <FaTimesCircle className="text-gray-200 mx-auto" size={12} />;
                                                                         }
-
                                                                         return (
-                                                                            <div key={prop.id} className="min-w-[100px] w-[100px] flex-shrink-0 flex flex-col border-r border-gray-50 last:border-0 pr-2">
-                                                                                <span className="text-[10px] text-gray-400 truncate mb-0.5 leading-none">{prop.Name.split(' ')[0]}</span>
-                                                                                <span className="text-xs font-bold text-gray-800 leading-tight whitespace-normal break-words">{content}</span>
-                                                                            </div>
+                                                                            <td key={prop.id} className="p-2 text-center text-[10px] text-gray-800 font-medium min-w-[120px]">
+                                                                                {content}
+                                                                            </td>
                                                                         );
                                                                     })}
-                                                                </div>
-                                                            </div>
+                                                                </tr>
+                                                            ))}
+                                                        </React.Fragment>
+                                                    ))}
+                                                    {/* CTA Row */}
+                                                    <tr className="bg-white">
+                                                        <td className="sticky left-0 z-20 bg-white border-r border-t border-gray-100 p-2"></td>
+                                                        {compareList.map(prop => (
+                                                            <td key={prop.id} className="p-2 border-t border-gray-100">
+                                                                <button className="w-full bg-black text-white text-[10px] font-bold py-2 rounded-lg shadow-sm active:scale-95 transition-transform">
+                                                                    View
+                                                                </button>
+                                                            </td>
                                                         ))}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </>
                                 )}

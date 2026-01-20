@@ -15,6 +15,21 @@ class ApprovePropertyRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation()
+    {
+        if ($this->has('admin_pricing') && is_string($this->admin_pricing)) {
+            $decoded = json_decode($this->admin_pricing, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $this->merge([
+                    'admin_pricing' => $decoded
+                ]);
+            }
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      */
     public function rules(): array

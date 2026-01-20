@@ -43,4 +43,10 @@ return [
         'server_key' => env('FCM_SERVER_KEY'),
     ],
 
+    'sms' => [
+        'api_key' => env('SMS_API_KEY'),
+        'username' => env('SMS_USERNAME', 'Resortwala'),
+        'sender_id' => env('SMS_SENDER_ID', 'ResWla'),
+        'dlt_entity_id' => env('SMS_DLT_ENTITY_ID'),
+    ],
 ];

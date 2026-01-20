@@ -55,12 +55,7 @@ class OtpService
 
         Log::info("Verifying OTP for Identifier: {$identifier}, Code: {$code}, Type: {$type}");
 
-        // --- BYPASS OTP FOR TESTING ---
-        // Loose comparison to allow integer 1234
-        if ($code == '1234') {
-             Log::info("OTP Bypass used for {$identifier}");
-             return true;
-        }
+
 
         $otp = Otp::where('identifier', $identifier)
             ->where('type', $type)

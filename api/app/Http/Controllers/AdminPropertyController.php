@@ -20,12 +20,14 @@ class AdminPropertyController extends Controller
 
             // 1. Handle JSON-stored fields (Amenities, RoomConfig, Pricing)
             if ($request->has('Amenities')) {
-                $obData['amenities'] = $request->Amenities; // Standardize to lowercase
-                $obData['Amenities'] = $request->Amenities; // Keep uppercase for safety
+                $val = is_string($request->Amenities) ? json_decode($request->Amenities, true) : $request->Amenities;
+                $obData['amenities'] = $val; // Standardize to lowercase
+                $obData['Amenities'] = $val; // Keep uppercase for safety
             }
             if ($request->has('RoomConfig')) {
-                $obData['roomConfig'] = $request->RoomConfig; // Standardize to lowercase
-                $obData['RoomConfig'] = $request->RoomConfig; // Keep uppercase for safety
+                $val = is_string($request->RoomConfig) ? json_decode($request->RoomConfig, true) : $request->RoomConfig;
+                $obData['roomConfig'] = $val; // Standardize to lowercase
+                $obData['RoomConfig'] = $val; // Keep uppercase for safety
             }
             if ($request->has('otherAmenities')) {
                 $obData['otherAmenities'] = $request->otherAmenities;
@@ -131,6 +133,44 @@ class AdminPropertyController extends Controller
                  
                  // Sync to Daily Rates Table
                  $this->syncDailyRates($id, $adminPricing);
+            }
+
+            // 5. Handle Cover Photo Upload
+            if ($request->hasFile('Image')) {
+                 $image = $request->file('Image');
+                 $filename = \Illuminate\Support\Str::random(40) . '.' . $image->getClientOriginalExtension();
+                 $image->storeAs('properties/' . $id, $filename, 'public');
+                 
+                 // Create PropertyImage entry
+                 $newImg = \App\Models\PropertyImage::create([
+                     'property_id' => $id,
+                     'image_path' => $id . '/' . $filename,
+                     'is_primary' => true, // Make it cover
+                     'display_order' => 0
+                 ]);
+                 
+                 // Demote other images
+                 \App\Models\PropertyImage::where('property_id', $id)
+                     ->where('id', '!=', $newImg->id)
+                     ->update(['is_primary' => false]);
+                     
+                 // LEGACY: 'Image' column removed from PropertyMaster. 
+                 // We rely on PropertyImage table's is_primary flag.
+            }
+    
+            // 6. Handle Selecting Existing Image as Primary
+            if ($request->has('primary_image_id')) {
+                $imgId = $request->primary_image_id;
+                $existingImg = \App\Models\PropertyImage::where('property_id', $id)->where('id', $imgId)->first();
+                
+                if ($existingImg) {
+                    // Demote others
+                    \App\Models\PropertyImage::where('property_id', $id)->update(['is_primary' => false]);
+                    
+                    // Promote this one
+                    $existingImg->is_primary = true;
+                    $existingImg->save();
+                }
             }
 
             // Execute Direct Update

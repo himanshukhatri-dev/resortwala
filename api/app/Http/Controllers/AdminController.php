@@ -216,7 +216,8 @@ class AdminController extends Controller
             'checkInTime', 'checkOutTime', 
             'PropertyRules', 'BookingSpecailMessage',
             'admin_pricing',
-            'GoogleMapLink', 'Website', 'Address', 'ContactPerson', 'MobileNo', 'Email', 'PropertyType'
+            'GoogleMapLink', 'Website', 'Address', 'ContactPerson', 'MobileNo', 'Email', 'PropertyType',
+            'Image' // Allow updating Cover Photo
         ]));
 
         // Merge Admin updates into onboarding_data
@@ -237,7 +238,8 @@ class AdminController extends Controller
             'Occupancy', 'MaxCapacity', 'NoofRooms', 
             'checkInTime', 'checkOutTime', 
             'PropertyRules', 'BookingSpecailMessage',
-            'GoogleMapLink', 'Website', 'Address', 'ContactPerson', 'MobileNo', 'Email', 'PropertyType'
+            'GoogleMapLink', 'Website', 'Address', 'ContactPerson', 'MobileNo', 'Email', 'PropertyType',
+            'Image'
         ]);
 
         $updateData['is_approved'] = true;
@@ -247,18 +249,54 @@ class AdminController extends Controller
             $updateData['admin_pricing'] = json_encode($request->admin_pricing);
         }
 
+        if ($request->hasFile('Image')) {
+             $image = $request->file('Image');
+             $filename = \Illuminate\Support\Str::random(40) . '.' . $image->getClientOriginalExtension();
+             $image->storeAs('properties/' . $id, $filename, 'public');
+             
+             // Create PropertyImage entry
+             $newImg = \App\Models\PropertyImage::create([
+                 'property_id' => $id,
+                 'image_path' => $id . '/' . $filename,
+                 'is_primary' => true, // Make it cover
+                 'display_order' => 0
+             ]);
+             
+             // Demote other images
+             \App\Models\PropertyImage::where('property_id', $id)
+                 ->where('id', '!=', $newImg->id)
+                 ->update(['is_primary' => false]);
+                 
+             // Also update primary 'Image' column in PropertyMaster for legacy support
+             $updateData['Image'] = $id . '/' . $filename;
+        }
+
+        // Handle Selecting Existing Image as Primary
+        if ($request->has('primary_image_id')) {
+            $imgId = $request->primary_image_id;
+            $existingImg = \App\Models\PropertyImage::where('property_id', $id)->where('id', $imgId)->first();
+            
+            if ($existingImg) {
+                // Demote others
+                \App\Models\PropertyImage::where('property_id', $id)->update(['is_primary' => false]);
+                
+                // Promote this one
+                $existingImg->is_primary = true;
+                $existingImg->save();
+                
+                // Update Master
+                $updateData['Image'] = $existingImg->image_path;
+            }
+        }
+
         // Use DB Facade to bypass Eloquent Model Magic/Attributes
         \Illuminate\Support\Facades\DB::table('property_masters')
             ->where('PropertyId', $id)
             ->update($updateData);
 
         return response()->json([
-            'message' => 'Property approved successfully'
-        ]);
-
-        return response()->json([
             'message' => 'Property approved successfully',
-            'property' => $property
+            'property' => PropertyMaster::with('images')->find($id)
         ]);
     }
 

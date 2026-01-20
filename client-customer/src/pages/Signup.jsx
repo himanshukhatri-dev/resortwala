@@ -49,7 +49,8 @@ export default function Signup() {
         try {
             // 1. Send Verification OTP (Pre-Registration)
             await axios.post(`${API_BASE_URL}/customer/register-send-otp`, {
-                phone: normalizePhone(formData.phone)
+                phone: normalizePhone(formData.phone),
+                email: formData.email // Added validation email
             });
 
             // Success -> Move to OTP Step

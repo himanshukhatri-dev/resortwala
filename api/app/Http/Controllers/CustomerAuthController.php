@@ -170,9 +170,17 @@ class CustomerAuthController extends Controller
 
         try {
             $notificationService = app(\App\Services\NotificationService::class);
+            
+            // 1. Send SMS
             $notificationService->sendSMSOTP($request->phone, $code, 'login');
+            
+            // 2. Send Email (if available)
+            if ($customer && $customer->email && filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
+                 $notificationService->sendEmailOTP($customer->email, $code, 'login');
+                 \Log::info("Dual OTP Dispatch: Email sent to {$customer->email}");
+            }
         } catch (\Exception $e) {
-            \Log::error("Failed to send login SMS to {$request->phone}: " . $e->getMessage());
+            \Log::error("Failed to send login OTP to {$request->phone}: " . $e->getMessage());
         }
 
         return response()->json(['message' => 'OTP sent successfully']);

@@ -334,7 +334,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/analytics', [\App\Http\Controllers\Admin\RevenueController::class, 'analytics']);
     });
 
-    Route::put('/admin/properties/{id}/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approve']);
+    Route::post('/admin/properties/{id}/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approve']);
     Route::put('/admin/properties/{id}/pricing', [\App\Http\Controllers\AdminPropertyController::class, 'updatePricing']);
     Route::get('/admin/properties/{id}', [\App\Http\Controllers\AdminPropertyController::class, 'show']);
     Route::post('/admin/properties/{id}/photos', [\App\Http\Controllers\AdminPropertyController::class, 'addPhotos']);

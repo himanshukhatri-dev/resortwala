@@ -146,7 +146,7 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
         <div
             ref={searchRef}
             className={`transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${activeTab ? 'z-[1001]' : 'z-[50]'} ${isSticky
-                ? 'w-full max-w-2xl mx-auto'
+                ? 'w-full max-w-2xl mx-auto relative'
                 : 'w-full max-w-4xl mx-auto relative'}`}
         >
             {/* CATEGORIES ROW - Display differs based on stickiness */}
@@ -209,6 +209,51 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                         style={{ colorScheme: 'light' }}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()}
                     />
+
+                    {/* EXPANDED DROPDOWNS: LOCATION */}
+                    <AnimatePresence>
+                        {activeTab === 'location' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                transition={{ duration: 0.2 }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute top-full left-0 mt-3 w-full md:w-[350px] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[1002]"
+                            >
+                                <div className="p-2 md:p-0 max-h-[300px] overflow-y-auto">
+                                    <h3 className="hidden md:block px-4 pt-3 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                        {suggestions.length > 0 ? 'Destinations' : 'Popular'}
+                                    </h3>
+                                    <div className="grid grid-cols-1 gap-1 p-2">
+                                        {suggestions.length > 0 ? (
+                                            suggestions.map(s => (
+                                                <div
+                                                    key={s.id}
+                                                    onClick={() => {
+                                                        setLocation(s.label);
+                                                        if (onSearch) onSearch({ ...getFilters(s.label), }, false);
+                                                        setActiveTab('dates');
+                                                    }}
+                                                    className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition group"
+                                                >
+                                                    <div className="bg-gray-100 group-hover:bg-white border border-transparent group-hover:border-gray-200 p-1.5 rounded-md transition text-gray-500 text-xs"><FaMapMarkerAlt /></div>
+                                                    <div>
+                                                        <div className="text-gray-900 font-bold text-sm">{s.label}</div>
+                                                        <div className="text-[10px] text-gray-400">{s.subLabel}</div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="p-2 text-center text-gray-400 text-[10px] bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                                Start typing...
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 {/* DIVIDER */}
@@ -230,6 +275,52 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                             <>{format(dateRange.from, 'MMM d')}{dateRange.to ? ` - ${format(dateRange.to, 'MMM d')}` : ''}</>
                         ) : 'Any Week'}
                     </div>
+
+                    {/* EXPANDED DROPDOWNS: DATES */}
+                    <AnimatePresence>
+                        {activeTab === 'dates' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                transition={{ duration: 0.2 }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute top-full left-0 md:left-1/2 md:-translate-x-1/2 mt-3 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[1002] p-4 min-w-[300px] md:min-w-fit"
+                            >
+                                <DayPicker
+                                    mode="range"
+                                    selected={dateRange}
+                                    onDayClick={(day) => handleDateSelect(day)}
+                                    disabled={dateRange.from && !dateRange.to ? [{ before: dateRange.from }] : [{ before: new Date() }]}
+                                    numberOfMonths={window.innerWidth < 768 ? 1 : 2}
+                                    pagedNavigation={window.innerWidth >= 768}
+                                    classNames={{
+                                        day_button: "h-12 w-12 md:h-10 md:w-10 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
+                                        selected: "!bg-black !text-white hover:!bg-black hover:!text-white",
+                                        day_selected: "!bg-black !text-white",
+                                        head_cell: "text-gray-400 font-bold uppercase text-xs py-2",
+                                        caption_label: "text-lg md:text-base font-bold text-gray-900 pb-2"
+                                    }}
+                                    components={{
+                                        DayButton: (props) => {
+                                            const { day, children, className, ...buttonProps } = props;
+                                            const date = day?.date;
+                                            if (!date) return <button className={className} {...buttonProps}>{children}</button>;
+
+                                            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                                            return (
+                                                <button className={`${className} flex flex-col items-center justify-center h-full w-full`} {...buttonProps}>
+                                                    <span className={`text-sm md:text-xs font-medium ${isWeekend ? 'text-red-500 font-bold' : 'text-gray-900'}`}>
+                                                        {children}
+                                                    </span>
+                                                </button>
+                                            );
+                                        }
+                                    }}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 {/* DIVIDER */}
@@ -251,6 +342,48 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                             {totalGuests > 0 ? `${totalGuests} Guests` : 'Add guests'}
                         </div>
                     </div>
+
+                    {/* EXPANDED DROPDOWNS: GUESTS */}
+                    <AnimatePresence>
+                        {activeTab === 'guests' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                transition={{ duration: 0.2 }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute top-full right-0 mt-3 w-full md:w-[300px] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[1002] p-4"
+                            >
+                                <div className="space-y-2">
+                                    {['adults', 'children', 'rooms'].map((type) => (
+                                        <div key={type} className="flex justify-between items-center pb-2 border-b border-gray-50 last:border-0 last:pb-0">
+                                            <div>
+                                                <div className="capitalize font-bold text-gray-800 text-sm">{type}</div>
+                                                <div className="text-[10px] text-gray-400">{type === 'adults' ? 'Age 13+' : type === 'children' ? 'Age 2-12' : 'Count'}</div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => updateGuest(type, -1)}
+                                                    disabled={guests[type] <= 0}
+                                                    className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition disabled:opacity-30"
+                                                >
+                                                    <FaMinus size={8} />
+                                                </button>
+                                                <span className="w-4 text-center font-bold text-sm">{guests[type]}</span>
+                                                <button
+                                                    onClick={() => updateGuest(type, 1)}
+                                                    className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition"
+                                                >
+                                                    <FaPlus size={8} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* Mobile-only done/close button could go here, but clicking outside works on desktop */}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* SEARCH BUTTON (Desktop) */}
                     {!isSticky && (
@@ -286,152 +419,10 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                 </div>
             )}
 
-            {/* EXPANDED DROPDOWNS */}
-            <AnimatePresence>
-                {activeTab && (
-                    <>
-                        {/* Dropdown Card / Mobile Modal */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                            transition={{ duration: 0.2 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className={`
-                                z-[999] bg-white border-gray-100 overflow-hidden
-                                fixed inset-0 top-0 left-0 right-0 bottom-0 h-full w-full flex flex-col  /* Mobile: Full Screen Fixed */
-                                md:absolute md:inset-auto md:h-auto md:w-auto md:flex-col md:rounded-2xl md:shadow-2xl md:p-3 md:border md:max-h-[60vh] md:overflow-y-auto /* Desktop: Dropdown - P-3 is safer */
-                                ${isSticky
-                                    ? 'md:top-full md:mt-2 md:w-[120%] md:-ml-[10%] md:origin-top'
-                                    : 'md:top-full md:mt-3 md:w-full md:origin-top'}`
-                            }
-                        >
-                            {/* MOBILE HEADER */}
-                            <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 bg-white sticky top-0 z-10">
-                                <h3 className="text-lg font-bold text-gray-900">
-                                    {activeTab === 'location' ? 'Where to?' : activeTab === 'dates' ? 'Select Dates' : 'Who is coming?'}
-                                </h3>
-                                <button onClick={() => setActiveTab(null)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
-                                    <FaMinus className="transform rotate-45 text-gray-500" />
-                                </button>
-                            </div>
 
-                            {/* CONTENT SCROLLABLE AREA */}
-                            <div className="flex-1 overflow-y-auto p-4 md:p-0 md:max-h-[380px]"> {/* Reduced Max Height */}
-                                {activeTab === 'location' && (
-                                    <div>
-                                        <h3 className="hidden md:block text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wider">
-                                            {suggestions.length > 0 ? 'Destinations' : 'Popular'}
-                                        </h3>
-                                        <div className="grid grid-cols-1 gap-1">
-                                            {suggestions.length > 0 ? (
-                                                suggestions.map(s => (
-                                                    <div
-                                                        key={s.id}
-                                                        onClick={() => {
-                                                            setLocation(s.label);
-                                                            if (onSearch) onSearch({ ...getFilters(s.label), }, false);
-                                                            setActiveTab('dates');
-                                                        }}
-                                                        className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition group"
-                                                    >
-                                                        <div className="bg-gray-100 group-hover:bg-white border border-transparent group-hover:border-gray-200 p-1.5 rounded-md transition text-gray-500 text-xs"><FaMapMarkerAlt /></div>
-                                                        <div>
-                                                            <div className="text-gray-900 font-bold text-sm">{s.label}</div>
-                                                            <div className="text-[10px] text-gray-400">{s.subLabel}</div>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="p-2 text-center text-gray-400 text-[10px] bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                                                    Start typing...
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
 
-                                {activeTab === 'dates' && (
-                                    <div className="flex justify-center h-full items-start md:items-center">
-                                        <style>{`
-                                            .rdp { --rdp-cell-size: 30px; --rdp-accent-color: #000; --rdp-background-color: #f3f4f6; margin: 0; width: 100%; padding: 10px; }
-                                            .rdp-months { justify-content: center; gap: 1rem; }
-                                            .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f3f4f6; }
-                                            .rdp-day_selected { background-color: #000 !important; color: white !important; font-weight: bold; }
-                                            .rdp-caption_label { font-size: 1rem; font-weight: 800; color: #000; margin-bottom: 0.8rem; text-align: center; }
-                                            .rdp-head_cell { font-size: 0.8rem; color: #111; font-weight: 700; text-transform: uppercase; }
-                                            .rdp-nav_button { width: 32px; height: 32px; } /* Larger nav buttons */
-                                            @media (max-width: 768px) {
-                                                .rdp-month { width: 100%; }
-                                                .rdp-table { width: 100%; max-width: 100%; margin: 0 auto; }
-                                                .rdp-cell { height: 48px; width: 14%; max-width: 48px; } /* Min 44px tap target */
-                                                .rdp-day { width: 100%; height: 100%; font-size: 1rem; }
-                                            }
-                                        `}</style>
-                                        <DayPicker
-                                            mode="range"
-                                            selected={dateRange}
-                                            onDayClick={(day) => handleDateSelect(day)}
-                                            disabled={dateRange.from && !dateRange.to ? [{ before: dateRange.from }] : [{ before: new Date() }]}
-                                            numberOfMonths={window.innerWidth < 768 ? 1 : 2}
-                                            pagedNavigation={window.innerWidth >= 768}
-                                        />
-                                    </div>
-                                )}
 
-                                {activeTab === 'guests' && (
-                                    <div className="space-y-2 pt-2 md:pt-0 pl-1 pr-1">
-                                        {['adults', 'children', 'rooms'].map((type) => (
-                                            <div key={type} className="flex justify-between items-center pb-2 border-b border-gray-50 last:border-0 last:pb-0">
-                                                <div>
-                                                    <div className="capitalize font-bold text-gray-800 text-sm">{type}</div>
-                                                    <div className="text-[10px] text-gray-400">{type === 'adults' ? 'Age 13+' : type === 'children' ? 'Age 2-12' : 'Count'}</div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => updateGuest(type, -1)}
-                                                        disabled={guests[type] <= 0}
-                                                        className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition disabled:opacity-30"
-                                                    >
-                                                        <FaMinus size={8} />
-                                                    </button>
-                                                    <span className="w-4 text-center font-bold text-sm">{guests[type]}</span>
-                                                    <button
-                                                        onClick={() => updateGuest(type, 1)}
-                                                        className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:border-black hover:bg-gray-50 transition"
-                                                    >
-                                                        <FaPlus size={8} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
 
-                            {/* MOBILE ACTION FOOTER */}
-                            <div className="md:hidden p-4 border-t border-gray-100 bg-white sticky bottom-0 z-10 flex justify-between items-center bg-white/95 backdrop-blur-sm">
-                                <button
-                                    onClick={() => {
-                                        setLocation('');
-                                        setSuggestions([]);
-                                        setDateRange({ from: undefined, to: undefined });
-                                        setGuests({ adults: 1, children: 0, rooms: 1 });
-                                        if (onSearch) onSearch({ location: '', dateRange: { from: undefined, to: undefined }, guests: { adults: 1, children: 0, rooms: 1 } }, false);
-                                    }}
-                                    className="text-sm font-semibold text-gray-500 underline"
-                                >
-                                    Clear all
-                                </button>
-                                <button onClick={handleSearchClick} className="bg-black text-white px-8 py-3 rounded-xl font-bold text-base shadow-lg active:scale-95 transition-transform flex items-center gap-2">
-                                    <FaSearch size={12} /> Search
-                                </button>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
-
-        </div >
+        </div>
     );
 }

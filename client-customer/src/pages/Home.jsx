@@ -142,7 +142,9 @@ export default function Home() {
                 p.get('type') !== (prev.type || 'all') ||
                 p.get('min_price') !== (prev.minPrice || '') ||
                 p.get('max_price') !== (prev.maxPrice || '') ||
-                p.get('guests') !== (prev.guests?.toString() || '1') ||
+                (p.get('adults') || '1') !== (prev.guests?.adults?.toString() || '1') ||
+                (p.get('children') || '0') !== (prev.guests?.children?.toString() || '0') ||
+                (p.get('rooms') || '1') !== (prev.guests?.rooms?.toString() || '1') ||
                 p.get('veg_only') !== (prev.veg_only?.toString() || 'false') ||
                 p.get('sort') !== (prev.sort || 'newest') ||
                 p.get('page') !== (prev.page?.toString() || '1');
@@ -345,11 +347,16 @@ export default function Home() {
         filters.type,
         filters.minPrice,
         filters.maxPrice,
-        filters.guests,
+        filters.guests?.adults,
+        filters.guests?.children,
+        filters.guests?.rooms,
         filters.veg_only,
         filters.sort,
-        filters.amenities,
-        filters.distance // Trigger fetch on distance change now!
+        filters.amenities?.length, // Use length and join for array comparison
+        filters.amenities?.sort().join(','),
+        filters.distance?.center?.lat, // Use specific fields for deep comparison
+        filters.distance?.center?.lon,
+        filters.distance?.maxKm
     ]);
 
     // Client-Side Filtering for Price Safety (Backstop for API)
@@ -651,33 +658,7 @@ export default function Home() {
                     onClose={closeCompareModal}
                 />
 
-                {/* Floating Compare Bar */}
-                <AnimatePresence>
-                    {compareList.length > 0 && (
-                        <motion.div
-                            initial={{ y: 100, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 100, opacity: 0 }}
-                            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-4 cursor-pointer hover:scale-105 transition-transform"
-                            onClick={openCompareModal}
-                        >
-                            <div className="flex -space-x-2">
-                                {compareList.map((p, i) => (
-                                    <div key={p.id} className="w-8 h-8 rounded-full border-2 border-black overflow-hidden bg-gray-800">
-                                        <img src={p.primary_image?.image_url || p.images?.[0]?.image_url || p.image_url} alt="" className="w-full h-full object-cover" />
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="font-bold text-sm">Compare {compareList.length} Property</span>
-                                <span className="text-[10px] text-gray-400">Click to view comparison</span>
-                            </div>
-                            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-black">
-                                <FaExchangeAlt />
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* Floating Compare Bar Removed (Handled globally in App.jsx via CompareFloatingBar) */}
 
             </div>
         </div >
