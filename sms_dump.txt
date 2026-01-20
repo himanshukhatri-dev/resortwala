@@ -1,0 +1,4 @@
+sms_auth_otp	Dear User, {{otp}} is your OTP for login at ResortWala. Valid for 10 mins. Do not share. - ResortWala
+sms_booking_confirmed	Booking Confirmed! Id: {{id}} for {{property_name}}. Check-in: {{CheckInDate}}. Thanks for choosing ResortWala.
+sms_vendor_new_booking	New Booking Alert! Property: {{property_name}}, Date: {{CheckInDate}}. Check app for details. - ResortWala
+sms_admin_login_alert	Security Alert: New login to your ResortWala Admin account from {{ip}} at {{time}}. - ResortWala
