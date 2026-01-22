@@ -1,12 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import OTPInput from '../components/OTPInput';
 import { FaEnvelope, FaMobileAlt, FaArrowLeft, FaCheck } from 'react-icons/fa';
-import { auth, setupRecaptcha } from '../firebase';
-import { signInWithPhoneNumber } from 'firebase/auth';
 
 export default function Register() {
     const navigate = useNavigate();
@@ -25,9 +23,6 @@ export default function Register() {
     const [loading, setLoading] = useState(false);
     const [timer, setTimer] = useState(0);
 
-    // Firebase state
-    const [confirmationResult, setConfirmationResult] = useState(null);
-
     const handleSendOTP = async (e) => {
         e.preventDefault();
         setError('');
@@ -45,36 +40,12 @@ export default function Register() {
 
         setLoading(true);
         try {
-            // Determine method: prefer Phone if available for Firebase SMS, else Email
+            // Updated to use Backend OTP only (Email/SMS via Provider)
+            setMethod(formData.email ? 'email' : 'mobile');
 
-            if (formData.phone) {
-                // Firebase Phone Auth Flow
-                try {
-                    const appVerifier = setupRecaptcha('sign-in-button');
-                    if (!appVerifier) throw new Error("Firebase not initialized");
-
-                    const formattedPhone = formData.phone.startsWith('+') ? formData.phone : `+91${formData.phone.replace(/^0+/, '')}`; // Default to +91 if missing
-
-                    const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
-                    setConfirmationResult(confirmation);
-                    setMethod('mobile');
-                    // Also trigger backend to store registration data AND send valid Email OTP
-                    await axios.post(`${API_BASE_URL}/vendor/register-send-otp`, {
-                        ...formData
-                        // skip_otp removed: We want backend to generate Email OTP as backup
-                    });
-
-                } catch (firebaseError) {
-                    console.error("Firebase Error:", firebaseError);
-                    throw new Error(`SMS Failed: ${firebaseError.message}`);
-                }
-            } else {
-                // Email Flow (Backend)
-                setMethod('email');
-                await axios.post(`${API_BASE_URL}/vendor/register-send-otp`, {
-                    ...formData
-                });
-            }
+            await axios.post(`${API_BASE_URL}/vendor/register-send-otp`, {
+                ...formData
+            });
 
             setStep('otp');
             setTimer(300); // 5 minutes
@@ -97,26 +68,10 @@ export default function Register() {
         setLoading(true);
 
         try {
-            let firebaseToken = null;
-
-            if (method === 'mobile' && confirmationResult) {
-                // Verify with Firebase
-                try {
-                    const result = await confirmationResult.confirm(otpValue);
-                    const user = result.user;
-                    firebaseToken = await user.getIdToken();
-                } catch (fbErr) {
-                    console.warn("Firebase verification failed, falling back to Backend OTP...", fbErr);
-                    // Do NOT throw. firebaseToken remains null.
-                    // We will try to verify the code against the backend (Email OTP)
-                }
-            }
-
             // Verify with Backend
             const response = await axios.post(`${API_BASE_URL}/vendor/register-verify-otp`, {
                 ...formData,
-                otp: otpValue, // Send OTP for email verification (or ignored if firebase_token present)
-                firebase_token: firebaseToken
+                otp: otpValue
             });
 
             login(response.data.token, response.data.user);
@@ -124,7 +79,6 @@ export default function Register() {
             setTimeout(() => navigate('/dashboard'), 2000);
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Invalid OTP. Please try again.');
-            // Only clear OTP on error if desired, but user might want to edit it
             setLoading(false);
         }
     };
@@ -133,17 +87,11 @@ export default function Register() {
         setError('');
         setLoading(true);
         try {
-            if (method === 'mobile') {
-                // Resend Firebase SMS not easily supported for same instance without re-captcha
-                // For simplicity, just error or try original flow
-                setError("Please refresh to resend SMS (Firebase limitation)");
-            } else {
-                await axios.post(`${API_BASE_URL}/vendor/register-send-otp`, {
-                    ...formData
-                });
-                setTimer(300);
-                startTimer();
-            }
+            await axios.post(`${API_BASE_URL}/vendor/register-send-otp`, {
+                ...formData
+            });
+            setTimer(300);
+            startTimer();
         } catch (err) {
             setError('Failed to resend OTP. Please try again.');
         } finally {

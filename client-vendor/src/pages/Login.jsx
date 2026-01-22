@@ -1,12 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import OTPInput from '../components/OTPInput';
 import { FaArrowLeft } from 'react-icons/fa';
-import { auth } from '../firebase';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -18,51 +16,14 @@ export default function Login() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [timer, setTimer] = useState(0);
-    const [confirmationResult, setConfirmationResult] = useState(null); // Firebase result
 
     // Demo bypass for vendor@resortwala
     const isDemoAccount = identifier.toLowerCase() === 'vendor@resortwala' || identifier === 'vendor@resortwala.com';
-
-    // Initialize Recaptcha
-    useEffect(() => {
-        // Clear any existing verifier to avoid stale DOM references
-        if (window.recaptchaVerifier) {
-            try {
-                window.recaptchaVerifier.clear();
-            } catch (e) {
-                // Ignore error if clearing fails
-            }
-            window.recaptchaVerifier = null;
-        }
-
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            'size': 'invisible',
-            'callback': (response) => {
-                // reCAPTCHA solved
-            },
-            'expired-callback': () => {
-                // Response expired
-            }
-        });
-
-        // Cleanup on unmount
-        return () => {
-            if (window.recaptchaVerifier) {
-                try {
-                    window.recaptchaVerifier.clear();
-                } catch (e) { }
-                window.recaptchaVerifier = null;
-            }
-        };
-    }, []);
 
     const handleSendOTP = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
-
-        // Debug Log
-        // console.log("Firebase Config Check:", auth ? "Auth Initialized" : "Auth Missing");
 
         // Demo bypass
         if (isDemoAccount) {
@@ -79,25 +40,8 @@ export default function Login() {
             return;
         }
 
-        const isMobile = /^\+?[0-9]{10,15}$/.test(identifier);
-
         try {
-            // 1. Send Firebase SMS if mobile
-            if (isMobile) {
-                const phoneNumber = identifier.startsWith('+') ? identifier : `+91${identifier}`; // Assume +91 if missing
-                const appVerifier = window.recaptchaVerifier;
-                try {
-                    const confirmation = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-                    setConfirmationResult(confirmation);
-                } catch (firebaseError) {
-                    console.error("Firebase SMS Failed:", firebaseError);
-                    // Show error to user so they know SMS failed, but continue to Email OTP
-                    setError(`SMS Failed: ${firebaseError.message}. Sending Email OTP instead.`);
-                    // Small delay to let user see the error before screen potentially changes (though step change will clear it usually, we'll see)
-                }
-            }
-
-            // 2. Trigger Backend OTP (Send Email Always, and Backend SMS as backup)
+            // Trigger Backend OTP
             await axios.post(`${API_BASE_URL}/vendor/send-otp`, {
                 identifier: identifier
             });
@@ -109,7 +53,6 @@ export default function Login() {
             console.error(err);
             if (err.code === 'ECONNABORTED' || err.response?.status === 504 || err.message.includes('timeout')) {
                 setError('Request timed out. Please check your email/mobile for the OTP before retrying.');
-                // Optional: setStep('otp') if we are confident? No, safer to ask user or let them retry.
             } else {
                 setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
             }
@@ -127,26 +70,11 @@ export default function Login() {
         setError('');
         setLoading(true);
 
-        let firebaseToken = null;
-
-        // 1. Verify with Firebase if we have a confirmation result
-        // ... (rest is same, just ensure we use codeToVerify) ...
-        if (confirmationResult) {
-            try {
-                const result = await confirmationResult.confirm(codeToVerify);
-                const user = result.user;
-                firebaseToken = await user.getIdToken();
-            } catch (fbErr) {
-                console.warn("Firebase verification failed, falling back to Backend OTP...", fbErr);
-            }
-        }
-
-        // 2. Verify with Backend
+        // Verify with Backend
         try {
             const response = await axios.post(`${API_BASE_URL}/vendor/verify-otp`, {
                 identifier: identifier,
-                otp: codeToVerify,
-                firebase_token: firebaseToken
+                otp: codeToVerify
             });
             login(response.data.token, response.data.user);
             setTimeout(() => navigate('/dashboard'), 100);

@@ -18,7 +18,13 @@ class AuditLogger
 
         // Only log logged-in user actions
         if ($user = $request->user()) {
-            
+
+            // Fix: Check if user is actually a backend User (Admin/Vendor)
+            // Customers (App\Models\Customer) should not be logged in 'audit_logs' which has FK to 'users' table
+            if (!($user instanceof \App\Models\User)) {
+                return $response;
+            }
+
             // Determine module from route path segment
             // e.g., api/admin/properties -> module: properties
             $path = $request->path();
@@ -27,12 +33,12 @@ class AuditLogger
 
             $payload = null;
             if ($request->isMethod('post') || $request->isMethod('put')) {
-               $payload = json_encode($request->except(['password', 'password_confirmation']));
+                $payload = json_encode($request->except(['password', 'password_confirmation']));
             }
 
             // Async insert to avoid performance hit? 
             // For now, direct DB insert is fine for Admin actions volume.
-            
+
             DB::table('audit_logs')->insert([
                 'user_id' => $user->id,
                 'action' => $actionType . ':' . $request->method(),

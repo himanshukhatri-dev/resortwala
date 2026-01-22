@@ -139,6 +139,7 @@ export default function Home() {
         };
 
         if (JSON.stringify(filters) !== JSON.stringify(nextFilters)) {
+            // console.log("Updating filters from URL", nextFilters);
             setFilters(nextFilters);
         }
     }, [searchParams]);
@@ -172,6 +173,8 @@ export default function Home() {
     }, [filters, contextLocation, activeCategory, contextDateRange, contextGuests, setContextLocation, setContextCategory, setContextDateRange, setContextGuests]);
 
     // 3. Sync Filters -> URL (Debounced update to URL when state changes)
+    const lastUrlRef = useRef(searchParams.toString());
+
     useEffect(() => {
         if (isInitialMount.current) {
             isInitialMount.current = false;
@@ -205,10 +208,17 @@ export default function Home() {
             // Stable comparison
             const nextParams = new URLSearchParams(params);
             nextParams.sort();
+            const nextParamString = nextParams.toString();
+
             const currentParams = new URLSearchParams(window.location.search);
             currentParams.sort();
+            const currentParamString = currentParams.toString();
 
-            if (nextParams.toString() !== currentParams.toString()) {
+            // Only update if the TARGET URL is different from CURRENT URL
+            // AND if we haven't already just set it to this value (lastUrlRef)
+            if (nextParamString !== currentParamString && nextParamString !== lastUrlRef.current) {
+                // console.log("Updating URL from filters", nextParamString);
+                lastUrlRef.current = nextParamString;
                 isInternalUrlUpdate.current = true;
                 setSearchParams(params, { replace: true });
             }
@@ -219,7 +229,11 @@ export default function Home() {
     // 4. Handle External Context Changes (SearchBar tab click)
     useEffect(() => {
         if (activeCategory && activeCategory !== filters.type) {
-            setFilters(prev => ({ ...prev, type: activeCategory, page: 1 }));
+            setFilters(prev => {
+                // Double check to prevent loops
+                if (prev.type === activeCategory) return prev;
+                return { ...prev, type: activeCategory, page: 1 };
+            });
         }
     }, [activeCategory]);
 
@@ -584,22 +598,16 @@ export default function Home() {
                                     }
                                 </h2>
                                 <p className="text-gray-500 mt-1 text-sm font-medium">{loading ? "Searching..." : `${filteredProperties.length} properties`}</p>
-                                {/* DEBUG INFO (Hidden in Prod) */}
-                                {false && (
-                                    <div className="hidden">
-                                        {console.log("DEBUG HOME:", { props: properties.length, filt: filteredProperties.length, filters })}
-                                    </div>
-                                )}
                             </div>
 
-                            {loading ? (
+                            {loading && properties.length === 0 ? (
                                 <div className="grid grid-cols-1 gap-6">
                                     {[1, 2, 3, 4, 5].map((i) => (
                                         <PropertyCardSkeleton key={i} />
                                     ))}
                                 </div>
                             ) : (
-                                <>
+                                <div className={`transition-opacity duration-200 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                                     {filteredProperties.length > 0 ? (
                                         <>
                                             <AnimatePresence mode='popLayout'>
@@ -654,7 +662,7 @@ export default function Home() {
                                             </button>
                                         </div>
                                     )}
-                                </>
+                                </div>
                             )}
                         </div>
                     </div>

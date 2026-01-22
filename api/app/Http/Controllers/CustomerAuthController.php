@@ -15,7 +15,8 @@ class CustomerAuthController extends Controller
 
         // Check if user already exists
         $digits = preg_replace('/\D/', '', $request->phone);
-        if (strlen($digits) === 12 && substr($digits, 0, 2) === '91') $digits = substr($digits, 2);
+        if (strlen($digits) === 12 && substr($digits, 0, 2) === '91')
+            $digits = substr($digits, 2);
 
         $exists = Customer::where('phone', $digits)
             ->orWhere('phone', '+91' . $digits)
@@ -24,7 +25,7 @@ class CustomerAuthController extends Controller
             ->exists();
 
         if ($exists) {
-             return response()->json(['message' => 'Account already exists. Please login.', 'exists' => true], 422);
+            return response()->json(['message' => 'Account already exists. Please login.', 'exists' => true], 422);
         }
 
         $otpService = app(\App\Services\OtpService::class);
@@ -34,7 +35,7 @@ class CustomerAuthController extends Controller
             $notificationService = app(\App\Services\NotificationService::class);
             $notificationService->sendSMSOTP($request->phone, $code, 'signup');
         } catch (\Exception $e) {
-             \Log::error("Failed to send signup SMS to {$request->phone}");
+            \Log::error("Failed to send signup SMS to {$request->phone}");
         }
 
         return response()->json(['message' => 'OTP sent for verification.']);
@@ -47,11 +48,12 @@ class CustomerAuthController extends Controller
             'email' => 'nullable|string|email|max:255|unique:customers',
             'phone' => 'required|string|max:20|unique:customers',
             'otp' => 'required|string', // OTP is now REQUIRED
-            'password' => 'nullable|string|min:6', 
+            'password' => 'nullable|string|min:6',
         ]);
 
         $digits = preg_replace('/\D/', '', $request->phone);
-        if (strlen($digits) === 12 && substr($digits, 0, 2) === '91') $digits = substr($digits, 2);
+        if (strlen($digits) === 12 && substr($digits, 0, 2) === '91')
+            $digits = substr($digits, 2);
 
         \Log::info("Registering: Phone={$digits}, OTP={$request->otp}");
 
@@ -82,7 +84,7 @@ class CustomerAuthController extends Controller
         return response()->json([
             'customer' => $customer,
             'token' => $token,
-            'needs_verification' => [ 'email' => false, 'phone' => false ]
+            'needs_verification' => ['email' => false, 'phone' => false]
         ], 201);
     }
 
@@ -154,7 +156,7 @@ class CustomerAuthController extends Controller
         }
 
         $otpService = app(\App\Services\OtpService::class);
-        
+
         // Check if customer exists
         $customer = Customer::where('phone', $digits)
             ->orWhere('phone', '+91' . $digits)
@@ -172,18 +174,18 @@ class CustomerAuthController extends Controller
         try {
             // Use Modern Notification Engine (Correct DLT Template)
             $notificationEngine = app(\App\Services\NotificationEngine::class);
-            
+
             \Log::info("CustomerAuthController: Dispatching OTP SMS to {$digits} using NotificationEngine");
 
             // 1. Send SMS (otp.sms event)
             $result = $notificationEngine->dispatch('otp.sms', ['mobile' => $digits], ['otp' => $code]);
-            
+
             \Log::info("CustomerAuthController: SMS Dispatch Result: " . ($result ? 'Success' : 'Failed'));
-            
+
             // 2. Send Email (otp.email event)
             if ($customer && $customer->email && filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
-                 $notificationEngine->dispatch('otp.email', ['email' => $customer->email], ['otp' => $code, 'name' => $customer->name ?? 'User']);
-                 \Log::info("Dual OTP Dispatch: Email sent to {$customer->email}");
+                $notificationEngine->dispatch('otp.email', ['email' => $customer->email], ['otp' => $code, 'name' => $customer->name ?? 'User']);
+                \Log::info("Dual OTP Dispatch: Email sent to {$customer->email}");
             }
         } catch (\Exception $e) {
             \Log::error("Failed to send login OTP to {$request->phone}: " . $e->getMessage());
@@ -202,13 +204,13 @@ class CustomerAuthController extends Controller
         if (strlen($digits) === 12 && substr($digits, 0, 2) === '91') {
             $digits = substr($digits, 2);
         }
-        
+
         // Verify OTP
         \Log::info("Login OTP Attempt: Phone={$digits}, OTP={$request->otp}, Type=login");
         $otpService = app(\App\Services\OtpService::class);
         if (!$otpService->verify($digits, $request->otp, 'login')) {
-             \Log::warning("Login OTP Failed for {$digits}");
-             return response()->json(['message' => 'Invalid OTP'], 400);
+            \Log::warning("Login OTP Failed for {$digits}");
+            return response()->json(['message' => 'Invalid OTP'], 400);
         }
 
         // Find customer matching various formats
@@ -233,7 +235,21 @@ class CustomerAuthController extends Controller
 
     public function profile(Request $request)
     {
-        return response()->json($request->user());
+        try {
+            \Log::info("Entering Customer Profile Controller for User ID: " . ($request->user() ? $request->user()->id : 'null'));
+
+            $user = $request->user();
+            if (!$user) {
+                \Log::error("Profile: User is null despite auth middleware.");
+                return response()->json(['message' => 'User context not found'], 500);
+            }
+
+            return response()->json($user);
+        } catch (\Throwable $e) {
+            \Log::error("Profile Controller Error: " . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            return response()->json(['message' => 'Internal Error', 'debug' => $e->getMessage()], 500);
+        }
     }
 
     public function logout(Request $request)

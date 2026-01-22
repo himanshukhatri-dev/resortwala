@@ -1634,7 +1634,7 @@ export default function AddProperty() {
     };
 
     const renderNavigation = (isTop = false) => (
-        <div className={`flex justify-between items-center ${isTop ? 'mb-4 border-b pb-4 border-gray-100' : 'fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 p-3 md:p-4 z-50 md:static md:bg-transparent md:border-0 md:p-0 pb-[env(safe-area-inset-bottom)]'}`}>
+        <div className={`flex justify-between items-center ${isTop ? 'mb-4 border-b pb-4 border-gray-100 sticky top-0 bg-white/95 backdrop-blur-sm z-40 pt-2' : 'hidden md:flex md:justify-between md:items-center'}`}>
             <button
                 onClick={() => {
                     setCurrentStep(prev => prev - 1);
@@ -1681,7 +1681,7 @@ export default function AddProperty() {
 
             {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 font-medium text-center text-sm">{error}</div>}
 
-            <div className="hidden md:block mb-4">
+            <div className="mb-4">
                 {renderNavigation(true)}
             </div>
 
