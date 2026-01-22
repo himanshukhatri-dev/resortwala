@@ -6,7 +6,7 @@ const getApiBaseUrl = () => {
 
     // 2. Production / Staging Environment Check
     if (import.meta.env.PROD) {
-        return '/api';
+        return 'https://api.resortwala.com/api';
     }
 
     // 3. Fallback for local development

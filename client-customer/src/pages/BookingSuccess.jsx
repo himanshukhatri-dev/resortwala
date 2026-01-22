@@ -1,22 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaHome, FaFileInvoice } from 'react-icons/fa';
-import { motion } from 'framer-motion';
 
 export default function BookingSuccess() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const bookingId = searchParams.get('id');
 
-    // Optional: confetti effect or fetch booking details
-
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-            <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center"
-            >
+            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center animate-bounce-in">
                 <div className="flex justify-center mb-6">
                     <FaCheckCircle className="text-green-500 text-6xl shadow-green-200 drop-shadow-lg" />
                 </div>
@@ -40,7 +33,7 @@ export default function BookingSuccess() {
                         <FaHome /> Back to Home
                     </button>
                 </div>
-            </motion.div>
+            </div>
         </div>
     );
 }

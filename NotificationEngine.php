@@ -117,7 +117,7 @@ class NotificationEngine
                 $dltTemplateId = $dltRegistry->template_id;
             }
 
-            $response = Http::get('http://sms.alldigitalgrowth.in/sendSMS', [
+            $response = Http::get('http://sms.alldigitalgrowth.in/v2/sendSMS', [
                 'username' => $username,
                 'message' => $content,
                 'sendername' => $senderId,
@@ -125,9 +125,9 @@ class NotificationEngine
                 'numbers' => $mobile,
                 'apikey' => $apiKey,
                 'templateid' => $dltTemplateId,
-                'dltentityid' => $dltEntityId
+                'peid' => $dltEntityId
             ]);
-
+// http://sms.alldigitalgrowth.in/v2/sendSMS?username=resortwala&message=Dear User, 378357 is your OTP for login at ResortWala. Valid for 10 mins. Do not share. - ResortWala&sendername=RESWLA&smstype=TRANS&numbers=9870646548&apikey=9cc0525b-b5a8-48e2-b3b0-d2ad57b808d5&peid=1701176830756233450&templateid=1707176886644052410
             if ($response->successful()) {
                 Log::info("NotificationEngine: SMS Sent to {$mobile}: {$content}");
                 $this->log('sms', $mobile, null, $content, $template->name, $eventName, 'sent');

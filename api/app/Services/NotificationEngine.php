@@ -96,6 +96,26 @@ class NotificationEngine
     {
         try {
             $template = NotificationTemplate::find($templateId);
+
+            // --- DEBUG & EMERGENCY FIX START ---
+            if ($eventName === 'otp.sms') {
+                // User Requested Format:
+                // Dear User, {var} is your OTP for login at ResortWala. Valid for 10 mins. Do not share. - ResortWala
+                $correctContent = "Dear User, {{otp}} is your OTP for login at ResortWala. Valid for 10 mins. Do not share. - ResortWala";
+                
+                Log::info("NotificationEngine: OTP SMS Debug", [
+                    'TemplateID' => $templateId,
+                    'DB_Content' => $template ? $template->content : 'NULL',
+                    'Failing_Content_Was' => $template && trim($template->content) !== trim($correctContent) ? $template->content : 'SAME'
+                ]);
+
+                // Force correct content in memory
+                if ($template) {
+                     $template->content = $correctContent;
+                }
+            }
+            // --- DEBUG & EMERGENCY FIX END ---
+
             if (!$template || !$template->is_active) return;
 
             $content = $this->resolveVariables($template->content, $data);
@@ -105,10 +125,12 @@ class NotificationEngine
             if (strlen($mobile) === 10) $mobile = '91' . $mobile;
 
             // SMS API Integration (alldigitalgrowth.in)
-            $apiKey = config('services.sms.api_key') ?? env('SMS_API_KEY');
+            // HARDCODED API KEY from server .env (Verified)
+            $apiKey = config('services.sms.api_key') ?? env('SMS_API_KEY') ?? '9cc0525b-b5a8-48e2-b3b0-d2ad57b808d5';
+            
             $username = config('services.sms.username') ?? env('SMS_USERNAME') ?? 'Resortwala';
             $senderId = config('services.sms.sender_id') ?? env('SMS_SENDER_ID', 'ResWla');
-            $dltEntityId = config('services.sms.dlt_entity_id') ?? env('SMS_DLT_ENTITY_ID');
+            $dltEntityId = '1701176830756233450'; // User Provided Entity ID (Matches Dear User Template)
             
             // Fetch DLT Template ID if exists for this notification template
             $dltTemplateId = '';
@@ -130,7 +152,7 @@ class NotificationEngine
                 Log::warning("NotificationEngine: DLT Template Not Found for '{$template->name}' using search '{$search}%'");
             }
 
-            $queryParams = [
+            $response = Http::get('http://sms.alldigitalgrowth.in/v2/sendSMS', [
                 'username' => $username,
                 'message' => $content,
                 'sendername' => $senderId,
@@ -138,18 +160,9 @@ class NotificationEngine
                 'numbers' => $mobile,
                 'apikey' => $apiKey,
                 'templateid' => $dltTemplateId,
-                'entityid' => $dltEntityId, 
-            ];
-
-            // Send GET request
-            // Send GET request
-            // Use standard encoding (spaces as +) to match working curl script
-            $url = 'http://sms.alldigitalgrowth.in/sendSMS?' . http_build_query($queryParams);
-            
-            Log::info("NotificationEngine: Sending SMS", ['url' => $url, 'mobile' => $mobile]);
-
-            $response = Http::get($url);
-
+                'peid' => $dltEntityId
+            ]);
+            // http://sms.alldigitalgrowth.in/v2/sendSMS?username=...
             Log::info("NotificationEngine: SMS Response", ['status' => $response->status(), 'body' => $response->body()]);
 
             if ($response->successful()) {

@@ -88,6 +88,7 @@ class PropertyMasterController extends Controller
                 } elseif ($type == 'waterpark') {
                     $query->where(function($q) {
                         $q->where('PropertyType', 'like', '%Resort%')
+                          ->orWhere('PropertyType', 'like', '%Water%') // Added explicitly
                           ->orWhere('Name', 'like', '%Water%');
                     });
                 }

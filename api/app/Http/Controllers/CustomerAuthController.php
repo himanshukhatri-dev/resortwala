@@ -162,6 +162,7 @@ class CustomerAuthController extends Controller
             ->orWhere('phone', $request->phone)
             ->first();
 
+        // Verify User Exists
         if (!$customer) {
             return response()->json(['message' => 'User not found'], 404);
         }
@@ -169,20 +170,24 @@ class CustomerAuthController extends Controller
         $code = $otpService->generate($digits, 'login');
 
         try {
-            $notificationService = app(\App\Services\NotificationService::class);
+            // Use Modern Notification Engine (Correct DLT Template)
+            $notificationEngine = app(\App\Services\NotificationEngine::class);
             
-            // 1. Send SMS
-            $notificationService->sendSMSOTP($request->phone, $code, 'login');
+            \Log::info("CustomerAuthController: Dispatching OTP SMS to {$digits} using NotificationEngine");
+
+            // 1. Send SMS (otp.sms event)
+            $result = $notificationEngine->dispatch('otp.sms', ['mobile' => $digits], ['otp' => $code]);
             
-            // 2. Send Email (if available)
+            \Log::info("CustomerAuthController: SMS Dispatch Result: " . ($result ? 'Success' : 'Failed'));
+            
+            // 2. Send Email (otp.email event)
             if ($customer && $customer->email && filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
-                 $notificationService->sendEmailOTP($customer->email, $code, 'login');
+                 $notificationEngine->dispatch('otp.email', ['email' => $customer->email], ['otp' => $code, 'name' => $customer->name ?? 'User']);
                  \Log::info("Dual OTP Dispatch: Email sent to {$customer->email}");
             }
         } catch (\Exception $e) {
             \Log::error("Failed to send login OTP to {$request->phone}: " . $e->getMessage());
         }
-
         return response()->json(['message' => 'OTP sent successfully']);
     }
 

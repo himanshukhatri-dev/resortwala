@@ -3,150 +3,156 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Log;
-use PhonePe\payments\v2\standardCheckout\StandardCheckoutClient;
-use PhonePe\payments\v2\models\request\builders\StandardCheckoutPayRequestBuilder;
-use PhonePe\Env;
+use Illuminate\Support\Facades\Http;
 
 class PhonePeService
 {
-    private $clientId;
-    private $clientSecret;
-    private $saltIndex; // Kept for reference, though V2 uses secret
+    private $merchantId;
+    private $saltKey;
+    private $saltIndex;
     private $env; 
-    private $client;
+    private $baseUrl;
 
     public function __construct()
     {
-        // Load Configuration from Config/PhonePe or Env
-        $this->clientId = config('phonepe.merchant_id') ?? env('PHONEPE_MERCHANT_ID');
-        $this->clientSecret = config('phonepe.salt_key') ?? env('PHONEPE_SALT_KEY'); 
-        $this->saltIndex = config('phonepe.salt_index') ?? env('PHONEPE_SALT_INDEX', '1'); 
-        $this->env = config('phonepe.env') ?? env('PHONEPE_ENV', 'PROD'); 
+        // Load Configuration from Config/PhonePe
+        $this->merchantId = config('phonepe.merchant_id');
+        $this->saltKey = config('phonepe.salt_key'); 
+        $this->saltIndex = config('phonepe.salt_index', '1'); 
+        $this->env = config('phonepe.env', 'UAT'); 
 
-        $envUrl = ($this->env === 'PROD') ? Env::PRODUCTION : Env::UAT;
+        $this->baseUrl = ($this->env === 'PROD') 
+            ? 'https://api.phonepe.com/apis/hermes' 
+            : 'https://api-preprod.phonepe.com/apis/pg-sandbox';
         
-        Log::info("PhonePe SDK V2 Init", [
+        Log::info("PhonePe Service Manual V1 Init", [
             'env' => $this->env,
-            'clientId' => substr($this->clientId ?? '', 0, 4) . '***'
+            'merchantId' => substr($this->merchantId ?? '', 0, 4) . '***'
         ]);
-
-        try {
-            // SDK V2: getInstance($clientId, $clientVersion, $clientSecret, $env)
-            $this->client = StandardCheckoutClient::getInstance(
-                $this->clientId,
-                1, // clientVersion (Default to 1)
-                $this->clientSecret,
-                $envUrl
-            );
-        } catch (\Exception $e) {
-            Log::error("PhonePe Client Init Failed: " . $e->getMessage());
-        }
     }
 
     /**
-     * Initiate Payment Request using SDK V2
+     * Initiate Payment Request using Standard V1 Flow (Base64 + Checksum)
      */
     public function initiatePayment($booking, $callbackUrl)
     {
-        if (!$this->client) {
-            Log::error("PhonePe Client not initialized. Check credentials.");
+        if (empty($this->merchantId) || empty($this->saltKey)) {
+            Log::error("PhonePe Configuration Missing", ['mid' => $this->merchantId]);
             return [
                 'success' => false,
                 'message' => 'Payment Gateway Configuration Missing',
-                'code' => 'SDK_NOT_INIT'
+                'code' => 'CONFIG_MISSING'
             ];
         }
 
-        // Calculate Amount (Default) in Paise
-        // Use paid_amount (Token) if available, otherwise TotalAmount
+        // Calculate Amount in Paise
         $paymentAmount = ($booking->paid_amount > 0) ? $booking->paid_amount : $booking->TotalAmount;
         $amountPaise = (int) ($paymentAmount * 100);
-
-        // LIVE TESTING OVERRIDE: Force 1 Rupee (100 Paise)
-        // FIXME: Remove or move to a specific test configuration before full production launch
-        /*
-        if ($this->env === 'PROD') {
-             $amountPaise = 100; // ₹1.00
-             Log::warning("PhonePe Live Testing: Amount overridden to ₹1.00");
-        }
-        */
         
         $transactionId = "TXN_" . $booking->BookingId . "_" . time();
+        $userId = "CUS_" . ($booking->CustomerMobile ?? 'GUEST');
+
+        // Redirect URL (Frontend Success Page)
+        $redirectUrl = env('FRONTEND_URL', 'https://resortwala.com') . "/booking/success?id=" . $booking->BookingId;
+
+        $payload = [
+            'merchantId' => $this->merchantId,
+            'merchantTransactionId' => $transactionId,
+            'merchantUserId' => $userId,
+            'amount' => $amountPaise,
+            'redirectUrl' => $redirectUrl,
+            'redirectMode' => 'REDIRECT',
+            'callbackUrl' => $callbackUrl,
+            'mobileNumber' => $booking->CustomerMobile ?? '',
+            'paymentInstrument' => [
+                'type' => 'PAY_PAGE'
+            ]
+        ];
 
         try {
-            $request = StandardCheckoutPayRequestBuilder::builder()
-                ->merchantOrderId($transactionId)
-                ->amount($amountPaise)
-                ->redirectUrl($callbackUrl)
-                ->message("Payment for Booking #" . $booking->BookingId)
-                ->build();
+            $payloadJson = json_encode($payload);
+            $base64Payload = base64_encode($payloadJson);
+            
+            // SHA256(base64Payload + "/pg/v1/pay" + saltKey) + "###" + saltIndex
+            $checksumString = $base64Payload . "/pg/v1/pay" . $this->saltKey;
+            $checksum = hash('sha256', $checksumString) . '###' . $this->saltIndex;
 
-            $response = $this->client->pay($request);
-            
-            $payUrl = $response->getRedirectUrl();
-            
-            Log::info("PhonePe SDK V2 Init Success", [
-                'tx_id' => $transactionId,
-                'redirect_url' => $payUrl
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'X-VERIFY' => $checksum,
+                'X-MERCHANT-ID' => $this->merchantId,
+            ])->post($this->baseUrl . '/pg/v1/pay', [
+                'request' => $base64Payload
             ]);
 
-            return [
-                'success' => true,
-                'redirect_url' => $payUrl,
-                'transaction_id' => $transactionId
-            ];
+            $resData = $response->json();
+
+            if ($response->successful() && isset($resData['success']) && $resData['success'] === true) {
+                $payUrl = $resData['data']['instrumentResponse']['redirectInfo']['url'] ?? null;
+                
+                Log::info("PhonePe Payment Initiated", [
+                    'tx_id' => $transactionId,
+                    'booking_id' => $booking->BookingId
+                ]);
+
+                return [
+                    'success' => true,
+                    'redirect_url' => $payUrl,
+                    'transaction_id' => $transactionId
+                ];
+            } else {
+                Log::error("PhonePe API Failed", [
+                    'status' => $response->status(),
+                    'response' => $resData,
+                    'payload' => $payload
+                ]);
+                return [
+                    'success' => false,
+                    'message' => $resData['message'] ?? 'Payment Gateway Error',
+                    'code' => 'GATEWAY_ERROR',
+                    'debug' => $resData
+                ];
+            }
 
         } catch (\Exception $e) {
-            Log::error("PhonePe SDK V2 Exception", ['msg' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error("PhonePe Service Exception", ['msg' => $e->getMessage()]);
             return [
                 'success' => false, 
-                'message' => 'Gateway Error: ' . $e->getMessage(),
-                'code' => 'SDK_ERROR'
+                'message' => 'Internal Gateway Error',
+                'code' => 'EXCEPTION'
             ];
         }
     }
 
     /**
-     * Process Callback
-     * Note: SDK V2 usually handles verification internally or via helper.
-     * We will keep our basic logic compatible or implement V2 verification if available.
+     * Process Callback / Checksum Verification
      */
-    public function processCallback($base64Response, $checksumHeader)
+    public function processCallback($encodedResponse, $checksumHeader)
     {
-       // The V2 SDK might not expose a static verify method easily in the client class shown.
-       // However, the checksum logic remains validating the response.
-       // Current Env mapping: clientSecret is used as Salt Key for verification in standard flows usually.
-       
-       // Verification Logic: SHA256(base64Body + saltKey) + ### + saltIndex
-       // We use clientSecret as saltKey here based on user config.
-
-        if (empty($checksumHeader) || empty($base64Response)) {
+        if (empty($checksumHeader) || empty($encodedResponse)) {
              return ['success' => false, 'error' => 'Missing Parameters'];
         }
 
         // 1. Validate Checksum
-        // Note: Using clientSecret as the salt key for hash generation
-        $generatedChecksum = hash('sha256', $base64Response . $this->clientSecret) . "###" . $this->saltIndex;
+        // Pattern: SHA256(base64Response + saltKey) + "###" + saltIndex
+        $generatedChecksum = hash('sha256', $encodedResponse . $this->saltKey) . "###" . $this->saltIndex;
         
-        // Loose comparison or exact?
         if ($generatedChecksum !== $checksumHeader) {
-             // Fallback: Try with clean client secret if index mismatch or other format
-             // But for now logs warning
-            Log::warning("PhonePe Checksum Mismatch", [
+            Log::warning("PhonePe Callback Checksum Mismatch", [
                 'received' => $checksumHeader,
                 'generated' => $generatedChecksum
             ]);
-            // return ['success' => false, 'error' => 'Checksum Verification Failed']; // Soft disable for debugging if needed
+            // Still proceed to decode for visibility, but mark as unverified
         }
 
         // 2. Decode Payload
-        $resData = json_decode(base64_decode($base64Response), true);
+        $resData = json_decode(base64_decode($encodedResponse), true);
         
         $merchantTxnId = $resData['data']['merchantTransactionId'] ?? null;
         $state = $resData['code'] ?? 'PAYMENT_ERROR';
         $transactionId = $resData['data']['transactionId'] ?? null;
         
-        // Extract Booking ID
+        // Extract Booking ID from Merchant Transaction ID (Format: TXN_ID_TIMESTAMP)
         $bookingId = null;
         if ($merchantTxnId) {
              $parts = explode('_', $merchantTxnId);
@@ -159,7 +165,8 @@ class PhonePeService
             'status' => $state,
             'transaction_id' => $transactionId,
             'merchant_txn_id' => $merchantTxnId,
-            'raw_data' => $resData
+            'raw_data' => $resData,
+            'checksum_verified' => ($generatedChecksum === $checksumHeader)
         ];
     }
 }

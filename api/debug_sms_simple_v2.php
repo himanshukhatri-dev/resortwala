@@ -22,10 +22,10 @@ $mobile = '919011559897';
 $username = 'Resortwala'; // Hardcoded test
 $senderId = $env['SMS_SENDER_ID'] ?? 'ResWla';
 $apiKey   = $env['SMS_API_KEY'] ?? '';
-$dltEntityId = '1001569562865275631'; 
-$templateId  = '1007469695624158431'; 
+$dltEntityId = '1701176830756233450'; 
+$templateId  = '1707176886644052410'; 
 $otp = '123456';
-$message = "Your ResortWala verification code is: {$otp}. Valid for 10 minutes.";
+$message = "Dear User, {$otp} is your OTP for login at ResortWala. Valid for 10 mins. Do not share. - ResortWala";
 
 echo "Config:\n";
 echo "  User: $username\n";

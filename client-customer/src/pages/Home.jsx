@@ -14,6 +14,7 @@ import CompareModal from '../components/features/CompareModal';
 import SEO from '../components/SEO';
 import { PropertyCardSkeleton } from '../components/ui/Skeleton';
 import { getPricing } from '../utils/pricing';
+import toast from 'react-hot-toast';
 
 const CATEGORIES = [
     { id: 'all', label: 'All', icon: <FaHome /> },
@@ -22,7 +23,7 @@ const CATEGORIES = [
 ];
 
 export default function Home() {
-    const { activeCategory, setActiveCategory } = useSearch();
+    // const { activeCategory, setActiveCategory } = useSearch(); // Removed, handled below in sync section
     const { compareList, openCompareModal, isCompareModalOpen, closeCompareModal } = useCompare();
 
     const [properties, setProperties] = useState([]);
@@ -33,6 +34,25 @@ export default function Home() {
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
     const [searchParams, setSearchParams] = useSearchParams();
+    const location = useLocation();
+    const searchResultsRef = useRef(null);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [availableLocations, setAvailableLocations] = useState([]);
+    const [showAllLocations, setShowAllLocations] = useState(false);
+
+    const HERO_IMAGES = [
+        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2070&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=2070&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1540541338287-41700207dee6?q=80&w=2070&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=2070&auto=format&fit=crop"
+    ];
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentImageIndex((prev) => (prev + 1) % HERO_IMAGES.length);
+        }, 5000);
+        return () => clearInterval(timer);
+    }, []);
 
     const [filters, setFilters] = useState(() => {
         // Initialize from URL Params for persistence
@@ -65,144 +85,140 @@ export default function Home() {
         };
     });
 
-    // Sync Filters to URL
-    useEffect(() => {
-        const params = {};
-        if (filters.location) params.location = filters.location;
-        if (filters.type && filters.type !== 'all') params.type = filters.type;
-        if (filters.minPrice) params.min_price = filters.minPrice;
-        if (filters.maxPrice) params.max_price = filters.maxPrice;
-
-        if (filters.guests?.adults > 1) params.adults = filters.guests.adults;
-        if (filters.guests?.children > 0) params.children = filters.guests.children;
-        if (filters.guests?.rooms > 1) params.rooms = filters.guests.rooms;
-
-        if (filters.veg_only) params.veg_only = 'true';
-        if (filters.sort && filters.sort !== 'newest') params.sort = filters.sort;
-        if (filters.amenities && filters.amenities.length > 0) params.amenities = filters.amenities;
-
-        if (filters.distance?.center) {
-            params.lat = filters.distance.center.lat;
-            params.lon = filters.distance.center.lon;
-            params.radius = filters.distance.maxKm;
-            if (filters.distance.center.name) params.loc_name = filters.distance.center.name;
-        }
-
-        if (filters.dateRange?.from) {
-            params.check_in = filters.dateRange.from.toISOString().split('T')[0];
-            if (filters.dateRange.to) {
-                params.check_out = filters.dateRange.to.toISOString().split('T')[0];
+    // Client-Side Filtering for Price Safety (Backstop for API)
+    const filteredProperties = useMemo(() => {
+        return properties.filter(p => {
+            // Price Filter
+            if (filters.minPrice || filters.maxPrice) {
+                const price = getPricing(p).sellingPrice || p.Price || 0;
+                if (filters.minPrice && price < parseFloat(filters.minPrice)) return false;
+                if (filters.maxPrice && price > parseFloat(filters.maxPrice)) return false;
             }
+            return true;
+        });
+    }, [properties, filters.minPrice, filters.maxPrice]);
+
+    const isInitialMount = useRef(true);
+
+    const isInternalUrlUpdate = useRef(false);
+
+    // 1. Sync URL -> Filters (Back/Forward Navigation & Initial Sync)
+    useEffect(() => {
+        if (isInternalUrlUpdate.current) {
+            isInternalUrlUpdate.current = false;
+            return;
         }
 
-        if (filters.page > 1) params.page = filters.page;
-
-        setSearchParams(params, { replace: true });
-    }, [filters, setSearchParams]);
-
-    const {
-        setLocation: setContextLocation,
-        setDateRange: setContextDateRange,
-        setGuests: setContextGuests,
-        setActiveCategory: setContextCategory
-    } = useSearch();
-
-    // Sync context with URL/State (Ensures SearchBar reflects current search)
-    useEffect(() => {
-        if (filters.location !== undefined) setContextLocation(filters.location);
-        if (filters.dateRange) setContextDateRange(filters.dateRange);
-        if (filters.type) setContextCategory(filters.type);
-        if (filters.guests) setContextGuests(filters.guests);
-    }, [filters.location, filters.dateRange, filters.type, filters.guests, setContextLocation, setContextDateRange, setContextCategory, setContextGuests]);
-
-    // Listen to URL changes for browser navigation (Back/Forward)
-    useEffect(() => {
         const p = searchParams;
         const from = p.get('check_in');
         const to = p.get('check_out');
         const amenities = p.getAll('amenities') || [];
 
-        setFilters(prev => {
-            // HELPER: Deep compare simple filter values
-            const hasDatesChanged =
-                (from !== (prev.dateRange?.from?.toISOString().split('T')[0] || null)) ||
-                (to !== (prev.dateRange?.to?.toISOString().split('T')[0] || null));
+        const nextFilters = {
+            location: p.get('location') || '',
+            type: p.get('type') || 'all',
+            minPrice: p.get('min_price') || '',
+            maxPrice: p.get('max_price') || '',
+            guests: {
+                adults: parseInt(p.get('adults')) || 1,
+                children: parseInt(p.get('children')) || 0,
+                rooms: parseInt(p.get('rooms')) || 1
+            },
+            veg_only: p.get('veg_only') === 'true',
+            amenities: amenities,
+            sort: p.get('sort') || 'newest',
+            distance: (p.get('lat') && p.get('lon')) ? {
+                center: { lat: parseFloat(p.get('lat')), lon: parseFloat(p.get('lon')), name: p.get('loc_name') || 'Selected Location' },
+                maxKm: parseInt(p.get('radius')) || 200
+            } : { center: null, maxKm: 200 },
+            page: parseInt(p.get('page')) || 1,
+            dateRange: from ? {
+                from: new Date(from),
+                to: to ? new Date(to) : undefined
+            } : { from: undefined, to: undefined }
+        };
 
-            const hasAmenitiesChanged =
-                amenities.length !== (prev.amenities?.length || 0) ||
-                amenities.some((a, i) => a !== prev.amenities[i]);
-
-            const hasDistanceChanged =
-                p.get('lat') !== (prev.distance?.center?.lat?.toString() || null) ||
-                p.get('lon') !== (prev.distance?.center?.lon?.toString() || null) ||
-                p.get('radius') !== (prev.distance?.maxKm?.toString() || null);
-
-            const hasBasicChanged =
-                p.get('location') !== (prev.location || null) && !(p.get('location') === null && prev.location === '') ||
-                p.get('type') !== (prev.type || 'all') ||
-                p.get('min_price') !== (prev.minPrice || '') ||
-                p.get('max_price') !== (prev.maxPrice || '') ||
-                (p.get('adults') || '1') !== (prev.guests?.adults?.toString() || '1') ||
-                (p.get('children') || '0') !== (prev.guests?.children?.toString() || '0') ||
-                (p.get('rooms') || '1') !== (prev.guests?.rooms?.toString() || '1') ||
-                p.get('veg_only') !== (prev.veg_only?.toString() || 'false') ||
-                p.get('sort') !== (prev.sort || 'newest') ||
-                p.get('page') !== (prev.page?.toString() || '1');
-
-            if (!hasDatesChanged && !hasAmenitiesChanged && !hasDistanceChanged && !hasBasicChanged) {
-                return prev; // No actual change, skip update
-            }
-
-            return {
-                ...prev,
-                location: p.get('location') || '',
-                type: p.get('type') || 'all',
-                minPrice: p.get('min_price') || '',
-                maxPrice: p.get('max_price') || '',
-                guests: {
-                    adults: parseInt(p.get('adults')) || 1,
-                    children: parseInt(p.get('children')) || 0,
-                    rooms: parseInt(p.get('rooms')) || 1
-                },
-                veg_only: p.get('veg_only') === 'true',
-                amenities: amenities,
-                sort: p.get('sort') || 'newest',
-                distance: (p.get('lat') && p.get('lon')) ? {
-                    center: { lat: parseFloat(p.get('lat')), lon: parseFloat(p.get('lon')), name: p.get('loc_name') || 'Selected Location' },
-                    maxKm: parseInt(p.get('radius')) || 200
-                } : { center: null, maxKm: 200 },
-                page: parseInt(p.get('page')) || 1,
-                dateRange: from ? {
-                    from: new Date(from),
-                    to: to ? new Date(to) : undefined
-                } : { from: undefined, to: undefined }
-            };
-        });
+        if (JSON.stringify(filters) !== JSON.stringify(nextFilters)) {
+            setFilters(nextFilters);
+        }
     }, [searchParams]);
 
-    const location = useLocation();
-    const resultsRef = useRef(null);
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const HERO_IMAGES = [
-        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2070&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=2070&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1540541338287-41700207dee6?q=80&w=2070&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=2070&auto=format&fit=crop"
-    ];
+    const {
+        location: contextLocation, setLocation: setContextLocation,
+        dateRange: contextDateRange, setDateRange: setContextDateRange,
+        guests: contextGuests, setGuests: setContextGuests,
+        activeCategory, setActiveCategory: setContextCategory
+    } = useSearch();
 
-    // Available Locations State
-    const [availableLocations, setAvailableLocations] = useState([]);
-    const [showAllLocations, setShowAllLocations] = useState(false);
-
+    // 2. Sync Filters -> Context (Keep SearchBar in sync with current filters)
     useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentImageIndex((prev) => (prev + 1) % HERO_IMAGES.length);
-        }, 5000);
-        return () => clearInterval(timer);
-    }, []);
+        if (filters.location !== undefined && filters.location !== contextLocation) {
+            setContextLocation(filters.location);
+        }
 
+        if (filters.type && filters.type !== activeCategory) {
+            setContextCategory(filters.type);
+        }
+
+        const filterFromStr = filters.dateRange?.from?.toISOString().split('T')[0] || null;
+        const contextFromStr = contextDateRange?.from?.toISOString().split('T')[0] || null;
+        if (filterFromStr !== contextFromStr) {
+            setContextDateRange(filters.dateRange || { from: undefined, to: undefined });
+        }
+
+        if (JSON.stringify(filters.guests) !== JSON.stringify(contextGuests)) {
+            setContextGuests(filters.guests);
+        }
+    }, [filters, contextLocation, activeCategory, contextDateRange, contextGuests, setContextLocation, setContextCategory, setContextDateRange, setContextGuests]);
+
+    // 3. Sync Filters -> URL (Debounced update to URL when state changes)
     useEffect(() => {
-        if (activeCategory !== filters.type) {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            const params = {};
+            if (filters.location) params.location = filters.location;
+            if (filters.type && filters.type !== 'all') params.type = filters.type;
+            if (filters.minPrice) params.min_price = filters.minPrice;
+            if (filters.maxPrice) params.max_price = filters.maxPrice;
+            if (filters.guests?.adults > 1) params.adults = filters.guests.adults;
+            if (filters.guests?.children > 0) params.children = filters.guests.children;
+            if (filters.guests?.rooms > 1) params.rooms = filters.guests.rooms;
+            if (filters.veg_only) params.veg_only = 'true';
+            if (filters.sort && filters.sort !== 'newest') params.sort = filters.sort;
+            if (filters.amenities?.length > 0) params.amenities = filters.amenities;
+            if (filters.distance?.center) {
+                params.lat = filters.distance.center.lat;
+                params.lon = filters.distance.center.lon;
+                params.radius = filters.distance.maxKm;
+                if (filters.distance.center.name) params.loc_name = filters.distance.center.name;
+            }
+            if (filters.dateRange?.from) {
+                params.check_in = filters.dateRange.from.toISOString().split('T')[0];
+                if (filters.dateRange.to) params.check_out = filters.dateRange.to.toISOString().split('T')[0];
+            }
+            if (filters.page > 1) params.page = filters.page;
+
+            // Stable comparison
+            const nextParams = new URLSearchParams(params);
+            nextParams.sort();
+            const currentParams = new URLSearchParams(window.location.search);
+            currentParams.sort();
+
+            if (nextParams.toString() !== currentParams.toString()) {
+                isInternalUrlUpdate.current = true;
+                setSearchParams(params, { replace: true });
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [filters, setSearchParams]);
+
+    // 4. Handle External Context Changes (SearchBar tab click)
+    useEffect(() => {
+        if (activeCategory && activeCategory !== filters.type) {
             setFilters(prev => ({ ...prev, type: activeCategory, page: 1 }));
         }
     }, [activeCategory]);
@@ -212,16 +228,14 @@ export default function Home() {
             const incoming = location.state.searchFilters;
             setFilters(prev => ({
                 ...prev,
-                location: incoming.location || '',
-                guests: incoming.guests || 1,
-                dateRange: incoming.dateRange,
+                ...incoming,
                 page: 1
             }));
             if (location.state.activeCategory) {
-                setActiveCategory(location.state.activeCategory);
+                setContextCategory(location.state.activeCategory);
             }
         }
-    }, [location.state, setActiveCategory]);
+    }, [location.state, setContextCategory]);
 
     const [userCoords, setUserCoords] = useState(null);
 
@@ -306,6 +320,7 @@ export default function Home() {
                 setProperties(prev => [...prev, ...fetchedProps]);
                 setFilters(prev => ({ ...prev, page: prev.page + 1 }));
             } else {
+                console.log("FETCHED PROPERTIES:", fetchedProps.length, fetchedProps);
                 setProperties(fetchedProps);
             }
             setPagination(data);
@@ -321,6 +336,8 @@ export default function Home() {
             setLoadingMore(false);
         }
     };
+
+
 
     useEffect(() => {
         const fetchLocations = async () => {
@@ -343,6 +360,7 @@ export default function Home() {
         }, 500);
         return () => clearTimeout(timeoutId);
     }, [
+        // Flatten dependencies to primitives to avoid object reference changes triggering re-fetches
         filters.location,
         filters.type,
         filters.minPrice,
@@ -352,25 +370,15 @@ export default function Home() {
         filters.guests?.rooms,
         filters.veg_only,
         filters.sort,
-        filters.amenities?.length, // Use length and join for array comparison
-        filters.amenities?.sort().join(','),
-        filters.distance?.center?.lat, // Use specific fields for deep comparison
+        filters.amenities?.length,
+        filters.distance?.maxKm,
+        // Only trigger if center actually changes (lat/lon)
+        filters.distance?.center?.lat,
         filters.distance?.center?.lon,
-        filters.distance?.maxKm
+        filters.page
     ]);
 
-    // Client-Side Filtering for Price Safety (Backstop for API)
-    const filteredProperties = useMemo(() => {
-        return properties.filter(p => {
-            // Price Filter
-            if (filters.minPrice || filters.maxPrice) {
-                const price = getPricing(p).sellingPrice || p.Price || 0;
-                if (filters.minPrice && price < parseFloat(filters.minPrice)) return false;
-                if (filters.maxPrice && price > parseFloat(filters.maxPrice)) return false;
-            }
-            return true;
-        });
-    }, [properties, filters.minPrice, filters.maxPrice]);
+
 
     const handleFilterChange = (newFiltersOrFn) => {
         setFilters(prev => {
@@ -405,9 +413,9 @@ export default function Home() {
 
         if (shouldScroll) {
             setTimeout(() => {
-                if (resultsRef.current && window.innerWidth >= 768) { // Disable auto-scroll on mobile
+                if (searchResultsRef.current && window.innerWidth >= 768) { // Disable auto-scroll on mobile
                     const yOffset = -100; // Offset for sticky header
-                    const y = resultsRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    const y = searchResultsRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
                     window.scrollTo({ top: y, behavior: 'smooth' });
                 }
             }, 100);
@@ -426,9 +434,9 @@ export default function Home() {
 
         // Scroll to results
         setTimeout(() => {
-            if (resultsRef.current) {
+            if (searchResultsRef.current) {
                 const yOffset = -100; // Offset for sticky header
-                const y = resultsRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                const y = searchResultsRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
                 window.scrollTo({ top: y, behavior: 'smooth' });
             }
         }, 100);
@@ -531,7 +539,7 @@ export default function Home() {
                 </div>
             </div>
 
-            <div ref={resultsRef} className="container mx-auto px-4 py-8 min-h-[50vh] scroll-mt-28 mt-4">
+            <div ref={searchResultsRef} className="container mx-auto px-4 py-8 min-h-[50vh] scroll-mt-28 mt-4">
 
                 {/* Full Width Filter Bar (Desktop) */}
                 <div className="hidden lg:block sticky top-[calc(80px+env(safe-area-inset-top))] z-40 bg-white/90 backdrop-blur-xl border-b border-gray-100 px-4 py-3 mb-6 -mx-4 shadow-sm transition-all duration-300">
@@ -576,6 +584,12 @@ export default function Home() {
                                     }
                                 </h2>
                                 <p className="text-gray-500 mt-1 text-sm font-medium">{loading ? "Searching..." : `${filteredProperties.length} properties`}</p>
+                                {/* DEBUG INFO (Hidden in Prod) */}
+                                {false && (
+                                    <div className="hidden">
+                                        {console.log("DEBUG HOME:", { props: properties.length, filt: filteredProperties.length, filters })}
+                                    </div>
+                                )}
                             </div>
 
                             {loading ? (
