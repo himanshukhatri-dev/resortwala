@@ -104,11 +104,8 @@ export default function Home() {
 
     // 1. Sync URL -> Filters (Back/Forward Navigation & Initial Sync)
     useEffect(() => {
-        console.group('Home: URL Params Changed');
-        console.log('Raw Params:', location.search);
         if (isInternalUrlUpdate.current) {
             isInternalUrlUpdate.current = false;
-            console.groupEnd();
             return;
         }
 
@@ -142,11 +139,8 @@ export default function Home() {
         };
 
         if (JSON.stringify(filters) !== JSON.stringify(nextFilters)) {
-            debugger;
-            console.log("Updating filters from URL", nextFilters);
             setFilters(nextFilters);
         }
-        console.groupEnd();
     }, [location.search]);
 
     const {
@@ -232,41 +226,26 @@ export default function Home() {
         return () => clearTimeout(timer);
     }, [filters, setSearchParams]);
 
-    // 4. Handle External Context Changes (SearchBar tab click)
-    const isContextSyncFirstRun = useRef(true);
+    // 4. Handle External Context Changes (SearchBar tab click) -> PUSH TO URL
+    // This establishes Uni-directional flow: User Click -> URL -> Filters -> Context
+    const lastContextCategory = useRef(activeCategory);
     useEffect(() => {
-        // Prevent Context from overwriting URL Params on initial load
-        if (isContextSyncFirstRun.current) {
-            isContextSyncFirstRun.current = false;
-            // If filters have a specific type (from URL) but context is default 'all',
-            // ignore this sync to let Effect #2 update the Context instead.
-            if (filters.type !== 'all' && activeCategory === 'all') {
-                return;
+        // Only react if the category ACCUALLY changed (user interaction likely)
+        // and avoid reacting if it matches the current filter (sync echo)
+        if (activeCategory && activeCategory !== lastContextCategory.current) {
+            lastContextCategory.current = activeCategory;
+
+            if (activeCategory !== filters.type) {
+                setSearchParams(prev => {
+                    const newP = new URLSearchParams(prev);
+                    if (activeCategory === 'all') newP.delete('type');
+                    else newP.set('type', activeCategory);
+                    newP.set('page', '1');
+                    return newP;
+                }, { replace: false }); // Push new history entry for navigation feel
             }
         }
-
-        if (activeCategory && activeCategory !== filters.type) {
-            setFilters(prev => {
-                // Double check to prevent loops
-                if (prev.type === activeCategory) return prev;
-                return { ...prev, type: activeCategory, page: 1 };
-            });
-        }
-    }, [activeCategory]);
-
-    useEffect(() => {
-        if (location.state?.searchFilters) {
-            const incoming = location.state.searchFilters;
-            setFilters(prev => ({
-                ...prev,
-                ...incoming,
-                page: 1
-            }));
-            if (location.state.activeCategory) {
-                setContextCategory(location.state.activeCategory);
-            }
-        }
-    }, [location.state, setContextCategory]);
+    }, [activeCategory]); // Removed filters.type dependency to avoid echoes
 
     const [userCoords, setUserCoords] = useState(null);
 
@@ -301,6 +280,7 @@ export default function Home() {
             else setLoading(true);
 
             const params = new URLSearchParams();
+            params.append('testali', '1'); // Force bypass cache/logic as requested
 
             // FILTERS: Map filters to API params
             console.log('Home: Building API Params from Filters:', filters);
@@ -316,7 +296,7 @@ export default function Home() {
             let guestCount = 1;
             if (typeof filters.guests === 'object') {
                 guestCount = (filters.guests.adults || 0) + (filters.guests.children || 0);
-                if (filters.guests.rooms > 0) params.append('bedrooms', filters.guests.rooms);
+                if (filters.guests.rooms > 0 && filters.type !== 'waterpark') params.append('bedrooms', filters.guests.rooms);
             } else {
                 guestCount = filters.guests;
             }
@@ -337,14 +317,11 @@ export default function Home() {
             params.append('page', isLoadMore ? (filters.page + 1).toString() : '1');
             params.append('limit', '10');
 
-            params.append('limit', '10');
-
-            debugger;
-            console.log('Home: Fetching URL:', `${API_BASE_URL}/properties?${params.toString()}`);
+            // console.log('Home: Fetching URL:', `${API_BASE_URL}/properties?${params.toString()}`);
             const response = await fetch(`${API_BASE_URL}/properties?${params.toString()}`);
             if (!response.ok) throw new Error('Failed to fetch');
             const data = await response.json();
-            console.log('Home: API Response Data:', data);
+            // console.log('Home: API Response Data:', data);
 
             // Normalizing data including distance_km from backend
             const fetchedProps = (data.data ? data.data : (Array.isArray(data) ? data : [])).map(p => ({
@@ -412,7 +389,7 @@ export default function Home() {
         // Only trigger if center actually changes (lat/lon)
         filters.distance?.center?.lat,
         filters.distance?.center?.lon,
-        filters.page
+        // filters.page -- REMOVED to prevent auto-refetch on Load More state update
     ]);
 
 

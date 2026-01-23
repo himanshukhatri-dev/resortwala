@@ -1,15 +1,8 @@
 const getApiBaseUrl = () => {
-    // 1. Env Variable Priority (Allows override in .env or .env.production)
-    if (import.meta.env.VITE_API_BASE_URL) {
-        return import.meta.env.VITE_API_BASE_URL;
-    }
-
-    // 2. Production / Staging Environment Check
+    // Reverting to main domain as it handles CORS correctly for www, using testali param to bust cache
     if (import.meta.env.PROD) {
-        return 'https://api.resortwala.com/api';
+        return 'https://resortwala.com/api';
     }
-
-    // 3. Fallback for local development
     return 'http://localhost:8000/api';
 };
 
