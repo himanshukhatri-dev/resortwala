@@ -104,12 +104,15 @@ export default function Home() {
 
     // 1. Sync URL -> Filters (Back/Forward Navigation & Initial Sync)
     useEffect(() => {
+        console.group('Home: URL Params Changed');
+        console.log('Raw Params:', location.search);
         if (isInternalUrlUpdate.current) {
             isInternalUrlUpdate.current = false;
+            console.groupEnd();
             return;
         }
 
-        const p = searchParams;
+        const p = new URLSearchParams(location.search);
         const from = p.get('check_in');
         const to = p.get('check_out');
         const amenities = p.getAll('amenities') || [];
@@ -139,10 +142,12 @@ export default function Home() {
         };
 
         if (JSON.stringify(filters) !== JSON.stringify(nextFilters)) {
-            // console.log("Updating filters from URL", nextFilters);
+            debugger;
+            console.log("Updating filters from URL", nextFilters);
             setFilters(nextFilters);
         }
-    }, [searchParams]);
+        console.groupEnd();
+    }, [location.search]);
 
     const {
         location: contextLocation, setLocation: setContextLocation,
@@ -151,6 +156,7 @@ export default function Home() {
         activeCategory, setActiveCategory: setContextCategory
     } = useSearch();
 
+    // 2. Sync Filters -> Context (Keep SearchBar in sync with current filters)
     // 2. Sync Filters -> Context (Keep SearchBar in sync with current filters)
     useEffect(() => {
         if (filters.location !== undefined && filters.location !== contextLocation) {
@@ -227,7 +233,18 @@ export default function Home() {
     }, [filters, setSearchParams]);
 
     // 4. Handle External Context Changes (SearchBar tab click)
+    const isContextSyncFirstRun = useRef(true);
     useEffect(() => {
+        // Prevent Context from overwriting URL Params on initial load
+        if (isContextSyncFirstRun.current) {
+            isContextSyncFirstRun.current = false;
+            // If filters have a specific type (from URL) but context is default 'all',
+            // ignore this sync to let Effect #2 update the Context instead.
+            if (filters.type !== 'all' && activeCategory === 'all') {
+                return;
+            }
+        }
+
         if (activeCategory && activeCategory !== filters.type) {
             setFilters(prev => {
                 // Double check to prevent loops
@@ -286,6 +303,7 @@ export default function Home() {
             const params = new URLSearchParams();
 
             // FILTERS: Map filters to API params
+            console.log('Home: Building API Params from Filters:', filters);
             const loc = filters.location.trim();
             if (loc) params.append('location', loc);
 
@@ -319,9 +337,14 @@ export default function Home() {
             params.append('page', isLoadMore ? (filters.page + 1).toString() : '1');
             params.append('limit', '10');
 
+            params.append('limit', '10');
+
+            debugger;
+            console.log('Home: Fetching URL:', `${API_BASE_URL}/properties?${params.toString()}`);
             const response = await fetch(`${API_BASE_URL}/properties?${params.toString()}`);
             if (!response.ok) throw new Error('Failed to fetch');
             const data = await response.json();
+            console.log('Home: API Response Data:', data);
 
             // Normalizing data including distance_km from backend
             const fetchedProps = (data.data ? data.data : (Array.isArray(data) ? data : [])).map(p => ({

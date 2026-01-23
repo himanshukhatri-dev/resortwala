@@ -12,7 +12,8 @@ class PropertyMasterController extends Controller
     {
         try {
             \Illuminate\Support\Facades\Log::info('Property Search Params:', $request->all());
-            
+            \Illuminate\Support\Facades\Log::info('Property Search Full URL:', ['url' => $request->fullUrl()]);
+
             $query = PropertyMaster::with('images')
                 ->where('is_approved', 1);
 
@@ -20,16 +21,16 @@ class PropertyMasterController extends Controller
             if ($request->has('lat') && $request->has('lon')) {
                 $lat = floatval($request->input('lat'));
                 $lon = floatval($request->input('lon'));
-                $radius = intval($request->input('radius', 50)); 
-                
+                $radius = intval($request->input('radius', 50));
+
                 // Using NOWDOC for cleaner SQL, standard Haversine
                 // We use HAVING for distance filtering
                 // Improved Haversine: Fallback to CityLatitude/CityLongitude if property specific coords are missing.
                 $latCol = "COALESCE(Latitude, CityLatitude)";
                 $lonCol = "COALESCE(Longitude, CityLongitude)";
-                
+
                 $haversine = "( 6371 * acos( cos( radians($lat) ) * cos( radians( $latCol ) ) * cos( radians( $lonCol ) - radians($lon) ) + sin( radians($lat) ) * sin( radians( $latCol ) ) ) )";
-                
+
                 $query->select('*', DB::raw("{$haversine} as distance_km"));
                 // Include properties within radius OR with no coordinates (NULL distance)
                 $query->havingRaw("distance_km <= ? OR distance_km IS NULL", [$radius]);
@@ -58,12 +59,12 @@ class PropertyMasterController extends Controller
                 $term = $request->input('location');
                 $likeTerm = '%' . $term . '%';
 
-                $query->where(function($q) use ($likeTerm) {
+                $query->where(function ($q) use ($likeTerm) {
                     $q->where('Name', 'like', $likeTerm)
-                      ->orWhere('Location', 'like', $likeTerm)
-                      ->orWhere('CityName', 'like', $likeTerm)
-                      ->orWhere('Address', 'like', $likeTerm)
-                      ->orWhere('PropertyType', 'like', $likeTerm);
+                        ->orWhere('Location', 'like', $likeTerm)
+                        ->orWhere('CityName', 'like', $likeTerm)
+                        ->orWhere('Address', 'like', $likeTerm)
+                        ->orWhere('PropertyType', 'like', $likeTerm);
                 });
 
                 // Weighted Ranking: Name > City/Location > Address > Others
@@ -86,10 +87,10 @@ class PropertyMasterController extends Controller
                 if ($type == 'villas') {
                     $query->where('PropertyType', 'Villa');
                 } elseif ($type == 'waterpark') {
-                    $query->where(function($q) {
+                    $query->where(function ($q) {
                         $q->where('PropertyType', 'like', '%Resort%')
-                          ->orWhere('PropertyType', 'like', '%Water%') // Added explicitly
-                          ->orWhere('Name', 'like', '%Water%');
+                            ->orWhere('PropertyType', 'like', '%Water%') // Added explicitly
+                            ->orWhere('Name', 'like', '%Water%');
                     });
                 }
             }
@@ -99,37 +100,38 @@ class PropertyMasterController extends Controller
                 $query->where('Price', '>=', $request->input('min_price'));
             }
             if ($request->has('max_price')) {
-                 $query->where('Price', '<=', $request->input('max_price'));
+                $query->where('Price', '<=', $request->input('max_price'));
             }
-            
+
             // 4. Guests & Bedrooms Filter
             if ($request->has('guests') && $request->input('guests') > 1) {
                 $guests = intval($request->input('guests'));
-                $query->where(function($q) use ($guests) {
-                     $q->where('MaxGuests', '>=', $guests)
-                       ->orWhere('MaxCapacity', '>=', $guests);
+                $query->where(function ($q) use ($guests) {
+                    $q->where('MaxGuests', '>=', $guests)
+                        ->orWhere('MaxCapacity', '>=', $guests);
                 });
             }
 
             if ($request->has('bedrooms')) {
                 $bedrooms = intval($request->input('bedrooms'));
-                $query->where(function($q) use ($bedrooms) {
+                $query->where(function ($q) use ($bedrooms) {
                     $q->where('NoofRooms', '>=', $bedrooms);
                 });
             }
 
             // 5. Veg Only
             if ($request->has('veg_only') && $request->input('veg_only') == 'true') {
-                 // Check common column names
-                 $query->where(function($q) {
-                     $q->where('IsVeg', 1)
-                       ->orWhere('FoodType', 'Veg');
-                 });
+                // Check common column names
+                $query->where(function ($q) {
+                    $q->where('IsVeg', 1)
+                        ->orWhere('FoodType', 'Veg');
+                });
             }
 
             // Pagination
             $limit = intval($request->input('limit', 10));
             $properties = $query->paginate($limit);
+            \Illuminate\Support\Facades\Log::info('Query Result:', ['total_found' => $properties->total(), 'per_page' => $limit]);
 
             // POST-PROCESS: Add Pricing Intelligence & Review Logic
             $properties->getCollection()->transform(function ($p) {
@@ -137,12 +139,12 @@ class PropertyMasterController extends Controller
                 // Determine today's price based on day of week
                 $today = now();
                 $dayOfWeek = $today->dayOfWeek; // 0 (Sun) - 6 (Sat)
-                
+
                 $calculatedPrice = $p->Price; // Default fallback
 
                 // A. Check Specific Date Override (from dailyRates relation if loaded)
                 $dailyRate = $p->dailyRates->firstWhere('day_of_week', $dayOfWeek);
-                
+
                 // Day names for admin_pricing lookup
                 $days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
                 $todayName = $days[$dayOfWeek];
@@ -154,7 +156,7 @@ class PropertyMasterController extends Controller
                 } elseif (strtolower($p->PropertyType) == 'waterpark') {
                     // Waterpark Logic
                     $wpKey = $isWeekend ? 'adult_weekend' : 'adult_weekday';
-                    
+
                     if (isset($adminPricing[$wpKey]['final']) && $adminPricing[$wpKey]['final'] > 0) {
                         $calculatedPrice = $adminPricing[$wpKey]['final'];
                     } elseif (isset($adminPricing['adult_rate']['discounted'])) {
@@ -183,14 +185,14 @@ class PropertyMasterController extends Controller
                 // 2. REVIEW LOGIC (Google Fallback)
                 $internalReviewsCount = 0; // distinct from $p->reviews->count()
                 $internalRating = 0;
-                
+
                 if ($internalReviewsCount > 0) {
                     $p->display_rating = $internalRating;
                     $p->is_verified_rating = true;
                 } else {
                     $googleRating = floatval($p->Rating ?? 4.0);
                     $multiplier = ($googleRating < 4.0) ? 1.2 : (($googleRating <= 4.5) ? 1.1 : 1.0);
-                    
+
                     $p->display_rating = round($googleRating * $multiplier, 1);
                     $p->display_rating_label = "Estimated";
                     $p->is_verified_rating = false;
@@ -220,7 +222,7 @@ class PropertyMasterController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
     public function getLocations()
     {
         try {
@@ -233,7 +235,7 @@ class PropertyMasterController extends Controller
                 ->limit(20)
                 ->get();
 
-            $formatted = $locations->map(function($item) {
+            $formatted = $locations->map(function ($item) {
                 return [
                     'name' => $item->Location,
                     'count' => $item->total

@@ -3,7 +3,7 @@ import { FaFacebook, FaInstagram, FaYoutube } from 'react-icons/fa';
 export default function Footer() {
     return (
 
-        <footer className="bg-brand-darker border-t border-white/10 py-8 mt-12 text-gray-400">
+        <footer className="bg-brand-darker border-t border-white/10 py-6 mt-8 text-gray-400">
             <div className="container mx-auto px-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     {/* Brand */}
@@ -50,13 +50,13 @@ export default function Footer() {
                     </div>
                 </div>
 
-                <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-                    <p>&copy; {new Date().getFullYear()} ResortWala. All rights reserved.</p>
-                    <p className="text-xs mt-2 opacity-100 text-yellow-500 font-bold">Version 1.1 (BETA)</p>
-                    <div className="flex gap-4 mt-4 md:mt-0 justify-center">
-                        <a href="/policy/privacy" className="hover:text-primary transition">Privacy</a>
-                        <a href="/policy/terms" className="hover:text-primary transition">Terms</a>
-                        <a href="/" className="hover:text-primary transition">Sitemap</a>
+                <div className="border-t border-gray-800 mt-6 pt-6 flex flex-col md:flex-row justify-between items-center text-gray-400 gap-4">
+                    <p className="text-sm order-2 md:order-1 text-center md:text-left">&copy; {new Date().getFullYear()} ResortWala. All rights reserved.</p>
+
+                    <div className="flex gap-6 order-1 md:order-2">
+                        <a href="/policy/privacy" className="hover:text-primary transition text-sm">Privacy</a>
+                        <a href="/policy/terms" className="hover:text-primary transition text-sm">Terms</a>
+                        <a href="/" className="hover:text-primary transition text-sm">Sitemap</a>
                     </div>
                 </div>
             </div>

@@ -15,13 +15,13 @@ export function SearchProvider({ children }) {
         setActiveCategory('all');
     };
 
-    const value = {
+    const value = React.useMemo(() => ({
         location, setLocation,
         dateRange, setDateRange,
         guests, setGuests,
         activeCategory, setActiveCategory,
         resetSearch
-    };
+    }), [location, dateRange, guests, activeCategory]);
 
     return (
         <SearchContext.Provider value={value}>
