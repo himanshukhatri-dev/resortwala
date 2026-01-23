@@ -143,7 +143,7 @@ export default function PropertyDetails() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get(`${API_BASE_URL}/properties/${id}`);
+                const response = await axios.get(`${API_BASE_URL}/properties/${id}?testali=1`);
                 console.log("Property Data with Holidays:", response.data); // Debug
                 setProperty(response.data);
             } catch (error) {
@@ -1120,7 +1120,7 @@ export default function PropertyDetails() {
                 </div>
 
                 <MobileFooter
-                    price={isWaterpark ? (priceBreakdown?.totalAdultTicket || PRICE_WEEKDAY) : (priceBreakdown?.grantTotal || PRICE_WEEKDAY)}
+                    price={priceBreakdown || PRICE_WEEKDAY}
                     unit={isWaterpark ? '/ person' : '/ night'}
                     buttonText={(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : 'Reserve'}
                     dateRange={dateRange}
@@ -1438,7 +1438,10 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                     onDayClick={handleDateSelect}
                                     numberOfMonths={1}
                                     modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
-                                    disabled={[{ before: startOfDay(new Date()) }]}
+                                    disabled={[
+                                        { before: startOfDay(new Date()) },
+                                        (date) => bookedDates.includes(format(date, 'yyyy-MM-dd'))
+                                    ]}
                                     classNames={{
                                         day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
                                         selected: "!bg-black !text-white hover:!bg-black hover:!text-white",
@@ -1466,11 +1469,11 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
 
                                             // Add "scratch out" check for disabled
                                             if (isButtonDisabled) {
-                                                combinedClassName += " relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-tr before:from-transparent before:via-red-500/40 before:to-transparent before:z-10 before:pointer-events-none";
+                                                combinedClassName += " relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-tr before:from-transparent before:via-red-500/40 before:to-transparent before:z-10 before:pointer-events-none opacity-50 cursor-not-allowed pointer-events-none";
                                             }
 
                                             return (
-                                                <button className={combinedClassName} {...buttonProps}>
+                                                <button className={combinedClassName} {...buttonProps} disabled={isButtonDisabled} style={{ pointerEvents: isButtonDisabled ? 'none' : 'auto' }}>
                                                     <span className={`text-sm font-medium leading-tight ${isWeekend ? 'text-red-600 font-bold' : ''}`}>
                                                         {children}
                                                     </span>
@@ -1544,18 +1547,20 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                         {priceBreakdown.totalFood > 0 && <div className="flex justify-between text-blue-600 font-bold"><span>Meals & Dining</span><span>+₹{priceBreakdown.totalFood.toLocaleString()}</span></div>}
 
                         {/* Summary Row instead of Detailed Tax */}
-                        <div className="flex justify-between font-bold text-sm text-gray-900 pt-1.5 border-t border-gray-200 mt-1.5 items-end">
-                            <div className="flex flex-col">
+                        <div className="flex border-t border-gray-100 mt-2 pt-2 flex-col gap-1">
+                            <div className="flex justify-between font-bold text-lg text-gray-900 items-center">
                                 <span>Total Amount</span>
-                                <span className="text-[8px] text-gray-400 font-normal">Includes GST & Fees</span>
+                                <span>₹{(priceBreakdown.grantTotal - priceBreakdown.gstAmount).toLocaleString()}</span>
                             </div>
-                            <span>₹{priceBreakdown.grantTotal.toLocaleString()}</span>
+                            <div className="text-right text-xs text-gray-500 font-medium">
+                                + GST Applicable
+                            </div>
                         </div>
 
                         {/* Savings Display */}
                         {priceBreakdown.totalSavings > 0 && (
-                            <div className="mt-1 text-center bg-green-100 text-green-700 font-bold py-1 rounded-lg border border-green-200 text-[10px]">
-                                🎉 You saved ₹{priceBreakdown.totalSavings.toLocaleString()}
+                            <div className="mt-3 text-center bg-green-100 text-green-700 font-bold py-2 px-3 rounded-lg border border-green-200 text-sm shadow-sm animate-pulse">
+                                🎉 You saved ₹{priceBreakdown.totalSavings.toLocaleString()} on this booking!
                             </div>
                         )}
                     </div>
@@ -1608,7 +1613,7 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                             pagedNavigation
                             disabled={[
                                 { before: startOfDay(new Date()) },
-                                ...(dateRange.from && !dateRange.to && !isWaterpark ? [{ before: dateRange.from }] : [])
+                                (date) => bookedDates.includes(format(date, 'yyyy-MM-dd'))
                             ]}
                             classNames={{
                                 day_button: "h-12 w-12 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
@@ -1616,6 +1621,23 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                 range_middle: "!bg-[#FF385C]/10 !text-black",
                                 range_start: "!bg-[#FF385C] !text-white rounded-l-lg",
                                 range_end: "!bg-[#FF385C] !text-white rounded-r-lg"
+                            }}
+                            components={{
+                                DayButton: (props) => {
+                                    const { day, children, className, modifiers, ...buttonProps } = props;
+                                    const date = day?.date;
+                                    if (!date) return <button className={className} {...buttonProps}>{children}</button>;
+
+                                    // Duplicate logic from main DayPicker for consistency if needed, 
+                                    // but default rendering is usually fine for mobile modal unless we want prices shown.
+                                    // For now, adhere to simple date selection.
+                                    const isButtonDisabled = buttonProps.disabled || modifiers.booked;
+                                    let combinedClassName = className;
+                                    if (modifiers.booked || isButtonDisabled) {
+                                        combinedClassName += " line-through opacity-50 cursor-not-allowed text-gray-300 pointer-events-none";
+                                    }
+                                    return <button className={combinedClassName} {...buttonProps} disabled={isButtonDisabled} style={{ pointerEvents: isButtonDisabled ? 'none' : 'auto' }}>{children}</button>;
+                                }
                             }}
                         />
                     </div>
@@ -1635,6 +1657,11 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
 );
 
 function MobileFooter({ price, unit, onReserve, buttonText, dateRange, onDateClick }) {
+    // If we have a full breakdown passed as 'price' (object), use it. 
+    // Otherwise fall back to simple price display.
+    const isBreakdown = typeof price === 'object' && price !== null;
+    const finalAmount = isBreakdown ? (price.grantTotal - price.gstAmount) : price;
+
     return (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 z-40 flex justify-between items-center shadow-[0_-5px_20px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
             <div className="flex flex-col cursor-pointer" onClick={onDateClick}>
@@ -1645,24 +1672,28 @@ function MobileFooter({ price, unit, onReserve, buttonText, dateRange, onDateCli
                             {dateRange.to ? ` - ${format(new Date(dateRange.to), 'dd MMM')}` : ''}
                             <FaArrowRight size={8} className="rotate-[-45deg] text-blue-500" />
                         </div>
-                        <div className="font-bold text-lg leading-tight">
-                            ₹{Math.round(price).toLocaleString()} <span className="text-xs font-normal text-gray-500">total</span>
+                        <div className="flex flex-col">
+                            <div className="flex items-baseline gap-1">
+                                <span className="font-bold text-xl text-gray-900">₹{finalAmount?.toLocaleString()}</span>
+                                {isBreakdown && <span className="text-[9px] text-gray-400 font-medium">+ GST</span>}
+                                {!isBreakdown && <span className="text-xs text-gray-500 font-normal">{unit}</span>}
+                            </div>
                         </div>
                     </>
                 ) : (
                     <>
-                        <div className="font-bold text-lg leading-tight">
-                            ₹{Math.round(price).toLocaleString()} <span className="text-xs font-normal text-gray-500">{unit}</span>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase">Per Night</div>
+                        <div className="flex items-baseline gap-1">
+                            <span className="font-bold text-xl text-gray-900">₹{price?.toLocaleString()}</span>
                         </div>
-                        <div className="text-[10px] font-bold text-blue-600 underline">Select Dates</div>
                     </>
                 )}
             </div>
             <button
                 onClick={onReserve}
-                className="bg-[#FF385C] active:bg-[#d9324e] text-white px-6 py-3 rounded-xl font-bold shadow-lg text-sm flex items-center gap-2"
+                className="bg-[#FF385C] hover:bg-[#d9324e] text-white px-6 py-3 rounded-xl font-bold shadow-lg transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                {buttonText || 'Reserve'}
+                {buttonText}
             </button>
         </div>
     );

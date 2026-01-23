@@ -215,7 +215,7 @@ export default function BookingPage() {
 
     // TOKEN CALCULATION
     const PAY_NOW_PERCENT = 0.10;
-    const payNowAmount = details ? Math.ceil(details.total * PAY_NOW_PERCENT) : 0;
+    const payNowAmount = details ? Math.ceil((details.total - details.gst) * PAY_NOW_PERCENT) : 0;
     const balanceAmount = details ? details.total - payNowAmount : 0;
 
     // -- SUBMIT --
@@ -432,13 +432,15 @@ export default function BookingPage() {
                                             <span>₹{details.extra.toLocaleString()}</span>
                                         </div>
                                     )}
-                                    <div className="flex justify-between text-gray-600 text-sm">
-                                        <span>Taxes (GST)</span>
-                                        <span>₹{details.gst.toLocaleString()}</span>
-                                    </div>
-                                    <div className="border-t border-gray-100 my-2 pt-2 flex justify-between font-bold text-lg">
-                                        <span>Total (incl. GST)</span>
-                                        <span>₹{details.total.toLocaleString()}</span>
+                                    {/* Taxes line removed as per request to show only info */}
+                                    <div className="border-t border-gray-100 my-2 pt-2 flex flex-col gap-1">
+                                        <div className="flex justify-between font-bold text-lg">
+                                            <span>Total Amount</span>
+                                            <span>₹{(details.total - details.gst).toLocaleString()}</span>
+                                        </div>
+                                        <div className="text-xs text-gray-500 text-right">
+                                            + GST Applicable
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -473,7 +475,7 @@ export default function BookingPage() {
                                 disabled={bookingStatus === 'submitting' || !details}
                                 className="w-full bg-[#FF385C] hover:bg-[#D9324E] text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-200 hover:shadow-red-300 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {bookingStatus === 'submitting' ? 'Processing...' : 'Pay & Reserve'}
+                                {bookingStatus === 'submitting' ? 'Processing...' : 'Pay now to Reserve'}
                             </button>
 
                         </div>
@@ -496,7 +498,7 @@ export default function BookingPage() {
                             disabled={bookingStatus === 'submitting'}
                             className="bg-[#FF385C] hover:bg-[#d9324e] text-white px-8 py-3 rounded-xl font-bold shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
-                            {bookingStatus === 'submitting' ? 'Processing...' : 'Reserve'}
+                            {bookingStatus === 'submitting' ? 'Processing...' : 'Pay now to Reserve'}
                         </button>
                     </div>
                 </div>
