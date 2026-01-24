@@ -101,8 +101,8 @@ class BookingController extends Controller
         $property = \App\Models\PropertyMaster::find($validated['PropertyId']);
 
         // Check availability logic
-        $type = strtolower($property->property_type);
-        $isWaterpark = ($type === 'waterpark' || $type === 'water park');
+        $propertyType = strtolower($property->PropertyType ?? $property->property_type ?? '');
+        $isWaterpark = str_contains($propertyType, 'water') || str_contains(strtolower($property->Name), 'water') || str_contains($propertyType, 'resort');
 
         if (!$isWaterpark) {
             // For villas/others, prevent overlap
@@ -110,8 +110,6 @@ class BookingController extends Controller
                 ->where(function ($query) {
                     $query->whereIn('Status', ['Confirmed', 'locked', 'booked'])
                         ->orWhere(function ($q2) {
-                            // Only block for Pending bookings if they are recent (e.g., < 15 mins old)
-                            // This prevents abandoned payment attempts from blocking dates forever
                             $q2->where('Status', 'Pending')
                                 ->where('created_at', '>', now()->subMinutes(15));
                         });
@@ -129,13 +127,25 @@ class BookingController extends Controller
             }
         }
 
+        // BACKEND VALIDATION: Waterpark Token Amount
+        if ($isWaterpark) {
+            $expectedTokenPerGuest = config('resortwala.waterpark_token_amount', 50);
+            $guestCount = $validated['Guests'] ?? 1;
+            $expectedPaidAmount = $guestCount * $expectedTokenPerGuest;
+
+            if (empty($validated['paid_amount']) || floatval($validated['paid_amount']) <= 0) {
+                Log::warning("Waterpark booking with 0 paid_amount detected. Overriding.", ['expected' => $expectedPaidAmount]);
+                $validated['paid_amount'] = $expectedPaidAmount;
+            }
+        }
+
         // Set status based on booking source
-        Log::info("Booking Request", ['source' => $bookingSource, 'method' => $validated['payment_method']]);
+        Log::info("Booking Request Analysis", ['source' => $bookingSource, 'method' => $validated['payment_method'], 'isWaterpark' => $isWaterpark]);
 
         if ($bookingSource === 'public_calendar') {
             $validated['Status'] = 'Pending';
             $validated['payment_status'] = 'pending';
-        } elseif ($validated['payment_method'] === 'online' || $validated['payment_method'] === 'phonepe' || $validated['payment_method'] === 'card' || $validated['payment_method'] === 'upi') {
+        } elseif (in_array($validated['payment_method'], ['online', 'phonepe', 'card', 'upi'])) {
             $validated['Status'] = 'Pending';
             $validated['payment_status'] = 'pending';
         } else {
@@ -179,7 +189,8 @@ class BookingController extends Controller
                     return response()->json([
                         'message' => 'Payment Gateway Error: ' . ($paymentResult['message'] ?? 'Unknown'),
                         'error_code' => $paymentResult['code'] ?? 'GATEWAY_ERROR',
-                        'debug_details' => $paymentResult['debug'] ?? [] // Exposed for debugging
+                        'debug_details' => $paymentResult['debug'] ?? [],
+                        'gateway_response' => $paymentResult['detail'] ?? []
                     ], 422); // Unprocessable Entity
                 }
             }
@@ -190,25 +201,24 @@ class BookingController extends Controller
             // Send confirmation notification if Confirmed
             if ($booking->Status === 'Confirmed') {
                 $this->commissionService->calculateAndRecord($booking);
-
                 $this->notificationService->sendBookingConfirmation($booking);
 
                 // WhatsApp
                 $this->whatsAppService->send(
                     WhatsAppMessage::template($booking->CustomerMobile, 'booking_confirmed', [
                         'name' => $booking->CustomerName,
-                        'property' => $booking->property->Name ?? 'ResortWala Property',
+                        'property' => $property->Name ?? 'ResortWala Property',
                         'ref' => $booking->booking_reference
                     ])
                 );
 
-                // Mobile Push Notification
+                // Mobile Push
                 $user = \App\Models\User::where('email', $booking->CustomerEmail)->first();
                 if ($user) {
                     $this->fcmService->sendToUsers(
                         [$user->id],
                         'Booking Confirmed! 🎉',
-                        "Your stay at {$booking->property->Name} is confirmed. Ref: {$booking->booking_reference}",
+                        "Your stay at {$property->Name} is confirmed. Ref: {$booking->booking_reference}",
                         ['type' => 'booking', 'id' => $booking->id]
                     );
                 }

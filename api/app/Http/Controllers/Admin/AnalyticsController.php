@@ -17,7 +17,8 @@ class AnalyticsController extends Controller
     {
         try {
             $events = $request->input('events', []);
-            $user = auth()->user();
+            // Explicitly try Sanctum guard for API context if not already authenticated
+            $user = auth('sanctum')->user() ?: auth()->user();
             $ip = $request->ip();
             $ua = $request->userAgent();
 
@@ -48,8 +49,8 @@ class AnalyticsController extends Controller
     public function track(Request $request)
     {
         try {
-            $user = auth()->user();
-            
+            $user = auth('sanctum')->user() ?: auth()->user();
+
             EventLog::create([
                 'event_name' => $request->input('event_name'),
                 'event_category' => $request->input('event_category', 'customer'),
@@ -91,7 +92,7 @@ class AnalyticsController extends Controller
         $revenueLastMonth = \App\Models\Booking::where('Status', 'confirmed')
             ->whereBetween('CheckInDate', [$lastMonthStart, $lastMonthEnd])
             ->sum('TotalAmount');
-        
+
         $revenueGrowth = $revenueLastMonth > 0 ? round((($revenueMonth - $revenueLastMonth) / $revenueLastMonth) * 100, 1) : 0;
 
         // 2. Engagement KPIs & Trends
@@ -99,14 +100,14 @@ class AnalyticsController extends Controller
         $dau = EventLog::where('created_at', '>=', Carbon::today())
             ->distinct('session_id')
             ->count();
-        
+
         // 3. Inventory Stats & Trends
         $activeInventory = \App\Models\PropertyMaster::where('is_approved', true)->count();
         $pendingApprovals = \App\Models\PropertyMaster::where('is_approved', false)->count();
         $inventoryLastMonth = \App\Models\PropertyMaster::where('is_approved', true)
             ->where('created_at', '<', $thisMonthStart)
             ->count();
-        
+
         $inventoryGrowth = $inventoryLastMonth > 0 ? round((($activeInventory - $inventoryLastMonth) / $inventoryLastMonth) * 100, 1) : 0;
 
         // 4. Trends (Revenue & Traffic)
@@ -190,7 +191,7 @@ class AnalyticsController extends Controller
     public function getEventStats()
     {
         $last24h = Carbon::now()->subDay();
-        
+
         return response()->json([
             'total_events' => EventLog::where('created_at', '>=', $last24h)->count(),
             'unique_sessions' => EventLog::where('created_at', '>=', $last24h)->distinct('session_id')->count(),
@@ -221,7 +222,7 @@ class AnalyticsController extends Controller
     public function search(Request $request)
     {
         $query = $request->input('query');
-        
+
         if (strlen($query) < 2) {
             return response()->json([]);
         }
@@ -233,7 +234,7 @@ class AnalyticsController extends Controller
             ->orWhere('Location', 'LIKE', "%{$query}%")
             ->limit(5)
             ->get(['PropertyId as id', 'PropertyName as name', 'Location'])
-            ->map(function($item) {
+            ->map(function ($item) {
                 $item->type = 'property';
                 return $item;
             });
@@ -244,7 +245,7 @@ class AnalyticsController extends Controller
             ->orWhere('email', 'LIKE', "%{$query}%")
             ->limit(5)
             ->get(['id', 'name', 'email', 'role'])
-            ->map(function($item) {
+            ->map(function ($item) {
                 $item->type = 'user';
                 return $item;
             });
@@ -256,7 +257,7 @@ class AnalyticsController extends Controller
             ->orWhere('phone', 'LIKE', "%{$query}%")
             ->limit(5)
             ->get(['id', 'name', 'email', 'phone'])
-            ->map(function($item) {
+            ->map(function ($item) {
                 $item->type = 'customer';
                 return $item;
             });

@@ -8,6 +8,25 @@
         "framework"
     ],
     "license": "MIT",
+    "repositories": [
+        {
+            "type": "package",
+            "url": "https://phonepe.mycloudrepo.io/public/repositories/phonepe-pg-php-sdk/v2-sdk.zip",
+            "package": {
+                "name": "phonepe/pg-php-sdk-v2",
+                "version": "2.0.0",
+                "dist": {
+                    "url": "https://phonepe.mycloudrepo.io/public/repositories/phonepe-pg-php-sdk/v2-sdk.zip",
+                    "type": "zip"
+                },
+                "autoload": {
+                    "classmap": [
+                        "/"
+                    ]
+                }
+            }
+        }
+    ],
     "require": {
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
@@ -16,7 +35,8 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "^3.1",
-        "phonepe/phonepe-pg-php-sdk": "dev-main",
+        "netresearch/jsonmapper": "^4.4",
+        "phonepe/pg-php-sdk-v2": "^2.0",
         "spatie/laravel-permission": "^6.0"
     },
     "require-dev": {

@@ -5,6 +5,11 @@ namespace App\Services;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 
+// SDK Imports (Optional, will check existence at runtime)
+use PhonePe\payments\v2\standardCheckout\StandardCheckoutClient;
+use PhonePe\payments\v2\models\request\builders\StandardCheckoutPayRequestBuilder;
+use PhonePe\Env;
+
 class PhonePeService
 {
     private $merchantId;
@@ -13,162 +18,157 @@ class PhonePeService
     private $saltKey;
     private $saltIndex;
     private $env;
-    private $baseUrl;
+
+    // Multi-Host Fallback List for Resilient Mode (Non-SDK)
+    private $prodHosts = [
+        'https://api.phonepe.com/apis/hermes',
+        'https://merchants.phonepe.com',
+        'https://api.phonepe.com'
+    ];
 
     public function __construct()
     {
-        // Load Configuration from config/phonepe.php
         $this->merchantId = config('phonepe.merchant_id');
         $this->clientId = config('phonepe.client_id');
         $this->clientSecret = config('phonepe.client_secret');
         $this->saltKey = config('phonepe.salt_key');
-        $this->saltIndex = config('phonepe.salt_index');
+        $this->saltIndex = config('phonepe.salt_index', '1');
         $this->env = config('phonepe.env', 'PROD');
 
-        $isUat = strtolower($this->env) === 'uat';
-        // USE HERMES ENDPOINT FOR ENTERPRISE
-        $this->baseUrl = $isUat
-            ? 'https://api-preprod.phonepe.com/apis/pg-sandbox'
-            : 'https://api.phonepe.com/apis/hermes';
+        $hasSdk = class_exists('\PhonePe\payments\v2\standardCheckout\StandardCheckoutClient');
 
-        Log::info("PhonePe Service Init (Enterprise)", [
-            'env' => $this->env,
+        Log::info("PhonePe Service Initialized", [
             'mid' => $this->merchantId,
-            'clientId' => $this->clientId,
-            'baseUrl' => $this->baseUrl
+            'env' => $this->env,
+            'using_sdk' => $hasSdk ? 'YES' : 'NO (Using Resilient Fallback)'
         ]);
-    }
-
-    /**
-     * Generate OAuth2 Access Token using Client ID and Secret
-     */
-    private function getAccessToken()
-    {
-        if (empty($this->clientId) || empty($this->clientSecret)) {
-            Log::error("PhonePe OAuth Credentials Missing in .env");
-            return null;
-        }
-
-        $tokenUrl = $this->baseUrl . '/oauth/v1/token';
-
-        try {
-            $response = Http::asForm()->post($tokenUrl, [
-                'client_id' => $this->clientId,
-                'client_secret' => $this->clientSecret,
-                'grant_type' => 'client_credentials',
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                return $data['access_token'] ?? null;
-            }
-
-            Log::error("PhonePe Token Generation Failed", [
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
-            return null;
-
-        } catch (\Exception $e) {
-            Log::error("PhonePe Token Exception: " . $e->getMessage());
-            return null;
-        }
     }
 
     public function initiatePayment($booking, $callbackUrl)
     {
-        if (empty($this->merchantId)) {
-            Log::error("PhonePe Merchant ID Missing");
-            return ['success' => false, 'message' => 'Config Missing', 'code' => 'CONFIG_MISSING'];
+        if (empty($this->merchantId) || empty($this->saltKey)) {
+            return ['success' => false, 'message' => 'PhonePe Config Missing'];
         }
 
-        // 1. Get OAuth Token
-        $accessToken = $this->getAccessToken();
-        if (!$accessToken) {
+        // Try Official SDK first if available
+        if (class_exists('\PhonePe\payments\v2\standardCheckout\StandardCheckoutClient')) {
+            try {
+                return $this->initiateWithSdk($booking, $callbackUrl);
+            } catch (\Exception $e) {
+                Log::error("PhonePe SDK Failure, falling back to resilient mode", ['error' => $e->getMessage()]);
+            }
+        }
+
+        return $this->initiateResilientManual($booking, $callbackUrl);
+    }
+
+    /**
+     * Initiation using Official PhonePe SDK (V2 Standard Checkout)
+     */
+    private function initiateWithSdk($booking, $callbackUrl)
+    {
+        $amountPaise = round($booking->paid_amount * 100);
+        $transactionId = $booking->transaction_id ?? ("RW_" . $booking->BookingId . "_" . time());
+        $redirectUrl = env('FRONTEND_URL', 'https://resortwala.com') . "/booking/success?id=" . $booking->BookingId;
+
+        $env = (strtolower($this->env) === 'uat') ? Env::UAT : Env::PRODUCTION;
+
+        $phonepeClient = StandardCheckoutClient::getInstance(
+            $this->clientId,
+            1, // Client Version
+            $this->clientSecret,
+            $env
+        );
+
+        $payRequest = (new StandardCheckoutPayRequestBuilder())
+            ->merchantOrderId($transactionId)
+            ->amount($amountPaise)
+            ->redirectUrl($redirectUrl)
+            ->callbackUrl($callbackUrl)
+            ->build();
+
+        $payResponse = $phonepeClient->pay($payRequest);
+
+        if ($payResponse->getState() === "PENDING" || !empty($payResponse->getRedirectUrl())) {
             return [
-                'success' => false,
-                'message' => 'Authentication Failed. Check PhonePe Credentials.',
-                'code' => 'AUTH_FAILED'
+                'success' => true,
+                'redirect_url' => $payResponse->getRedirectUrl(),
+                'transaction_id' => $transactionId
             ];
         }
 
-        $amountPaise = round($booking->paid_amount * 100);
-        $transactionId = $booking->transaction_id ?? ("TXN_" . $booking->BookingId . "_" . time());
-        $userId = "CUS_" . preg_replace('/[^0-9]/', '', $booking->CustomerMobile ?? '9999999999');
-        $redirectUrl = env('FRONTEND_URL', 'https://resortwala.com') . "/booking/success?id=" . $booking->BookingId;
+        throw new \Exception("SDK Payment State: " . $payResponse->getState());
+    }
 
-        // Ensure 10 digit mobile
+    /**
+     * Highly resilient manual implementation for when SDK is missing or failing mapping
+     */
+    private function initiateResilientManual($booking, $callbackUrl)
+    {
+        $amountPaise = round($booking->paid_amount * 100);
+        $transactionId = $booking->transaction_id ?? ("RW_" . $booking->BookingId . "_" . time());
+        $redirectUrl = env('FRONTEND_URL', 'https://resortwala.com') . "/booking/success?id=" . $booking->BookingId;
         $mobileNumber = substr(preg_replace('/[^0-9]/', '', $booking->CustomerMobile ?? '9999999999'), -10);
 
         $payload = [
             'merchantId' => $this->merchantId,
             'merchantTransactionId' => $transactionId,
-            'merchantUserId' => $userId,
+            'merchantUserId' => "CUS_" . $mobileNumber,
             'amount' => $amountPaise,
             'redirectUrl' => $redirectUrl,
             'redirectMode' => 'REDIRECT',
             'callbackUrl' => $callbackUrl,
             'mobileNumber' => $mobileNumber,
-            'paymentInstrument' => [
-                'type' => 'PAY_PAGE'
-            ]
+            'paymentInstrument' => ['type' => 'PAY_PAGE']
         ];
 
-        try {
-            $payloadJson = json_encode($payload);
-            $base64Payload = base64_encode($payloadJson);
+        $payloadBase64 = base64_encode(json_encode($payload));
+        $endpoint = "/pg/v1/pay";
+        $checksum = hash('sha256', $payloadBase64 . $endpoint . $this->saltKey) . '###' . $this->saltIndex;
 
-            // Generate X-VERIFY Checksum (Still often required even with Bearer token)
-            $checksumString = $base64Payload . "/pg/v1/pay" . $this->saltKey;
-            $checksum = hash('sha256', $checksumString) . '###' . $this->saltIndex;
+        $hosts = (strtolower($this->env) === 'uat')
+            ? ['https://api-preprod.phonepe.com/apis/pg-sandbox']
+            : $this->prodHosts;
 
-            Log::info("PhonePe Initiating Request", [
-                'url' => $this->baseUrl . '/pg/v1/pay',
-                'mid' => $this->merchantId,
-                'txn' => $transactionId,
-                'amount' => $amountPaise
-            ]);
+        foreach ($hosts as $host) {
+            try {
+                $response = Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'X-VERIFY' => $checksum,
+                    'X-MERCHANT-ID' => $this->merchantId,
+                    'X-CLIENT-VERSION' => '1'
+                ])->timeout(10)->post($host . $endpoint, ['request' => $payloadBase64]);
 
-            $response = Http::withHeaders([
-                'Authorization' => "Bearer " . $accessToken,
-                'Content-Type' => 'application/json',
-                'X-VERIFY' => $checksum,
-                'X-MERCHANT-ID' => $this->merchantId,
-            ])->post($this->baseUrl . '/pg/v1/pay', [
-                        'request' => $base64Payload
-                    ]);
-
-            $resData = $response->json();
-
-            if ($response->successful() && ($resData['success'] ?? false) === true) {
-                $payUrl = $resData['data']['instrumentResponse']['redirectInfo']['url'] ?? null;
-                return [
-                    'success' => true,
-                    'redirect_url' => $payUrl,
-                    'transaction_id' => $transactionId
-                ];
-            } else {
-                Log::error("PhonePe API Error", [
-                    'status' => $response->status(),
-                    'body' => $response->body()
-                ]);
-                return [
-                    'success' => false,
-                    'message' => $resData['message'] ?? 'Gateway Error',
-                    'code' => $resData['code'] ?? 'GATEWAY_ERROR',
-                    'detail' => $resData // Returned to controller for debugging
-                ];
+                $data = $response->json();
+                if ($response->successful() && ($data['success'] ?? false)) {
+                    return [
+                        'success' => true,
+                        'redirect_url' => $data['data']['instrumentResponse']['redirectInfo']['url'],
+                        'transaction_id' => $transactionId
+                    ];
+                }
+            } catch (\Exception $e) {
+                Log::warning("PhonePe Manual Resilient Host Failed: $host");
             }
-
-        } catch (\Exception $e) {
-            Log::error("PhonePe Init Exception: " . $e->getMessage());
-            return ['success' => false, 'message' => $e->getMessage(), 'code' => 'EXCEPTION'];
         }
+
+        return ['success' => false, 'message' => 'Payment Gateway Error. Please try later.'];
     }
 
     public function processCallback($encodedResponse, $checksumHeader)
     {
-        Log::info("PhonePe Callback Data Received");
-        return ['success' => true];
+        $calculatedChecksum = hash('sha256', $encodedResponse . $this->saltKey) . '###' . $this->saltIndex;
+        if ($calculatedChecksum !== $checksumHeader) {
+            return ['success' => false, 'message' => 'Checksum Mismatch'];
+        }
+
+        $response = json_decode(base64_decode($encodedResponse), true);
+        return [
+            'success' => $response['success'] ?? false,
+            'transaction_id' => $response['data']['merchantTransactionId'] ?? null,
+            'amount' => $response['data']['amount'] ?? 0,
+            'raw' => $response
+        ];
     }
 }

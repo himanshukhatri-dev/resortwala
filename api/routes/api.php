@@ -59,6 +59,8 @@ Route::get('/user', function (Request $request) {
 Route::get('/properties', [PropertyMasterController::class, 'index']);
 Route::get('/properties/locations', [PropertyMasterController::class, 'getLocations']); // Locations aggregation
 Route::get('/properties/{id}', [PropertyMasterController::class, 'show']);
+Route::get('/properties/{id}/reviews', [App\Http\Controllers\PropertyReviewController::class, 'index']);
+Route::post('/reviews', [App\Http\Controllers\PropertyReviewController::class, 'store']);
 Route::get('/properties/{id}/images', [\App\Http\Controllers\PropertyImageController::class, 'getImages']);
 Route::post('/bookings', [\App\Http\Controllers\BookingController::class, 'store']);
 Route::get('/bookings/search', [\App\Http\Controllers\BookingController::class, 'search']);
@@ -258,11 +260,14 @@ Route::prefix('admin/intelligence')->middleware(['auth:sanctum', 'verified'])->g
 // Admin Authentication Routes
 Route::post('/admin/login', [\App\Http\Controllers\AdminController::class, 'login']);
 
+Route::get('/admin/debug/phonepe', [\App\Http\Controllers\Admin\DebugController::class, 'testPhonePe'])->middleware('auth:sanctum');
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/profile', [\App\Http\Controllers\AdminController::class, 'profile']);
     Route::post('/admin/logout', [\App\Http\Controllers\AdminController::class, 'logout']);
     Route::get('/admin/stats', [\App\Http\Controllers\AdminController::class, 'getStats']);
     Route::get('/admin/stats/sidebar', [\App\Http\Controllers\AdminController::class, 'getSidebarStats']);
+    Route::get('/admin/developer/report', [\App\Http\Controllers\AdminController::class, 'getDeveloperReport']);
     Route::get('/admin/search', [\App\Http\Controllers\AdminController::class, 'globalSearch']);
     Route::get('/admin/vendors', [\App\Http\Controllers\AdminController::class, 'getAllVendors'])->middleware('acl:users.manage');
     Route::get('/admin/vendors/pending', [\App\Http\Controllers\AdminController::class, 'getPendingVendors'])->middleware('acl:users.manage');
@@ -351,6 +356,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/properties', [\App\Http\Controllers\Admin\RevenueController::class, 'properties']);
         Route::put('/properties/{id}/rates', [\App\Http\Controllers\Admin\RevenueController::class, 'updateRates']);
         Route::get('/analytics', [\App\Http\Controllers\Admin\RevenueController::class, 'analytics']);
+    });
+
+    // Admin Growth Intelligence (Phase 15)
+    Route::prefix('admin/growth-analytics')->group(function () {
+        Route::get('/overview', [\App\Http\Controllers\Admin\GrowthAnalyticsController::class, 'overview']);
+        Route::get('/behavior', [\App\Http\Controllers\Admin\GrowthAnalyticsController::class, 'behavior']);
+        Route::get('/insights', [\App\Http\Controllers\Admin\GrowthAnalyticsController::class, 'insights']);
     });
 
     Route::post('/admin/properties/{id}/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approve']);

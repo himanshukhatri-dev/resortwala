@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fc0a57ea143296b265589b80aa9307ca",
+    "content-hash": "a042721e99df3ac546312d1b89106adb",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -3486,59 +3486,18 @@
             "time": "2025-11-20T02:34:59+00:00"
         },
         {
-            "name": "phonepe/phonepe-pg-php-sdk",
-            "version": "dev-main",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/PhonePe/phonepe-pg-sdk-php.git",
-                "reference": "397b47c9bbe3ad92f226d3b804114a62f168fb19"
-            },
+            "name": "phonepe/pg-php-sdk-v2",
+            "version": "2.0.0",
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PhonePe/phonepe-pg-sdk-php/zipball/397b47c9bbe3ad92f226d3b804114a62f168fb19",
-                "reference": "397b47c9bbe3ad92f226d3b804114a62f168fb19",
-                "shasum": ""
+                "url": "https://phonepe.mycloudrepo.io/public/repositories/phonepe-pg-php-sdk/v2-sdk.zip"
             },
-            "require": {
-                "netresearch/jsonmapper": "^4.4",
-                "php": ">=8.2.0",
-                "vlucas/phpdotenv": "^5.6"
-            },
-            "require-dev": {
-                "mockery/mockery": "^1.6",
-                "php-mock/php-mock": "^2.5",
-                "phpunit/phpunit": "^11"
-            },
-            "default-branch": true,
             "type": "library",
             "autoload": {
-                "psr-4": {
-                    "PhonePe\\": "src/phonepe/sdk/pg"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "PhonePe",
-                    "email": "merchantpg-support@phonepe.com",
-                    "homepage": "https://developer.phonepe.com",
-                    "role": "Developer"
-                }
-            ],
-            "description": "This SDK helps merchants integrate PhonePe Payments Gateway with their PHP applications.",
-            "homepage": "https://developer.phonepe.com",
-            "keywords": [
-                "PhonePe",
-                "payment gateway"
-            ],
-            "support": {
-                "issues": "https://github.com/PhonePe/phonepe-pg-sdk-php/issues",
-                "source": "https://github.com/PhonePe/phonepe-pg-sdk-php/tree/main"
-            },
-            "time": "2025-09-22T07:04:38+00:00"
+                "classmap": [
+                    "/"
+                ]
+            }
         },
         {
             "name": "phpoffice/phpspreadsheet",
@@ -9726,9 +9685,7 @@
     ],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": {
-        "phonepe/phonepe-pg-php-sdk": 20
-    },
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

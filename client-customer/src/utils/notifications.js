@@ -7,12 +7,12 @@ export const requestNotificationPermission = async (userId, token) => {
     if (!messaging) return null;
 
     try {
-        if (!('Notification' in window)) {
-            console.log('This browser does not support desktop notification');
+        if (typeof window === 'undefined' || !window.Notification) {
+            console.log('Notification API not supported');
             return null;
         }
 
-        const permission = await Notification.requestPermission();
+        const permission = await window.Notification.requestPermission();
         if (permission === 'granted') {
             // console.log('Notification permission granted.');
 

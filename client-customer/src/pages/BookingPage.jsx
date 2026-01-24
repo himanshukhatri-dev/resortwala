@@ -151,12 +151,15 @@ export default function BookingPage() {
 
         let totalVillaRate = 0;
 
-        // Robust check for Waterpark
-        const isWaterpark =
-            property?.PropertyType?.toLowerCase().includes('waterpark') ||
-            property?.property_type?.toLowerCase().includes('waterpark') ||
-            property?.display_type?.toLowerCase().includes('waterpark') ||
-            property?.Name?.toLowerCase().includes('waterpark');
+        // Robust check for Waterpark (Standardized)
+        const checkIsWaterpark = (p) => {
+            if (!p) return false;
+            const type = (p.PropertyType || p.property_type || p.display_type || '').toLowerCase();
+            const name = (p.Name || '').toLowerCase();
+            return type.includes('water') || name.includes('water') || type.includes('resort');
+        };
+
+        const isWaterpark = checkIsWaterpark(property);
 
         if (isWaterpark) {
             const adminPricing = property.admin_pricing || {};
@@ -246,13 +249,11 @@ export default function BookingPage() {
 
     const details = getPricingDetails();
 
-    // TOKEN CALCULATION
-    const PAY_NOW_PERCENT = 0.10;
+    // WATERPARK TOKEN: Try to get from locationState (passed from details), then fallback to 50
+    const wpTokenAmount = locationState.breakdown?.tokenAmountPerGuest || 50;
 
-    // Waterpark: Fixed Rs 50 per guest
-    // Villa: 10% of Total (Tax excluded usually, keeping consistent with existing logic)
-    const payNowAmount = details?.isWaterpark
-        ? (guestCount * 50)
+    const payNowAmount = (details?.isWaterpark || locationState.breakdown?.isWaterpark)
+        ? (locationState.breakdown?.tokenAmount || (guestCount * wpTokenAmount))
         : (details ? Math.ceil((details.total - details.gst) * PAY_NOW_PERCENT) : 0);
 
     const balanceAmount = details ? details.total - payNowAmount : 0;

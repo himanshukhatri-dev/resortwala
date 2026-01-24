@@ -88,7 +88,7 @@ class AdminController extends Controller
                 'pending' => PropertyMaster::where('is_approved', false)->count(),
             ],
             'bookings' => [
-                'pending' => Booking::where('Status', 'pending')->count(), 
+                'pending' => Booking::where('Status', 'pending')->count(),
             ],
             'holidays' => [
                 'pending' => \App\Models\Holiday::where('approved', 0)->count(),
@@ -133,12 +133,12 @@ class AdminController extends Controller
     public function rejectVendor(Request $request, $id)
     {
         $vendor = User::where('role', 'vendor')->findOrFail($id);
-        
+
         // Check for existing properties
         if ($vendor->properties()->exists()) {
-             return response()->json(['message' => 'Cannot delete vendor. They have existing properties. Please delete properties first.'], 422);
+            return response()->json(['message' => 'Cannot delete vendor. They have existing properties. Please delete properties first.'], 422);
         }
-        
+
         // Cascade delete onboarding tokens
         \App\Models\OnboardingToken::where('user_id', $id)
             ->where('user_type', 'user')
@@ -195,7 +195,7 @@ class AdminController extends Controller
     public function approveProperty(Request $request, $id)
     {
         \App\Helpers\Profiler::checkpoint('Start approveProperty');
-        
+
         $property = PropertyMaster::findOrFail($id);
         \App\Helpers\Profiler::checkpoint('After findOrFail');
 
@@ -211,79 +211,105 @@ class AdminController extends Controller
 
         // Update fields from request
         $property->fill($request->only([
-            'Name', 'Location', 'ShortDescription', 'LongDescription', 
-            'Occupancy', 'MaxCapacity', 'NoofRooms', 
-            'checkInTime', 'checkOutTime', 
-            'PropertyRules', 'BookingSpecailMessage',
+            'Name',
+            'Location',
+            'ShortDescription',
+            'LongDescription',
+            'Occupancy',
+            'MaxCapacity',
+            'NoofRooms',
+            'checkInTime',
+            'checkOutTime',
+            'PropertyRules',
+            'BookingSpecailMessage',
             'admin_pricing',
-            'GoogleMapLink', 'Website', 'Address', 'ContactPerson', 'MobileNo', 'Email', 'PropertyType',
+            'GoogleMapLink',
+            'Website',
+            'Address',
+            'ContactPerson',
+            'MobileNo',
+            'Email',
+            'PropertyType',
             'Image' // Allow updating Cover Photo
         ]));
 
         // Merge Admin updates into onboarding_data
         $obData = $property->onboarding_data ?? [];
-        
+
         // Helper to Merge
         $fieldsToMerge = ['Amenities', 'RoomConfig', 'otherAmenities', 'otherAttractions', 'otherRules', 'latitude', 'longitude'];
-        foreach($fieldsToMerge as $field) {
+        foreach ($fieldsToMerge as $field) {
             if ($request->has($field)) {
                 $obData[$field] = $request->$field;
             }
         }
-        
+
         // Prepare strict update array for DB::table
         // Only include columns that DEFINITELY exist in Schema
         $updateData = $request->only([
-            'Name', 'Location', 'ShortDescription', 'LongDescription', 
-            'Occupancy', 'MaxCapacity', 'NoofRooms', 
-            'checkInTime', 'checkOutTime', 
-            'PropertyRules', 'BookingSpecailMessage',
-            'GoogleMapLink', 'Website', 'Address', 'ContactPerson', 'MobileNo', 'Email', 'PropertyType',
+            'Name',
+            'Location',
+            'ShortDescription',
+            'LongDescription',
+            'Occupancy',
+            'MaxCapacity',
+            'NoofRooms',
+            'checkInTime',
+            'checkOutTime',
+            'PropertyRules',
+            'BookingSpecailMessage',
+            'GoogleMapLink',
+            'Website',
+            'Address',
+            'ContactPerson',
+            'MobileNo',
+            'Email',
+            'PropertyType',
             'Image'
         ]);
 
         $updateData['is_approved'] = true;
         $updateData['onboarding_data'] = json_encode($obData); // Manual JSON encode for DB facade
-        
+
         if ($request->has('admin_pricing')) {
             $updateData['admin_pricing'] = json_encode($request->admin_pricing);
         }
 
         if ($request->hasFile('Image')) {
-             $image = $request->file('Image');
-             $filename = \Illuminate\Support\Str::random(40) . '.' . $image->getClientOriginalExtension();
-             $image->storeAs('properties/' . $id, $filename, 'public');
-             
-             // Create PropertyImage entry
-             $newImg = \App\Models\PropertyImage::create([
-                 'property_id' => $id,
-                 'image_path' => $id . '/' . $filename,
-                 'is_primary' => true, // Make it cover
-                 'display_order' => 0
-             ]);
-             
-             // Demote other images
-             \App\Models\PropertyImage::where('property_id', $id)
-                 ->where('id', '!=', $newImg->id)
-                 ->update(['is_primary' => false]);
-                 
-             // Also update primary 'Image' column in PropertyMaster for legacy support
-             $updateData['Image'] = $id . '/' . $filename;
+            $image = $request->file('Image');
+            $filename = \Illuminate\Support\Str::random(40) . '.' . $image->getClientOriginalExtension();
+            $image->storeAs('properties/' . $id, $filename, 'public');
+
+            // Create PropertyImage entry
+            $newImg = \App\Models\PropertyImage::create([
+                'property_id' => $id,
+                'image_path' => $id . '/' . $filename,
+                'is_primary' => true, // Make it cover
+                'display_order' => 0
+            ]);
+
+            // Demote other images
+            \App\Models\PropertyImage::where('property_id', $id)
+                ->where('id', '!=', $newImg->id)
+                ->update(['is_primary' => false]);
+
+            // Also update primary 'Image' column in PropertyMaster for legacy support
+            $updateData['Image'] = $id . '/' . $filename;
         }
 
         // Handle Selecting Existing Image as Primary
         if ($request->has('primary_image_id')) {
             $imgId = $request->primary_image_id;
             $existingImg = \App\Models\PropertyImage::where('property_id', $id)->where('id', $imgId)->first();
-            
+
             if ($existingImg) {
                 // Demote others
                 \App\Models\PropertyImage::where('property_id', $id)->update(['is_primary' => false]);
-                
+
                 // Promote this one
                 $existingImg->is_primary = true;
                 $existingImg->save();
-                
+
                 // Update Master
                 $updateData['Image'] = $existingImg->image_path;
             }
@@ -312,12 +338,14 @@ class AdminController extends Controller
 
     public function getAllBookings(Request $request)
     {
-        $bookings = Booking::with(['property' => function($q) {
-            $q->select('PropertyId', 'Name', 'Location', 'vendor_id', 'PropertyType') // Select needed columns
-              ->with('vendor:id,name,email,business_name,phone');
-        }])
-        ->orderBy('created_at', 'desc')
-        ->get();
+        $bookings = Booking::with([
+            'property' => function ($q) {
+                $q->select('PropertyId', 'Name', 'Location', 'vendor_id', 'PropertyType') // Select needed columns
+                    ->with('vendor:id,name,email,business_name,phone');
+            }
+        ])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return response()->json($bookings);
     }
@@ -355,7 +383,7 @@ class AdminController extends Controller
             ->select('id', 'name', 'email', 'phone', 'role', 'business_name')
             ->limit(5)
             ->get()
-            ->map(function($u) {
+            ->map(function ($u) {
                 $u->type = 'user';
                 return $u;
             });
@@ -368,7 +396,7 @@ class AdminController extends Controller
             ->select('id', 'name', 'email', 'phone')
             ->limit(5)
             ->get()
-            ->map(function($c) {
+            ->map(function ($c) {
                 $c->type = 'customer';
                 return $c;
             });
@@ -380,7 +408,7 @@ class AdminController extends Controller
             ->select('PropertyId as id', 'Name as name', 'Location')
             ->limit(5)
             ->get()
-            ->map(function($p) {
+            ->map(function ($p) {
                 $p->type = 'property';
                 return $p;
             });
@@ -392,7 +420,7 @@ class AdminController extends Controller
             ->select('BookingId as id', 'CustomerName as name', 'Status')
             ->limit(5)
             ->get()
-            ->map(function($b) {
+            ->map(function ($b) {
                 $b->type = 'booking';
                 return $b;
             });
@@ -484,7 +512,7 @@ class AdminController extends Controller
         ]);
 
         $holiday = \App\Models\Holiday::with('property.vendor')->findOrFail($id);
-        
+
         // Send Email before deleting
         if ($holiday->property && $holiday->property->vendor && $holiday->property->vendor->email) {
             try {
@@ -510,18 +538,18 @@ class AdminController extends Controller
         $ids = $request->ids;
         $action = $request->action;
         $reason = $request->reason;
-        
+
         $holidays = \App\Models\Holiday::with('property.vendor')->whereIn('id', $ids)->get();
         $processedCount = 0;
 
         foreach ($holidays as $holiday) {
             // Skip already approved if action is approve? Or mostly just re-approve is fine.
             // Actually, pending checking logic is handled by frontend mostly, but good to be safe.
-            
+
             if ($action === 'approve') {
                 $holiday->approved = 1;
                 $holiday->save();
-                
+
                 // Send Email
                 if ($holiday->property && $holiday->property->vendor && $holiday->property->vendor->email) {
                     try {
@@ -536,7 +564,7 @@ class AdminController extends Controller
                     try {
                         Mail::to($holiday->property->vendor->email)->queue(new HolidayStatusUpdatedMail($holiday, 'rejected', $reason));
                     } catch (\Exception $e) {
-                         \Illuminate\Support\Facades\Log::error('Failed to send holiday rejection email: ' . $e->getMessage());
+                        \Illuminate\Support\Facades\Log::error('Failed to send holiday rejection email: ' . $e->getMessage());
                     }
                 }
                 $holiday->delete();
@@ -549,14 +577,58 @@ class AdminController extends Controller
             'count' => $processedCount
         ]);
     }
-    public function getSystemInfo(Request $request)
+    public function getDeveloperReport(Request $request)
     {
+        $logFile = storage_path('logs/laravel.log');
+        $logs = "No logs found or inaccessible.";
+        if (file_exists($logFile)) {
+            $logs = `tail -n 100 $logFile`;
+        }
+
+        $composerLock = [];
+        if (file_exists(base_path('composer.lock'))) {
+            $composerLock = json_decode(file_get_contents(base_path('composer.lock')), true);
+        }
+
+        $packages = collect($composerLock['packages'] ?? [])->pluck('name')->toArray();
+
         return response()->json([
-            'environment' => config('app.env'),
-            'database' => config('database.connections.mysql.database'),
-            'host' => config('database.connections.mysql.host'),
-            'server_ip' => request()->server('SERVER_ADDR'),
-            // Mask host if it's external IP, but show localhost clearly
+            'system' => [
+                'php_version' => PHP_VERSION,
+                'laravel_version' => app()->version(),
+                'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
+                'os' => PHP_OS,
+                'environment' => config('app.env'),
+                'debug_mode' => config('app.debug'),
+                'timezone' => config('app.timezone'),
+            ],
+            'database' => [
+                'connection' => config('database.default'),
+                'host' => config('database.connections.mysql.host'),
+                'database' => config('database.connections.mysql.database'),
+                'status' => \Illuminate\Support\Facades\DB::connection()->getPdo() ? 'Connected ✅' : 'Error ❌',
+            ],
+            'sdks' => [
+                'phonepe' => [
+                    'class_exists' => class_exists('\PhonePe\payments\v2\standardCheckout\StandardCheckoutClient'),
+                    'in_lock_file' => in_array('phonepe/pg-php-sdk-v2', $packages),
+                    'merchant_id' => config('phonepe.merchant_id'),
+                    'env' => config('phonepe.env'),
+                ],
+                'firebase' => [
+                    'in_lock_file' => in_array('kreait/firebase-php', $packages),
+                    'config_exists' => file_exists(storage_path('app/firebase-auth.json')),
+                ]
+            ],
+            'storage' => [
+                'public_link' => file_exists(public_path('storage')),
+                'writable_paths' => [
+                    'storage' => is_writable(storage_path()),
+                    'logs' => is_writable(storage_path('logs')),
+                    'framework' => is_writable(storage_path('framework')),
+                ]
+            ],
+            'recent_logs' => $logs
         ]);
     }
 }

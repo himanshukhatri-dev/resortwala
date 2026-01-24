@@ -211,7 +211,14 @@ function Deploy-Component {
     
     # Use Resolve-Path to get absolute path for SCP to avoid ambiguity
     $AbsTarPath = (Resolve-Path $TarPath).Path
-    scp -o StrictHostKeyChecking=no "$AbsTarPath" "${User}@${ServerIP}:$($Config.RemotePath)/$TarFileName"
+    
+    # Use -O for legacy protocol (often fixes 'Connection closed' on newer OpenSSH clients)
+    scp -O -o StrictHostKeyChecking=no "$AbsTarPath" "${User}@${ServerIP}:$($Config.RemotePath)/$TarFileName"
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "[$Name] Standard SCP failed. Retrying with Verbose mode for diagnostics (Max 1 retry)..."
+        scp -O -v -o StrictHostKeyChecking=no "$AbsTarPath" "${User}@${ServerIP}:$($Config.RemotePath)/$TarFileName"
+    }
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[$Name] Extracting..." -ForegroundColor Green

@@ -444,8 +444,14 @@ export default function PropertyDetails() {
 
     const obPricing = ob.pricing || {};
     const roomConfig = ob.roomConfig || { livingRoom: {}, bedrooms: [] };
-    const isWaterpark = property.PropertyType?.toLowerCase().includes('water') ||
-        property.Name?.toLowerCase().includes('water');
+    const checkIsWaterpark = (p) => {
+        if (!p) return false;
+        const type = (p.PropertyType || p.property_type || p.display_type || '').toLowerCase();
+        const name = (p.Name || '').toLowerCase();
+        return type.includes('water') || name.includes('water') || type.includes('resort');
+    };
+
+    const isWaterpark = checkIsWaterpark(property);
 
     const handleReserve = () => {
         if (!dateRange.from || (!isWaterpark && !dateRange.to)) { setIsDatePickerOpen(true); return; }
@@ -601,7 +607,8 @@ export default function PropertyDetails() {
             const gstAmount = (taxableAmount * GST_PERCENTAGE) / 100;
             const totalSavings = Math.max(0, Math.round((totalMarketTickets || 0) - taxableAmount));
             const totalTickets = guests.adults + guests.children;
-            const tokenAmount = totalTickets * 50; // ₹50 per ticket for waterparks
+            const wpTokenAmountPerGuest = 50; // Will be synced with config if possible, but 50 is stable default
+            const tokenAmount = totalTickets * wpTokenAmountPerGuest;
 
             return {
                 nights,
@@ -611,6 +618,7 @@ export default function PropertyDetails() {
                 grantTotal: taxableAmount + gstAmount,
                 totalSavings,
                 tokenAmount,
+                tokenAmountPerGuest: wpTokenAmountPerGuest,
                 isWaterpark: true,
                 minNightlyRate: nights > 0 ? (totalAdultTicket / nights / (guests.adults || 1)) : 0,
                 nightDetails
@@ -1509,7 +1517,13 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">/ night</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs font-bold bg-gray-50 px-2 py-1 rounded-lg"><FaStar className="text-yellow-400" /> {rating || 4.8} <span className="text-gray-300">|</span> <span className="underline decoration-dotted text-gray-400 cursor-pointer">Reviews</span></div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold bg-gray-50 px-2 py-1 rounded-lg">
+                        <FaStar className="text-yellow-400" />
+                        {Number(property?.rating_display?.total || rating || 4.8).toFixed(1)}
+                        {property?.rating_display?.count > 0 && <span className="text-gray-400 font-normal ml-0.5">({property.rating_display.count})</span>}
+                        <span className="text-gray-300">|</span>
+                        <span className="underline decoration-dotted text-gray-400 cursor-pointer" onClick={() => scrollToSection('reviews')}>Reviews</span>
+                    </div>
                 </div>
 
                 {/* DATES */}
@@ -1755,9 +1769,10 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                     onDayClick={(day) => {
                                         onDateSelect(day);
                                         // Auto-close on single click for Waterparks
-                                        if (isWaterpark) {
-                                            onClose();
-                                        }
+                                        // REMOVED as per user request to keep picker open on mobile
+                                        // if (isWaterpark) {
+                                        //     onClose();
+                                        // }
                                     }}
                                     numberOfMonths={1}
                                     pagedNavigation

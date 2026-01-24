@@ -46,6 +46,9 @@ class PropertyMasterController extends Controller
                         case 'price_high':
                             $query->orderBy('Price', 'desc');
                             break;
+                        case 'rating':
+                            $query->orderBy('customer_avg_rating', 'desc');
+                            break;
                         default: // newest
                             $query->orderBy('created_at', 'desc');
                     }

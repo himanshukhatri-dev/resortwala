@@ -19,7 +19,7 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
         // Use Smart Price (Lowest in 30 days) > Deal Price > Standard Price
         price = parseFloat(property?.lowest_price_next_30 || property?.DealPrice || property?.Price || property?.PricePerNight || 0) || 15000,
         // Use Smart Review Logic
-        rating = property?.display_rating || property?.Rating || 4.9,
+        rating = property?.rating_display?.total || property?.display_rating || property?.Rating || 0,
         description = property?.ShortDescription || property?.onboarding_data?.shortDescription || property?.LongDescription || property?.long_description || "Experience luxury living in this beautiful property featuring modern amenities and stunning views.",
         isVerifiedRating = property?.is_verified_rating,
         ratingLabel = property?.display_rating_label
@@ -193,9 +193,9 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
 
                         <div className="flex items-center gap-1.5 font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
                             <FaStar className="text-yellow-400 text-xs mb-0.5" />
-                            <span>{rating > 0 ? rating : "New"}</span>
+                            <span>{Number(rating) > 0 ? Number(rating).toFixed(1) : "New"}</span>
+                            {property?.rating_display?.count > 0 && <span className="text-[10px] text-gray-400 font-normal ml-0.5">({property.rating_display.count})</span>}
                             {ratingLabel && <span className="text-[8px] uppercase tracking-wider text-gray-400 font-normal ml-1 border-l pl-1 border-gray-300">{ratingLabel}</span>}
-                            {/* {rating > 0 && <span className="text-[10px] text-gray-400 font-normal ml-0.5">({(id % 50) + 5} Reviews)</span>} */}
                         </div>
 
                         <div className="flex items-center gap-1.5 text-gray-500 font-medium">

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import analytics from '../utils/analytics';
 
 const AuthContext = createContext();
 
@@ -18,16 +19,19 @@ export function AuthProvider({ children }) {
             })
                 .then(res => {
                     setUser(res.data);
+                    analytics.setUser(res.data.id);
                     setLoading(false);
                 })
                 .catch(() => {
                     localStorage.removeItem('customer_token');
                     setToken(null);
                     setUser(null);
+                    analytics.setUser(null);
                     setLoading(false);
                 });
         } else {
             setLoading(false);
+            analytics.setUser(null);
         }
     }, [token]);
 
@@ -40,6 +44,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem('customer_token', newToken);
         setToken(newToken);
         setUser(response.data.customer);
+        analytics.setUser(response.data.customer?.id);
         return response.data;
     };
 
@@ -54,6 +59,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem('customer_token', newToken);
         setToken(newToken);
         setUser(response.data.customer);
+        analytics.setUser(response.data.customer?.id);
         return response.data;
     };
 
@@ -68,6 +74,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('customer_token');
         setToken(null);
         setUser(null);
+        analytics.setUser(null);
     };
 
     const loginWithToken = (newToken, userData = null) => {

@@ -18,23 +18,42 @@ class AclSeeder extends Seeder
         // 2. Define Permissions (Module.Action)
         $permissions = [
             // Properties
-            'properties.view', 'properties.create', 'properties.edit', 'properties.approve', 'properties.delete',
+            'properties.view',
+            'properties.create',
+            'properties.edit',
+            'properties.approve',
+            'properties.delete',
             // Social Media
-            'social.process', 'social.post', 'social.analytics', 'social.manage',
+            'social.process',
+            'social.post',
+            'social.analytics',
+            'social.manage',
             // Accounts / Finance
-            'accounts.view', 'accounts.export', 'accounts.manage',
+            'accounts.view',
+            'accounts.export',
+            'accounts.manage',
             // Notifications
-            'notifications.view', 'notifications.manage_templates', 'notifications.send_test',
+            'notifications.view',
+            'notifications.manage_templates',
+            'notifications.send_test',
             // Analytics & CRM
-            'analytics.view', 'crm.leads', 'crm.connectors',
+            'analytics.view',
+            'crm.leads',
+            'crm.connectors',
             // Bookings
-            'bookings.view', 'bookings.manage',
+            'bookings.view',
+            'bookings.manage',
             // Users & Directory
-            'users.manage', 'users.view',
+            'users.manage',
+            'users.view',
             // Chatbot
             'chatbot.manage',
             // System / ACL
-            'system.manage_users', 'system.manage_acl', 'system.view_logs', 'system.manage_settings', 'system.backup_db'
+            'system.manage_users',
+            'system.manage_acl',
+            'system.view_logs',
+            'system.manage_settings',
+            'system.backup_db'
         ];
 
         foreach ($permissions as $perm) {
@@ -43,7 +62,7 @@ class AclSeeder extends Seeder
         }
 
         // 3. Define Roles & Assign Permissions
-        
+
         // Developer (Super Admin) - Has ALL
         $developer = Role::updateOrCreate(['name' => 'Developer', 'guard_name' => 'web']);
         $developer->givePermissionTo(Permission::where('guard_name', 'web')->get());
@@ -55,8 +74,10 @@ class AclSeeder extends Seeder
         $ceo = Role::updateOrCreate(['name' => 'CEO', 'guard_name' => 'web']);
         $ceo_api = Role::updateOrCreate(['name' => 'CEO', 'guard_name' => 'sanctum']);
         $ceo_perms = [
-            'properties.view', 'properties.approve',
-            'accounts.view', 'accounts.export',
+            'properties.view',
+            'properties.approve',
+            'accounts.view',
+            'accounts.export',
             'social.analytics',
             'notifications.view',
             'system.view_logs'
@@ -68,7 +89,9 @@ class AclSeeder extends Seeder
         $social = Role::updateOrCreate(['name' => 'SocialMedia', 'guard_name' => 'web']);
         $social_api = Role::updateOrCreate(['name' => 'SocialMedia', 'guard_name' => 'sanctum']);
         $social_perms = [
-            'social.process', 'social.post', 'social.analytics',
+            'social.process',
+            'social.post',
+            'social.analytics',
             'properties.view'
         ];
         $social->givePermissionTo($social_perms);
@@ -78,7 +101,9 @@ class AclSeeder extends Seeder
         $property = Role::updateOrCreate(['name' => 'PropertyManager', 'guard_name' => 'web']);
         $property_api = Role::updateOrCreate(['name' => 'PropertyManager', 'guard_name' => 'sanctum']);
         $property_perms = [
-            'properties.view', 'properties.create', 'properties.edit',
+            'properties.view',
+            'properties.create',
+            'properties.edit',
             'notifications.view'
         ];
         $property->givePermissionTo($property_perms);
@@ -88,18 +113,20 @@ class AclSeeder extends Seeder
         $accounts = Role::updateOrCreate(['name' => 'AccountsManager', 'guard_name' => 'web']);
         $accounts_api = Role::updateOrCreate(['name' => 'AccountsManager', 'guard_name' => 'sanctum']);
         $accounts_perms = [
-            'accounts.view', 'accounts.export', 'accounts.manage',
+            'accounts.view',
+            'accounts.export',
+            'accounts.manage',
             'properties.view'
         ];
         $accounts->givePermissionTo($accounts_perms);
         $accounts_api->givePermissionTo($accounts_perms);
 
         // 4. Create/Assign specific Users
-        
+
         // Himanshu -> Developer
         $u1 = User::updateOrCreate(
             ['email' => 'himanshu@resortwala.com'],
-            ['name' => 'Himanshu', 'password' => Hash::make('Secret123!'), 'role' => 'admin']
+            ['name' => 'Himanshu', 'password' => Hash::make('Vyom@123'), 'role' => 'admin']
         );
         $u1->assignRole($developer);
 

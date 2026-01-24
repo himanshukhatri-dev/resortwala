@@ -178,7 +178,7 @@ export default function FilterBar({ filters, onFilterChange, compact = false, av
                                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
                                 className="absolute top-full left-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 overflow-hidden"
                             >
-                                {['newest', 'price_low', 'price_high'].map(opt => (
+                                {['newest', 'price_low', 'price_high', 'rating'].map(opt => (
                                     <button
                                         key={opt}
                                         onClick={() => { setFilter('sort', opt); setActiveDropdown(null); }}
@@ -187,6 +187,7 @@ export default function FilterBar({ filters, onFilterChange, compact = false, av
                                         {opt === 'newest' && 'Newest First'}
                                         {opt === 'price_low' && 'Price: Low to High'}
                                         {opt === 'price_high' && 'Price: High to Low'}
+                                        {opt === 'rating' && 'Top Rated'}
                                     </button>
                                 ))}
                             </motion.div>

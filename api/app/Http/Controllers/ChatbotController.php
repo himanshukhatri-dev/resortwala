@@ -40,6 +40,9 @@ class ChatbotController extends Controller
                     'quick_actions' => [
                         ['id' => 'search', 'label' => '🔍 Find Property', 'action' => 'FORM_SEARCH'],
                         ['id' => 'human', 'label' => '👩‍💼 Talk to Agent', 'action' => 'LINK_WHATSAPP']
+                    ],
+                    'settings' => [
+                        'waterpark_token_amount' => config('resortwala.waterpark_token_amount', 50)
                     ]
                 ]
             ]);

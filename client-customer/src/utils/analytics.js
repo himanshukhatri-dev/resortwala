@@ -41,6 +41,7 @@ class EventTracker {
             event_category: category,
             event_data: {
                 ...data,
+                user_id: this.userId,
                 timestamp: new Date().toISOString()
             },
             context: this.getContext()

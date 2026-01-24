@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaDatabase, FaCode, FaCogs, FaTable, FaHistory, FaNetworkWired } from 'react-icons/fa';
+import { FaDatabase, FaCode, FaCogs, FaTable, FaHistory, FaNetworkWired, FaChartLine } from 'react-icons/fa';
 
 import SchemaVisualizer from './intelligence/SchemaVisualizer';
 
@@ -43,6 +43,8 @@ const LiveDataManager = () => (
 
 import BackupManager from './intelligence/BackupManager';
 import ImpactLogs from './intelligence/ImpactLogs';
+import GrowthVisualizer from './intelligence/GrowthVisualizer';
+import DeveloperConsole from './intelligence/DeveloperConsole';
 
 export default function Intelligence() {
     const [activeTab, setActiveTab] = useState('schema');
@@ -50,8 +52,10 @@ export default function Intelligence() {
     const tabs = [
         { id: 'schema', label: 'DB Architecture', icon: FaDatabase, component: SchemaVisualizer },
         { id: 'code', label: 'Code Flow', icon: FaCode, component: CodeFlowVisualizer },
+        { id: 'diagnostic', label: 'Terminal Diagnostic', icon: FaCogs, component: DeveloperConsole },
         { id: 'process', label: 'Business Process', icon: FaCogs, component: BusinessProcessVisualizer },
         { id: 'data', label: 'Live Editor', icon: FaTable, component: LiveDataManager },
+        { id: 'growth', label: 'Growth & Conversion', icon: FaChartLine, component: GrowthVisualizer },
         { id: 'backups', label: 'System Backup', icon: FaHistory, component: BackupManager },
         { id: 'logs', label: 'User Analytics', icon: FaNetworkWired, component: () => <div className="p-10 text-center"><p className="mb-4">Live User Interaction Logs have been moved to the primary Technical menu.</p><button onClick={() => window.location.href = '/admin/analytics'} className="px-6 py-2 bg-blue-600 text-white rounded-lg">Go to System Logs</button></div> },
     ];
@@ -59,22 +63,22 @@ export default function Intelligence() {
     const ActiveComponent = tabs.find(t => t.id === activeTab)?.component || SchemaVisualizer;
 
     return (
-        <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden bg-gray-50/50">
+        <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-white">
             {/* Header */}
-            <div className="px-8 py-6 mb-2">
+            <div className="px-6 py-4 border-b border-gray-100">
                 <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
                     <span className="p-2 bg-gray-900 text-white rounded-lg text-xl shadow-lg border border-gray-700">
                         <FaNetworkWired />
                     </span>
                     System Intelligence
                 </h1>
-                <p className="text-gray-500 font-medium font-outfit mt-1 ml-14">
+                <p className="text-gray-400 font-medium font-outfit text-xs mt-0.5 ml-11">
                     Architectural control and explainability interface
                 </p>
             </div>
 
             {/* Tabs */}
-            <div className="px-8 flex items-center gap-2 border-b border-gray-200 overflow-x-auto pb-1px custom-scrollbar">
+            <div className="px-6 flex items-center gap-1 border-b border-gray-100 overflow-x-auto pb-0 custom-scrollbar bg-gray-50/30">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
@@ -97,8 +101,8 @@ export default function Intelligence() {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 p-8 overflow-hidden">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm h-full overflow-hidden relative">
+            <div className="flex-1 overflow-hidden">
+                <div className="h-full overflow-hidden relative">
                     <div className="absolute inset-0 overflow-auto custom-scrollbar p-6">
                         <AnimatePresence mode='wait'>
                             <motion.div

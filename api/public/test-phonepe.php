@@ -1,83 +1,68 @@
 <?php
-header('Content-Type: text/plain');
+/**
+ * Official PhonePe SDK Test Script (SDK v2)
+ */
 
-$merchantId = "M223R7WEM0IRX";
+$autoloadPath = __DIR__ . '/../vendor/autoload.php';
+if (!file_exists($autoloadPath)) {
+    die("ERROR: vendor/autoload.php not found. Please run 'composer install' in the api folder.");
+}
+
+require $autoloadPath;
+
+use PhonePe\payments\v2\standardCheckout\StandardCheckoutClient;
+use PhonePe\payments\v2\models\request\builders\StandardCheckoutPayRequestBuilder;
+use PhonePe\Env;
+
+// REAL CREDENTIALS
 $clientId = "SU2512151740277878517471";
 $clientSecret = "156711f6-bdb7-4734-b490-f53d25b69d69";
-$saltKey = "156711f6-bdb7-4734-b490-f53d25b69d69"; // Re-using as Salt Key as per current pattern
-$saltIndex = "1";
-$env = "PROD";
+$clientVersion = 1;
+$env = Env::PRODUCTION;
 
-echo "PhonePe Standalone Test Initiation\n";
-echo "Merchant ID: $merchantId\n";
-echo "Client ID: $clientId\n";
-echo "----------------------------------\n";
-
-$tokenUrl = "https://api.phonepe.com/apis/hermes/oauth/v1/token";
-
-$ch = curl_init($tokenUrl);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-$postData = http_build_query([
-    'client_id' => $clientId,
-    'client_secret' => $clientSecret,
-    'grant_type' => 'client_credentials'
-]);
-curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-
-$tokenResp = curl_exec($ch);
-if ($tokenResp === false) {
-    echo "CURL Error: " . curl_error($ch) . "\n";
+// Check if class exists before initializing
+if (!class_exists('PhonePe\payments\v2\standardCheckout\StandardCheckoutClient')) {
+    die("ERROR: PhonePe SDK classes not found. Your 'composer install' might have failed to download the custom repository. Please check your terminal output.");
 }
-$info = curl_getinfo($ch);
-curl_close($ch);
 
-echo "Token API Status: " . $info['http_code'] . "\n";
-echo "Token Response: " . print_r($tokenResp, true) . "\n\n";
-if ($info['http_code'] == 200) {
-    if ($tokenResp) {
-        $data = json_decode($tokenResp, true);
-        $accessToken = $data['access_token'] ?? null;
-        echo "Token Generated Successfully!\n";
-        echo "Access Token (first 20): " . substr($accessToken, 0, 20) . "...\n\n";
+$phonepeClient = StandardCheckoutClient::getInstance(
+    $clientId,
+    $clientVersion,
+    $clientSecret,
+    $env
+);
+
+$merchantOrderId = "ORDER-" . uniqid();
+$amount = 100; // ₹1 in paise
+
+$payRequest = (new StandardCheckoutPayRequestBuilder())
+    ->merchantOrderId($merchantOrderId)
+    ->amount($amount)
+    ->redirectUrl("https://resortwala.com/booking/success")
+    ->build();
+
+try {
+    echo "=====================================\n";
+    echo " PhonePe SDK Production Test\n";
+    echo "=====================================\n\n";
+    echo "Initiating payment...\n";
+
+    $payResponse = $phonepeClient->pay($payRequest);
+
+    if ($payResponse->getState() === "PENDING") {
+        echo "✅ SUCCESS! Redirecting to PhonePe...\n\n";
+        echo "Click the link below to pay ₹1:\n";
+        echo $payResponse->getRedirectUrl() . "\n";
+        // header("Location: " . $payResponse->getRedirectUrl());
+        exit();
+    } else {
+        echo "❌ Payment initiation failed: " . $payResponse->getState() . "\n";
+        print_r($payResponse);
     }
-} else {
-    echo "OAuth Token Generation FAILED with status: " . $info['http_code'] . "\n\n";
+
+} catch (\PhonePe\common\exceptions\PhonePeException $e) {
+    echo "❌ SDK Exception: " . $e->getMessage() . "\n";
+    echo "Trace: " . $e->getTraceAsString();
+} catch (\Exception $e) {
+    echo "❌ General Error: " . $e->getMessage();
 }
-
-echo "Attempting Standard Payment Initiation (№ Token, Checksum only)...\n";
-$payUrl = "https://api.phonepe.com/apis/hermes/pg/v1/pay";
-$txnId = "TEST_STD_" . time();
-$payload = [
-    'merchantId' => $merchantId,
-    'merchantTransactionId' => $txnId,
-    'merchantUserId' => "TEST_USER_STD",
-    'amount' => 100, // ₹1
-    'redirectUrl' => "https://resortwala.com/success",
-    'redirectMode' => 'REDIRECT',
-    'callbackUrl' => "https://resortwala.com/api/payment/callback",
-    'mobileNumber' => "9999999999",
-    'paymentInstrument' => ['type' => 'PAY_PAGE']
-];
-
-$base64Payload = base64_encode(json_encode($payload));
-$checksum = hash('sha256', $base64Payload . "/pg/v1/pay" . $saltKey) . "###" . $saltIndex;
-
-$ch = curl_init($payUrl);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['request' => $base64Payload]));
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    "X-VERIFY: $checksum",
-    "X-MERCHANT-ID: $merchantId"
-]);
-
-$payResp = curl_exec($ch);
-$payInfo = curl_getinfo($ch);
-curl_close($ch);
-
-echo "Standard Pay API Status: " . $payInfo['http_code'] . "\n";
-echo "Standard Pay Response: $payResp\n";
-

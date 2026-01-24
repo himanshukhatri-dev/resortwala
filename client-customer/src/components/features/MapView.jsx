@@ -63,7 +63,7 @@ const createPriceIcon = (price, distance) => {
 
     let distText = '';
     if (distance !== undefined && distance !== null) {
-        distText = distance < 1 ? Math.round(distance * 1000) + 'm' : distance.toFixed(1) + 'km';
+        distText = Number(distance) < 1 ? Math.round(Number(distance) * 1000) + 'm' : Number(distance).toFixed(1) + 'km';
     } else {
         // DEBUG: Why is it missing?
         // distText = '?'; 
