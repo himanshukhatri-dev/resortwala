@@ -12,6 +12,7 @@ export function AuthProvider({ children }) {
     // Initialize Auth
     useEffect(() => {
         if (token) {
+            setLoading(true); // Prevent race condition where user is null but loading is false
             axios.get(`${API_BASE_URL}/customer/profile`, {
                 headers: { Authorization: `Bearer ${token}` }
             })

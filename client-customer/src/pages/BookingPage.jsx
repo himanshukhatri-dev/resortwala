@@ -32,10 +32,8 @@ export default function BookingPage() {
     });
 
     // Guests
-    const guests = locationState.guests || { adults: 2, children: 0, infants: 0 };
-    const guestCount = typeof guests === 'object'
-        ? (guests.adults || 0) + (guests.children || 0) + (guests.infants || 0)
-        : guests;
+    const [guests, setGuests] = useState(locationState.guests || { adults: 2, children: 0, infants: 0 });
+    const guestCount = (guests.adults || 0) + (guests.children || 0) + (guests.infants || 0);
 
     // Form
     const [form, setForm] = useState({
@@ -55,18 +53,23 @@ export default function BookingPage() {
 
     // Pre-fill form on auth load
     useEffect(() => {
-        if (user) {
+        if (!loading && !user) {
+            navigate('/login', {
+                replace: true,
+                state: {
+                    returnTo: location.pathname,
+                    bookingState: locationState // Preserve booking context (dates, guests, etc.)
+                }
+            });
+        } else if (user) {
             setForm(prev => ({
                 ...prev,
                 CustomerName: user.name || prev.CustomerName,
                 CustomerEmail: user.email || prev.CustomerEmail,
                 CustomerMobile: user.phone || prev.CustomerMobile
             }));
-        } else if (!loading) {
-            // Optional: Redirect to login if enforced, but maybe allow guest checkout or handle later
-            // navigate('/login', { state: { returnTo: location.pathname, bookingState: locationState } });
         }
-    }, [user, loading]);
+    }, [user, loading, location.pathname, locationState, navigate]);
 
     // Fetch Data
     useEffect(() => {
@@ -147,13 +150,42 @@ export default function BookingPage() {
         const GST_PERCENTAGE = safeFloat(property.gst_percentage, 18);
 
         let totalVillaRate = 0;
-        const isWaterpark = property?.PropertyType?.toLowerCase().includes('waterpark');
+
+        // Robust check for Waterpark
+        const isWaterpark =
+            property?.PropertyType?.toLowerCase().includes('waterpark') ||
+            property?.property_type?.toLowerCase().includes('waterpark') ||
+            property?.display_type?.toLowerCase().includes('waterpark') ||
+            property?.Name?.toLowerCase().includes('waterpark');
 
         if (isWaterpark) {
-            // For Waterparks, we use the breakdown's tickets total as the base
-            totalVillaRate = locationState.breakdown?.totalAdultTicket || 0;
-            const totalChildTickets = locationState.breakdown?.totalChildTicket || 0;
-            totalVillaRate += totalChildTickets;
+            const adminPricing = property.admin_pricing || {};
+            const ob = property.onboarding_data || {};
+            let totalAdultTicket = 0;
+            let totalChildTicket = 0;
+
+            for (let i = 0; i < nights; i++) {
+                const d = new Date(dateRange.from);
+                d.setDate(d.getDate() + i);
+                if (!isValid(d)) continue;
+                const w = d.getDay();
+                const isWeekend = (w === 0 || w === 6 || w === 5); // Fri, Sat, Sun based on logic
+                const typeSuffix = isWeekend ? 'weekend' : 'weekday';
+
+                // Adult Rate Logic
+                let aRate = parseFloat(adminPricing[`adult_${typeSuffix}`]?.final || adminPricing[`adult_${typeSuffix}`] || (isWeekend ? (PRICE_SATURDAY || PRICE_FRISUN) : PRICE_WEEKDAY));
+
+                // Child Rate Logic
+                let cRate = parseFloat(adminPricing[`child_${typeSuffix}`]?.final || adminPricing[`child_${typeSuffix}`] || ob.childCriteria?.[`${typeSuffix}Price`] || ob.childCriteria?.price || 500);
+
+                totalAdultTicket += (aRate * (guests.adults || 0));
+                totalChildTicket += (cRate * (guests.children || 0));
+            }
+
+            totalVillaRate = totalAdultTicket + totalChildTicket;
+
+            // Populate breakdown for consistency (though local)
+            // Note: BookingPage doesn't write back to locationState, but details.base needs to reflect this total.
         } else {
             // Loop through each night for Villas
             for (let i = 0; i < nights; i++) {
@@ -215,12 +247,22 @@ export default function BookingPage() {
 
     // TOKEN CALCULATION
     const PAY_NOW_PERCENT = 0.10;
-    const payNowAmount = details ? Math.ceil((details.total - details.gst) * PAY_NOW_PERCENT) : 0;
+
+    // Waterpark: Fixed Rs 50 per guest
+    // Villa: 10% of Total (Tax excluded usually, keeping consistent with existing logic)
+    const payNowAmount = details?.isWaterpark
+        ? (guestCount * 50)
+        : (details ? Math.ceil((details.total - details.gst) * PAY_NOW_PERCENT) : 0);
+
     const balanceAmount = details ? details.total - payNowAmount : 0;
 
     // -- SUBMIT --
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!user) {
+            navigate('/login', { state: { returnTo: location.pathname, bookingState: locationState } });
+            return;
+        }
         if (!details) return;
         setBookingStatus('submitting');
 
@@ -290,7 +332,7 @@ export default function BookingPage() {
                     {/* LEFT COLUMN: DETAILS & FORM (2/3 width) */}
                     <div className="lg:col-span-2 space-y-6">
 
-                        {/* 1. TRIP DETAILS (READ ONLY with EDIT Action) */}
+                        {/* 1. TRIP DETAILS (EDITABLE) */}
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                             <h2 className="text-xl font-bold mb-6 text-gray-900 border-b pb-4">Your Trip</h2>
 
@@ -299,38 +341,39 @@ export default function BookingPage() {
                                 <div>
                                     <h3 className="font-semibold text-gray-900 mb-1">Dates</h3>
                                     <p className="text-gray-600 text-sm">
-                                        {format(dateRange.from, 'MMM dd')} – {format(dateRange.to, 'MMM dd, yyyy')}
+                                        {format(dateRange.from, 'MMM dd, yyyy')}
+                                        {/* Show end date only if different from start (for Villas) or if range explicitly selected */}
+                                        {differenceInDays(dateRange.to, dateRange.from) > 1 && ` – ${format(dateRange.to, 'MMM dd, yyyy')}`}
                                     </p>
                                 </div>
+                                {/* EDIT ACTION - Simply navigate back for dates for now as full calendar is complex to inline here without huge refactor */}
                                 <button
                                     onClick={handleEdit}
                                     className="text-black font-semibold text-sm underline decoration-gray-300 underline-offset-4 hover:decoration-black transition"
                                 >
-                                    Edit
+                                    Change Date
                                 </button>
                             </div>
 
-                            {/* GUESTS */}
+                            {/* GUESTS - INLINE EDIT */}
                             <div className="flex justify-between items-start">
                                 <div>
                                     <h3 className="font-semibold text-gray-900 mb-1">Guests</h3>
-                                    <p className="text-gray-600 text-sm">
-                                        {typeof guests === 'object' ? (
-                                            <>
-                                                {guests.adults} Adults
-                                                {guests.children > 0 && `, ${guests.children} Children`}
-                                            </>
-                                        ) : (
-                                            `${guests} guests`
-                                        )}
-                                    </p>
+                                    <div className="flex flex-wrap items-center gap-4 mt-3">
+                                        <div className="flex items-center bg-gray-50 rounded-xl p-1.5 border border-gray-200 select-none">
+                                            <span className="px-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Adults</span>
+                                            <button onClick={() => setGuests(prev => ({ ...prev, adults: Math.max(1, prev.adults - 1) }))} className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-gray-100 font-black text-gray-700 active:scale-95 transition text-lg">-</button>
+                                            <span className="w-10 text-center font-bold text-lg text-gray-900">{guests.adults}</span>
+                                            <button onClick={() => setGuests(prev => ({ ...prev, adults: prev.adults + 1 }))} className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-gray-100 font-black text-gray-700 active:scale-95 transition text-lg">+</button>
+                                        </div>
+                                        <div className="flex items-center bg-gray-50 rounded-xl p-1.5 border border-gray-200 select-none">
+                                            <span className="px-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Kids</span>
+                                            <button onClick={() => setGuests(prev => ({ ...prev, children: Math.max(0, prev.children - 1) }))} className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-gray-100 font-black text-gray-700 active:scale-95 transition text-lg">-</button>
+                                            <span className="w-10 text-center font-bold text-lg text-gray-900">{guests.children}</span>
+                                            <button onClick={() => setGuests(prev => ({ ...prev, children: prev.children + 1 }))} className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-gray-100 font-black text-gray-700 active:scale-95 transition text-lg">+</button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button
-                                    onClick={handleEdit}
-                                    className="text-black font-semibold text-sm underline decoration-gray-300 underline-offset-4 hover:decoration-black transition"
-                                >
-                                    Edit
-                                </button>
                             </div>
                         </div>
 
@@ -451,7 +494,12 @@ export default function BookingPage() {
                                 <div className="relative z-10">
                                     <div className="text-xs text-gray-300 uppercase tracking-widest font-bold mb-1">Pay Now to Book</div>
                                     <div className="text-2xl font-black">₹{payNowAmount.toLocaleString()}</div>
-                                    <div className="text-xs text-gray-400 mt-1">10% Token Amount</div>
+                                    <div className="text-xs text-gray-400 mt-1">
+                                        {details?.isWaterpark
+                                            ? `Advance (₹50 x ${guestCount} Guests)`
+                                            : '10% Token Amount'
+                                        }
+                                    </div>
                                 </div>
                             </div>
 

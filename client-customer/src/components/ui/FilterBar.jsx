@@ -357,7 +357,7 @@ export default function FilterBar({ filters, onFilterChange, compact = false, av
                     </AnimatePresence>
                 </div>
 
-                {/* 4. VEG ONLY (COMPACT) */}
+                {/* 4. VEG ONLY (COMPACT) - HIDDEN 
                 <button
                     onClick={() => setFilter('veg_only', !filters.veg_only)}
                     title="Veg Only"
@@ -369,6 +369,7 @@ export default function FilterBar({ filters, onFilterChange, compact = false, av
                     <FaLeaf className={filters.veg_only ? 'text-white' : 'text-green-500'} />
                     <span className="hidden sm:inline">Veg</span>
                 </button>
+                */}
 
                 {/* 5. DISTANCE FILTER - Enhanced */}
                 <div className="relative hidden lg:block">

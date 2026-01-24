@@ -296,7 +296,7 @@ export default function Home() {
             let guestCount = 1;
             if (typeof filters.guests === 'object') {
                 guestCount = (filters.guests.adults || 0) + (filters.guests.children || 0);
-                if (filters.guests.rooms > 0 && filters.type !== 'waterpark') params.append('bedrooms', filters.guests.rooms);
+                if (filters.guests.rooms > 0 && filters.type === 'villas') params.append('bedrooms', filters.guests.rooms);
             } else {
                 guestCount = filters.guests;
             }

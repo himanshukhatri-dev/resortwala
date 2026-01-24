@@ -33,25 +33,25 @@ class AnalyticsMiddleware
 
             // Determine event name based on route
             $event_name = $request->route() ? $request->route()->getName() : $request->path();
-            
-            EventLog::create([
-                'event_name' => $event_name ?: 'api_request',
-                'event_category' => $this->getCategory($request),
-                'user_id' => $user ? $user->id : null,
-                'role' => $user ? $user->role : 'guest',
-                'session_id' => $request->header('X-Session-ID') ?: $request->cookie('laravel_session'),
-                'action' => $request->method(),
-                'screen_name' => $request->path(),
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'response_time' => $duration,
-                'status' => $response->isSuccessful() ? 'success' : 'fail',
-                'error_code' => $response->isSuccessful() ? null : $response->getStatusCode(),
-                'metadata' => [
-                    'url' => $request->fullUrl(),
-                    'params' => $request->except(['password', 'password_confirmation']),
-                ]
-            ]);
+
+            // EventLog::create([
+            //     'event_name' => $event_name ?: 'api_request',
+            //     'event_category' => $this->getCategory($request),
+            //     'user_id' => $user ? $user->id : null,
+            //     'role' => $user ? $user->role : 'guest',
+            //     'session_id' => $request->header('X-Session-ID') ?: $request->cookie('laravel_session'),
+            //     'action' => $request->method(),
+            //     'screen_name' => $request->path(),
+            //     'ip_address' => $request->ip(),
+            //     'user_agent' => $request->userAgent(),
+            //     'response_time' => $duration,
+            //     'status' => $response->isSuccessful() ? 'success' : 'fail',
+            //     'error_code' => $response->isSuccessful() ? null : $response->getStatusCode(),
+            //     'metadata' => [
+            //         'url' => $request->fullUrl(),
+            //         'params' => $request->except(['password', 'password_confirmation']),
+            //     ]
+            // ]);
         } catch (\Exception $e) {
             // Silence analytics errors to not break the app
             \Illuminate\Support\Facades\Log::error('Analytics logging failed: ' . $e->getMessage());
@@ -62,8 +62,10 @@ class AnalyticsMiddleware
 
     private function getCategory(Request $request)
     {
-        if (str_contains($request->path(), 'admin')) return 'admin';
-        if (str_contains($request->path(), 'vendor')) return 'vendor';
+        if (str_contains($request->path(), 'admin'))
+            return 'admin';
+        if (str_contains($request->path(), 'vendor'))
+            return 'vendor';
         return 'customer';
     }
 }

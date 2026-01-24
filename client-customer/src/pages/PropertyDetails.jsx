@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
@@ -144,7 +145,16 @@ export default function PropertyDetails() {
         const fetchData = async () => {
             try {
                 const response = await axios.get(`${API_BASE_URL}/properties/${id}?testali=1`);
-                console.log("Property Data with Holidays:", response.data); // Debug
+                console.log("Property Data with Holidays:", response.data);
+
+                // Normalize dates
+                if (response.data.booked_dates && Array.isArray(response.data.booked_dates)) {
+                    response.data.booked_dates = response.data.booked_dates.map(d => {
+                        // internal helper to strip time
+                        try { return format(new Date(d), 'yyyy-MM-dd'); } catch (e) { return d; }
+                    });
+                }
+
                 setProperty(response.data);
             } catch (error) {
                 console.error('Failed to fetch property:', error);
@@ -158,8 +168,10 @@ export default function PropertyDetails() {
     // -- AVAILABILITY CHECK --
     const isDateUnavailable = (checkDate) => {
         if (!property?.booked_dates) return false;
-        const dateStr = format(checkDate, 'yyyy-MM-dd');
-        return property.booked_dates.includes(dateStr);
+        try {
+            const dateStr = format(checkDate, 'yyyy-MM-dd');
+            return property.booked_dates.includes(dateStr);
+        } catch (e) { return false; }
     };
 
     const checkRangeAvailability = (from, to) => {
@@ -1244,10 +1256,13 @@ const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navi
 
 const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, dateRange, priceBreakdown, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, datePickerRef, bookedDates = [], isWaterpark, pricing, getPriceForDate }) => {
     const effectiveDate = dateRange?.from ? new Date(dateRange.from) : new Date();
-    const adultRate = getPriceForDate(effectiveDate);
+    const adultRate = getPriceForDate(effectiveDate) || property.Price || 0;
 
     // Calculate market rate based on percentage if available, otherwise fallback
-    const marketRate = pricing ? Math.round(adultRate * (pricing.marketPrice / (pricing.sellingPrice || 1))) : Math.round(adultRate * 1.25);
+    const marketRate = (pricing && pricing.marketPrice && pricing.sellingPrice)
+        ? Math.round(adultRate * (pricing.marketPrice / pricing.sellingPrice))
+        : Math.round(adultRate * 1.25);
+
     const percentage = pricing ? pricing.percentage : 20;
 
     return (
@@ -1289,56 +1304,80 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                     {!isWaterpark && <div className="flex-1 p-3 hover:bg-gray-50"><label className="block text-[10px] font-bold text-gray-800">CHECK-OUT</label><div className="text-sm">{dateRange.to ? format(dateRange.to, 'dd/MM/yyyy') : 'Select Date'}</div></div>}
                 </div>
                 <AnimatePresence>
-                    {isDatePickerOpen && (
-                        <motion.div onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute top-full right-0 mt-2 bg-white rounded-2xl shadow-xl p-4 z-50 border border-gray-100" style={{ width: '320px' }}>
-                            <DayPicker
-                                mode={isWaterpark ? "single" : "range"}
-                                selected={isWaterpark ? dateRange.from : dateRange}
-                                onDayClick={handleDateSelect}
-                                numberOfMonths={1}
-                                modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
-                                disabled={[{ before: startOfDay(new Date()) }]}
-                                components={{
-                                    DayButton: (props) => {
-                                        const { day, children, className, modifiers, ...buttonProps } = props;
-                                        const date = day?.date;
-                                        if (!date) return <button className={className} {...buttonProps}>{children}</button>;
-
-                                        // Remove bookedDates from disabled prop logic in main component to allow click
-                                        // But style them as disabled here if 'booked' modifier is present
-                                        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                                        let price = getPriceForDate(date);
-                                        if (!price || isNaN(price)) price = property.Price || 0;
-                                        const isButtonDisabled = buttonProps.disabled || modifiers.booked;
-
-                                        let combinedClassName = `${className || ''} flex flex-col items-center justify-center gap-0.5 h-full w-full py-1 transition-all duration-200`.trim();
-
-                                        if (isButtonDisabled) {
-                                            combinedClassName += " relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-tr before:from-transparent before:via-red-500/40 before:to-transparent before:z-10 before:pointer-events-none";
-                                        }
-
-                                        return (
-                                            <button className={combinedClassName} {...buttonProps}>
-                                                <span className={`text-sm font-medium leading-tight ${isWeekend ? 'text-red-600 font-bold' : ''}`}>
-                                                    {children}
-                                                </span>
-                                                {!isButtonDisabled && (
-                                                    <span className="text-[9px] font-bold leading-tight text-green-600 group-hover:text-green-700 group-aria-selected:text-white">
-                                                        {price >= 1000 ? `₹${(parseFloat(price) / 1000).toFixed(1)}k` : `₹${price}`}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        );
-                                    }
-                                }}
-                                classNames={{
-                                    day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
-                                    selected: "!bg-blue-600 !text-white hover:!bg-blue-700 hover:!text-white",
-                                    day_selected: "!bg-blue-600 !text-white"
-                                }}
-                            />
-                        </motion.div>
+                    {/* Mobile Overlay - Only for mobile if needed, but we'll stick to absolute for desktop consistency */}
+                    {window.innerWidth < 1024 && (
+                        <div className="fixed inset-0 bg-black/50 z-[9999]" onClick={() => setIsDatePickerOpen(false)} />
                     )}
+
+                    {/* Date Picker - Absolute Dropdown */}
+                    <motion.div
+                        onClick={(e) => e.stopPropagation()}
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className={`
+                                    bg-white rounded-2xl shadow-xl p-3 z-[10000] border border-gray-100 ring-1 ring-black/5 w-[320px] max-w-[90vw]
+                                    ${window.innerWidth >= 1024 ? 'absolute top-full right-0 mt-2' : 'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'}
+                                `}
+                    >
+                        <div className="flex justify-end lg:hidden mb-2">
+                            <button onClick={() => setIsDatePickerOpen(false)} className="p-2 bg-gray-100 rounded-full"><FaTimes /></button>
+                        </div>
+                        <DayPicker
+                            mode={isWaterpark ? "single" : "range"}
+                            selected={isWaterpark ? dateRange.from : dateRange}
+                            onDayClick={(day) => {
+                                if (isWaterpark) {
+                                    // Force single date selection by setting from=day and to=day (or null if backend expects)
+                                    // The handleDateSelect likely expects a range or single date depending on logic.
+                                    // If handleDateSelect isn't flexible, we might need to wrap it.
+                                    // Assuming handleDateSelect handles the state update:
+                                    handleDateSelect(day);
+                                } else {
+                                    handleDateSelect(day);
+                                }
+                            }}
+                            numberOfMonths={1}
+                            modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
+                            disabled={[{ before: startOfDay(new Date()) }]}
+                            components={{
+                                DayButton: (props) => {
+                                    const { day, children, className, modifiers, ...buttonProps } = props;
+                                    const date = day?.date;
+                                    if (!date) return <button className={className} {...buttonProps}>{children}</button>;
+
+                                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                                    let price = getPriceForDate(date);
+                                    if (!price || isNaN(price)) price = property.Price || 0;
+                                    const isButtonDisabled = buttonProps.disabled || modifiers.booked;
+
+                                    let combinedClassName = `${className || ''} flex flex-col items-center justify-center gap-0.5 h-full w-full py-1 transition-all duration-200`.trim();
+
+                                    if (isButtonDisabled) {
+                                        combinedClassName += " relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-tr before:from-transparent before:via-red-500/40 before:to-transparent before:z-10 before:pointer-events-none";
+                                    }
+
+                                    return (
+                                        <button className={combinedClassName} {...buttonProps}>
+                                            <span className={`text-sm font-medium leading-tight ${isWeekend ? 'text-red-600 font-bold' : ''}`}>
+                                                {children}
+                                            </span>
+                                            {!isButtonDisabled && (
+                                                <span className="text-[9px] font-bold leading-tight text-green-600 group-hover:text-green-700 group-aria-selected:text-white">
+                                                    {price >= 1000 ? `₹${(parseFloat(price) / 1000).toFixed(1)}k` : `₹${price}`}
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                }
+                            }}
+                            classNames={{
+                                day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
+                                selected: "!bg-blue-600 !text-white hover:!bg-blue-700 hover:!text-white",
+                                day_selected: "!bg-blue-600 !text-white"
+                            }}
+                        />
+                    </motion.div>
                 </AnimatePresence>
             </div>
             {

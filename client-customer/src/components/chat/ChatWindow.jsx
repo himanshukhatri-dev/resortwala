@@ -294,43 +294,45 @@ export default function ChatWindow({ config, onClose, isOpen }) {
     const renderMainMenu = () => {
         const categories = config?.faqs_by_category ? Object.keys(config.faqs_by_category) : [];
         return (
-            <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+            <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
                 {/* Search Villas Primary Action */}
                 <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handlePropertySearch()}
-                    className="w-full p-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-200 text-white flex items-center justify-between group overflow-hidden relative"
+                    className="w-full p-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-200 text-white flex items-center justify-between group overflow-hidden relative ring-1 ring-white/20"
                 >
                     <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div className="flex items-center gap-2.5 relative z-10">
-                        <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-md">
-                            <FaSearch size={14} />
+                    <div className="flex items-center gap-3 relative z-10">
+                        <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-md shadow-inner text-white">
+                            <FaSearch size={15} />
                         </div>
                         <div className="text-left">
-                            <p className="text-xs font-bold">Find Best Villas</p>
-                            <p className="text-[9px] opacity-80 font-medium">Lonavala, Karjat, Alibaug...</p>
+                            <p className="text-sm font-bold tracking-wide">Find Best Villas</p>
+                            <p className="text-[10px] opacity-90 font-medium">Lonavala, Karjat, Alibaug...</p>
                         </div>
                     </div>
-                    <FaArrowRight size={12} className="relative z-10 group-hover:translate-x-1 transition-transform" />
+                    <div className="bg-white/20 p-1.5 rounded-full">
+                        <FaArrowRight size={12} className="relative z-10 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
                 </motion.button>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2.5">
                     {categories.map((cat, idx) => (
                         <motion.button
                             key={cat}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.05 }}
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.97 }}
+                            whileHover={{ scale: 1.02, backgroundColor: '#eff6ff' }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => handleCategorySelect(cat)}
-                            className="p-2.5 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col items-center justify-center gap-1.5 group text-center"
+                            className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:border-blue-300 transition-all flex flex-col items-center justify-center gap-2 group text-center"
                         >
-                            <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
-                                {React.cloneElement(CATEGORY_ICONS[cat.toLowerCase()] || <FaQuestionCircle />, { size: 14 })}
+                            <div className="w-9 h-9 bg-slate-50 rounded-full flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300 shadow-sm border border-slate-100">
+                                {React.cloneElement(CATEGORY_ICONS[cat.toLowerCase()] || <FaQuestionCircle />, { size: 15 })}
                             </div>
-                            <span className="text-[10px] font-bold text-slate-700 capitalize">{cat}</span>
+                            <span className="text-xs font-bold text-slate-700 capitalize group-hover:text-blue-700">{cat}</span>
                         </motion.button>
                     ))}
                 </div>
@@ -341,7 +343,7 @@ export default function ChatWindow({ config, onClose, isOpen }) {
     const renderQuestionsList = (category) => {
         const questions = config?.faqs_by_category?.[category] || [];
         return (
-            <div className="flex flex-col gap-2 mt-2">
+            <div className="flex flex-col gap-2 mt-3">
                 {questions.map((q, idx) => (
                     <motion.button
                         key={q.id}
@@ -349,10 +351,12 @@ export default function ChatWindow({ config, onClose, isOpen }) {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 0.05 }}
                         onClick={() => handleQuestionSelect(q)}
-                        className="p-3.5 bg-white border border-gray-100 rounded-xl text-[13px] font-semibold text-slate-700 text-left hover:bg-slate-50 hover:border-blue-200 transition-all flex justify-between items-center group shadow-sm"
+                        className="p-4 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 text-left hover:bg-blue-50 hover:border-blue-300 transition-all flex justify-between items-center group shadow-sm hover:shadow-md"
                     >
-                        <span className="pr-2">{q.question}</span>
-                        <FaArrowRight size={10} className="text-blue-500 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all flex-shrink-0" />
+                        <span className="pr-2 leading-snug">{q.question}</span>
+                        <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                            <FaArrowRight size={10} className="text-slate-400 group-hover:text-blue-700 transition-colors" />
+                        </div>
                     </motion.button>
                 ))}
             </div>
@@ -366,41 +370,42 @@ export default function ChatWindow({ config, onClose, isOpen }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-3 right-3 md:bottom-20 md:right-6 md:left-auto md:w-[380px] h-[72vh] md:h-[620px] bg-white/95 backdrop-blur-2xl rounded-[1.8rem] shadow-[0_15px_50px_-10px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden border border-white/40 z-[999] ring-1 ring-black/5"
+            className="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-3 right-3 md:bottom-24 md:right-8 md:left-auto md:w-[380px] h-[75vh] md:h-auto md:max-h-[min(650px,calc(100vh-140px))] bg-white/95 backdrop-blur-2xl rounded-[2rem] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.35)] flex flex-col overflow-hidden border border-white/40 z-[999] ring-1 ring-black/5"
         >
             {/* Header Redesign */}
-            <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between shrink-0 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-transparent to-transparent"></div>
+            <div className="bg-slate-900 text-white px-6 py-5 flex items-center justify-between shrink-0 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-600/30 via-transparent to-transparent"></div>
 
-                <div className="flex items-center gap-3 relative z-10">
+                <div className="flex items-center gap-4 relative z-10">
                     <div className="relative">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-700 p-0.5 shadow-lg">
-                            <div className="w-full h-full rounded-[0.7rem] bg-slate-900 flex items-center justify-center">
-                                <FaRobot size={20} className="text-white drop-shadow-lg" />
+                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-700 p-0.5 shadow-xl ring-2 ring-white/10">
+                            <div className="w-full h-full rounded-[0.9rem] bg-slate-900 flex items-center justify-center">
+                                <FaRobot size={22} className="text-white drop-shadow-lg" />
                             </div>
                         </div>
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900 animate-pulse shadow-md"></span>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-[3px] border-slate-900 animate-pulse shadow-md"></span>
                     </div>
                     <div>
-                        <h3 className="font-extrabold text-base leading-tight tracking-tight text-white">{config?.title || "ResortWala Assistant"}</h3>
-                        <div className="flex items-center gap-1.5 opacity-80 mt-0.5">
-                            <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-blue-400">AI Concierge</span>
+                        <h3 className="font-extrabold text-lg leading-tight tracking-tight text-white font-sans">{config?.title || "ResortWala Assistant"}</h3>
+                        <div className="flex items-center gap-1.5 opacity-90 mt-0.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-blue-300">AI Enabled</span>
                         </div>
                     </div>
                 </div>
-                <button onClick={onClose} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition active:scale-90 text-white backdrop-blur-md border border-white/10 relative z-10">
+                <button onClick={onClose} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full transition active:scale-95 text-white backdrop-blur-md border border-white/10 relative z-10 shadow-lg">
                     <FaTimes size={14} />
                 </button>
             </div>
 
             {/* Messages Area - Glassmorphism effects */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#f8fafc] p-4 space-y-4" ref={scrollRef}>
-                <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed" />
+            <div className="flex-1 overflow-y-auto overflow-x-hidden bg-[#eff6ff]/30 p-5 space-y-5 custom-scrollbar" ref={scrollRef}>
+                <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed" />
 
                 <AnimatePresence>
                     {messages.map((msg) => (
                         <motion.div
-                            initial={{ opacity: 0, y: 15, scale: 0.9 }}
+                            initial={{ opacity: 0, y: 15, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             key={msg.id}
                             className={`flex flex-col relative z-10 ${msg.type === 'user' ? 'items-end' : 'items-start'}`}
@@ -408,10 +413,10 @@ export default function ChatWindow({ config, onClose, isOpen }) {
                             {/* Standard Message Bubble */}
                             {!msg.isQuestionList && !msg.isPropertyGrid && !msg.isMiniSearch && ( // Updated condition
                                 <div className={`
-                                    px-4 py-3 text-[13px] leading-[1.5] shadow-sm break-words whitespace-pre-wrap max-w-[90%]
+                                    px-5 py-3.5 text-sm leading-relaxed shadow-sm break-words whitespace-pre-wrap max-w-[85%]
                                     ${msg.type === 'user'
-                                        ? 'bg-gradient-to-br from-slate-800 to-black text-white rounded-2xl rounded-br-sm'
-                                        : 'bg-white text-slate-800 border border-slate-100 rounded-2xl rounded-bl-sm'}
+                                        ? 'bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-[1.2rem] rounded-br-sm shadow-md'
+                                        : 'bg-white text-slate-800 border border-slate-100 rounded-[1.2rem] rounded-bl-sm shadow-sm ring-1 ring-black/5'}
                                 `}>
                                     <div dangerouslySetInnerHTML={{ __html: msg.text }} />
 
@@ -445,7 +450,7 @@ export default function ChatWindow({ config, onClose, isOpen }) {
                             {/* List Renderers */}
                             {msg.isQuestionList && (
                                 <div className="w-full max-w-[95%]">
-                                    <p className="text-slate-400 text-[10px] font-black mb-2 ml-1 uppercase tracking-widest">Select Question</p>
+                                    <p className="text-slate-400 text-[10px] font-black mb-2 ml-1 uppercase tracking-widest pl-1">Select Question</p>
                                     {renderQuestionsList(msg.category)}
                                 </div>
                             )}

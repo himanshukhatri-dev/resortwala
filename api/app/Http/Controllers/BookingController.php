@@ -22,7 +22,7 @@ class BookingController extends Controller
     protected $fcmService;
 
     public function __construct(
-        NotificationService $notificationService, 
+        NotificationService $notificationService,
         PhonePeService $phonePeService,
         WhatsAppService $whatsAppService,
         \App\Services\CommissionService $commissionService,
@@ -42,15 +42,17 @@ class BookingController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $bookings = Booking::where(function($q) use ($user) {
-                $q->where('CustomerEmail', $user->email);
-                if (!empty($user->mobile)) {
-                    $q->orWhere('CustomerMobile', $user->mobile);
+        $bookings = Booking::where(function ($q) use ($user) {
+            $q->where('CustomerEmail', $user->email);
+            if (!empty($user->mobile)) {
+                $q->orWhere('CustomerMobile', $user->mobile);
+            }
+        })
+            ->with([
+                'property' => function ($q) {
+                    $q->select('PropertyId', 'Name', 'Location', 'checkInTime', 'checkOutTime');
                 }
-            })
-            ->with(['property' => function($q) {
-                $q->select('PropertyId', 'Name', 'Location', 'checkInTime', 'checkOutTime');
-            }])
+            ])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -59,25 +61,32 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'PropertyId' => 'required|exists:property_masters,PropertyId',
-            'CustomerName' => 'required|string|max:255',
-            'CustomerMobile' => 'required|string|max:15',
-            'CustomerEmail' => 'nullable|email',
-            'CheckInDate' => 'required|date',
-            'CheckOutDate' => 'required|date|after:CheckInDate',
-            'Guests' => 'required|integer|min:1',
-            // New Fields
-            'coupon_code' => 'nullable|string',
-            'discount_amount' => 'nullable|numeric',
-            'tax_amount' => 'nullable|numeric',
-            'base_amount' => 'nullable|numeric',
-            'TotalAmount' => 'required|numeric',
-            'paid_amount' => 'nullable|numeric', // Booking Token Amount
-            'payment_method' => 'required|string|in:hotel,card,upi',
-            'SpecialRequest' => 'nullable|string',
-            'booking_source' => 'nullable|string|in:customer_app,public_calendar,vendor_manual,admin_manual'
-        ]);
+        Log::info("Booking Store Request INITIATED", $request->all());
+
+        try {
+            $validated = $request->validate([
+                'PropertyId' => 'required|exists:property_masters,PropertyId',
+                'CustomerName' => 'required|string|max:255',
+                'CustomerMobile' => 'required|string|max:15',
+                'CustomerEmail' => 'nullable|email',
+                'CheckInDate' => 'required|date',
+                'CheckOutDate' => 'required|date|after_or_equal:CheckInDate',
+                'Guests' => 'required|integer|min:1',
+                // New Fields
+                'coupon_code' => 'nullable|string',
+                'discount_amount' => 'nullable|numeric',
+                'tax_amount' => 'nullable|numeric',
+                'base_amount' => 'nullable|numeric',
+                'TotalAmount' => 'required|numeric',
+                'paid_amount' => 'nullable|numeric', // Booking Token Amount
+                'payment_method' => 'required|string|in:hotel,card,upi',
+                'SpecialRequest' => 'nullable|string',
+                'booking_source' => 'nullable|string|in:customer_app,public_calendar,vendor_manual,admin_manual'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error("Booking Validation Failed", ['errors' => $e->errors()]);
+            throw $e;
+        }
 
         // Default booking source to customer_app if not provided
         $bookingSource = $validated['booking_source'] ?? 'customer_app';
@@ -87,10 +96,10 @@ class BookingController extends Controller
             $ref = 'RES-' . strtoupper(\Illuminate\Support\Str::random(8));
         } while (Booking::where('booking_reference', $ref)->exists());
         $validated['booking_reference'] = $ref;
-        
+
         // Get property to check type
         $property = \App\Models\PropertyMaster::find($validated['PropertyId']);
-        
+
         // Check availability logic
         $type = strtolower($property->property_type);
         $isWaterpark = ($type === 'waterpark' || $type === 'water park');
@@ -98,21 +107,21 @@ class BookingController extends Controller
         if (!$isWaterpark) {
             // For villas/others, prevent overlap
             $existingBooking = Booking::where('PropertyId', $validated['PropertyId'])
-                ->where(function($query) {
+                ->where(function ($query) {
                     $query->whereIn('Status', ['Confirmed', 'locked', 'booked'])
-                          ->orWhere(function($q2) {
-                              // Only block for Pending bookings if they are recent (e.g., < 15 mins old)
-                              // This prevents abandoned payment attempts from blocking dates forever
-                              $q2->where('Status', 'Pending')
-                                 ->where('created_at', '>', now()->subMinutes(15));
-                          });
+                        ->orWhere(function ($q2) {
+                            // Only block for Pending bookings if they are recent (e.g., < 15 mins old)
+                            // This prevents abandoned payment attempts from blocking dates forever
+                            $q2->where('Status', 'Pending')
+                                ->where('created_at', '>', now()->subMinutes(15));
+                        });
                 })
-                ->where(function($q) use ($validated) {
+                ->where(function ($q) use ($validated) {
                     $q->where('CheckInDate', '<', $validated['CheckOutDate'])
-                      ->where('CheckOutDate', '>', $validated['CheckInDate']);
+                        ->where('CheckOutDate', '>', $validated['CheckInDate']);
                 })
                 ->exists();
-                
+
             if ($existingBooking) {
                 return response()->json([
                     'message' => 'Property already booked for selected dates'
@@ -131,10 +140,10 @@ class BookingController extends Controller
             $validated['payment_status'] = 'pending';
         } else {
             // Pay at Hotel / Offline
-            $validated['Status'] = 'Confirmed'; 
-            $validated['payment_status'] = 'pending'; 
+            $validated['Status'] = 'Confirmed';
+            $validated['payment_status'] = 'pending';
         }
-        
+
         $validated['booking_source'] = $bookingSource;
 
         // ATOMIC TRANSACTION START
@@ -145,7 +154,7 @@ class BookingController extends Controller
 
             // Handle Online Payment Initiation
             if (in_array($validated['payment_method'], ['card', 'upi', 'phonepe', 'online'])) {
-                
+
                 // Use PhonePeService Transactionally
                 $callbackUrl = route('payment.callback');
                 $paymentResult = $this->phonePeService->initiatePayment($booking, $callbackUrl);
@@ -153,7 +162,7 @@ class BookingController extends Controller
                 if ($paymentResult['success']) {
                     $booking->transaction_id = $paymentResult['transaction_id'];
                     $booking->save();
-                    
+
                     DB::commit(); // Commit Booking + Transaction ID
 
                     return response()->json([
@@ -166,7 +175,7 @@ class BookingController extends Controller
                     // Payment Init Failed -> Rollback Booking
                     DB::rollBack();
                     Log::error("Payment Init Failed, Rolled Back Booking", ['error' => $paymentResult]);
-                    
+
                     return response()->json([
                         'message' => 'Payment Gateway Error: ' . ($paymentResult['message'] ?? 'Unknown'),
                         'error_code' => $paymentResult['code'] ?? 'GATEWAY_ERROR',
@@ -183,7 +192,7 @@ class BookingController extends Controller
                 $this->commissionService->calculateAndRecord($booking);
 
                 $this->notificationService->sendBookingConfirmation($booking);
-                
+
                 // WhatsApp
                 $this->whatsAppService->send(
                     WhatsAppMessage::template($booking->CustomerMobile, 'booking_confirmed', [
@@ -226,13 +235,15 @@ class BookingController extends Controller
             'mobile' => 'nullable|string'
         ]);
 
-        $query = Booking::query()->with('property'); 
+        $query = Booking::query()->with('property');
 
         // Check for Email OR Mobile match
         if ($request->email || $request->mobile) {
-            $query->where(function($q) use ($request) {
-                if ($request->email) $q->orWhere('CustomerEmail', $request->email);
-                if ($request->mobile) $q->orWhere('CustomerMobile', $request->mobile);
+            $query->where(function ($q) use ($request) {
+                if ($request->email)
+                    $q->orWhere('CustomerEmail', $request->email);
+                if ($request->mobile)
+                    $q->orWhere('CustomerMobile', $request->mobile);
             });
         } else {
             return response()->json([]);
@@ -251,13 +262,15 @@ class BookingController extends Controller
 
         // WhatsApp Cancellation Alert
         try {
-             $this->whatsAppService->send(
+            $this->whatsAppService->send(
                 WhatsAppMessage::template($booking->CustomerMobile, 'booking_cancelled', [
                     'name' => $booking->CustomerName,
                     'ref' => $booking->booking_reference
                 ])
             );
-        } catch (\Exception $e) {Log::error("WA Cancel Fail: " . $e->getMessage());}
+        } catch (\Exception $e) {
+            Log::error("WA Cancel Fail: " . $e->getMessage());
+        }
 
         return response()->json(['message' => 'Booking cancelled successfully', 'booking' => $booking]);
     }
@@ -265,7 +278,7 @@ class BookingController extends Controller
     public function resendConfirmation($id)
     {
         $booking = Booking::with('property')->findOrFail($id);
-        
+
         try {
             $this->notificationService->sendBookingConfirmation($booking);
             return response()->json(['message' => 'Confirmation email resent successfully']);
@@ -282,8 +295,8 @@ class BookingController extends Controller
         // Note: User might not be linked by ID if they were guest. 
         // We match Email or Phone stored in booking vs user profile.
         if ($booking->CustomerEmail !== $user->email && $booking->CustomerMobile !== $user->phone) {
-             // return response()->json(['message' => 'Unauthorized'], 403); 
-             // Relaxed for now in case of formatting differences, but ideally strictly enforced.
+            // return response()->json(['message' => 'Unauthorized'], 403); 
+            // Relaxed for now in case of formatting differences, but ideally strictly enforced.
         }
 
         return response()->json($booking);
