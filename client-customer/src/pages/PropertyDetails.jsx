@@ -93,13 +93,12 @@ export default function PropertyDetails() {
     });
 
     const [guests, setGuests] = useState(state.guests || {
-        adults: parseInt(urlParams.get('adults')) || 1,
+        adults: parseInt(urlParams.get('adults')) || 2,
         children: parseInt(urlParams.get('children')) || 0,
         infants: parseInt(urlParams.get('infants')) || 0,
         pets: parseInt(urlParams.get('pets')) || 0
     });
-
-    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false); // Explicitly FALSE by default
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [isVideoOpen, setIsVideoOpen] = useState(false);
@@ -147,11 +146,12 @@ export default function PropertyDetails() {
                 const response = await axios.get(`${API_BASE_URL}/properties/${id}?testali=1`);
                 console.log("Property Data with Holidays:", response.data);
 
-                // Normalize dates
+                // Normalize dates using simple string manipulation to avoid timezone shifts
                 if (response.data.booked_dates && Array.isArray(response.data.booked_dates)) {
                     response.data.booked_dates = response.data.booked_dates.map(d => {
-                        // internal helper to strip time
-                        try { return format(new Date(d), 'yyyy-MM-dd'); } catch (e) { return d; }
+                        // Assume YYYY-MM-DD or ISO string. specific cut.
+                        if (typeof d === 'string') return d.substring(0, 10);
+                        return format(new Date(d), 'yyyy-MM-dd');
                     });
                 }
 
@@ -214,6 +214,26 @@ export default function PropertyDetails() {
             });
         }
     }, [property]);
+
+    // Verify reset on mount to prevent auto-open (Defensive check)
+    useEffect(() => {
+        setIsDatePickerOpen(false); // Immediate close
+        const timer = setTimeout(() => {
+            setIsDatePickerOpen(false); // Double check after any rehydration
+        }, 150);
+
+        // Reset State on Property Change
+        setDateRange({ from: undefined, to: undefined });
+        setGuests({
+            adults: parseInt(urlParams.get('adults')) || 1,
+            children: parseInt(urlParams.get('children')) || 0,
+            infants: parseInt(urlParams.get('infants')) || 0,
+            pets: parseInt(urlParams.get('pets')) || 0
+        });
+        setMealSelection(0);
+
+        return () => clearTimeout(timer);
+    }, [id]); // Reset when checking a new property
 
     // -- HANDLERS --
     useEffect(() => {
@@ -298,7 +318,9 @@ export default function PropertyDetails() {
         }
 
         // 3. Waterpark Logic
-        if (property?.PropertyType?.toLowerCase() === 'waterpark') {
+        const isWaterparkLocal = property?.PropertyType?.toLowerCase().includes('water') ||
+            property?.Name?.toLowerCase().includes('water');
+        if (isWaterparkLocal) {
             const isWeekend = (w === 0 || w === 6 || w === 5);
             const wpKey = isWeekend ? 'adult_weekend' : 'adult_weekday';
             if (adminPricing[wpKey]?.final) return parseFloat(adminPricing[wpKey].final);
@@ -344,7 +366,8 @@ export default function PropertyDetails() {
 
         if (selectedDay < today) return;
 
-        const isWaterparkProp = property?.PropertyType?.toLowerCase() === 'waterpark';
+        const isWaterparkProp = property?.PropertyType?.toLowerCase().includes('water') ||
+            property?.Name?.toLowerCase().includes('water');
 
         // Helper to check if a specific day is booked
         const isBooked = isDateUnavailable(selectedDay);
@@ -355,7 +378,14 @@ export default function PropertyDetails() {
                 return;
             }
             setDateRange({ from: selectedDay, to: selectedDay });
-            setIsDatePickerOpen(false);
+
+            // Close automatically ON DESKTOP ONLY. 
+            // On Mobile, keep it open so user can proceed or change.
+            if (window.innerWidth >= 1024) {
+                setTimeout(() => {
+                    setIsDatePickerOpen(false);
+                }, 50);
+            }
             return;
         }
 
@@ -383,10 +413,10 @@ export default function PropertyDetails() {
                 }
                 setDateRange({ from: dateRange.from, to: selectedDay });
 
-                // ONLY close automatically on Desktop.
-                // Mobile users will see the "Done" button in the modal.
+                // Close automatically on Desktop.
+                // Mobile stays open so user can see selection/summary or guest choice.
                 if (window.innerWidth >= 1024) {
-                    setIsDatePickerOpen(false);
+                    setTimeout(() => setIsDatePickerOpen(false), 50);
                 }
             }
         }
@@ -414,7 +444,8 @@ export default function PropertyDetails() {
 
     const obPricing = ob.pricing || {};
     const roomConfig = ob.roomConfig || { livingRoom: {}, bedrooms: [] };
-    const isWaterpark = property.PropertyType?.toLowerCase() === 'waterpark';
+    const isWaterpark = property.PropertyType?.toLowerCase().includes('water') ||
+        property.Name?.toLowerCase().includes('water');
 
     const handleReserve = () => {
         if (!dateRange.from || (!isWaterpark && !dateRange.to)) { setIsDatePickerOpen(true); return; }
@@ -486,6 +517,7 @@ export default function PropertyDetails() {
         let totalMarketRate = 0;
         let totalAdultTicket = 0;
         let totalChildTicket = 0;
+        let nightDetails = [];
 
         for (let i = 0; i < nights; i++) {
             const d = new Date(dateRange.from); d.setDate(d.getDate() + i);
@@ -533,6 +565,7 @@ export default function PropertyDetails() {
 
             totalVillaRate += rate;
             totalMarketRate += marketDayRate;
+            nightDetails.push({ date: format(d, 'MMM dd'), rate });
 
             if (isWaterpark) {
                 const typeSuffix = isWeekend ? 'weekend' : 'weekday';
@@ -567,6 +600,8 @@ export default function PropertyDetails() {
             const taxableAmount = totalAdultTicket + totalChildTicket;
             const gstAmount = (taxableAmount * GST_PERCENTAGE) / 100;
             const totalSavings = Math.max(0, Math.round((totalMarketTickets || 0) - taxableAmount));
+            const totalTickets = guests.adults + guests.children;
+            const tokenAmount = totalTickets * 50; // ₹50 per ticket for waterparks
 
             return {
                 nights,
@@ -574,11 +609,17 @@ export default function PropertyDetails() {
                 totalChildTicket,
                 gstAmount,
                 grantTotal: taxableAmount + gstAmount,
-                totalSavings
+                totalSavings,
+                tokenAmount,
+                isWaterpark: true,
+                minNightlyRate: nights > 0 ? (totalAdultTicket / nights / (guests.adults || 1)) : 0,
+                nightDetails
             };
         }
 
-        const totalGuests = guests.adults + guests.children;
+
+        // Children are exempt from capacity in Villas. Only Adults count towards limits/extra charges.
+        const totalGuests = guests.adults;
         // Prioritize 'Occupancy' (e.g. 8) as the base limit before extra charges apply.
         // Fallback to 'obPricing.extraGuestLimit' if Occupancy is missing.
         const baseGuestLimit = parseInt(property?.Occupancy || obPricing?.extraGuestLimit || 12);
@@ -597,6 +638,7 @@ export default function PropertyDetails() {
 
         const taxableAmount = totalVillaRate + totalExtra + totalFood;
         const gstAmount = (taxableAmount * GST_PERCENTAGE) / 100;
+        const tokenAmount = Math.ceil(taxableAmount * 0.10); // 10% token for villas
 
         // Savings Calculation (Real: Daily Vendor Ask vs Customer Price)
         const totalSavings = (totalMarketRate > totalVillaRate)
@@ -612,7 +654,11 @@ export default function PropertyDetails() {
             gstAmount,
             grantTotal: taxableAmount + gstAmount,
             rates: { veg: VEG_RATE, nonVeg: NONVEG_RATE, jain: JAIN_RATE, max: MAX_MEAL_RATE },
-            totalSavings
+            totalSavings,
+            tokenAmount,
+            isWaterpark: false,
+            minNightlyRate: nights > 0 ? (totalVillaRate / nights) : 0,
+            nightDetails
         };
     };
     const priceBreakdown = calculateBreakdown();
@@ -1132,7 +1178,7 @@ export default function PropertyDetails() {
                 </div>
 
                 <MobileFooter
-                    price={priceBreakdown || PRICE_WEEKDAY}
+                    price={priceBreakdown?.minNightlyRate || priceBreakdown || PRICE_WEEKDAY}
                     unit={isWaterpark ? '/ person' : '/ night'}
                     buttonText={(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : 'Reserve'}
                     dateRange={dateRange}
@@ -1145,12 +1191,10 @@ export default function PropertyDetails() {
                     onReserve={() => {
                         if (!dateRange.from || (!isWaterpark && !dateRange.to)) {
                             setIsDatePickerOpen(true);
-                            // Only scroll if ref exists (desktop), otherwise modal will show
-                            setTimeout(() => {
-                                if (datePickerRef.current && window.innerWidth >= 1024) {
-                                    datePickerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                }
-                            }, 100);
+                            // Defensive scroll for desktop
+                            if (window.innerWidth >= 1024 && datePickerRef.current) {
+                                datePickerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
                         } else {
                             handleReserve();
                         }
@@ -1169,6 +1213,14 @@ export default function PropertyDetails() {
                             property={property}
                             pricing={obPricing}
                             isWaterpark={isWaterpark}
+                            guests={guests}
+                            setGuests={setGuests}
+                            maxCapacity={parseInt(property?.MaxCapacity || property?.Occupancy || 20)}
+                            priceBreakdown={priceBreakdown}
+                            defaultPrice={isWaterpark ? getPriceForDate(new Date()) : PRICE_WEEKDAY}
+                            onReserve={handleReserve}
+                            mealSelection={mealSelection}
+                            setMealSelection={setMealSelection}
                         />
                     )}
                 </AnimatePresence>
@@ -1304,80 +1356,76 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                     {!isWaterpark && <div className="flex-1 p-3 hover:bg-gray-50"><label className="block text-[10px] font-bold text-gray-800">CHECK-OUT</label><div className="text-sm">{dateRange.to ? format(dateRange.to, 'dd/MM/yyyy') : 'Select Date'}</div></div>}
                 </div>
                 <AnimatePresence>
-                    {/* Mobile Overlay - Only for mobile if needed, but we'll stick to absolute for desktop consistency */}
-                    {window.innerWidth < 1024 && (
-                        <div className="fixed inset-0 bg-black/50 z-[9999]" onClick={() => setIsDatePickerOpen(false)} />
-                    )}
+                    {/* Desktop Date Picker - Absolute Dropdown Only */}
+                    {isDatePickerOpen && window.innerWidth >= 1024 && (
+                        <motion.div
+                            onClick={(e) => e.stopPropagation()}
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-2xl shadow-xl p-3 z-[10000] border border-gray-100 ring-1 ring-black/5 w-[320px] max-w-[90vw] absolute top-full right-0 mt-2"
+                        >
+                            <DayPicker
+                                mode={isWaterpark ? "single" : "range"}
+                                selected={isWaterpark ? dateRange.from : dateRange}
+                                onDayClick={handleDateSelect}
+                                numberOfMonths={1}
+                                modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
+                                disabled={[
+                                    { before: startOfDay(new Date()) }
+                                ]}
+                                components={{
+                                    DayButton: (props) => {
+                                        const { day, children, className, modifiers, ...buttonProps } = props;
+                                        const date = day?.date;
+                                        if (!date) return <button className={className} {...buttonProps}>{children}</button>;
 
-                    {/* Date Picker - Absolute Dropdown */}
-                    <motion.div
-                        onClick={(e) => e.stopPropagation()}
-                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className={`
-                                    bg-white rounded-2xl shadow-xl p-3 z-[10000] border border-gray-100 ring-1 ring-black/5 w-[320px] max-w-[90vw]
-                                    ${window.innerWidth >= 1024 ? 'absolute top-full right-0 mt-2' : 'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'}
-                                `}
-                    >
-                        <div className="flex justify-end lg:hidden mb-2">
-                            <button onClick={() => setIsDatePickerOpen(false)} className="p-2 bg-gray-100 rounded-full"><FaTimes /></button>
-                        </div>
-                        <DayPicker
-                            mode={isWaterpark ? "single" : "range"}
-                            selected={isWaterpark ? dateRange.from : dateRange}
-                            onDayClick={(day) => {
-                                if (isWaterpark) {
-                                    // Force single date selection by setting from=day and to=day (or null if backend expects)
-                                    // The handleDateSelect likely expects a range or single date depending on logic.
-                                    // If handleDateSelect isn't flexible, we might need to wrap it.
-                                    // Assuming handleDateSelect handles the state update:
-                                    handleDateSelect(day);
-                                } else {
-                                    handleDateSelect(day);
-                                }
-                            }}
-                            numberOfMonths={1}
-                            modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
-                            disabled={[{ before: startOfDay(new Date()) }]}
-                            components={{
-                                DayButton: (props) => {
-                                    const { day, children, className, modifiers, ...buttonProps } = props;
-                                    const date = day?.date;
-                                    if (!date) return <button className={className} {...buttonProps}>{children}</button>;
+                                        const isWeekend = date.getDay() === 0 || date.getDay() === 6 || date.getDay() === 5;
+                                        const isPastDate = buttonProps.disabled;
+                                        const isBooked = modifiers.booked;
 
-                                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                                    let price = getPriceForDate(date);
-                                    if (!price || isNaN(price)) price = property.Price || 0;
-                                    const isButtonDisabled = buttonProps.disabled || modifiers.booked;
+                                        let price = getPriceForDate(date);
+                                        if (!price || isNaN(price)) price = property.Price || 0;
 
-                                    let combinedClassName = `${className || ''} flex flex-col items-center justify-center gap-0.5 h-full w-full py-1 transition-all duration-200`.trim();
+                                        // Use same logic as VillaBooking
+                                        let combinedClassName = `${className || ''} flex flex-col items-center justify-center gap-0.5 h-full w-full py-1 transition-all duration-200`.trim();
 
-                                    if (isButtonDisabled) {
-                                        combinedClassName += " relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-tr before:from-transparent before:via-red-500/40 before:to-transparent before:z-10 before:pointer-events-none";
-                                    }
+                                        if (isPastDate) {
+                                            combinedClassName += " opacity-50 cursor-not-allowed bg-gray-50 text-gray-300 line-through";
+                                        } else if (isBooked) {
+                                            combinedClassName += " relative overflow-hidden bg-red-50/50 text-red-300 decoration-red-300 line-through hover:bg-red-50";
+                                        }
 
-                                    return (
-                                        <button className={combinedClassName} {...buttonProps}>
-                                            <span className={`text-sm font-medium leading-tight ${isWeekend ? 'text-red-600 font-bold' : ''}`}>
-                                                {children}
-                                            </span>
-                                            {!isButtonDisabled && (
-                                                <span className="text-[9px] font-bold leading-tight text-green-600 group-hover:text-green-700 group-aria-selected:text-white">
-                                                    {price >= 1000 ? `₹${(parseFloat(price) / 1000).toFixed(1)}k` : `₹${price}`}
+                                        return (
+                                            <button
+                                                className={combinedClassName}
+                                                {...buttonProps}
+                                                disabled={isPastDate}
+                                                style={{ pointerEvents: isPastDate ? 'none' : 'auto' }}
+                                            >
+                                                <span className={`text-sm font-medium leading-tight ${isWeekend && !isBooked ? 'text-red-600 font-bold' : ''}`}>
+                                                    {children}
                                                 </span>
-                                            )}
-                                        </button>
-                                    );
-                                }
-                            }}
-                            classNames={{
-                                day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
-                                selected: "!bg-blue-600 !text-white hover:!bg-blue-700 hover:!text-white",
-                                day_selected: "!bg-blue-600 !text-white"
-                            }}
-                        />
-                    </motion.div>
+                                                {!isPastDate && !isBooked && (
+                                                    <span className="text-[9px] font-bold leading-tight text-green-600 group-hover:text-green-700 group-aria-selected:text-white">
+                                                        {price >= 1000 ? `₹${(parseFloat(price) / 1000).toFixed(1)}k` : `₹${price}`}
+                                                    </span>
+                                                )}
+                                                {isBooked && (
+                                                    <span className="text-[8px] font-bold leading-tight text-red-400">Sold</span>
+                                                )}
+                                            </button>
+                                        );
+                                    }
+                                }}
+                                classNames={{
+                                    day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
+                                    selected: "!bg-blue-600 !text-white hover:!bg-blue-700 hover:!text-white",
+                                    day_selected: "!bg-blue-600 !text-white"
+                                }}
+                            />
+                        </motion.div>
+                    )}
                 </AnimatePresence>
             </div>
             {
@@ -1395,16 +1443,23 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                             <span>GST (18%)</span>
                             <span>₹{priceBreakdown.gstAmount?.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 mt-1 pt-1">
-                            <span>Total</span>
-                            <span>₹{priceBreakdown.grantTotal?.toLocaleString()}</span>
-                        </div>
+                        <button onClick={handleReserve} className="w-full bg-black text-white p-3 rounded-lg flex justify-between items-center shadow-md hover:scale-[1.02] transition active:scale-[0.98] group">
+                            <div className="flex flex-col items-start translate-x-0 group-hover:translate-x-1 transition-transform">
+                                <span className="text-[9px] uppercase font-bold text-gray-400">Pay Now to Reserve</span>
+                                <span className="text-lg font-black">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[8px] bg-white/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider mb-1">₹50 / Ticket</span>
+                                <FaArrowRight size={10} className="text-blue-400 group-hover:translate-x-1 transition-transform" />
+                            </div>
+                        </button>
                     </div>
                 )
             }
             <button
                 onClick={() => {
                     if (!dateRange.from) {
+                        console.log("Opening DatePicker from WaterparkBooking Button");
                         setIsDatePickerOpen(true);
                         return;
                     }
@@ -1426,6 +1481,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
     const rates = priceBreakdown?.rates || ob.foodRates || {};
 
     const pricing = getPricing(property);
+
 
     const MealCounter = ({ label, rate, count, type }) => (
         <div className="flex flex-col items-center bg-gray-50 border border-gray-100 rounded-lg p-1.5">
@@ -1449,8 +1505,8 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                             <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">{pricing.percentage}% OFF</span>
                         </div>
                         <div className="flex items-baseline gap-1.5">
-                            <span className="text-2xl font-bold font-serif text-gray-900">₹{Math.round(pricing.sellingPrice).toLocaleString()}</span>
-                            {priceBreakdown?.nights > 0 && <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">/ night</span>}
+                            <span className="text-2xl font-bold font-serif text-gray-900">₹{(priceBreakdown?.minNightlyRate || pricing.sellingPrice).toLocaleString()}</span>
+                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">/ night</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs font-bold bg-gray-50 px-2 py-1 rounded-lg"><FaStar className="text-yellow-400" /> {rating || 4.8} <span className="text-gray-300">|</span> <span className="underline decoration-dotted text-gray-400 cursor-pointer">Reviews</span></div>
@@ -1469,7 +1525,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                         </div>
                     </div>
                     <AnimatePresence>
-                        {isDatePickerOpen && (
+                        {isDatePickerOpen && window.innerWidth >= 1024 && (
                             <motion.div onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute top-full right-0 mt-2 bg-white rounded-2xl shadow-xl p-3 z-50 border border-gray-100 ring-1 ring-black/5 w-[300px]">
                                 <DayPicker
                                     mode="range"
@@ -1478,8 +1534,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                     numberOfMonths={1}
                                     modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
                                     disabled={[
-                                        { before: startOfDay(new Date()) },
-                                        (date) => bookedDates.includes(format(date, 'yyyy-MM-dd'))
+                                        { before: startOfDay(new Date()) }
                                     ]}
                                     classNames={{
                                         day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
@@ -1493,10 +1548,9 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
 
                                             if (!date) return <button className={className} {...buttonProps}>{children}</button>;
 
-                                            // Remove bookedDates from disabled prop logic in main component to allow click
-                                            // But style them as disabled here if 'booked' modifier is present
                                             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                                            const isButtonDisabled = buttonProps.disabled || modifiers.booked; // Check modifier
+                                            const isPastDate = buttonProps.disabled; // Only past dates are truly disabled
+                                            const isBooked = modifiers.booked;
 
                                             let price = getPriceForDate(date);
                                             // Fallback to base rate if specific date price is 0/missing
@@ -1506,20 +1560,32 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                             // Base class for the day button
                                             let combinedClassName = `${className || ''} flex flex-col items-center justify-center gap-0.5 h-full w-full py-1 transition-all duration-200`.trim();
 
-                                            // Add "scratch out" check for disabled
-                                            if (isButtonDisabled) {
-                                                combinedClassName += " relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-tr before:from-transparent before:via-red-500/40 before:to-transparent before:z-10 before:pointer-events-none opacity-50 cursor-not-allowed pointer-events-none";
+                                            // Add "scratch out" check for disabled/booked
+                                            if (isPastDate) {
+                                                combinedClassName += " opacity-50 cursor-not-allowed bg-gray-50 text-gray-300 line-through";
+                                            } else if (isBooked) {
+                                                // Booked: Visual indication but CLICKABLE (to show toast)
+                                                // Removed pointer-events-none and cursor-not-allowed to allow click
+                                                combinedClassName += " relative overflow-hidden bg-red-50/50 text-red-300 decoration-red-300 line-through hover:bg-red-50";
                                             }
 
                                             return (
-                                                <button className={combinedClassName} {...buttonProps} disabled={isButtonDisabled} style={{ pointerEvents: isButtonDisabled ? 'none' : 'auto' }}>
-                                                    <span className={`text-sm font-medium leading-tight ${isWeekend ? 'text-red-600 font-bold' : ''}`}>
+                                                <button
+                                                    className={combinedClassName}
+                                                    {...buttonProps}
+                                                    disabled={isPastDate} // Only disable past dates
+                                                    style={{ pointerEvents: isPastDate ? 'none' : 'auto' }}
+                                                >
+                                                    <span className={`text-sm font-medium leading-tight ${isWeekend && !isBooked ? 'text-red-600 font-bold' : ''}`}>
                                                         {children}
                                                     </span>
-                                                    {!isButtonDisabled && (
+                                                    {!isPastDate && !isBooked && (
                                                         <span className="text-[9px] font-bold leading-tight text-green-600 group-hover:text-green-700 group-aria-selected:text-white">
                                                             {price >= 1000 ? `₹${(price / 1000).toFixed(1)}k` : `₹${price}`}
                                                         </span>
+                                                    )}
+                                                    {isBooked && (
+                                                        <span className="text-[8px] font-bold leading-tight text-red-400">Sold</span>
                                                     )}
                                                 </button>
                                             );
@@ -1581,19 +1647,44 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                 {/* BREAKDOWN - Simplified */}
                 {priceBreakdown && (
                     <div className="bg-gray-50 rounded-xl p-2 border border-gray-200 space-y-1 text-[10px] mt-2">
+                        {/* Night Breakdown List */}
+                        {priceBreakdown.nightDetails?.length > 1 && (
+                            <div className="py-2 space-y-1 border-b border-gray-100 mb-1">
+                                <div className="text-[8px] uppercase font-bold text-gray-400 mb-1">Nightly Rates</div>
+                                {priceBreakdown.nightDetails.map((night, idx) => (
+                                    <div key={idx} className="flex justify-between text-gray-500 font-medium scale-95 origin-left">
+                                        <span>{night.date}</span>
+                                        <span>₹{night.rate.toLocaleString()}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                         <div className="flex justify-between text-gray-600"><span>Villa Rental ({priceBreakdown.nights} Nights)</span><span>₹{priceBreakdown.totalVillaRate.toLocaleString()}</span></div>
                         {priceBreakdown.totalExtra > 0 && <div className="flex justify-between text-orange-600 font-bold"><span>Extra Mattress</span><span>+₹{priceBreakdown.totalExtra.toLocaleString()}</span></div>}
                         {priceBreakdown.totalFood > 0 && <div className="flex justify-between text-blue-600 font-bold"><span>Meals & Dining</span><span>+₹{priceBreakdown.totalFood.toLocaleString()}</span></div>}
 
                         {/* Summary Row instead of Detailed Tax */}
-                        <div className="flex border-t border-gray-100 mt-2 pt-2 flex-col gap-1">
-                            <div className="flex justify-between font-bold text-lg text-gray-900 items-center">
-                                <span>Total Amount</span>
-                                <span>₹{(priceBreakdown.grantTotal - priceBreakdown.gstAmount).toLocaleString()}</span>
+                        <div className="flex border-t border-gray-100 mt-2 pt-2 flex-col gap-2">
+                            <div className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                                <span className="font-bold text-xs text-gray-900 uppercase tracking-tighter">Total Amount</span>
+                                <span className="text-xl font-black text-gray-900 leading-none flex flex-col items-end">
+                                    ₹{(priceBreakdown.grantTotal - priceBreakdown.gstAmount).toLocaleString()}
+                                    <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest mt-1">+ GST Applicable</span>
+                                </span>
                             </div>
-                            <div className="text-right text-xs text-gray-500 font-medium">
-                                + GST Applicable
-                            </div>
+
+                            {/* Token Section */}
+                            <button onClick={handleReserve} className="w-full bg-black text-white p-3 rounded-lg flex justify-between items-center shadow-md relative overflow-hidden group hover:scale-[1.02] transition active:scale-[0.98]">
+                                <div className="absolute top-0 right-0 w-10 h-10 bg-white/5 rounded-bl-full -mr-3 -mt-3"></div>
+                                <div className="relative z-10 flex flex-col items-start translate-x-0 group-hover:translate-x-1 transition-transform">
+                                    <span className="text-[8px] uppercase font-bold text-gray-400">Pay Now to Reserve</span>
+                                    <span className="text-lg font-black leading-none mt-1">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
+                                </div>
+                                <div className="relative z-10 flex flex-col items-end">
+                                    <span className="relative z-10 text-[8px] bg-white/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider mb-1">10% Token</span>
+                                    <FaArrowRight size={10} className="text-red-400 group-hover:translate-x-1 transition-transform" />
+                                </div>
+                            </button>
                         </div>
 
                         {/* Savings Display */}
@@ -1617,83 +1708,333 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
     );
 };
 
-const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDates, property, pricing, isWaterpark }) => (
-    <AnimatePresence>
-        {isOpen && (
-            <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm lg:hidden flex items-end justify-center"
-                onClick={onClose}
-            >
+const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDates, property, pricing, isWaterpark, guests, setGuests, maxCapacity = 20, priceBreakdown, defaultPrice, onReserve, mealSelection, setMealSelection }) => {
+
+    // Helper to format price explanation text
+    const getPriceText = () => {
+        if (!priceBreakdown) return null;
+        if (isWaterpark) {
+            return `Adults (${guests.adults}) + Child (${guests.children})`;
+        }
+        if (priceBreakdown.nights > 0) {
+            return `₹${defaultPrice.toLocaleString()} x ${priceBreakdown.nights} Nights`;
+        }
+        return '';
+    };
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
                 <motion.div
-                    initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                    className="bg-white w-full rounded-t-3xl p-4 shadow-2xl h-[85vh] overflow-y-auto"
-                    onClick={e => e.stopPropagation()}
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm lg:hidden flex items-end justify-center"
+                    onClick={onClose}
                 >
-                    <div className="flex justify-between items-center mb-6 sticky top-0 bg-white z-10 py-2">
-                        <div>
-                            <h3 className="text-xl font-bold font-serif">Select Dates</h3>
-                            <p className="text-xs text-gray-500">Pick your check-in & check-out</p>
+                    <motion.div
+                        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                        className="bg-white w-full rounded-t-3xl shadow-2xl h-[85vh] flex flex-col"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Compact Header */}
+                        <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 flex-shrink-0">
+                            <div>
+                                <h3 className="text-lg font-bold font-serif text-gray-900 leading-tight">Select Dates</h3>
+                                <p className="text-[10px] text-gray-500 font-medium">Pick check-in & check-out</p>
+                            </div>
+                            <button onClick={onClose} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition text-gray-500">
+                                <FaTimes size={14} />
+                            </button>
                         </div>
-                        <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
-                            <FaTimes size={16} />
-                        </button>
-                    </div>
 
-                    <div className="flex justify-center -mx-4 pb-4 overflow-hidden">
-                        <DayPicker
-                            mode={isWaterpark ? "single" : "range"}
-                            selected={isWaterpark ? dateRange.from : dateRange}
-                            onDayClick={(day) => {
-                                onDateSelect(day);
-                                if (isWaterpark) onClose();
-                            }}
-                            numberOfMonths={1}
-                            pagedNavigation
-                            disabled={[
-                                { before: startOfDay(new Date()) },
-                                (date) => bookedDates.includes(format(date, 'yyyy-MM-dd'))
-                            ]}
-                            classNames={{
-                                day_button: "h-12 w-12 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
-                                selected: "!bg-[#FF385C] !text-white hover:!bg-[#e31c5f] hover:!text-white",
-                                range_middle: "!bg-[#FF385C]/10 !text-black",
-                                range_start: "!bg-[#FF385C] !text-white rounded-l-lg",
-                                range_end: "!bg-[#FF385C] !text-white rounded-r-lg"
-                            }}
-                            components={{
-                                DayButton: (props) => {
-                                    const { day, children, className, modifiers, ...buttonProps } = props;
-                                    const date = day?.date;
-                                    if (!date) return <button className={className} {...buttonProps}>{children}</button>;
+                        {/* Scrollable Content - Compact */}
+                        <div className="flex-1 overflow-y-auto px-2 pt-0">
+                            <div className="flex justify-center border-b border-gray-50 pb-2 mb-2 scale-95 origin-top">
+                                <DayPicker
+                                    mode={isWaterpark ? "single" : "range"}
+                                    selected={isWaterpark ? dateRange.from : dateRange}
+                                    onDayClick={(day) => {
+                                        onDateSelect(day);
+                                        // Auto-close on single click for Waterparks
+                                        if (isWaterpark) {
+                                            onClose();
+                                        }
+                                    }}
+                                    numberOfMonths={1}
+                                    pagedNavigation
+                                    disabled={[
+                                        { before: startOfDay(new Date()) }
+                                    ]}
+                                    classNames={{
+                                        caption: "flex justify-center pt-1 relative items-center mb-2",
+                                        caption_label: "text-sm font-bold text-gray-900",
+                                        nav: "flex items-center",
+                                        nav_button: "h-7 w-7 bg-transparent hover:bg-gray-50 p-1 rounded-md transition-colors text-gray-400",
+                                        head_cell: "text-gray-400 font-medium text-[10px] w-9",
+                                        cell: "text-center text-sm p-0 m-0 relative [&:has([aria-selected])]:bg-transparent focus-within:relative focus-within:z-20",
+                                        day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-50 rounded-md",
+                                        day_selected: "text-white hover:bg-[#FF385C] hover:text-white bg-[#FF385C]",
+                                        day_today: "bg-gray-50 text-gray-900 font-bold",
+                                        day_outside: "text-gray-300 opacity-50",
+                                        day_disabled: "text-gray-300 opacity-50 line-through",
+                                        day_range_middle: "aria-selected:bg-red-50 aria-selected:text-red-900",
+                                        day_hidden: "invisible",
 
-                                    // Duplicate logic from main DayPicker for consistency if needed, 
-                                    // but default rendering is usually fine for mobile modal unless we want prices shown.
-                                    // For now, adhere to simple date selection.
-                                    const isButtonDisabled = buttonProps.disabled || modifiers.booked;
-                                    let combinedClassName = className;
-                                    if (modifiers.booked || isButtonDisabled) {
-                                        combinedClassName += " line-through opacity-50 cursor-not-allowed text-gray-300 pointer-events-none";
-                                    }
-                                    return <button className={combinedClassName} {...buttonProps} disabled={isButtonDisabled} style={{ pointerEvents: isButtonDisabled ? 'none' : 'auto' }}>{children}</button>;
-                                }
-                            }}
-                        />
-                    </div>
+                                        day_button: "h-9 w-9 !p-0 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-50 border border-transparent rounded-lg transition-all flex flex-col items-center justify-center gap-0 disabled:opacity-30",
+                                        selected: "!bg-[#FF385C] !text-white",
+                                        range_middle: "!bg-[#FF385C]/5 !text-[#FF385C] !rounded-none",
+                                        range_start: "!bg-[#FF385C] !text-white rounded-l-lg rounded-r-none",
+                                        range_end: "!bg-[#FF385C] !text-white rounded-r-lg rounded-l-none"
+                                    }}
+                                    components={{
+                                        DayButton: (props) => {
+                                            const { day, children, className, modifiers, ...buttonProps } = props;
+                                            const date = day?.date;
+                                            if (!date) return <button className={className} {...buttonProps}>{children}</button>;
 
-                    <div className="mt-4 pt-4 border-t border-gray-100 pb-20">
-                        <button
-                            onClick={onClose}
-                            className="w-full bg-black text-white py-4 rounded-xl font-bold font-serif text-lg shadow-lg active:scale-95 transition"
-                        >
-                            {(!isWaterpark && dateRange.from && !dateRange.to) ? 'Select Check-out' : 'Done'}
-                        </button>
-                    </div>
+                                            const isPastDate = buttonProps.disabled;
+                                            const isBooked = modifiers.booked;
+
+                                            let combinedClassName = className;
+                                            if (isPastDate) {
+                                                combinedClassName += " line-through opacity-50 cursor-not-allowed text-gray-300 pointer-events-none";
+                                            } else if (isBooked) {
+                                                combinedClassName += " relative overflow-hidden bg-red-50/50 text-red-300 decoration-red-300 line-through hover:bg-red-50";
+                                            }
+
+                                            return (
+                                                <button
+                                                    className={combinedClassName}
+                                                    {...buttonProps}
+                                                    disabled={isPastDate}
+                                                    style={{ pointerEvents: isPastDate ? 'none' : 'auto' }}
+                                                >
+                                                    {children}
+                                                </button>
+                                            );
+                                        }
+                                    }}
+                                />
+                            </div>
+
+                            {/* Guest Sections (Compact) */}
+                            {!isWaterpark && (
+                                <div className="pb-4 px-2">
+                                    <h4 className="font-bold text-sm font-serif mb-2 text-gray-900 flex items-center gap-2"> Guests <span className="text-[10px] font-normal text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">Max {maxCapacity}</span></h4>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between p-3 border border-gray-100 rounded-xl shadow-sm bg-white">
+                                            <div>
+                                                <p className="font-bold text-xs text-gray-900">Adults</p>
+                                                <p className="text-[10px] text-gray-500">Age 12+</p>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
+                                                    <button onClick={() => setGuests({ ...guests, adults: Math.max(1, guests.adults - 1) })} className="w-6 h-6 flex items-center justify-center bg-white text-gray-600 rounded-md shadow-sm border border-gray-100 disabled:opacity-50" disabled={guests.adults <= 1}><FaMinus size={8} /></button>
+                                                    <span className="w-4 text-center font-bold text-sm">{guests.adults}</span>
+                                                    <button onClick={() => setGuests({ ...guests, adults: guests.adults + 1 })} className="w-6 h-6 flex items-center justify-center bg-white text-gray-600 rounded-md shadow-sm border border-gray-100 disabled:opacity-50" disabled={guests.adults >= maxCapacity}><FaPlus size={8} /></button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-3 border border-gray-100 rounded-xl shadow-sm bg-white">
+                                            <div>
+                                                <p className="font-bold text-xs text-gray-900">Children</p>
+                                                <p className="text-[10px] text-gray-500">Age 5-12</p>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
+                                                    <button onClick={() => setGuests({ ...guests, children: Math.max(0, guests.children - 1) })} className="w-6 h-6 flex items-center justify-center bg-white text-gray-600 rounded-md shadow-sm border border-gray-100 disabled:opacity-50" disabled={guests.children <= 0}><FaMinus size={8} /></button>
+                                                    <span className="w-4 text-center font-bold text-sm">{guests.children}</span>
+                                                    <button onClick={() => setGuests({ ...guests, children: guests.children + 1 })} className="w-6 h-6 flex items-center justify-center bg-white text-gray-600 rounded-md shadow-sm border border-gray-100 disabled:opacity-50"><FaPlus size={8} /></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {isWaterpark && (
+                                <div className="pb-4 px-2">
+                                    <h4 className="font-bold text-sm font-serif mb-2 text-gray-900">Select Tickets</h4>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between p-3 border border-blue-100 bg-blue-50/30 rounded-xl shadow-sm">
+                                            <div>
+                                                <p className="font-bold text-xs text-gray-900">Adult Ticket</p>
+                                                <p className="text-[10px] text-blue-600 font-medium">Height &gt; 3.5 ft</p>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="text-right mr-1">
+                                                    <p className="text-xs font-bold text-blue-900">₹{defaultPrice?.toLocaleString()}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-blue-100">
+                                                    <button onClick={() => setGuests({ ...guests, adults: Math.max(1, guests.adults - 1) })} className="w-6 h-6 flex items-center justify-center bg-blue-50 text-blue-600 rounded-md shadow-sm border border-blue-100"><FaMinus size={8} /></button>
+                                                    <span className="w-4 text-center font-bold text-sm">{guests.adults}</span>
+                                                    <button onClick={() => setGuests({ ...guests, adults: guests.adults + 1 })} className="w-6 h-6 flex items-center justify-center bg-blue-50 text-blue-600 rounded-md shadow-sm border border-blue-100"><FaPlus size={8} /></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 border border-orange-100 bg-orange-50/30 rounded-xl shadow-sm">
+                                            <div>
+                                                <p className="font-bold text-xs text-gray-900">Child Ticket</p>
+                                                <p className="text-[10px] text-orange-600 font-medium">Height 2.5 - 3.5 ft</p>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="text-right mr-1">
+                                                    <p className="text-xs font-bold text-orange-900">₹{(defaultPrice * 0.7).toFixed(0)}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-orange-100">
+                                                    <button onClick={() => setGuests({ ...guests, children: Math.max(0, guests.children - 1) })} className="w-6 h-6 flex items-center justify-center bg-orange-50 text-orange-600 rounded-md shadow-sm border border-orange-100"><FaMinus size={8} /></button>
+                                                    <span className="w-4 text-center font-bold text-sm">{guests.children}</span>
+                                                    <button onClick={() => setGuests({ ...guests, children: guests.children + 1 })} className="w-6 h-6 flex items-center justify-center bg-orange-50 text-orange-600 rounded-md shadow-sm border border-orange-100"><FaPlus size={8} /></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* MEALS SELECTION - Only for Villa */}
+                            {!isWaterpark && (
+                                <div className="pb-4 px-2">
+                                    <h4 className="font-bold text-sm font-serif mb-2 text-gray-900 flex items-center gap-2"> <FaUtensils className="text-orange-500" size={12} /> Meals (Optional) </h4>
+                                    <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 flex justify-between items-center shadow-sm">
+                                        <div>
+                                            <p className="font-bold text-xs text-gray-900">All-Inclusive Meal Pack</p>
+                                            <p className="text-[10px] text-gray-500 font-medium">approx ₹1,200 / person</p>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-orange-200 shadow-sm">
+                                            <button onClick={() => setMealSelection && setMealSelection(Math.max(0, (mealSelection || 0) - 1))} className="w-6 h-6 flex items-center justify-center bg-orange-50 text-orange-600 rounded-md hover:bg-orange-100 transition"><FaMinus size={8} /></button>
+                                            <span className="w-4 text-center font-bold text-sm">{mealSelection || 0}</span>
+                                            <button onClick={() => setMealSelection && setMealSelection((mealSelection || 0) + 1)} className="w-6 h-6 flex items-center justify-center bg-orange-50 text-orange-600 rounded-md hover:bg-orange-100 transition"><FaPlus size={8} /></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* DETAILED PRICE BREAKDOWN - Always Visible when dates selected */}
+                            {priceBreakdown && (
+                                <div className="mx-2 mb-6 p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200 pb-2 mb-2">Detailed Breakdown</p>
+
+                                    {/* Multi-Night Breakdown List */}
+                                    {priceBreakdown.nightDetails?.length > 1 && (
+                                        <div className="space-y-2 border-b border-gray-100 pb-3 mb-2">
+                                            <div className="text-[9px] uppercase font-black text-gray-400 mb-1">Nightly Rates</div>
+                                            {priceBreakdown.nightDetails.map((night, idx) => (
+                                                <div key={idx} className="flex justify-between items-center bg-white border border-gray-50 p-2 rounded-lg shadow-sm">
+                                                    <span className="text-xs font-bold text-gray-800">{night.date}</span>
+                                                    <span className="text-sm font-black text-gray-900">₹{night.rate.toLocaleString()}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Villa Breakdown */}
+                                    {!isWaterpark && (
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-xs text-gray-600 font-medium">
+                                                <span>Villa Rental ({priceBreakdown.nights} nights)</span>
+                                                <span className="text-gray-900">₹{priceBreakdown.totalVillaRate?.toLocaleString()}</span>
+                                            </div>
+                                            {priceBreakdown.totalExtra > 0 && (
+                                                <div className="flex justify-between text-xs text-orange-600 font-bold">
+                                                    <span>Extra Guest Charges</span>
+                                                    <span>+₹{priceBreakdown.totalExtra?.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Waterpark Breakdown */}
+                                    {isWaterpark && (
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-xs text-gray-600 font-medium">
+                                                <span>Adult Tickets (x{guests.adults})</span>
+                                                <span className="text-gray-900">₹{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
+                                            </div>
+                                            {guests.children > 0 && (
+                                                <div className="flex justify-between text-xs text-gray-600 font-medium">
+                                                    <span>Child Tickets (x{guests.children})</span>
+                                                    <span className="text-gray-900">₹{priceBreakdown.totalChildTicket?.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Food Breakdown (Villa only usually) */}
+                                    {priceBreakdown.totalFood > 0 && (
+                                        <div className="flex justify-between text-xs text-blue-600 font-bold">
+                                            <span>Meal Package Charges</span>
+                                            <span>+₹{priceBreakdown.totalFood?.toLocaleString()}</span>
+                                        </div>
+                                    )}
+
+                                    {/* GST and Total - Simplified */}
+                                    <div className="pt-2 border-t border-gray-200 mt-2 flex flex-col gap-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-bold text-xs text-gray-900 uppercase">Subtotal</span>
+                                            <span className="text-xl font-black text-gray-900">₹{(priceBreakdown.grantTotal - priceBreakdown.gstAmount).toLocaleString()}</span>
+                                        </div>
+                                        <div className="text-[10px] text-gray-400 font-bold text-right italic uppercase tracking-wider">+ GST APPLICABLE</div>
+                                    </div>
+
+                                    {/* Pay Now Section - Clickable */}
+                                    <button onClick={onReserve} className="w-full mt-4 bg-black text-white p-4 rounded-xl relative overflow-hidden shadow-lg border border-white/10 active:scale-95 transition text-left">
+                                        <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-bl-full -mr-6 -mt-6"></div>
+                                        <div className="relative z-10 flex justify-between items-end">
+                                            <div>
+                                                <div className="text-[10px] text-gray-300 uppercase tracking-widest font-bold mb-1">Pay Now to Reserve</div>
+                                                <div className="text-2xl font-black">₹{priceBreakdown.tokenAmount?.toLocaleString()}</div>
+                                                <div className="text-[10px] text-gray-400 mt-1 uppercase font-bold">
+                                                    {isWaterpark ? '₹50 Per Ticket' : '10% Token Amount'}
+                                                </div>
+                                            </div>
+                                            <div className="p-2 bg-white/10 rounded-full">
+                                                <FaArrowRight size={16} className="text-white/70" />
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    {priceBreakdown.totalSavings > 0 && (
+                                        <div className="text-[10px] font-bold text-center text-green-600 bg-green-50 py-1.5 rounded-md border border-green-100">
+                                            🎉 You saved ₹{priceBreakdown.totalSavings.toLocaleString()} on this booking!
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Fixed Bottom Action Bar (Compact) */}
+                        <div className="px-4 py-3 border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom)] flex items-center justify-between gap-3 shadow-[0_-5px_20px_-10px_rgba(0,0,0,0.1)] flex-shrink-0">
+                            <div className="flex flex-col">
+                                {priceBreakdown ? (
+                                    <>
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase">Pay Now</span>
+                                        <span className="text-lg font-bold text-gray-900 leading-none">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
+                                        <span className="text-[9px] text-gray-400 font-medium mt-0.5 whitespace-nowrap">
+                                            {isWaterpark ? `₹50 x ${guests.adults + guests.children} Tickets` : `10% of ₹${(priceBreakdown.grantTotal - priceBreakdown.gstAmount).toLocaleString()}`}
+                                        </span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Total</span>
+                                        <span className="text-xs font-bold text-gray-600">
+                                            {!dateRange.from ? 'Select Check-in' : ((!isWaterpark && !dateRange.to) ? 'Select Check-out' : 'Calculated at Booking')}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                            <button
+                                onClick={onReserve}
+                                className="flex-1 bg-gradient-to-r from-[#FF385C] to-[#E00B41] text-white py-3 rounded-lg font-bold text-sm shadow-lg shadow-red-200 active:scale-95 transition"
+                            >
+                                {(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : 'Book Now'}
+                            </button>
+                        </div>
+                    </motion.div>
                 </motion.div>
-            </motion.div>
-        )}
-    </AnimatePresence>
-);
+            )}
+        </AnimatePresence>
+    );
+};
 
 function MobileFooter({ price, unit, onReserve, buttonText, dateRange, onDateClick }) {
     // If we have a full breakdown passed as 'price' (object), use it. 
@@ -1714,8 +2055,7 @@ function MobileFooter({ price, unit, onReserve, buttonText, dateRange, onDateCli
                         <div className="flex flex-col">
                             <div className="flex items-baseline gap-1">
                                 <span className="font-bold text-xl text-gray-900">₹{finalAmount?.toLocaleString()}</span>
-                                {isBreakdown && <span className="text-[9px] text-gray-400 font-medium">+ GST</span>}
-                                {!isBreakdown && <span className="text-xs text-gray-500 font-normal">{unit}</span>}
+                                <span className="text-[9px] text-gray-400 font-bold uppercase">+ GST</span>
                             </div>
                         </div>
                     </>

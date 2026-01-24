@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { API_BASE_URL } from '../config';
 import axios from 'axios';
 import { FaTimes, FaPaperPlane, FaCheckCircle } from 'react-icons/fa';
@@ -9,6 +9,28 @@ export default function VerificationModal({ type, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    const verifyOtpRef = useRef(null);
+
+    React.useEffect(() => {
+        if (step !== 'verify') return;
+        if (!('OTPCredential' in window)) return;
+
+        const ac = new AbortController();
+        navigator.credentials.get({
+            otp: { transport: ['sms'] },
+            signal: ac.signal
+        }).then(credential => {
+            if (credential && credential.code) {
+                setOtp(credential.code);
+                // Trigger verify manually as we are in a functional component without easy access to verifyCode ref here unless we wrap it
+            }
+        }).catch(err => {
+            console.warn("Web OTP Error:", err);
+        });
+
+        return () => ac.abort();
+    }, [step]);
 
     const sendCode = async () => {
         setLoading(true);
@@ -118,6 +140,7 @@ export default function VerificationModal({ type, onClose, onSuccess }) {
                             <input
                                 type="text"
                                 value={otp}
+                                autoComplete="one-time-code"
                                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                 placeholder="000000"
                                 maxLength={6}

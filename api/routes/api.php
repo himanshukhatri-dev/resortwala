@@ -26,6 +26,18 @@ Route::post('/events/batch', [\App\Http\Controllers\Admin\AnalyticsController::c
 Route::post('/analytics/track', [\App\Http\Controllers\Admin\AnalyticsController::class, 'track']);
 Route::get('/admin/system-info', [\App\Http\Controllers\AdminController::class, 'getSystemInfo']);
 
+// TEMPORARY: PhonePe Enterprise API Test Route (Enhanced Debug)
+Route::get('/phonepe-test', function () {
+    return response()->json([
+        'config_mid' => config('phonepe.merchant_id'),
+        'env_mid' => env('PHONEPE_MERCHANT_ID'),
+        'bootstrap_path' => base_path(),
+        'env_path' => app()->environmentFilePath(),
+        'app_env' => app()->environment(),
+        'is_cached' => app()->configurationIsCached(),
+    ]);
+});
+
 Route::post('/forgot-password', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
 Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword']);
@@ -88,11 +100,11 @@ Route::post('/customer/send-otp', [\App\Http\Controllers\CustomerAuthController:
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customer/profile', [\App\Http\Controllers\CustomerAuthController::class, 'profile']);
     Route::post('/customer/logout', [\App\Http\Controllers\CustomerAuthController::class, 'logout']);
-    
+
     // Wishlist Routes
     Route::get('/customer/wishlist', [\App\Http\Controllers\WishlistController::class, 'index']);
     Route::post('/customer/wishlist/toggle', [\App\Http\Controllers\WishlistController::class, 'toggle']);
-    
+
     // Verification Routes
     Route::post('/customer/send-verification-email', [\App\Http\Controllers\VerificationController::class, 'sendEmailVerification']);
     Route::post('/customer/verify-email', [\App\Http\Controllers\VerificationController::class, 'verifyEmail']);
@@ -100,7 +112,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/customer/verify-phone', [\App\Http\Controllers\VerificationController::class, 'verifyPhone']);
     Route::put('/customer/profile', [\App\Http\Controllers\VerificationController::class, 'updateProfile']);
     Route::post('/customer/device-token', [\App\Http\Controllers\CustomerAuthController::class, 'updateDeviceToken']);
-    
+
     // Booking Details & Invoice
     Route::get('/customer/bookings', [\App\Http\Controllers\BookingController::class, 'index']);
     Route::get('/customer/bookings/{id}', [\App\Http\Controllers\BookingController::class, 'show']);
@@ -119,7 +131,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/token', [App\Http\Controllers\NotificationController::class, 'registerToken']);
     Route::post('/notifications/send', [App\Http\Controllers\NotificationController::class, 'send']);
     Route::get('/notifications/logs', [App\Http\Controllers\NotificationController::class, 'logs']);
-    
+
     // In-App Notifications
     Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'myNotifications']);
     Route::post('/notifications/{id}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead']);
@@ -146,7 +158,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Public Utility Routes
 Route::get('/ping', function () {
-    return response()->json(['status' => 'ok', 'message' => 'PHP is reachable']);
+    try {
+        \Illuminate\Support\Facades\Artisan::call('route:clear');
+        \Illuminate\Support\Facades\Artisan::call('config:clear');
+        \Illuminate\Support\Facades\Artisan::call('cache:clear');
+        return response()->json(['status' => 'ok', 'message' => 'PHP is reachable and caches cleared']);
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'ok', 'message' => 'PHP is reachable but cache clear failed: ' . $e->getMessage()]);
+    }
 });
 
 Route::get('/health', [StatusController::class, 'check']); // Alias for status
@@ -165,7 +184,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/vendor/logout', [\App\Http\Controllers\VendorController::class, 'logout']);
     Route::get('/vendor/stats', [\App\Http\Controllers\VendorController::class, 'getStats']);
     Route::get('/vendor/bookings', [\App\Http\Controllers\VendorController::class, 'getBookings']);
-    
+
     Route::get('/vendor/bookings', [\App\Http\Controllers\VendorController::class, 'getBookings']);
     Route::get('/vendor/bookings/property/{id}', [\App\Http\Controllers\VendorController::class, 'getPropertyBookings']);
 
@@ -181,7 +200,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vendor/properties/{id}', [\App\Http\Controllers\VendorPropertyController::class, 'show']);
     Route::put('/vendor/properties/{id}', [\App\Http\Controllers\VendorPropertyController::class, 'update']);
     Route::delete('/vendor/properties/{id}', [\App\Http\Controllers\VendorPropertyController::class, 'destroy']);
-    
+
     // Property Images
     Route::post('/vendor/properties/{id}/images', [\App\Http\Controllers\PropertyImageController::class, 'upload']);
     Route::delete('/vendor/properties/{propertyId}/images/{imageId}', [\App\Http\Controllers\PropertyImageController::class, 'delete']);
@@ -218,7 +237,7 @@ Route::prefix('admin/intelligence')->middleware(['auth:sanctum', 'verified'])->g
     Route::get('/data/{table}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getTableData']);
     Route::put('/data/{table}/{id}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'updateTableData']);
     Route::delete('/data/{table}/{id}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'deleteTableData']);
-    
+
     // 🧾 Accounts Center
     Route::prefix('accounts')->group(function () {
         Route::get('/summary', [\App\Http\Controllers\Admin\AccountsController::class, 'summary']);
@@ -250,7 +269,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/vendors/{id}', [\App\Http\Controllers\AdminController::class, 'getVendor'])->middleware('acl:users.manage');
     Route::post('/admin/vendors/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveVendor'])->middleware('acl:users.manage');
     Route::delete('/admin/vendors/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectVendor'])->middleware('acl:users.manage');
-    
+
     // Admin Property Management
     Route::get('/admin/bulk-upload/template', [\App\Http\Controllers\Admin\BulkUploadController::class, 'downloadTemplate'])->middleware('acl:properties.create');
     Route::prefix('admin/bulk-upload')->middleware('acl:properties.create')->group(function () {
@@ -263,7 +282,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/properties', [\App\Http\Controllers\AdminController::class, 'getAllProperties'])->middleware('acl:properties.view');
     Route::get('/admin/properties/pending', [\App\Http\Controllers\AdminController::class, 'getPendingProperties']);
     Route::get('/admin/properties/{id}/calendar', [\App\Http\Controllers\AdminPropertyController::class, 'getCalendar']);
-    
+
     // Analytics routes (Admin)
     Route::prefix('admin/analytics')->middleware('acl:analytics.view')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\Admin\AnalyticsController::class, 'dashboard']);
@@ -271,7 +290,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/stats', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventStats']);
         Route::get('/filters', [\App\Http\Controllers\Admin\AnalyticsController::class, 'getEventFilters']);
     });
-    
+
     // Vendor CRM routes
     Route::prefix('admin/crm')->middleware('acl:crm.leads')->group(function () {
         Route::get('/leads', [\App\Http\Controllers\Admin\VendorCrmController::class, 'index']);
@@ -291,14 +310,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('admin/notifications/setup')->middleware('acl:notifications.manage_templates')->group(function () {
         Route::get('/templates', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'getTemplates']);
         Route::post('/templates', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'saveTemplate']);
-        
+
         Route::get('/dlt', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'getDltRegistries']);
         Route::post('/dlt', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'saveDltRegistry']);
-        
+
         Route::get('/triggers', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'getTriggers']);
         Route::post('/triggers', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'saveTrigger']);
         Route::post('/gateway', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'saveGateway']);
-        
+
         Route::post('/test', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'sendTest']);
     });
 
@@ -339,7 +358,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/properties/{id}', [\App\Http\Controllers\AdminPropertyController::class, 'show']);
     Route::post('/admin/properties/{id}/photos', [\App\Http\Controllers\AdminPropertyController::class, 'addPhotos']);
     Route::delete('/admin/properties/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectProperty']);
-    
+
     // Change Requests
     Route::post('/admin/properties/import', [\App\Http\Controllers\Admin\ImportController::class, 'import']);
     Route::get('/admin/property-changes', [\App\Http\Controllers\AdminPropertyController::class, 'getChangeRequests']);
@@ -347,9 +366,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin Calendar Routes (Added for parity with Vendor)
     Route::get('/admin/bookings', [\App\Http\Controllers\AdminController::class, 'getAllBookings']);
-    Route::post('/admin/bookings/lock', [\App\Http\Controllers\AdminController::class, 'lockDates']); 
-    Route::post('/admin/bookings/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveBooking']); 
-    Route::post('/admin/bookings/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectBooking']); 
+    Route::post('/admin/bookings/lock', [\App\Http\Controllers\AdminController::class, 'lockDates']);
+    Route::post('/admin/bookings/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveBooking']);
+    Route::post('/admin/bookings/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectBooking']);
     Route::post('/admin/properties/{id}/changes/approve', [\App\Http\Controllers\AdminPropertyController::class, 'approveChanges']);
     Route::post('/admin/properties/{id}/changes/reject', [\App\Http\Controllers\AdminPropertyController::class, 'rejectChanges']);
 
@@ -359,12 +378,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/holidays/pending', [\App\Http\Controllers\AdminController::class, 'getPendingHolidays']);
     Route::post('/admin/holidays/{id}/approve', [\App\Http\Controllers\AdminController::class, 'approveHoliday']);
     Route::post('/admin/holidays/{id}/reject', [\App\Http\Controllers\AdminController::class, 'rejectHoliday']);
-    
+
     // Admin Booking Management
     Route::get('/admin/bookings', [\App\Http\Controllers\AdminController::class, 'getAllBookings']);
     Route::post('/admin/bookings/{id}/status', [\App\Http\Controllers\AdminController::class, 'updateBookingStatus']);
     Route::post('/admin/bookings/{id}/resend-email', [\App\Http\Controllers\BookingController::class, 'resendConfirmation']);
-    
+
     // Admin Communications
     Route::prefix('admin/communications')->middleware('acl:notifications.manage_templates')->group(function () {
         Route::get('/logs', [\App\Http\Controllers\Admin\CommunicationController::class, 'index']);
@@ -397,7 +416,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/admin/users/vendors', [\App\Http\Controllers\AdminUserController::class, 'getVendors']);
     Route::post('/admin/users/vendors', [\App\Http\Controllers\AdminUserController::class, 'createVendor']);
-    
+
     // Generic User Update (Admin & Vendor) & Delete
     Route::put('/admin/users/{id}', [\App\Http\Controllers\AdminUserController::class, 'updateUser']);
     Route::put('/admin/users/{id}/role', [\App\Http\Controllers\AdminUserController::class, 'updateRole']);
@@ -421,7 +440,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('admin/revenue')->group(function () {
         Route::get('/properties', [\App\Http\Controllers\Admin\RevenueController::class, 'index']);
         Route::put('/properties/{id}/rates', [\App\Http\Controllers\Admin\RevenueController::class, 'updateRates']);
-        
+
         // Add-ons
         Route::get('/properties/{id}/addons', [\App\Http\Controllers\Admin\RevenueController::class, 'getAddons']);
         Route::post('/properties/{id}/addons', [\App\Http\Controllers\Admin\RevenueController::class, 'storeAddon']);
@@ -433,7 +452,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/connectors/reports/stats', [\App\Http\Controllers\Admin\ConnectorReportController::class, 'stats']);
         Route::get('/connectors/reports/earnings', [\App\Http\Controllers\Admin\ConnectorReportController::class, 'earnings']);
         Route::post('/connectors/payouts/process', [\App\Http\Controllers\Admin\ConnectorReportController::class, 'processPayout']);
-        
+
         Route::get('/', [\App\Http\Controllers\Admin\ConnectorController::class, 'index']);
         Route::post('/', [\App\Http\Controllers\Admin\ConnectorController::class, 'store']);
         Route::put('/{id}', [\App\Http\Controllers\Admin\ConnectorController::class, 'update']);
@@ -459,7 +478,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/emails/{id}', [\App\Http\Controllers\Admin\SharedInboxController::class, 'update']);
         Route::post('/sync', [\App\Http\Controllers\Admin\SharedInboxController::class, 'sync']);
         Route::post('/send', [\App\Http\Controllers\Admin\SharedInboxController::class, 'send']);
-        
+
         // Settings
         Route::get('/settings', [\App\Http\Controllers\Admin\SharedInboxController::class, 'getSettings']);
         Route::post('/settings', [\App\Http\Controllers\Admin\SharedInboxController::class, 'updateSettings']);
@@ -492,7 +511,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Video Generation
         Route::post('/create-video', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'store']);
         Route::get('/jobs/{id}', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'show']);
-        
+
         // Video Jobs & Retry
         Route::get('/projects', [\App\Http\Controllers\Admin\VoiceStudioController::class, 'index']); // History
         Route::get('/video-jobs', [\App\Http\Controllers\Admin\VideoGeneratorController::class, 'index']); // Video History
@@ -510,7 +529,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/faqs/{id}', [\App\Http\Controllers\AdminChatbotController::class, 'update']);
         Route::delete('/faqs/{id}', [\App\Http\Controllers\AdminChatbotController::class, 'destroy']);
         Route::get('/analytics', [\App\Http\Controllers\AdminChatbotController::class, 'analytics']);
-        
+
         // Customer Queries
         Route::get('/queries', [\App\Http\Controllers\AdminCustomerQueryController::class, 'index']);
         Route::put('/queries/{id}', [\App\Http\Controllers\AdminCustomerQueryController::class, 'update']);

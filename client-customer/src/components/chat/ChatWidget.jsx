@@ -4,9 +4,35 @@ import { FaComments, FaTimes } from 'react-icons/fa';
 import ChatWindow from './ChatWindow';
 import { API_BASE_URL } from '../../config';
 
+// Enhanced Default Config for better UX
+const DEFAULT_CONFIG = {
+    welcome_message: "Hi! I'm your ResortWala assistant. I can help you with Villas, Waterpark info, or Booking. What would you like to know?",
+    faqs_by_category: {
+        'booking': [
+            { question: "How do I book a villa?", answer: "You can book directly through this website! Select your dates on the property page, add guests, and click 'Book Now'. We accept UPI, Cards, and Netbanking." },
+            { question: "What is the cancellation policy?", answer: "Cancellations made 7 days before check-in get a 100% refund (minus processing fees). Within 7 days, it depends on the property policy." },
+            { question: "Do you take partial payments?", answer: "Yes! You can pay 30-50% advance to confirm your booking and pay the rest at check-in." }
+        ],
+        'waterpark': [
+            { question: "What are the ticket prices?", answer: "Waterpark tickets start from ₹600 for Adults and ₹400 for Children. Prices may vary on weekends." },
+            { question: "What are the timings?", answer: "The Waterpark is open from 10:00 AM to 6:00 PM every day." },
+            { question: "Is costume compulsory?", answer: "Yes, Nylon/Lycra swimwear is compulsory. You can rent them at the counter if you don't have your own." }
+        ],
+        'amenities': [
+            { question: "Do villas have private pools?", answer: "Yes! Most of our premium villas come with private pools. Check the 'Amenities' section of the villa page to confirm." },
+            { question: "Is food available?", answer: "We provide delicious home-cooked meals (Veg/Non-Veg) packages. You can select your meal plan during booking." },
+            { question: "Is parking available?", answer: "Yes, secure parking is available at all our properties free of cost." }
+        ],
+        'general': [
+            { question: "Are unmarried couples allowed?", answer: "Policies vary by property. Please check the 'House Rules' section on the distinct property page." },
+            { question: "Can we bring pets?", answer: "Many of our villas are Pet-Friendly! Look for the 'Paw' icon in amenities." }
+        ]
+    }
+};
+
 export default function ChatWidget() {
     const [isOpen, setIsOpen] = useState(false);
-    const [config, setConfig] = useState(null);
+    const [config, setConfig] = useState(DEFAULT_CONFIG); // Start with Defaults
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -15,8 +41,16 @@ export default function ChatWidget() {
                 const res = await fetch(`${API_BASE_URL}/chatbot/config`);
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.success) {
-                        setConfig(data.data);
+                    if (data.success && data.data) {
+                        // Merge API data with defaults (API takes precedence if keys exist)
+                        setConfig(prev => ({
+                            ...prev,
+                            ...data.data,
+                            faqs_by_category: {
+                                ...prev.faqs_by_category,
+                                ...(data.data.faqs_by_category || {})
+                            }
+                        }));
                     }
                 }
             } catch (err) {

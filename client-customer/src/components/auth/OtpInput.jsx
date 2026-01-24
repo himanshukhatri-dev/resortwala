@@ -8,6 +8,28 @@ const OtpInput = ({ length = 6, onComplete }) => {
         if (inputRefs.current[0]) {
             inputRefs.current[0].focus();
         }
+
+        if (!('OTPCredential' in window)) return;
+
+        const ac = new AbortController();
+        navigator.credentials.get({
+            otp: { transport: ['sms'] },
+            signal: ac.signal
+        }).then(credential => {
+            if (credential && credential.code) {
+                const codeArr = credential.code.split("").slice(0, length);
+                const newOtp = [...otp];
+                codeArr.forEach((val, i) => {
+                    newOtp[i] = val;
+                });
+                setOtp(newOtp);
+                onComplete(newOtp.join(""));
+            }
+        }).catch(err => {
+            console.warn("Web OTP Error:", err);
+        });
+
+        return () => ac.abort();
     }, []);
 
     const handleChange = (element, index) => {
@@ -55,6 +77,7 @@ const OtpInput = ({ length = 6, onComplete }) => {
                     key={index}
                     type="text"
                     maxLength="1"
+                    autoComplete={index === 0 ? "one-time-code" : "off"}
                     ref={(el) => (inputRefs.current[index] = el)}
                     value={data}
                     onChange={(e) => handleChange(e.target, index)}

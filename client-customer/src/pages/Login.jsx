@@ -49,6 +49,36 @@ export default function Login() {
         };
     }, []);
 
+    useEffect(() => {
+        if (!showOtpInput) return;
+        if (!('OTPCredential' in window)) {
+            console.warn("Web OTP API not supported in this browser.");
+            return;
+        }
+
+        console.log("Web OTP: Listening for SMS...");
+        const ac = new AbortController();
+        navigator.credentials.get({
+            otp: { transport: ['sms'] },
+            signal: ac.signal
+        }).then(credential => {
+            if (credential && credential.code) {
+                console.log("Web OTP: Code received successfully:", credential.code);
+                setOtp(credential.code);
+                handleVerifyOtp(null, credential.code);
+            }
+        }).catch(err => {
+            if (err.name === 'AbortError') return;
+            console.error("Web OTP Error:", err);
+            // Fallback: Notify user if needed, but usually we just let them type manually
+        });
+
+        return () => {
+            console.log("Web OTP: Listener aborted.");
+            ac.abort();
+        };
+    }, [showOtpInput]);
+
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -225,6 +255,7 @@ export default function Login() {
                                     placeholder="• • • • • •"
                                     className="w-full px-6 py-5 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10 outline-none font-mono font-bold text-4xl text-center tracking-[0.5em] text-gray-900 transition-all shadow-sm hover:border-gray-200"
                                     value={otp}
+                                    autoComplete="one-time-code"
                                     onChange={(e) => {
                                         const val = e.target.value.replace(/\D/g, '').slice(0, 6);
                                         setOtp(val);

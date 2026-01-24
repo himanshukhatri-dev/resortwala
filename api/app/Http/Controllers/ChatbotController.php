@@ -52,9 +52,9 @@ class ChatbotController extends Controller
     public function track(Request $request)
     {
         // ... (Existing Analytics Logic)
-         try {
+        try {
             $validated = $request->validate([
-                'interaction_type' => 'required|string', 
+                'interaction_type' => 'required|string',
                 'faq_id' => 'nullable|exists:chatbot_faqs,id',
                 'metadata' => 'nullable|array'
             ]);
@@ -71,7 +71,7 @@ class ChatbotController extends Controller
     public function query(Request $request)
     {
         $question = $request->input('question');
-        
+
         // A. Identify Intent (Regex / Keywords)
         if (preg_match('/(find|search|show|book|rent).*?(villa|hotel|room|property|resort|stay)/i', $question)) {
             return response()->json([
@@ -84,10 +84,10 @@ class ChatbotController extends Controller
         // B. Database Search (Full Text / Like)
         $term = '%' . $question . '%';
         $bestMatch = ChatbotFaq::where('is_active', true)
-            ->where(function($q) use ($term) {
+            ->where(function ($q) use ($term) {
                 $q->where('question', 'like', $term)
-                  ->orWhere('keywords', 'like', $term)
-                  ->orWhere('answer', 'like', $term);
+                    ->orWhere('keywords', 'like', $term)
+                    ->orWhere('answer', 'like', $term);
             })
             ->orderByRaw("
                 CASE 
@@ -102,7 +102,7 @@ class ChatbotController extends Controller
         if ($bestMatch) {
             return response()->json([
                 'type' => 'answer',
-                'answer' => $bestMatch->answer, 
+                'answer' => $bestMatch->answer,
                 'action_type' => $bestMatch->action_type,
                 'action_payload' => $bestMatch->action_payload
             ]);
@@ -138,7 +138,7 @@ class ChatbotController extends Controller
         // Send WhatsApp to Admin
         // Assuming admin number is fixed or env
         $adminNumber = env('ADMIN_WHATSAPP_NUMBER', '919022510122'); // Fallback to Himanshu's number from plan?
-        
+
         $text = "*New Customer Query*\n";
         $text .= "Name: " . ($validated['name'] ?? 'Guest') . "\n";
         $text .= "Phone: " . ($validated['mobile'] ?? 'N/A') . "\n";
@@ -154,7 +154,7 @@ class ChatbotController extends Controller
         // TODO: Email Notification
 
         return response()->json([
-            'success' => true, 
+            'success' => true,
             'message' => 'Your query has been sent! Our team will contact you shortly.'
         ]);
     }
@@ -164,29 +164,32 @@ class ChatbotController extends Controller
     {
         $location = $request->input('location');
         $type = $request->input('type');
-        
+
         $query = PropertyMaster::where('is_approved', 1)->limit(5);
 
         if ($location) {
-             $query->where(function($q) use ($location) {
-                 $q->where('Location', 'like', "%$location%")
-                   ->orWhere('CityName', 'like', "%$location%")
-                   ->orWhere('Name', 'like', "%$location%");
-             });
+            $query->where(function ($q) use ($location) {
+                $q->where('Location', 'like', "%$location%")
+                    ->orWhere('CityName', 'like', "%$location%")
+                    ->orWhere('Name', 'like', "%$location%");
+            });
         }
 
         if ($type) {
             if ($type == 'waterpark') {
-                $query->where(function($q) {
+                $query->where(function ($q) {
                     $q->where('PropertyType', 'like', '%Resort%')
-                      ->orWhere('Name', 'like', '%Water%');
+                        ->orWhere('PropertyType', 'like', '%Water%')
+                        ->orWhere('Name', 'like', '%Water%');
                 });
             } else {
-                $query->where('PropertyType', 'like', "%$type%");
+                // Handle 'villas' vs 'Villa' or any other type
+                $searchTerm = str_ireplace('villas', 'Villa', $type);
+                $query->where('PropertyType', 'like', "%$searchTerm%");
             }
         }
 
-        $properties = $query->with('images')->get()->map(function($p) {
+        $properties = $query->with('images')->get()->map(function ($p) {
             return [
                 'id' => $p->PropertyId,
                 'name' => $p->Name,

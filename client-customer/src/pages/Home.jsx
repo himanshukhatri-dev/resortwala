@@ -150,91 +150,53 @@ export default function Home() {
         activeCategory, setActiveCategory: setContextCategory
     } = useSearch();
 
-    // 2. Sync Filters -> Context (Keep SearchBar in sync with current filters)
-    // 2. Sync Filters -> Context (Keep SearchBar in sync with current filters)
+    // 2. Sync Filters -> Context (WE ONLY PUSH FROM SEARCH PARAMS TO CONTEXT)
+    // This handles initial load and back/forward navigation
     useEffect(() => {
-        if (filters.location !== undefined && filters.location !== contextLocation) {
-            setContextLocation(filters.location);
+        if (!isInternalUrlUpdate.current) {
+            if (filters.location !== undefined && filters.location !== contextLocation) {
+                setContextLocation(filters.location);
+            }
+
+            if (filters.type && filters.type !== activeCategory) {
+                setContextCategory(filters.type);
+            }
+
+            const filterFromStr = filters.dateRange?.from?.toISOString().split('T')[0] || null;
+            const contextFromStr = contextDateRange?.from?.toISOString().split('T')[0] || null;
+            if (filterFromStr !== contextFromStr) {
+                setContextDateRange(filters.dateRange || { from: undefined, to: undefined });
+            }
+
+            if (JSON.stringify(filters.guests) !== JSON.stringify(contextGuests)) {
+                setContextGuests(filters.guests);
+            }
         }
+    }, [filters]); // context dependencies removed to avoid overwrite loops
 
-        if (filters.type && filters.type !== activeCategory) {
-            setContextCategory(filters.type);
-        }
-
-        const filterFromStr = filters.dateRange?.from?.toISOString().split('T')[0] || null;
-        const contextFromStr = contextDateRange?.from?.toISOString().split('T')[0] || null;
-        if (filterFromStr !== contextFromStr) {
-            setContextDateRange(filters.dateRange || { from: undefined, to: undefined });
-        }
-
-        if (JSON.stringify(filters.guests) !== JSON.stringify(contextGuests)) {
-            setContextGuests(filters.guests);
-        }
-    }, [filters, contextLocation, activeCategory, contextDateRange, contextGuests, setContextLocation, setContextCategory, setContextDateRange, setContextGuests]);
-
-    // 3. Sync Filters -> URL (Debounced update to URL when state changes)
-    const lastUrlRef = useRef(searchParams.toString());
-
+    // 2.5 Sync Context -> URL (Handle live typing in SearchBar)
     useEffect(() => {
-        if (isInitialMount.current) {
-            isInitialMount.current = false;
-            return;
+        // If the context location changed and it's different from the current URL filter
+        // Push it to URL (replace: true for natural feel)
+        if (contextLocation !== filters.location) {
+            const timer = setTimeout(() => {
+                setSearchParams(prev => {
+                    const newP = new URLSearchParams(prev);
+                    if (contextLocation) newP.set('location', contextLocation);
+                    else newP.delete('location');
+                    newP.set('page', '1');
+                    return newP;
+                }, { replace: true });
+            }, 800); // Higher debounce for typing
+            return () => clearTimeout(timer);
         }
+    }, [contextLocation, setSearchParams]);
 
-        const timer = setTimeout(() => {
-            const params = {};
-            if (filters.location) params.location = filters.location;
-            if (filters.type && filters.type !== 'all') params.type = filters.type;
-            if (filters.minPrice) params.min_price = filters.minPrice;
-            if (filters.maxPrice) params.max_price = filters.maxPrice;
-            if (filters.guests?.adults > 1) params.adults = filters.guests.adults;
-            if (filters.guests?.children > 0) params.children = filters.guests.children;
-            if (filters.guests?.rooms > 1) params.rooms = filters.guests.rooms;
-            if (filters.veg_only) params.veg_only = 'true';
-            if (filters.sort && filters.sort !== 'newest') params.sort = filters.sort;
-            if (filters.amenities?.length > 0) params.amenities = filters.amenities;
-            if (filters.distance?.center) {
-                params.lat = filters.distance.center.lat;
-                params.lon = filters.distance.center.lon;
-                params.radius = filters.distance.maxKm;
-                if (filters.distance.center.name) params.loc_name = filters.distance.center.name;
-            }
-            if (filters.dateRange?.from) {
-                params.check_in = filters.dateRange.from.toISOString().split('T')[0];
-                if (filters.dateRange.to) params.check_out = filters.dateRange.to.toISOString().split('T')[0];
-            }
-            if (filters.page > 1) params.page = filters.page;
-
-            // Stable comparison
-            const nextParams = new URLSearchParams(params);
-            nextParams.sort();
-            const nextParamString = nextParams.toString();
-
-            const currentParams = new URLSearchParams(window.location.search);
-            currentParams.sort();
-            const currentParamString = currentParams.toString();
-
-            // Only update if the TARGET URL is different from CURRENT URL
-            // AND if we haven't already just set it to this value (lastUrlRef)
-            if (nextParamString !== currentParamString && nextParamString !== lastUrlRef.current) {
-                // console.log("Updating URL from filters", nextParamString);
-                lastUrlRef.current = nextParamString;
-                isInternalUrlUpdate.current = true;
-                setSearchParams(params, { replace: true });
-            }
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [filters, setSearchParams]);
-
-    // 4. Handle External Context Changes (SearchBar tab click) -> PUSH TO URL
-    // This establishes Uni-directional flow: User Click -> URL -> Filters -> Context
+    // 4. Handle External Context Changes (Category Tab) -> PUSH TO URL
     const lastContextCategory = useRef(activeCategory);
     useEffect(() => {
-        // Only react if the category ACCUALLY changed (user interaction likely)
-        // and avoid reacting if it matches the current filter (sync echo)
         if (activeCategory && activeCategory !== lastContextCategory.current) {
             lastContextCategory.current = activeCategory;
-
             if (activeCategory !== filters.type) {
                 setSearchParams(prev => {
                     const newP = new URLSearchParams(prev);
@@ -242,10 +204,10 @@ export default function Home() {
                     else newP.set('type', activeCategory);
                     newP.set('page', '1');
                     return newP;
-                }, { replace: false }); // Push new history entry for navigation feel
+                }, { replace: false });
             }
         }
-    }, [activeCategory]); // Removed filters.type dependency to avoid echoes
+    }, [activeCategory, filters.type, setSearchParams]);
 
     const [userCoords, setUserCoords] = useState(null);
 
@@ -589,15 +551,15 @@ export default function Home() {
                             <div className="mb-2 px-2">
                                 <h2 className="text-xl md:text-2xl font-bold text-gray-900 font-display tracking-tight">
                                     {filters.location
-                                        ? `Stays in ${filters.location}`
+                                        ? `Results for "${filters.location}"`
                                         : filters.distance?.center
-                                            ? `Stays near ${filters.distance.center.name || 'Location'}`
+                                            ? `Explore stays near ${filters.distance.center.name || 'Location'}`
                                             : filters.type !== 'all'
                                                 ? `${CATEGORIES.find(c => c.id === filters.type)?.label || 'Selected'} Stays`
                                                 : "All Properties"
                                     }
                                 </h2>
-                                <p className="text-gray-500 mt-1 text-sm font-medium">{loading ? "Searching..." : `${filteredProperties.length} properties`}</p>
+                                <p className="text-gray-500 mt-1 text-sm font-medium">{loading ? "Searching properties..." : ""}</p>
                             </div>
 
                             {loading && properties.length === 0 ? (

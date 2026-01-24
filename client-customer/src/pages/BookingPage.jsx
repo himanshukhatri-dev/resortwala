@@ -212,7 +212,8 @@ export default function BookingPage() {
             }
         }
 
-        const totalGuests = (guests.adults || 0) + (guests.children || 0);
+        // Fix: Children are exempt from capacity in Villas. Only Adults count towards limits/extra charges.
+        const totalGuests = (guests.adults || 0);
         const baseGuestLimit = parseInt(property?.Occupancy || onboardingPricing?.extraGuestLimit || 12);
         const extraPeople = Math.max(0, totalGuests - baseGuestLimit);
         const totalExtra = isWaterpark ? 0 : (extraPeople * EXTRA_GUEST_CHARGE * nights);
@@ -355,25 +356,30 @@ export default function BookingPage() {
                                 </button>
                             </div>
 
-                            {/* GUESTS - INLINE EDIT */}
+                            {/* GUESTS - NOT EDITABLE INLINE */}
                             <div className="flex justify-between items-start">
                                 <div>
                                     <h3 className="font-semibold text-gray-900 mb-1">Guests</h3>
-                                    <div className="flex flex-wrap items-center gap-4 mt-3">
-                                        <div className="flex items-center bg-gray-50 rounded-xl p-1.5 border border-gray-200 select-none">
-                                            <span className="px-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Adults</span>
-                                            <button onClick={() => setGuests(prev => ({ ...prev, adults: Math.max(1, prev.adults - 1) }))} className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-gray-100 font-black text-gray-700 active:scale-95 transition text-lg">-</button>
-                                            <span className="w-10 text-center font-bold text-lg text-gray-900">{guests.adults}</span>
-                                            <button onClick={() => setGuests(prev => ({ ...prev, adults: prev.adults + 1 }))} className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-gray-100 font-black text-gray-700 active:scale-95 transition text-lg">+</button>
-                                        </div>
-                                        <div className="flex items-center bg-gray-50 rounded-xl p-1.5 border border-gray-200 select-none">
-                                            <span className="px-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Kids</span>
-                                            <button onClick={() => setGuests(prev => ({ ...prev, children: Math.max(0, prev.children - 1) }))} className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-gray-100 font-black text-gray-700 active:scale-95 transition text-lg">-</button>
-                                            <span className="w-10 text-center font-bold text-lg text-gray-900">{guests.children}</span>
-                                            <button onClick={() => setGuests(prev => ({ ...prev, children: prev.children + 1 }))} className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-gray-100 font-black text-gray-700 active:scale-95 transition text-lg">+</button>
+                                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                                        <div className="bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-100 flex items-center gap-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Adults</span>
+                                                <span className="text-sm font-bold text-gray-900">{guests.adults}</span>
+                                            </div>
+                                            <div className="w-px h-6 bg-gray-200"></div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Kids</span>
+                                                <span className="text-sm font-bold text-gray-900">{guests.children}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                                <button
+                                    onClick={handleEdit}
+                                    className="text-black font-semibold text-sm underline decoration-gray-300 underline-offset-4 hover:decoration-black transition"
+                                >
+                                    Change Guests
+                                </button>
                             </div>
                         </div>
 
