@@ -38,7 +38,7 @@ class PaymentController extends Controller
                 // This is a browser redirect (Form POST)
                 $status = $request->input('code');
                 $merchantTxnId = $request->input('merchantTransactionId') ?? $request->input('transactionId'); // PhonePe sends transactionId in form sometimes
-                
+
                 // Extract Booking ID (Format: TXN_{BookingId}_{Time})
                 $bookingId = null;
                 if ($merchantTxnId) {
@@ -105,14 +105,14 @@ class PaymentController extends Controller
 
             if ($bookingId) {
                 $booking = Booking::with('property')->find($bookingId);
-                
+
                 if ($booking) {
                     Log::info("Processing Payment for Booking #$bookingId - Status: $state");
 
                     if ($state === 'PAYMENT_SUCCESS') {
                         if ($booking->payment_status !== 'paid') {
                             $booking->payment_status = 'paid';
-                            $booking->Status = 'Confirmed';
+                            $booking->Status = 'Booked';
                             $booking->transaction_id = $transactionId ?? $merchantTxnId;
                             $booking->save();
 
@@ -146,7 +146,7 @@ class PaymentController extends Controller
             } else {
                 Log::error("Callback missing Booking ID in merchantTransactionId");
             }
-            
+
             // 4. Redirect User
             if ($state === 'PAYMENT_SUCCESS') {
                 return redirect()->to("{$this->frontEndUrl}/booking/success?id=" . ($bookingId ?? ''));

@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PropertyMasterController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\StatusController;
+use App\Http\Controllers\BookingController;
 
 // EMERGENCY FIX: Manually load Controller if Autoloader is stale
 if (file_exists(app_path('Http/Controllers/Admin/VoiceStudioController.php'))) {
@@ -60,6 +61,7 @@ Route::get('/properties', [PropertyMasterController::class, 'index']);
 Route::get('/properties/locations', [PropertyMasterController::class, 'getLocations']); // Locations aggregation
 Route::get('/system-mode', [\App\Http\Controllers\SystemModeController::class, 'getMode']);
 Route::get('/properties/{id}', [PropertyMasterController::class, 'show']);
+Route::get('/properties/{id}/availability', [BookingController::class, 'availability']);
 Route::get('/properties/{id}/reviews', [App\Http\Controllers\PropertyReviewController::class, 'index']);
 Route::post('/reviews', [App\Http\Controllers\PropertyReviewController::class, 'store']);
 Route::get('/properties/{id}/images', [\App\Http\Controllers\PropertyImageController::class, 'getImages']);

@@ -20,19 +20,32 @@ class BookingController extends Controller
     protected $whatsAppService;
     protected $commissionService;
     protected $fcmService;
+    protected $availabilityService;
 
     public function __construct(
         NotificationService $notificationService,
         PhonePeService $phonePeService,
         WhatsAppService $whatsAppService,
         \App\Services\CommissionService $commissionService,
-        \App\Services\FCMService $fcmService
+        \App\Services\FCMService $fcmService,
+        \App\Services\AvailabilityService $availabilityService
     ) {
         $this->notificationService = $notificationService;
         $this->phonePeService = $phonePeService;
         $this->whatsAppService = $whatsAppService;
         $this->commissionService = $commissionService;
         $this->fcmService = $fcmService;
+        $this->availabilityService = $availabilityService;
+    }
+
+    public function availability(Request $request, $id)
+    {
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        $availability = $this->availabilityService->getAvailability($id, $startDate, $endDate);
+
+        return response()->json($availability);
     }
 
     public function index(Request $request)
@@ -100,35 +113,22 @@ class BookingController extends Controller
         // Get property to check type
         $property = \App\Models\PropertyMaster::find($validated['PropertyId']);
 
-        // Check availability logic
-        $propertyType = strtolower($property->PropertyType ?? $property->property_type ?? '');
-        $isWaterpark = str_contains($propertyType, 'water') || str_contains(strtolower($property->Name), 'water') || str_contains($propertyType, 'resort');
-
-        if (!$isWaterpark) {
-            // For villas/others, prevent overlap
-            $existingBooking = Booking::where('PropertyId', $validated['PropertyId'])
-                ->where(function ($query) {
-                    $query->whereIn('Status', ['Confirmed', 'locked', 'booked'])
-                        ->orWhere(function ($q2) {
-                            $q2->where('Status', 'Pending')
-                                ->where('created_at', '>', now()->subMinutes(15));
-                        });
-                })
-                ->where(function ($q) use ($validated) {
-                    $q->where('CheckInDate', '<', $validated['CheckOutDate'])
-                        ->where('CheckOutDate', '>', $validated['CheckInDate']);
-                })
-                ->exists();
-
-            if ($existingBooking) {
-                return response()->json([
-                    'message' => 'Property already booked for selected dates'
-                ], 422);
-            }
+        // UNIFIED AVAILABILITY CHECK
+        if (
+            !$this->availabilityService->isAvailable(
+                $validated['PropertyId'],
+                $validated['CheckInDate'],
+                $validated['CheckOutDate'],
+                $validated['Guests']
+            )
+        ) {
+            return response()->json([
+                'message' => 'Property or selected dates are no longer available'
+            ], 422);
         }
 
         // BACKEND VALIDATION: Waterpark Token Amount
-        if ($isWaterpark) {
+        if ($property->isWaterpark()) {
             $expectedTokenPerGuest = config('resortwala.waterpark_token_amount', 50);
             $guestCount = $validated['Guests'] ?? 1;
             $expectedPaidAmount = $guestCount * $expectedTokenPerGuest;
@@ -140,7 +140,7 @@ class BookingController extends Controller
         }
 
         // Set status based on booking source
-        Log::info("Booking Request Analysis", ['source' => $bookingSource, 'method' => $validated['payment_method'], 'isWaterpark' => $isWaterpark]);
+        Log::info("Booking Request Analysis", ['source' => $bookingSource, 'method' => $validated['payment_method'], 'isWaterpark' => $property->isWaterpark()]);
 
         if ($bookingSource === 'public_calendar') {
             $validated['Status'] = 'Pending';
@@ -150,7 +150,7 @@ class BookingController extends Controller
             $validated['payment_status'] = 'pending';
         } else {
             // Pay at Hotel / Offline
-            $validated['Status'] = 'Confirmed';
+            $validated['Status'] = 'Booked';
             $validated['payment_status'] = 'pending';
         }
 

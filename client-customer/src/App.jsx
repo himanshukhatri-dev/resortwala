@@ -20,6 +20,32 @@ import CompareModal from './components/features/CompareModal';
 import ComingSoonGuard from './components/common/ComingSoonGuard';
 import ChatWidget from './components/chat/ChatWidget';
 import VersionChecker from './components/common/VersionChecker';
+import axios from 'axios';
+
+// Global Axios Configuration for System Bypass
+axios.interceptors.request.use(config => {
+  const isBypassed = localStorage.getItem('coming_soon_bypass') === '1';
+  if (isBypassed) {
+    // 1. Add Custom Header
+    config.headers['X-Test-Ali'] = '1';
+
+    // 2. Add Query Parameter as fallback (using URLSearchParams)
+    const url = new URL(config.url, window.location.origin);
+    if (!url.searchParams.has('testali')) {
+      url.searchParams.append('testali', '1');
+    }
+    // Update config URL if it's absolute, otherwise just append to relative
+    if (config.url.startsWith('http')) {
+      config.url = url.toString();
+    } else {
+      const glue = config.url.includes('?') ? '&' : '?';
+      config.url = `${config.url}${glue}testali=1`;
+    }
+  }
+  return config;
+}, error => {
+  return Promise.reject(error);
+});
 
 // Lazy Load Pages
 const Home = lazy(() => import('./pages/Home'));

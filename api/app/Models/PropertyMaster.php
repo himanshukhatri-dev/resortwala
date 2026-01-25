@@ -247,4 +247,10 @@ class PropertyMaster extends Model
                     ->orWhere('property_connectors.effective_to', '>=', now());
             });
     }
+
+    public function isWaterpark()
+    {
+        $type = strtolower($this->PropertyType ?? '');
+        return str_contains($type, 'water') || str_contains(strtolower($this->Name), 'water') || str_contains($type, 'resort');
+    }
 }

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaComments, FaTimes } from 'react-icons/fa';
 import ChatWindow from './ChatWindow';
 import { API_BASE_URL } from '../../config';
+import axios from 'axios';
 
 // Enhanced Default Config for better UX
 const DEFAULT_CONFIG = {
@@ -38,20 +39,18 @@ export default function ChatWidget() {
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/chatbot/config`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.success && data.data) {
-                        // Merge API data with defaults (API takes precedence if keys exist)
-                        setConfig(prev => ({
-                            ...prev,
-                            ...data.data,
-                            faqs_by_category: {
-                                ...prev.faqs_by_category,
-                                ...(data.data.faqs_by_category || {})
-                            }
-                        }));
-                    }
+                const res = await axios.get(`${API_BASE_URL}/chatbot/config`);
+                const data = res.data;
+                if (data.success && data.data) {
+                    // Merge API data with defaults (API takes precedence if keys exist)
+                    setConfig(prev => ({
+                        ...prev,
+                        ...data.data,
+                        faqs_by_category: {
+                            ...prev.faqs_by_category,
+                            ...(data.data.faqs_by_category || {})
+                        }
+                    }));
                 }
             } catch (err) {
                 console.error("Chatbot Config Error", err);
@@ -65,10 +64,9 @@ export default function ChatWidget() {
     const trackOpen = async () => {
         if (!isOpen) {
             try {
-                await fetch(`${API_BASE_URL}/chatbot/track`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ interaction_type: 'open', metadata: { url: window.location.href } })
+                await axios.post(`${API_BASE_URL}/chatbot/track`, {
+                    interaction_type: 'open',
+                    metadata: { url: window.location.href }
                 });
             } catch (e) { /* silent */ }
         }
@@ -97,10 +95,19 @@ export default function ChatWidget() {
             {/* Toggle Button (Premium Glassmorphism + Gradient) */}
             <motion.button
                 id="chatbot-toggle-btn"
+                drag
+                dragConstraints={{ left: -window.innerWidth + 80, right: 0, top: -window.innerHeight + 100, bottom: 0 }}
+                dragElastic={0.1}
+                dragMomentum={false}
                 onClick={trackOpen}
                 className="pointer-events-auto flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-tr from-gray-900 to-black text-white shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 relative group border border-white/10"
                 initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
+                animate={{
+                    scale: 1,
+                    opacity: 1,
+                    x: isOpen ? 0 : undefined,
+                    y: isOpen ? 0 : undefined
+                }}
                 whileHover={{ y: -5, boxShadow: "0 20px 40px -10px rgba(0,0,0,0.5)" }}
             >
                 {/* Ping Animation for attention */}
