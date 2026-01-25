@@ -147,7 +147,17 @@ export default function PropertyDetails() {
         const fetchData = async () => {
             try {
                 const response = await axios.get(`${API_BASE_URL}/properties/${id}`);
-                setProperty(response.data);
+                const propData = response.data;
+
+                // Dev Only Check
+                const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                if (propData.is_developer_only && !isLocal) {
+                    console.log('Access Denied: Developer Only Property');
+                    navigate('/', { replace: true });
+                    return;
+                }
+
+                setProperty(propData);
 
                 // Fetch Availability separately for real-time accuracy
                 const availResponse = await axios.get(`${API_BASE_URL}/properties/${id}/availability`);
@@ -160,7 +170,7 @@ export default function PropertyDetails() {
             }
         };
         fetchData();
-    }, [id]);
+    }, [id, navigate]);
 
     // Refresh availability periodically or on window focus
     useEffect(() => {
@@ -1298,8 +1308,11 @@ const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navi
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 font-serif mb-3 leading-tight">{property.Name || "Luxury Stay"}</h1>
         <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-gray-700">
-                {property.Rating && <div className="flex items-center gap-1.5 font-bold text-black"><FaStar size={14} className="text-secondary" /><span>{property.Rating}</span></div>}
-                {!property.Rating && <div className="flex items-center gap-1.5 font-bold text-black"><span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs">NEW</span></div>}
+                {property.rating_display?.total > 0 ? (
+                    <div className="flex items-center gap-1.5 font-bold text-black"><FaStar size={14} className="text-yellow-400" /><span>{Number(property.rating_display.total).toFixed(1)}</span></div>
+                ) : (
+                    <div className="flex items-center gap-1.5 font-bold text-black"><span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs">NEW</span></div>
+                )}
                 <span className="hidden md:inline text-gray-300">|</span>
                 <span className="underline text-gray-600 hover:text-black cursor-pointer">{property.CityName}, {property.Location}</span>
             </div>
@@ -2354,3 +2367,4 @@ const ShareModal = ({ isOpen, onClose, property }) => {
 
     return null; // Logic is handled via side-effect or direct call, no UI needed for now as per user request "directly share via whatsapp"
 };
+

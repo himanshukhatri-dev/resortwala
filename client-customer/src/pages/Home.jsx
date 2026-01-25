@@ -87,7 +87,12 @@ export default function Home() {
 
     // Client-Side Filtering for Price Safety (Backstop for API)
     const filteredProperties = useMemo(() => {
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
         return properties.filter(p => {
+            // Dev Only Filter
+            if (p.is_developer_only && !isLocal) return false;
+
             // Price Filter
             if (filters.minPrice || filters.maxPrice) {
                 const price = getPricing(p).sellingPrice || p.Price || 0;
@@ -243,6 +248,12 @@ export default function Home() {
 
             const params = new URLSearchParams();
             params.append('testali', '1'); // Force bypass cache/logic as requested
+
+            // Dev Mode Flag for Backend Filtering
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            if (isLocal) {
+                params.append('dev_mode', 'true');
+            }
 
             // FILTERS: Map filters to API params
             console.log('Home: Building API Params from Filters:', filters);

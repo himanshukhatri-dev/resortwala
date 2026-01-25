@@ -265,7 +265,9 @@ class AdminController extends Controller
             'MobileNo',
             'Email',
             'PropertyType',
-            'Image'
+            'Image',
+            'Rating',
+            'is_developer_only'
         ]);
 
         $updateData['is_approved'] = true;

@@ -25,7 +25,7 @@ require_once __DIR__ . '/debug_route.php';
 Route::get('/status', [StatusController::class, 'check']);
 Route::post('/events/batch', [\App\Http\Controllers\Admin\AnalyticsController::class, 'batch']);
 Route::post('/analytics/track', [\App\Http\Controllers\Admin\AnalyticsController::class, 'track']);
-Route::get('/admin/system-info', [\App\Http\Controllers\AdminController::class, 'getSystemInfo']);
+Route::get('/admin/system-info', [\App\Http\Controllers\AdminController::class, 'getDeveloperReport']);
 
 // TEMPORARY: PhonePe Enterprise API Test Route (Enhanced Debug)
 Route::get('/phonepe-test', function () {

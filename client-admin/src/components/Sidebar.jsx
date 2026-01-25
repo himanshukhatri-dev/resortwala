@@ -380,14 +380,14 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
                         <div className="space-y-1">
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-400 font-bold uppercase tracking-tighter">Env:</span>
-                                <span className={`font-black px-1.5 py-0.5 rounded uppercase ${systemInfo.environment === 'production' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                                    {systemInfo.environment}
+                                <span className={`font-black px-1.5 py-0.5 rounded uppercase ${systemInfo.system?.environment === 'production' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                    {systemInfo.system?.environment || 'N/A'}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-400 font-bold uppercase tracking-tighter">DB:</span>
-                                <span className="font-mono font-bold text-gray-700 truncate max-w-[80px]" title={systemInfo.database}>
-                                    {systemInfo.database}
+                                <span className="font-mono font-bold text-gray-700 truncate max-w-[80px]" title={systemInfo.database?.database}>
+                                    {systemInfo.database?.database || 'N/A'}
                                 </span>
                             </div>
                         </div>

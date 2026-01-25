@@ -18,11 +18,15 @@ class PropertyMaster extends Model
 
     public function getRatingDisplayAttribute()
     {
+        // Use single DB Rating as source of truth
+        // Try different column name variations for compatibility
+        $rating = $this->Rating ?? $this->rating ?? $this->customer_avg_rating ?? 0;
+        $rating = $rating ? (float) $rating : 0;
         return [
-            'total' => $this->customer_avg_rating,
-            'internal' => $this->internal_rating,
-            'google' => $this->google_rating,
-            'count' => $this->internal_review_count + $this->google_review_count
+            'total' => $rating,
+            'internal' => $rating,
+            'google' => 0,
+            'count' => 0 // Hiding count for now as per request to remove estimated text
         ];
     }
 
@@ -176,14 +180,17 @@ class PropertyMaster extends Model
         'price_sat',
         'onboarding_data',
         'video_url',
-        'admin_pricing'
+        'admin_pricing',
+        'Rating',
+        'is_developer_only'
     ];
 
     protected $casts = [
         'onboarding_data' => 'array',
         'admin_pricing' => 'array',
         'IsActive' => 'boolean',
-        'PropertyStatus' => 'boolean'
+        'PropertyStatus' => 'boolean',
+        'is_developer_only' => 'boolean'
     ];
 
     public function vendor()

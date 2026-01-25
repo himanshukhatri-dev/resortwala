@@ -17,6 +17,25 @@ class PropertyMasterController extends Controller
             $query = PropertyMaster::with('images')
                 ->where('is_approved', 1);
 
+            // STRICT DEV ONLY FILTER
+            // Only show developer_only properties if explicit dev_mode flag is sent (from localhost)
+            $devMode = $request->input('dev_mode') === 'true' || $request->input('dev_mode') === '1';
+            \Illuminate\Support\Facades\Log::info('Dev Mode Check:', [
+                'dev_mode_param' => $request->input('dev_mode'),
+                'is_dev_mode' => $devMode,
+                'will_filter' => !$devMode
+            ]);
+
+            if (!$devMode) {
+                // Hide all properties marked as developer_only
+                // Handle both boolean true/1 and ensure NULL/0/false are shown
+                $query->where(function ($q) {
+                    $q->where('is_developer_only', '!=', 1)
+                        ->orWhereNull('is_developer_only');
+                });
+                \Illuminate\Support\Facades\Log::info('Applied developer_only filter - hiding dev properties');
+            }
+
             // 0. GEOSPATIAL FILTER (Distance)
             if ($request->has('lat') && $request->has('lon')) {
                 $lat = floatval($request->input('lat'));
@@ -141,21 +160,8 @@ class PropertyMasterController extends Controller
                 // Pricing is now handled by model appends (display_price)
                 $p->lowest_price_next_30 = $p->display_price;
 
-                // 2. REVIEW LOGIC (Google Fallback)
-                $internalReviewsCount = 0; // distinct from $p->reviews->count()
-                $internalRating = 0;
-
-                if ($internalReviewsCount > 0) {
-                    $p->display_rating = $internalRating;
-                    $p->is_verified_rating = true;
-                } else {
-                    $googleRating = floatval($p->Rating ?? 4.0);
-                    $multiplier = ($googleRating < 4.0) ? 1.2 : (($googleRating <= 4.5) ? 1.1 : 1.0);
-
-                    $p->display_rating = round($googleRating * $multiplier, 1);
-                    $p->display_rating_label = "Estimated";
-                    $p->is_verified_rating = false;
-                }
+                // Ensure Dev Only flag is visible
+                $p->makeVisible(['is_developer_only', 'Rating']);
 
                 return $p;
             });

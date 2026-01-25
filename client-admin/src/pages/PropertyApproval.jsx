@@ -241,6 +241,8 @@ export default function PropertyApproval() {
                         livingRoom: ob.roomConfig?.livingRoom || { bedType: 'Sofa', ac: false, bathroom: false, toiletType: 'Western' },
                         bedrooms: ob.roomConfig?.bedrooms || []
                     },
+                    Rating: prop.Rating || '',
+                    is_developer_only: prop.is_developer_only || 0
                 });
                 initializePricing(prop);
                 if (prop.PropertyType === 'Waterpark') {
@@ -648,6 +650,29 @@ export default function PropertyApproval() {
                                 <h3 className="text-lg font-bold text-gray-900 mb-4 pb-3 border-b">Property Details</h3>
                                 <div className="space-y-0">
                                     <InputGroup label="Property Type" value={formData.PropertyType} onChange={(e) => setFormData({ ...formData, PropertyType: e.target.value })} />
+
+                                    {/* New Controls */}
+                                    <div className="flex gap-4 items-center bg-gray-50 p-2 rounded-lg border border-dashed border-gray-300">
+                                        <div className="flex items-center justify-between gap-4 flex-1">
+                                            <label className="text-sm font-bold text-gray-700 flex items-center gap-1"><FaUserShield /> Developer Only (Hidden)</label>
+                                            <Toggle
+                                                active={formData.is_developer_only === 1 || formData.is_developer_only === true}
+                                                onChange={(val) => setFormData({ ...formData, is_developer_only: val ? 1 : 0 })}
+                                                color="blue"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <InputGroup
+                                                label="Manual Rating (0-5)"
+                                                type="number"
+                                                step="0.1"
+                                                max="5"
+                                                value={formData.Rating || ''}
+                                                onChange={(e) => setFormData({ ...formData, Rating: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+
                                     <InputGroup label="Property Name" value={formData.Name} onChange={(e) => setFormData({ ...formData, Name: e.target.value })} />
                                     <InputGroup label="Location / City" value={formData.Location} onChange={(e) => setFormData({ ...formData, Location: e.target.value })} />
                                     <InputGroup label="Website" value={formData.Website} onChange={(e) => setFormData({ ...formData, Website: e.target.value })} />
@@ -1111,8 +1136,9 @@ export default function PropertyApproval() {
 
                     {/* Rules Tab */}
                     {activeTab === 'rules' && (
-                        <div className="space-y-6 animate-in fade-in">
-                            <div className="bg-white border border-gray-200 rounded-xl p-6">
+                        <div className="bg-gray-50 min-h-screen pb-20">
+                            {/* Header */}
+                            <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4 pb-3 border-b">Standard Rules</h3>
                                 <div className="space-y-2">
                                     {PROPERTY_RULES.map((rule, idx) => (
