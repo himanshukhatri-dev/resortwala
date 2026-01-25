@@ -122,6 +122,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
                 { path: '/communications', icon: <FiMessageSquare />, label: 'Communications', permission: 'notifications.manage_templates' },
                 { path: '/notifications', icon: <FiBell />, label: 'Push Notifications', permission: 'notifications.manage_templates' },
                 { path: '/analytics', icon: <FiDatabase />, label: 'System Logs', permission: 'analytics.view' },
+                { path: '/settings/mode', icon: <FiCpu />, label: 'Maintenance Mode', permission: 'system.manage_settings' },
                 { path: '/settings', icon: <FiSettings />, label: 'App Settings', permission: 'system.manage_settings' },
             ]
         },

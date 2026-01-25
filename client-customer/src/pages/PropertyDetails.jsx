@@ -1380,7 +1380,8 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                                 numberOfMonths={1}
                                 modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
                                 disabled={[
-                                    { before: startOfDay(new Date()) }
+                                    { before: startOfDay(new Date()) },
+                                    ...bookedDates.map(d => parse(d, 'yyyy-MM-dd', new Date()))
                                 ]}
                                 components={{
                                     DayButton: (props) => {
@@ -1408,8 +1409,8 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                                             <button
                                                 className={combinedClassName}
                                                 {...buttonProps}
-                                                disabled={isPastDate}
-                                                style={{ pointerEvents: isPastDate ? 'none' : 'auto' }}
+                                                disabled={buttonProps.disabled}
+                                                style={{ pointerEvents: buttonProps.disabled ? 'none' : 'auto' }}
                                             >
                                                 <span className={`text-sm font-medium leading-tight ${isWeekend && !isBooked ? 'text-red-600 font-bold' : ''}`}>
                                                     {children}
@@ -1548,7 +1549,8 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                     numberOfMonths={1}
                                     modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
                                     disabled={[
-                                        { before: startOfDay(new Date()) }
+                                        { before: startOfDay(new Date()) },
+                                        ...bookedDates.map(d => parse(d, 'yyyy-MM-dd', new Date()))
                                     ]}
                                     classNames={{
                                         day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
@@ -1587,8 +1589,8 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                                 <button
                                                     className={combinedClassName}
                                                     {...buttonProps}
-                                                    disabled={isPastDate} // Only disable past dates
-                                                    style={{ pointerEvents: isPastDate ? 'none' : 'auto' }}
+                                                    disabled={buttonProps.disabled} // Use the consolidated disabled state
+                                                    style={{ pointerEvents: buttonProps.disabled ? 'none' : 'auto' }}
                                                 >
                                                     <span className={`text-sm font-medium leading-tight ${isWeekend && !isBooked ? 'text-red-600 font-bold' : ''}`}>
                                                         {children}
@@ -1820,8 +1822,8 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                                 <button
                                                     className={combinedClassName}
                                                     {...buttonProps}
-                                                    disabled={isPastDate}
-                                                    style={{ pointerEvents: isPastDate ? 'none' : 'auto' }}
+                                                    disabled={buttonProps.disabled}
+                                                    style={{ pointerEvents: buttonProps.disabled ? 'none' : 'auto' }}
                                                 >
                                                     {children}
                                                 </button>

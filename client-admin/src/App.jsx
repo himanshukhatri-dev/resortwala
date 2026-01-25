@@ -55,6 +55,7 @@ import AccountsCenter from './pages/AccountsCenter';
 import AclManagement from './pages/AclManagement';
 import AuditLogs from './pages/AuditLogs';
 import { ProtectedRoute, PermissionGate } from './components/ACL';
+import SystemControl from './pages/Internal/SystemControl';
 import './App.css';
 
 
@@ -84,6 +85,9 @@ function App() {
               <Route path="/vendors/:id" element={<VendorDetails />} />
               <Route path="/bookings" element={<ProtectedRoute permission="bookings.view"><Bookings /></ProtectedRoute>} />
               <Route path="/calendar" element={<ProtectedRoute permission="bookings.view"><AdminCalendar /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute permission="system.manage_settings"><Settings /></ProtectedRoute>} />
+              <Route path="/settings/mode" element={<ProtectedRoute permission="system.manage_settings"><SystemControl /></ProtectedRoute>} />
+              <Route path="/settings/media" element={<ProtectedRoute permission="properties.view"><MediaRestoreConsole /></ProtectedRoute>} />
               <Route path="/analytics" element={<ProtectedRoute permission="analytics.view"><AdminEventLogs /></ProtectedRoute>} />
               <Route path="/intelligence/logs" element={<ProtectedRoute permission="analytics.view"><AdminEventLogs /></ProtectedRoute>} />
               <Route path="/properties" element={<Properties />} />

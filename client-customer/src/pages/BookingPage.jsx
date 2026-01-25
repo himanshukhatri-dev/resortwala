@@ -7,6 +7,8 @@ import { format, differenceInDays, addDays, isValid } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
+const PAY_NOW_PERCENT = 0.1; // 10% Token Amount
+
 export default function BookingPage() {
     const { id } = useParams();
     const navigate = useNavigate();

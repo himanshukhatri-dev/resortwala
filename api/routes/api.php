@@ -248,6 +248,8 @@ Route::prefix('admin/intelligence')->middleware(['auth:sanctum', 'verified'])->g
         Route::post('/adjust', [\App\Http\Controllers\Admin\AccountsController::class, 'adjust']);
     });
 
+    Route::get('/growth-analytics/overview', [\App\Http\Controllers\Admin\GrowthAnalyticsController::class, 'overview']);
+
     // Dashboard
     // Database Backups
     Route::get('/backups', [App\Http\Controllers\Admin\BackupController::class, 'index']);
@@ -268,6 +270,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/stats', [\App\Http\Controllers\AdminController::class, 'getStats']);
     Route::get('/admin/stats/sidebar', [\App\Http\Controllers\AdminController::class, 'getSidebarStats']);
     Route::get('/admin/developer/report', [\App\Http\Controllers\AdminController::class, 'getDeveloperReport']);
+    Route::get('/system-mode', [\App\Http\Controllers\SystemModeController::class, 'getMode']);
     Route::get('/admin/search', [\App\Http\Controllers\AdminController::class, 'globalSearch']);
     Route::get('/admin/vendors', [\App\Http\Controllers\AdminController::class, 'getAllVendors'])->middleware('acl:users.manage');
     Route::get('/admin/vendors/pending', [\App\Http\Controllers\AdminController::class, 'getPendingVendors'])->middleware('acl:users.manage');
@@ -420,6 +423,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('admin/settings')->middleware('acl:system.manage_settings')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\SettingsController::class, 'index']);
         Route::post('/update', [\App\Http\Controllers\Admin\SettingsController::class, 'update']);
+
+        // System Mode Controls
+        Route::get('/mode', [\App\Http\Controllers\SystemModeController::class, 'getMode']);
+        Route::post('/mode', [\App\Http\Controllers\SystemModeController::class, 'updateSettings']);
+        Route::post('/mode/upload', [\App\Http\Controllers\SystemModeController::class, 'uploadAsset']);
     });
 
     // User Management

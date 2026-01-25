@@ -44,8 +44,8 @@ class BookingController extends Controller
 
         $bookings = Booking::where(function ($q) use ($user) {
             $q->where('CustomerEmail', $user->email);
-            if (!empty($user->mobile)) {
-                $q->orWhere('CustomerMobile', $user->mobile);
+            if (!empty($user->phone)) {
+                $q->orWhere('CustomerMobile', $user->phone);
             }
         })
             ->with([
@@ -299,7 +299,7 @@ class BookingController extends Controller
     public function show(Request $request, $id)
     {
         $user = $request->user();
-        $booking = Booking::with(['property', 'customer'])->findOrFail($id);
+        $booking = Booking::with(['property'])->findOrFail($id);
 
         // Authorization: Check if booking belongs to user (by email or phone)
         // Note: User might not be linked by ID if they were guest. 

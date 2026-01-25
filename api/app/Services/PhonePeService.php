@@ -83,8 +83,8 @@ class PhonePeService
         $payRequest = (new StandardCheckoutPayRequestBuilder())
             ->merchantOrderId($transactionId)
             ->amount($amountPaise)
+            ->message("Booking: " . $booking->booking_reference)
             ->redirectUrl($redirectUrl)
-            ->callbackUrl($callbackUrl)
             ->build();
 
         $payResponse = $phonepeClient->pay($payRequest);

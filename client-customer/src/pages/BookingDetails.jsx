@@ -9,7 +9,7 @@ import QRCode from 'react-qr-code';
 
 export default function BookingDetails() {
     const { id } = useParams();
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const [booking, setBooking] = useState(null);
     const [loading, setLoading] = useState(true);
     const [downloading, setDownloading] = useState(false);
@@ -20,7 +20,7 @@ export default function BookingDetails() {
                 // Determine endpoint based on auth or public token (future)
                 // For now assuming logged in user via UserBookings
                 const res = await axios.get(`${API_BASE_URL}/customer/bookings/${id}`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    headers: { Authorization: `Bearer ${token}` }
                 });
                 setBooking(res.data);
             } catch (error) {
@@ -38,7 +38,7 @@ export default function BookingDetails() {
         try {
             const response = await axios.get(`${API_BASE_URL}/customer/invoices/${booking.BookingId}/download`, {
                 responseType: 'blob',
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -115,12 +115,16 @@ export default function BookingDetails() {
                                 <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
                                     <div>
                                         <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Check-in</p>
-                                        <p className="text-lg font-bold text-gray-900">{format(new Date(booking.CheckInDate), 'dd MMM yyyy')}</p>
+                                        <p className="text-lg font-bold text-gray-900">
+                                            {booking.CheckInDate ? format(new Date(booking.CheckInDate), 'dd MMM yyyy') : 'TBA'}
+                                        </p>
                                         <p className="text-sm text-gray-500">02:00 PM</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Check-out</p>
-                                        <p className="text-lg font-bold text-gray-900">{format(new Date(booking.CheckOutDate), 'dd MMM yyyy')}</p>
+                                        <p className="text-lg font-bold text-gray-900">
+                                            {booking.CheckOutDate ? format(new Date(booking.CheckOutDate), 'dd MMM yyyy') : 'TBA'}
+                                        </p>
                                         <p className="text-sm text-gray-500">11:00 AM</p>
                                     </div>
                                 </div>

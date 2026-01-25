@@ -178,9 +178,9 @@ export default function Layout() {
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black uppercase ${res.type === 'navigation' ? 'bg-orange-100 text-orange-600' :
-                                                            res.type === 'user' ? 'bg-indigo-100 text-indigo-600' :
-                                                                res.type === 'customer' ? 'bg-emerald-100 text-emerald-600' :
-                                                                    res.type === 'property' ? 'bg-blue-100 text-blue-600' : 'bg-violet-100 text-violet-600'
+                                                        res.type === 'user' ? 'bg-indigo-100 text-indigo-600' :
+                                                            res.type === 'customer' ? 'bg-emerald-100 text-emerald-600' :
+                                                                res.type === 'property' ? 'bg-blue-100 text-blue-600' : 'bg-violet-100 text-violet-600'
                                                         }`}>{res.type.charAt(0)}</div>
                                                     <div>
                                                         <div className="text-xs font-black text-gray-900">{res.name}</div>
@@ -256,7 +256,7 @@ export default function Layout() {
                         paddingBottom: isMobile ? '70px' : '0'
                     }}
                 >
-                    <div className="max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8">
+                    <div className="max-w-[1600px] mx-auto p-2 md:p-4 lg:p-6">
                         <Outlet />
                     </div>
                 </main>

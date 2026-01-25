@@ -44,7 +44,7 @@ export default function DeveloperConsole() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* SYSTEM INFO */}
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                     <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-6 flex items-center gap-2">
                         <FaServer /> System Runtime
                     </h3>
@@ -59,7 +59,7 @@ export default function DeveloperConsole() {
                 </div>
 
                 {/* DATABASE */}
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                     <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-6 flex items-center gap-2">
                         <FaDatabase /> Data Layer
                     </h3>
@@ -74,7 +74,7 @@ export default function DeveloperConsole() {
                 </div>
 
                 {/* SDKs & EXTERNAL */}
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                     <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-6 flex items-center gap-2">
                         <FaShieldAlt /> SDK Integrity
                     </h3>
@@ -96,7 +96,7 @@ export default function DeveloperConsole() {
                 </div>
 
                 {/* STORAGE */}
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                     <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-6 flex items-center gap-2">
                         <FaFileAlt /> Storage & Permissions
                     </h3>
@@ -118,7 +118,7 @@ export default function DeveloperConsole() {
             </div>
 
             {/* RECENT LOGS */}
-            <div className="bg-slate-900 rounded-2xl border border-slate-700 p-6 mt-8 overflow-hidden">
+            <div className="bg-slate-900 rounded-2xl border border-slate-700 p-4 mt-6 overflow-hidden">
                 <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
                     <FaFileAlt /> Recent Server Exception Logs (Tail 100)
                 </h3>
@@ -130,7 +130,7 @@ export default function DeveloperConsole() {
             </div>
 
             {report.sdks.phonepe.in_lock_file === false && (
-                <div className="bg-red-50 border border-red-200 p-6 rounded-2xl flex items-start gap-4">
+                <div className="bg-red-50 border border-red-200 p-4 rounded-2xl flex items-start gap-4">
                     <FaExclamationTriangle className="text-red-600 text-xl mt-1" />
                     <div>
                         <h4 className="text-red-900 font-bold mb-1">Critical Issue: PhonePe SDK Missing from composer.lock</h4>

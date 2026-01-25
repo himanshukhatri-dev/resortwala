@@ -15,10 +15,10 @@ class InvoiceController extends Controller
         // Determine request type:
         // If API Token present (Customer App), use user() scope.
         // If 'signed' URL (Email Link), skip auth check but verify signature.
-        
+
         $user = $request->user();
-        
-        $booking = Booking::with(['property', 'customer'])->find($id);
+
+        $booking = Booking::with(['property'])->find($id);
 
         if (!$booking) {
             return response()->json(['message' => 'Booking not found'], 404);
@@ -29,8 +29,8 @@ class InvoiceController extends Controller
         if ($user) {
             // Check if email or phone matches
             if ($booking->CustomerEmail !== $user->email && $booking->CustomerMobile !== $user->phone) {
-                 // return response()->json(['message' => 'Unauthorized'], 403);
-                 // Relaxed check for now as phone number formats might differ (+91)
+                // return response()->json(['message' => 'Unauthorized'], 403);
+                // Relaxed check for now as phone number formats might differ (+91)
             }
         }
         // TODO: If accessed via Email Link, use Signed Route validation (e.g. `request()->hasValidSignature()`)
@@ -38,8 +38,12 @@ class InvoiceController extends Controller
         // 2. Prepare Data
         $data = [
             'booking' => $booking,
-            'property' => $booking->property ?? (object)['Name' => 'Unknown Property', 'Location' => 'N/A', 'gst_number' => null],
-            'customer' => $booking->customer, // May be null if guest checkout
+            'property' => $booking->property ?? (object) ['Name' => 'Unknown Property', 'Location' => 'N/A', 'gst_number' => null],
+            'customer' => (object) [
+                'name' => $booking->CustomerName,
+                'email' => $booking->CustomerEmail,
+                'phone' => $booking->CustomerMobile
+            ],
             'invoice_no' => 'INV-' . str_pad($booking->BookingId, 6, '0', STR_PAD_LEFT),
             'date' => $booking->created_at->format('d M Y'),
             'gst_number' => $booking->property->gst_number ?? 'N/A', // Safely access gst_number

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import axios from 'axios';
+import { API_BASE_URL } from '../../config';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCompare } from '../../context/CompareContext';
-import { FaTimes, FaCheckCircle, FaTimesCircle, FaBed, FaBath, FaUsers, FaParking, FaSwimmingPool, FaWifi, FaSnowflake, FaTv, FaUtensils, FaDog, FaMusic, FaGlassCheers, FaRupeeSign, FaTrash } from 'react-icons/fa';
+import { FaTimes, FaCheckCircle, FaTimesCircle, FaBed, FaBath, FaUsers, FaParking, FaSwimmingPool, FaWifi, FaSnowflake, FaTv, FaUtensils, FaDog, FaMusic, FaGlassCheers, FaRupeeSign, FaTrash, FaHome, FaMapMarkerAlt } from 'react-icons/fa';
 
 // Helper to get nested property safely
 const get = (obj, path, def = null) => {
@@ -13,44 +15,70 @@ const SECTIONS = [
         title: "Basic Info",
         items: [
             { label: "Property Type", render: p => p.PropertyType || 'Villa' },
-            { label: "Max Guests", icon: <FaUsers />, render: p => get(p, 'onboarding_data.property_details.max_guests') || '-' },
-            { label: "Bedrooms", icon: <FaBed />, render: p => get(p, 'onboarding_data.property_details.bedroom_count') || '-' },
-            { label: "Bathrooms", icon: <FaBath />, render: p => get(p, 'onboarding_data.property_details.bathroom_count') || '-' },
-            { label: "Parking", icon: <FaParking />, render: p => get(p, 'onboarding_data.amenities.parking') ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-300" /> }
+            { label: "Max Guests", icon: <FaUsers />, render: p => p.MaxCapacity || '-' },
+            { label: "Bedrooms", icon: <FaBed />, render: p => p.NoofRooms || '-' },
+            { label: "Bathrooms", icon: <FaBath />, render: p => p.NoofBathRooms || '-' },
+            { label: "Parking", icon: <FaParking />, render: p => (p.onboarding_data?.amenities?.parking || p.onboarding_data?.amenities?.FreeParking || p.Breakfast === 'Yes') ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-200" /> }
         ]
     },
     {
         title: "Amenities",
         items: [
-            { label: "Swimming Pool", icon: <FaSwimmingPool />, check: 'onboarding_data.amenities.pool' },
-            { label: "Free Wi-Fi", icon: <FaWifi />, check: 'onboarding_data.amenities.wifi' },
-            { label: "AC", icon: <FaSnowflake />, check: 'onboarding_data.amenities.ac' },
-            { label: "TV", icon: <FaTv />, check: 'onboarding_data.amenities.tv' },
-            { label: "Kitchen", icon: <FaUtensils />, check: 'onboarding_data.amenities.kitchen' },
-            { label: "Caretaker", icon: <FaUsers />, check: 'onboarding_data.amenities.caretaker' },
+            { label: "Swimming Pool", icon: <FaSwimmingPool />, checkKeys: ['onboarding_data.amenities.pool', 'onboarding_data.amenities.big_pools'] },
+            { label: "Free Wi-Fi", icon: <FaWifi />, checkKeys: ['onboarding_data.amenities.wifi', 'onboarding_data.amenities.FreeWi-Fi'] },
+            { label: "AC", icon: <FaSnowflake />, checkKeys: ['onboarding_data.amenities.ac', 'onboarding_data.amenities.AC'] },
+            { label: "TV", icon: <FaTv />, checkKeys: ['onboarding_data.amenities.tv', 'onboarding_data.amenities.TV'] },
+            { label: "Kitchen", icon: <FaUtensils />, checkKeys: ['onboarding_data.amenities.kitchen', 'onboarding_data.amenities.KitchenAccess'] },
+            { label: "Caretaker", icon: <FaUsers />, render: p => (get(p, 'onboarding_data.amenities.caretaker') || get(p, 'onboarding_data.amenities.SecurityGuard')) ? <FaCheckCircle className="text-green-500" /> : <FaTimesCircle className="text-gray-300" /> },
         ]
     },
     {
         title: "Policies",
         items: [
-            { label: "Pets Allowed", icon: <FaDog />, check: 'onboarding_data.policies.pets_allowed' },
-            { label: "Alcohol Allowed", icon: <FaGlassCheers />, check: 'onboarding_data.policies.alcohol_allowed' },
-            { label: "Loud Music", icon: <FaMusic />, render: p => get(p, 'onboarding_data.policies.loud_music_allowed') ? "Allowed" : "Restricted" }
+            { label: "Pets Allowed", icon: <FaDog />, checkKeys: ['onboarding_data.policies.pets_allowed', 'onboarding_data.rules.2'] },
+            { label: "Alcohol Allowed", icon: <FaGlassCheers />, checkKeys: ['onboarding_data.policies.alcohol_allowed', 'onboarding_data.rules.7'] },
+            { label: "Loud Music", icon: <FaMusic />, render: p => (get(p, 'onboarding_data.policies.loud_music_allowed') || get(p, 'onboarding_data.rules.6')) ? "Allowed" : "Restricted" }
         ]
     },
     {
         title: "Pricing",
         items: [
-            { label: "Weekday Price", icon: <FaRupeeSign />, render: p => `₹${get(p, 'onboarding_data.pricing.base_price_weekday', 0)?.toLocaleString()}` },
-            { label: "Weekend Price", icon: <FaRupeeSign />, render: p => `₹${get(p, 'onboarding_data.pricing.base_price_weekend', 0)?.toLocaleString()}` },
-            { label: "Security Deposit", icon: <FaRupeeSign />, render: p => `₹${get(p, 'onboarding_data.pricing.security_deposit', 0)?.toLocaleString()}` },
+            { label: "Weekday Price", icon: <FaRupeeSign />, render: p => `₹${(p.price_mon_thu || p.Price || 0).toLocaleString()}` },
+            { label: "Weekend Price", icon: <FaRupeeSign />, render: p => `₹${(p.price_fri_sun || p.price_sat || p.Price || 0).toLocaleString()}` },
+            { label: "Security Deposit", icon: <FaRupeeSign />, render: p => `₹${(get(p, 'onboarding_data.pricing.security_deposit') || 0).toLocaleString()}` },
         ]
     }
 ];
 
 
 export default function CompareModal({ isOpen, onClose }) {
-    const { compareList, removeFromCompare, clearCompare } = useCompare();
+    const { compareList, removeFromCompare, clearCompare, setCompareList } = useCompare();
+    const [freshData, setFreshData] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    // Fetch fresh data when modal opens
+    React.useEffect(() => {
+        if (isOpen && compareList.length > 0) {
+            const fetchFresh = async () => {
+                setLoading(true);
+                try {
+                    const promises = compareList.map(p =>
+                        axios.get(`${API_BASE_URL}/properties/${p.id || p.PropertyId}`)
+                    );
+                    const results = await Promise.all(promises);
+                    const updatedList = results.map(r => r.data);
+                    setFreshData(updatedList);
+                } catch (err) {
+                    console.error("Failed to fetch fresh compare data", err);
+                    // Fallback to existing data if fetch fails
+                    setFreshData(compareList);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchFresh();
+        }
+    }, [isOpen]); // Only trigger when modal opens
 
     // Body Scroll Lock
     React.useEffect(() => {
@@ -61,6 +89,8 @@ export default function CompareModal({ isOpen, onClose }) {
     }, [isOpen]);
 
     if (!isOpen) return null;
+
+    const activeData = freshData.length > 0 ? freshData : compareList;
 
     return (
         <AnimatePresence>
@@ -118,7 +148,7 @@ export default function CompareModal({ isOpen, onClose }) {
                                                         <th className="p-4 w-48 sticky left-0 bg-white z-30 border-b-2 border-transparent shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                                                             {/* Empty corner */}
                                                         </th>
-                                                        {compareList.map(prop => (
+                                                        {activeData.map(prop => (
                                                             <th key={prop.id} className="p-4 w-72 align-top border-b border-gray-100 min-w-[280px]">
                                                                 <div className="relative group">
                                                                     <div className="aspect-[4/3] rounded-2xl overflow-hidden mb-3 shadow-md">
@@ -165,8 +195,8 @@ export default function CompareModal({ isOpen, onClose }) {
                                                                         let content = null;
                                                                         if (item.render) {
                                                                             content = item.render(prop);
-                                                                        } else if (item.check) {
-                                                                            const val = get(prop, item.check);
+                                                                        } else if (item.checkKeys) {
+                                                                            const val = item.checkKeys.some(k => get(prop, k));
                                                                             content = val
                                                                                 ? <div className="flex items-center gap-1 text-green-700 font-bold bg-green-50 px-2 py-1 rounded-md w-fit text-xs"><FaCheckCircle className="text-green-500" /> Yes</div>
                                                                                 : <div className="flex items-center gap-1 text-gray-400 text-xs"><FaTimesCircle /> No</div>;
@@ -184,7 +214,7 @@ export default function CompareModal({ isOpen, onClose }) {
                                                     {/* Action Row */}
                                                     <tr>
                                                         <td className="p-4 sticky left-0 bg-white"></td>
-                                                        {compareList.map(prop => (
+                                                        {activeData.map(prop => (
                                                             <td key={prop.id} className="p-4">
                                                                 <button className="w-full bg-black text-white font-bold py-3 rounded-xl hover:bg-gray-800 transition shadow-lg active:scale-95">
                                                                     View Details
@@ -207,7 +237,7 @@ export default function CompareModal({ isOpen, onClose }) {
                                                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Features</span>
                                                         </th>
                                                         {/* Sticky Top Headers (Properties) */}
-                                                        {compareList.map(prop => (
+                                                        {activeData.map(prop => (
                                                             <th key={prop.id} className="sticky top-0 z-30 bg-white border-b border-gray-100 p-1.5 min-w-[120px] w-[120px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] align-bottom">
                                                                 <div className="relative">
                                                                     <div className="h-16 w-full rounded-lg overflow-hidden mb-1.5 border border-gray-100 bg-gray-50">
@@ -256,8 +286,8 @@ export default function CompareModal({ isOpen, onClose }) {
                                                                         let content = null;
                                                                         if (item.render) {
                                                                             content = item.render(prop);
-                                                                        } else if (item.check) {
-                                                                            const val = get(prop, item.check);
+                                                                        } else if (item.checkKeys) {
+                                                                            const val = item.checkKeys.some(k => get(prop, k));
                                                                             content = val
                                                                                 ? <FaCheckCircle className="text-green-500 mx-auto" size={12} />
                                                                                 : <FaTimesCircle className="text-gray-200 mx-auto" size={12} />;
@@ -296,11 +326,3 @@ export default function CompareModal({ isOpen, onClose }) {
         </AnimatePresence>
     );
 }
-
-// Missing Icon Component
-const FaHome = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3L2 12h3v8z" /></svg>
-);
-const FaMapMarkerAlt = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 512 512"><path fill="currentColor" d="M256 32C167.6 32 96 96.5 96 176c0 128 160 304 160 304s160-176 160-304c0-79.5-71.6-144-160-144zm0 224a64 64 0 1 1 64-64a64.07 64.07 0 0 1-64 64z" /></svg>
-);

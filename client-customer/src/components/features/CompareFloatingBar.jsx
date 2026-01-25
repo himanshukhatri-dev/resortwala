@@ -2,11 +2,13 @@ import React from 'react';
 import { useCompare } from '../../context/CompareContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaExchangeAlt, FaArrowRight } from 'react-icons/fa';
+import { useLocation } from 'react-router-dom';
 
 export default function CompareFloatingBar() {
     const { compareList, removeFromCompare, clearCompare, openCompareModal } = useCompare();
+    const location = useLocation();
 
-    if (compareList.length === 0) return null;
+    if (compareList.length === 0 || location.pathname !== '/') return null;
 
     return (
         <AnimatePresence>

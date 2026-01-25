@@ -11,6 +11,8 @@ import {
 import axios from 'axios';
 import { API_BASE_URL } from '../../config';
 
+import { useAuth } from '../../context/AuthContext';
+
 // Mock data generator for fallback
 const getMockData = () => {
     const dates = Array.from({ length: 15 }, (_, i) => {
@@ -22,10 +24,10 @@ const getMockData = () => {
     return {
         summary: { total_visits: 1240, unique_users: 850, search_rate: 68.5, conversion: 2.1 },
         trends: dates.map(date => ({ date, count: Math.floor(Math.random() * 100) + 50 })),
-        funnel: [
+        funnel_details: [
             { name: 'Visits', count: 1240, color: '#3b82f6' },
             { name: 'Searches', count: 850, color: '#6366f1' },
-            { name: 'Details Views', count: 420, color: '#8b5cf6' },
+            { name: 'Property Views', count: 420, color: '#8b5cf6' },
             { name: 'Checkout', count: 85, color: '#ec4899' },
             { name: 'Bookings', count: 26, color: '#10b981' }
         ],
@@ -40,11 +42,15 @@ const getMockData = () => {
 export default function GrowthVisualizer() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const { token } = useAuth();
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!token) return;
             try {
-                const response = await axios.get(`${API_BASE_URL}/admin/growth-analytics/overview`);
+                const response = await axios.get(`${API_BASE_URL}/admin/intelligence/growth-analytics/overview`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
                 setData(response.data);
             } catch (err) {
                 console.error("Failed to fetch growth data, using mock", err);
@@ -54,7 +60,7 @@ export default function GrowthVisualizer() {
             }
         };
         fetchData();
-    }, []);
+    }, [token]);
 
     if (loading) return <div className="p-20 text-center text-gray-500">Processing real-time traffic logs...</div>;
 
@@ -182,14 +188,14 @@ export default function GrowthVisualizer() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    {(data?.funnel_details || getMockData().funnel).map((step, i) => (
+                    {(data?.funnel_details || getMockData().funnel_details).map((step, i) => (
                         <div key={step.name} className="relative">
                             <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 text-center h-full">
                                 <div className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-tighter">{step.name}</div>
                                 <div className="text-2xl font-black text-gray-900">{step.count.toLocaleString()}</div>
                                 {i > 0 && (
                                     <div className="mt-3 inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-lg">
-                                        {Math.round((step.count / (data?.funnel_details || getMockData().funnel)[i - 1].count) * 100)}% Retained
+                                        {Math.round((step.count / (data?.funnel_details || getMockData().funnel_details)[i - 1].count) * 100)}% Retained
                                     </div>
                                 )}
                             </div>

@@ -179,7 +179,7 @@ const UserBookings = () => {
                                                 <div className="text-xs text-gray-400 uppercase font-bold mb-1">Check-in</div>
                                                 <div className="font-medium text-gray-800 flex items-center gap-2">
                                                     <FaCalendarAlt className="text-blue-500" />
-                                                    {format(new Date(booking.CheckInDate), 'EEE, MMM dd')}
+                                                    {booking.CheckInDate ? format(new Date(booking.CheckInDate), 'EEE, MMM dd') : 'TBA'}
                                                 </div>
                                             </div>
                                             <div className="bg-gray-50 p-3 rounded-lg">
