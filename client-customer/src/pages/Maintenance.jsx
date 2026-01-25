@@ -1,6 +1,7 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { FaTools, FaWhatsapp, FaEnvelope } from 'react-icons/fa';
+import { motion } from 'framer-motion';
 
 const Maintenance = ({ content, logo }) => {
     const data = content || {
@@ -18,71 +19,100 @@ const Maintenance = ({ content, logo }) => {
                 <meta name="robots" content="noindex, nofollow" />
             </Helmet>
 
-            <div className="h-[100dvh] w-screen flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
-                {/* Background Blobs */}
-                <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none text-slate-200/50">
-                    {data.background_url ? (
-                        <div
-                            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30 blur-[2px]"
-                            style={{ backgroundImage: `url(${data.background_url})` }}
-                        />
-                    ) : (
-                        <>
-                            <div className="absolute -top-[10%] -right-[10%] w-[50%] h-[50%] bg-blue-100 rounded-full blur-[120px] animate-pulse"></div>
-                            <div className="absolute top-[40%] -left-[10%] w-[40%] h-[40%] bg-orange-100 rounded-full blur-[100px] animate-pulse delay-1000"></div>
-                        </>
-                    )}
+            <div className="h-[100dvh] w-screen flex flex-col items-center justify-center relative overflow-hidden bg-[#0a0a0c] font-sans selection:bg-blue-500/30">
+                {/* Dynamic Background Mesh */}
+                <div className="absolute inset-0 z-0">
+                    <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-blue-600/20 rounded-full blur-[140px] animate-pulse"></div>
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-purple-600/10 rounded-full blur-[140px] animate-pulse delay-700"></div>
                 </div>
 
-                <div className="relative z-10 p-8 md:p-12 bg-white/80 backdrop-blur-xl border border-white rounded-3xl shadow-2xl max-w-xl w-[90%] text-center">
-                    <div className="mb-8 flex justify-center flex-col items-center gap-4">
-                        {logo && <img src={logo} alt="ResortWala" className="h-12 w-auto mb-2" />}
-                        <div className="w-20 h-20 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg transform -rotate-6">
-                            <FaTools className="text-white text-3xl animate-bounce" />
-                        </div>
+                {/* Animated Floating Particles */}
+                <div className="absolute inset-0 z-0 opacity-30 pointer-events-none">
+                    {[...Array(6)].map((_, i) => (
+                        <motion.div
+                            key={i}
+                            initial={{ x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight }}
+                            animate={{
+                                x: [null, Math.random() * window.innerWidth],
+                                y: [null, Math.random() * window.innerHeight]
+                            }}
+                            transition={{
+                                duration: 20 + Math.random() * 20,
+                                repeat: Infinity,
+                                ease: "linear"
+                            }}
+                            className="absolute w-1 h-1 bg-white rounded-full"
+                        />
+                    ))}
+                </div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="relative z-10 p-10 md:p-16 bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] max-w-2xl w-[92%] text-center overflow-hidden"
+                >
+                    {/* Inner Glow */}
+                    <div className="absolute -top-32 -left-32 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px]"></div>
+
+                    <div className="mb-10 flex flex-col items-center gap-6">
+                        {logo && <img src={logo} alt="ResortWala" className="h-10 w-auto mb-2 opacity-90 drop-shadow-2xl" />}
+                        <motion.div
+                            animate={{
+                                y: [0, -10, 0],
+                                rotate: [-6, -4, -6]
+                            }}
+                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                            className="w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl flex items-center justify-center shadow-[0_0_40px_-5px_rgba(37,99,235,0.4)]"
+                        >
+                            <FaTools className="text-white text-4xl" />
+                        </motion.div>
                     </div>
 
-                    <h1 className="text-3xl md:text-4xl font-black text-slate-800 mb-4 leading-tight">
+                    <h1 className="text-4xl md:text-5xl font-black text-white mb-6 leading-[1.1] tracking-tight">
                         {data.title}
                     </h1>
 
-                    <p className="text-slate-600 font-bold mb-2">{data.subtitle}</p>
-                    <p className="text-slate-500 text-sm md:text-base mb-8 leading-relaxed">
+                    <p className="text-blue-400 font-bold text-lg mb-3 tracking-wide">{data.subtitle}</p>
+                    <p className="text-gray-400 text-base md:text-lg mb-10 leading-relaxed max-w-lg mx-auto">
                         {data.description}
                     </p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                            <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Expected Return</p>
-                            <p className="text-slate-800 font-bold">{data.estimated_return}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-12">
+                        <div className="bg-white/[0.03] p-6 rounded-3xl border border-white/5 hover:border-white/10 transition-colors group">
+                            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-gray-500 mb-2 group-hover:text-blue-400 transition-colors">Expected Return</p>
+                            <p className="text-white text-xl font-bold">{data.estimated_return}</p>
                         </div>
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                            <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Status</p>
-                            <div className="flex items-center justify-center gap-2">
-                                <span className="w-2 h-2 bg-orange-500 rounded-full animate-ping"></span>
-                                <span className="text-slate-800 font-bold uppercase text-xs tracking-wider">In Progress</span>
+                        <div className="bg-white/[0.03] p-6 rounded-3xl border border-white/5 hover:border-white/10 transition-colors">
+                            <p className="text-[10px] uppercase tracking-[0.2em] font-black text-gray-500 mb-2">System Status</p>
+                            <div className="flex items-center justify-center gap-3">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                </span>
+                                <span className="text-white font-black uppercase text-sm tracking-widest">Optimizing</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <div className="flex flex-col sm:flex-row gap-5 justify-center">
                         <a
                             href="https://wa.me/919136276555"
-                            className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition-all shadow-lg shadow-slate-900/10"
+                            className="flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-2xl font-black hover:bg-gray-100 transition-all hover:scale-[1.02] active:scale-95 shadow-xl shadow-white/5"
                         >
-                            <FaWhatsapp /> WhatsApp Support
+                            <FaWhatsapp className="text-lg" /> WhatsApp
                         </a>
                         <a
                             href={`mailto:${data.contact_email}`}
-                            className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all"
+                            className="flex items-center justify-center gap-3 px-8 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-black hover:bg-white/10 transition-all hover:scale-[1.02] active:scale-95"
                         >
-                            <FaEnvelope /> Email Support
+                            <FaEnvelope className="text-lg" /> Email Support
                         </a>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="mt-8 text-slate-400 text-sm font-medium">
-                    &copy; 2026 ResortWala.
+                <div className="mt-12 text-gray-600 text-sm font-bold tracking-widest uppercase opacity-50">
+                    &copy; 2026 ResortWala. Premium Stays.
                 </div>
             </div>
         </>

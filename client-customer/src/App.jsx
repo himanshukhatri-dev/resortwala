@@ -41,6 +41,8 @@ const SetPassword = lazy(() => import('./pages/SetPassword'));
 const BookingSuccess = lazy(() => import('./pages/BookingSuccess'));
 const BookingFailed = lazy(() => import('./pages/BookingFailed'));
 const BookingPending = lazy(() => import('./pages/BookingPending'));
+const Maintenance = lazy(() => import('./pages/Maintenance'));
+const ComingSoon = lazy(() => import('./pages/ComingSoon'));
 
 // Loading Fallback
 const PageLoader = () => (
@@ -93,6 +95,10 @@ function App() {
                         <Route path="/signup" element={<Signup />} />
                         <Route path="/forgot-password" element={<ForgotPassword />} />
                         <Route path="/set-password" element={<SetPassword />} />
+
+                        {/* Test Routes for System Mode Redesigns */}
+                        <Route path="/test/maintenance" element={<Maintenance />} />
+                        <Route path="/test/coming-soon" element={<ComingSoon />} />
                       </Routes>
                     </Suspense>
 

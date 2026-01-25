@@ -9,7 +9,7 @@ use App\Traits\Auditable;
 class PropertyMaster extends Model
 {
     use Auditable;
-    protected $appends = ['image_url', 'rating_display'];
+    protected $appends = ['image_url', 'rating_display', 'display_price', 'market_price'];
 
     public function reviews()
     {
@@ -24,6 +24,69 @@ class PropertyMaster extends Model
             'google' => $this->google_rating,
             'count' => $this->internal_review_count + $this->google_review_count
         ];
+    }
+
+    public function getDisplayPriceAttribute()
+    {
+        // 1. Determine today's price based on day of week
+        $today = now();
+        $dayOfWeek = $today->dayOfWeek; // 0 (Sun) - 6 (Sat)
+        $days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        $todayName = $days[$dayOfWeek];
+        $isWeekend = in_array($todayName, ['friday', 'saturday', 'sunday']);
+
+        $calculatedPrice = $this->Price; // Default fallback
+
+        // Note: We don't load relations here to avoid N+1 in appends if possible,
+        // but for show() it's fine. For index(), index() already does this manually.
+        // To be safe, we check if relation is loaded or use attributes.
+
+        $adminPricing = $this->admin_pricing ?? [];
+
+        if (strtolower($this->PropertyType) == 'waterpark') {
+            $wpKey = $isWeekend ? 'adult_weekend' : 'adult_weekday';
+            if (isset($adminPricing[$wpKey]['final']) && $adminPricing[$wpKey]['final'] > 0) {
+                $calculatedPrice = $adminPricing[$wpKey]['final'];
+            }
+        } elseif (isset($adminPricing[$todayName]['villa']['final']) && $adminPricing[$todayName]['villa']['final'] > 0) {
+            $calculatedPrice = $adminPricing[$todayName]['villa']['final'];
+        } else {
+            // Column fallbacks
+            if ($dayOfWeek >= 1 && $dayOfWeek <= 4) { // Mon(1) - Thu(4)
+                $calculatedPrice = $this->price_mon_thu ?? $calculatedPrice;
+            } elseif ($dayOfWeek == 6) { // Sat(6)
+                $calculatedPrice = $this->price_sat ?? $calculatedPrice;
+            } else { // Fri(5) & Sun(0)
+                $calculatedPrice = $this->price_fri_sun ?? $calculatedPrice;
+            }
+        }
+
+        return $calculatedPrice;
+    }
+
+    public function getMarketPriceAttribute()
+    {
+        $today = now();
+        $dayOfWeek = $today->dayOfWeek; // 0 (Sun) - 6 (Sat)
+        $days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        $todayName = $days[$dayOfWeek];
+        $isWeekend = in_array($todayName, ['friday', 'saturday', 'sunday']);
+
+        $adminPricing = $this->admin_pricing ?? [];
+
+        // 1. Determine Market Price (Vendor Ask)
+        $marketPrice = $this->Price; // Default fallback
+
+        if (strtolower($this->PropertyType) == 'waterpark') {
+            $wpKey = $isWeekend ? 'adult_weekend' : 'adult_weekday';
+            if (isset($adminPricing[$wpKey]['current']) && $adminPricing[$wpKey]['current'] > 0) {
+                $marketPrice = $adminPricing[$wpKey]['current'];
+            }
+        } elseif (isset($adminPricing[$todayName]['villa']['current']) && $adminPricing[$todayName]['villa']['current'] > 0) {
+            $marketPrice = $adminPricing[$todayName]['villa']['current'];
+        }
+
+        return $marketPrice;
     }
 
     public function getImageUrlAttribute()

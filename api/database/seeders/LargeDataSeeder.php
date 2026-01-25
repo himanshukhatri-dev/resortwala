@@ -29,19 +29,19 @@ class LargeDataSeeder extends Seeder
 
         // 2. Create 5 Vendors and their Properties
         $this->command->info("Creating 5 Vendors & 25 Properties...");
-        
+
         $locations = ['Goa', 'Lonavala', 'Manali', 'Shimla', 'Udaipur', 'Jaipur', 'Kerala', 'Rishikesh'];
         $types = ['Villa', 'Resort', 'Hotel', 'Cottage'];
         $imageUrls = [
             'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800', // Resort
             'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800', // Pool
-            'https://images.unsplash.com/photo-1571896349842-6e53ce41e887?w=800', // Room
+            'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800', // Room
             'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800', // Hotel
             'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=800', // Villa
             'https://images.unsplash.com/photo-1613977257363-707ba9348227?w=800', // Modern
             'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800', // Traditional
         ];
-        
+
         for ($v = 1; $v <= 5; $v++) {
             $vendor = User::firstOrCreate(
                 ['email' => "vendor{$v}@resortwala.com"],
@@ -60,9 +60,9 @@ class LargeDataSeeder extends Seeder
                 $loc = $locations[array_rand($locations)];
                 $type = $types[array_rand($types)];
                 $name = "$type " . $this->getRandomName();
-                
+
                 $price = rand(5000, 25000);
-                
+
                 $property = PropertyMaster::create([
                     'vendor_id' => $vendor->id,
                     'Name' => $name,
@@ -85,8 +85,8 @@ class LargeDataSeeder extends Seeder
 
                 // Add 3 Images
                 $selectedImages = $this->getRandomImages($imageUrls, 3);
-                foreach($selectedImages as $key => $url) {
-                     PropertyImage::create([
+                foreach ($selectedImages as $key => $url) {
+                    PropertyImage::create([
                         'property_id' => $property->PropertyId,
                         'image_path' => $url,
                         'is_primary' => $key === 0
@@ -94,7 +94,7 @@ class LargeDataSeeder extends Seeder
                 }
             }
         }
-        
+
         $this->command->info("Done! Created 5 Vendors, 5 Customers, 25 Properties.");
     }
 
@@ -102,7 +102,7 @@ class LargeDataSeeder extends Seeder
     {
         $adjectives = ['Royal', 'Grand', 'Hidden', 'Sunny', 'Crystal', 'Golden', 'Silver', 'Blue'];
         $nouns = ['Palace', 'Escape', 'Hideaway', 'Oasis', 'Haven', 'Paradise', 'Retreat', 'Bay'];
-        
+
         return $adjectives[array_rand($adjectives)] . ' ' . $nouns[array_rand($nouns)];
     }
 

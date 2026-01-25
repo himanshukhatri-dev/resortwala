@@ -9,7 +9,7 @@ export default function About() {
             <div className="relative h-[400px] flex items-center justify-center bg-gray-900 text-white overflow-hidden">
                 <div className="absolute inset-0 bg-black/40 z-10" />
                 <img
-                    src="https://images.unsplash.com/photo-1571896349842-6e53ce41e887?q=80&w=2070&auto=format&fit=crop"
+                    src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=2070&auto=format&fit=crop"
                     alt="Luxury Resort"
                     className="absolute inset-0 w-full h-full object-cover"
                 />

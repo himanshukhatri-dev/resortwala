@@ -138,52 +138,8 @@ class PropertyMasterController extends Controller
 
             // POST-PROCESS: Add Pricing Intelligence & Review Logic
             $properties->getCollection()->transform(function ($p) {
-                // 1. PRICING INTELLIGENCE (Dynamic Pricing)
-                // Determine today's price based on day of week
-                $today = now();
-                $dayOfWeek = $today->dayOfWeek; // 0 (Sun) - 6 (Sat)
-
-                $calculatedPrice = $p->Price; // Default fallback
-
-                // A. Check Specific Date Override (from dailyRates relation if loaded)
-                $dailyRate = $p->dailyRates->firstWhere('day_of_week', $dayOfWeek);
-
-                // Day names for admin_pricing lookup
-                $days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                $todayName = $days[$dayOfWeek];
-                $isWeekend = in_array($todayName, ['friday', 'saturday', 'sunday']);
-                $adminPricing = $p->admin_pricing ?? [];
-
-                if ($dailyRate) {
-                    $calculatedPrice = $dailyRate->base_price;
-                } elseif (strtolower($p->PropertyType) == 'waterpark') {
-                    // Waterpark Logic
-                    $wpKey = $isWeekend ? 'adult_weekend' : 'adult_weekday';
-
-                    if (isset($adminPricing[$wpKey]['final']) && $adminPricing[$wpKey]['final'] > 0) {
-                        $calculatedPrice = $adminPricing[$wpKey]['final'];
-                    } elseif (isset($adminPricing['adult_rate']['discounted'])) {
-                        $calculatedPrice = $adminPricing['adult_rate']['discounted'];
-                    } elseif (isset($adminPricing['adult']['discounted'])) {
-                        $calculatedPrice = $adminPricing['adult']['discounted'];
-                    }
-                } elseif (isset($adminPricing[$todayName]['villa']['final']) && $adminPricing[$todayName]['villa']['final'] > 0) {
-                    // Villa 7-day Matrix
-                    $calculatedPrice = $adminPricing[$todayName]['villa']['final'];
-                } else {
-                    // Column fallbacks
-                    if ($dayOfWeek >= 1 && $dayOfWeek <= 4) { // Mon(1) - Thu(4)
-                        $calculatedPrice = $p->price_mon_thu ?? $calculatedPrice;
-                    } elseif ($dayOfWeek == 6) { // Sat(6)
-                        $calculatedPrice = $p->price_sat ?? $calculatedPrice;
-                    } else { // Fri(5) & Sun(0)
-                        $calculatedPrice = $p->price_fri_sun ?? $calculatedPrice;
-                    }
-                }
-
-
-                $p->display_price = $calculatedPrice;
-                $p->lowest_price_next_30 = $calculatedPrice; // Simplified for now
+                // Pricing is now handled by model appends (display_price)
+                $p->lowest_price_next_30 = $p->display_price;
 
                 // 2. REVIEW LOGIC (Google Fallback)
                 $internalReviewsCount = 0; // distinct from $p->reviews->count()

@@ -298,10 +298,12 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
 
                     <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 w-full sm:w-auto">
                         <div className="text-left sm:text-right flex flex-col items-start sm:items-end">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">₹{Math.round(pricing.marketPrice).toLocaleString()}</span>
-                                <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">{pricing.percentage}% OFF</span>
-                            </div>
+                            {pricing.percentage > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">₹{Math.round(pricing.marketPrice).toLocaleString()}</span>
+                                    <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">{pricing.percentage}% OFF</span>
+                                </div>
+                            )}
                             <div className="flex items-baseline gap-1">
                                 <span className="text-xl sm:text-2xl font-bold text-gray-900 font-sans">₹{pricing.sellingPrice.toLocaleString()}</span>
                                 <span className="text-[10px] font-normal text-gray-400 opacity-60">

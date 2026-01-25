@@ -424,15 +424,8 @@ export default function PropertyDetails() {
 
     const { user } = useAuth();
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-16 h-16 border-4 border-gray-200 border-t-black rounded-full animate-spin"></div></div>;
-
-    if (!property) {
-        // Redirect to home if property not found
-        setTimeout(() => navigate('/', { replace: true }), 0);
-        return null;
-    }
-
-    const ob = typeof property.onboarding_data === 'string' ? JSON.parse(property.onboarding_data) : (property.onboarding_data || {});
+    // -- DERIVED & CALCULATED DATA (Must be above early returns for Hook consistency) --
+    const ob = property ? (typeof property.onboarding_data === 'string' ? JSON.parse(property.onboarding_data) : (property.onboarding_data || {})) : {};
 
     // Ensure array fields are parsed correctly if stored as strings
     if (ob.otherAttractions && typeof ob.otherAttractions === 'string') {
@@ -444,6 +437,7 @@ export default function PropertyDetails() {
 
     const obPricing = ob.pricing || {};
     const roomConfig = ob.roomConfig || { livingRoom: {}, bedrooms: [] };
+
     const checkIsWaterpark = (p) => {
         if (!p) return false;
         const type = (p.PropertyType || p.property_type || p.display_type || '').toLowerCase();
@@ -454,7 +448,10 @@ export default function PropertyDetails() {
     const isWaterpark = checkIsWaterpark(property);
 
     const handleReserve = () => {
-        if (!dateRange.from || (!isWaterpark && !dateRange.to)) { setIsDatePickerOpen(true); return; }
+        if (!dateRange.from || (!isWaterpark && !dateRange.to)) {
+            setIsDatePickerOpen(true);
+            return;
+        }
 
         // Final Availability Check
         if (!checkRangeAvailability(dateRange.from, dateRange.to)) {
@@ -470,48 +467,24 @@ export default function PropertyDetails() {
         return isNaN(n) ? def : n;
     };
 
-    const onboardingData = property?.onboarding_data || {};
     const adminPricing = property?.admin_pricing || {};
-    const onboardingPricing = onboardingData.pricing || {};
-
-    // Market Price (Vendor Ask - Strikethrough)
-    const originalPrice = parseFloat(
-        adminPricing?.mon_thu?.villa?.current ||
-        property?.Price ||
-        property?.PerCost ||
-        onboardingPricing?.weekday ||
-        0
-    );
-
-    // Selling Price (Customer Rate - Display)
-    const rwRate = parseFloat(
-        adminPricing?.mon_thu?.villa?.final ||
-        property?.ResortWalaRate ||
-        property?.price_mon_thu ||
-        originalPrice ||
-        0
-    );
-
-    const dealPrice = parseFloat(property?.DealPrice || property?.deal_price || 0);
-
-    // Safe Access Helpers
-    // safeFloat used from previous scope or definition
+    const onboardingPricing = obPricing || {};
 
     const getPrice = (path) => {
-        // Handle both admin_pricing and direct property fields
         const val = path?.villa?.final || path;
         return (val && parseFloat(val) > 0) ? parseFloat(val) : 0;
     };
 
-    const PRICE_WEEKDAY = getPrice(adminPricing?.mon_thu) || parseFloat(property.price_mon_thu) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0;
-    const PRICE_FRISUN = getPrice(adminPricing?.fri_sun) || parseFloat(property.price_fri_sun) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0;
-    const PRICE_SATURDAY = getPrice(adminPricing?.sat) || parseFloat(property.price_sat) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0;
+    const PRICE_WEEKDAY = property ? (property.display_price || getPrice(adminPricing?.mon_thu) || parseFloat(property.price_mon_thu) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0) : 0;
+    const PRICE_FRISUN = property ? (property.display_price || getPrice(adminPricing?.fri_sun) || parseFloat(property.price_fri_sun) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0) : 0;
+    const PRICE_SATURDAY = property ? (property.display_price || getPrice(adminPricing?.sat) || parseFloat(property.price_sat) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0) : 0;
     const EXTRA_GUEST_CHARGE = safeFloat(onboardingPricing?.extraGuestCharge, 1000);
-    const FOOD_CHARGE = safeFloat(onboardingData.foodRates?.perPerson || onboardingData.foodRates?.veg, 1000);
-    const GST_PERCENTAGE = safeFloat(property.gst_percentage, 18);
+    const FOOD_CHARGE = safeFloat(ob.foodRates?.perPerson || ob.foodRates?.veg, 1000);
+    const GST_PERCENTAGE = safeFloat(property?.gst_percentage, 18);
+    const pricing = property ? getPricing(property) : null;
 
     const calculateBreakdown = () => {
-        if (!dateRange.from) return null;
+        if (!property || !dateRange.from) return null;
         if (!isWaterpark && !dateRange.to) return null;
 
         const effectiveTo = dateRange.to || dateRange.from;
@@ -588,7 +561,6 @@ export default function PropertyDetails() {
         }
 
         if (isWaterpark) {
-            const adminPricing = property.admin_pricing || {};
             let totalMarketTickets = 0;
 
             for (let i = 0; i < nights; i++) {
@@ -670,6 +642,45 @@ export default function PropertyDetails() {
         };
     };
     const priceBreakdown = calculateBreakdown();
+
+    // Defensive Check: Price Parity (Hook must be at top level)
+    useEffect(() => {
+        if (!priceBreakdown && property?.display_price && pricing) {
+            const desktopPrice = pricing.sellingPrice;
+            const mobilePrice = PRICE_WEEKDAY;
+            if (Math.abs(desktopPrice - mobilePrice) > 1) {
+                console.warn(`[PriceParity] Mismatch detected: Desktop=${desktopPrice}, Mobile=${mobilePrice}. Synchronized fallback uses backend display_price: ${property.display_price}`);
+            }
+        }
+    }, [property, pricing, priceBreakdown]);
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-16 h-16 border-4 border-gray-200 border-t-black rounded-full animate-spin"></div></div>;
+
+    if (!property) {
+        // Redirect to home if property not found
+        setTimeout(() => navigate('/', { replace: true }), 0);
+        return null;
+    }
+
+    // Market Price (Vendor Ask - Strikethrough)
+    const originalPrice = parseFloat(
+        adminPricing?.mon_thu?.villa?.current ||
+        property?.Price ||
+        property?.PerCost ||
+        onboardingPricing?.weekday ||
+        0
+    );
+
+    // Selling Price (Customer Rate - Display)
+    const rwRate = parseFloat(
+        adminPricing?.mon_thu?.villa?.final ||
+        property?.ResortWalaRate ||
+        property?.price_mon_thu ||
+        originalPrice ||
+        0
+    );
+
+    const dealPrice = parseFloat(property?.DealPrice || property?.deal_price || 0);
 
     // Improved Google Map Link Handling
     let googleMapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(property.Location || property.Address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
@@ -1176,9 +1187,9 @@ export default function PropertyDetails() {
                     <div className="relative h-full hidden lg:block">
                         <div className="sticky top-28 border border-gray-200 rounded-3xl p-6 shadow-xl bg-white/95 backdrop-blur-md">
                             {isWaterpark ? (
-                                <WaterparkBooking property={property} ob={ob} handleReserve={handleReserve} guests={guests} setGuests={setGuests} dateRange={dateRange} priceBreakdown={priceBreakdown} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} datePickerRef={datePickerRef} bookedDates={bookedDates} isWaterpark={isWaterpark} pricing={obPricing} getPriceForDate={getPriceForDate} />
+                                <WaterparkBooking property={property} ob={ob} handleReserve={handleReserve} guests={guests} setGuests={setGuests} dateRange={dateRange} priceBreakdown={priceBreakdown} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} datePickerRef={datePickerRef} bookedDates={bookedDates} isWaterpark={isWaterpark} pricing={pricing} getPriceForDate={getPriceForDate} />
                             ) : (
-                                <VillaBooking price={PRICE_WEEKDAY} rating={property.Rating} dateRange={dateRange} setDateRange={setDateRange} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} handleReserve={handleReserve} priceBreakdown={priceBreakdown} datePickerRef={datePickerRef} property={property} guests={guests} setGuests={setGuests} mealSelection={mealSelection} setMealSelection={setMealSelection} isWaterpark={isWaterpark} bookedDates={bookedDates} getPriceForDate={getPriceForDate} />
+                                <VillaBooking price={PRICE_WEEKDAY} rating={property.Rating} dateRange={dateRange} setDateRange={setDateRange} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} handleReserve={handleReserve} priceBreakdown={priceBreakdown} datePickerRef={datePickerRef} property={property} guests={guests} setGuests={setGuests} mealSelection={mealSelection} setMealSelection={setMealSelection} isWaterpark={isWaterpark} bookedDates={bookedDates} getPriceForDate={getPriceForDate} pricing={pricing} />
                             )}
                         </div>
                         <div className="mt-6 text-center text-gray-400 text-xs flex items-center justify-center gap-1"><FaShieldAlt /> Secure Booking via ResortWala</div>
@@ -1186,7 +1197,7 @@ export default function PropertyDetails() {
                 </div>
 
                 <MobileFooter
-                    price={priceBreakdown?.minNightlyRate || priceBreakdown || PRICE_WEEKDAY}
+                    price={priceBreakdown?.minNightlyRate || priceBreakdown || property.display_price || PRICE_WEEKDAY}
                     unit={isWaterpark ? '/ person' : '/ night'}
                     buttonText={(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : 'Reserve'}
                     dateRange={dateRange}
@@ -1219,7 +1230,7 @@ export default function PropertyDetails() {
                             onDateSelect={handleDateSelect}
                             bookedDates={bookedDates}
                             property={property}
-                            pricing={obPricing}
+                            pricing={pricing}
                             isWaterpark={isWaterpark}
                             guests={guests}
                             setGuests={setGuests}
@@ -1329,7 +1340,7 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
         <div className="space-y-4">
             <div className="flex justify-between items-end mb-4 border-b pb-4">
                 <div className="flex flex-col gap-2 w-full">
-                    {pricing && (
+                    {pricing && pricing.percentage > 0 && (
                         <div className="flex items-center gap-2 mb-0.5">
                             <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">₹{marketRate.toLocaleString()}</span>
                             <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">{percentage}% OFF</span>
@@ -1482,14 +1493,14 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
     );
 };
 
-const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, handleReserve, priceBreakdown, datePickerRef, property, guests, setGuests, mealSelection, setMealSelection, isWaterpark, bookedDates = [], getPriceForDate }) => {
+const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, handleReserve, priceBreakdown, datePickerRef, property, guests, setGuests, mealSelection, setMealSelection, isWaterpark, bookedDates = [], getPriceForDate, pricing }) => {
     const ob = property?.onboarding_data || {};
     const maxCapacity = parseInt(property?.MaxCapacity || ob.pricing?.maxCapacity || 20);
     const baseCapacity = parseInt(property?.Occupancy || ob.pricing?.extraGuestLimit || 12);
     const totalGuests = guests.adults + guests.children;
     const rates = priceBreakdown?.rates || ob.foodRates || {};
 
-    const pricing = getPricing(property);
+    // Use pricing from props
 
 
     const MealCounter = ({ label, rate, count, type }) => (
@@ -1509,12 +1520,14 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                 {/* HEADER */}
                 <div className="flex justify-between items-center pb-2 border-b border-gray-50">
                     <div className="flex flex-col">
-                        <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">₹{pricing.marketPrice.toLocaleString()}</span>
-                            <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">{pricing.percentage}% OFF</span>
-                        </div>
+                        {pricing.percentage > 0 && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">₹{Math.round(pricing.marketPrice).toLocaleString()}</span>
+                                <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">{pricing.percentage}% OFF</span>
+                            </div>
+                        )}
                         <div className="flex items-baseline gap-1.5">
-                            <span className="text-2xl font-bold font-serif text-gray-900">₹{(priceBreakdown?.minNightlyRate || pricing.sellingPrice).toLocaleString()}</span>
+                            <span className="text-2xl font-bold font-serif text-gray-900">₹{(priceBreakdown?.minNightlyRate || property.display_price || pricing.sellingPrice).toLocaleString()}</span>
                             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">/ night</span>
                         </div>
                     </div>

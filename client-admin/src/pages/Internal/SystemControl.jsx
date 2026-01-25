@@ -231,6 +231,16 @@ export default function SystemControl() {
                                 onChange={(e) => setSettings({ ...settings, coming_soon_content: { ...settings.coming_soon_content, description: e.target.value } })}
                             />
                         </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Launch Date & Time</label>
+                            <input
+                                type="datetime-local"
+                                className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium focus:bg-white transition-all"
+                                value={settings.coming_soon_content?.launch_date || ''}
+                                onChange={(e) => setSettings({ ...settings, coming_soon_content: { ...settings.coming_soon_content, launch_date: e.target.value } })}
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1 font-bold">Countdown will automatically update on the site.</p>
+                        </div>
                         <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                             <div className="flex items-center gap-3">
                                 <FaEnvelope className="text-slate-400" />

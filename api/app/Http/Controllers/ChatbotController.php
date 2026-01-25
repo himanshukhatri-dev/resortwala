@@ -140,7 +140,7 @@ class ChatbotController extends Controller
 
         // Send WhatsApp to Admin
         // Assuming admin number is fixed or env
-        $adminNumber = env('ADMIN_WHATSAPP_NUMBER', '919022510122'); // Fallback to Himanshu's number from plan?
+        $adminNumber = env('ADMIN_WHATSAPP_NUMBER', '919136276555'); // Official Support
 
         $text = "*New Customer Query*\n";
         $text .= "Name: " . ($validated['name'] ?? 'Guest') . "\n";

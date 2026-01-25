@@ -15,16 +15,16 @@ class AdminIntelligenceController extends Controller
     private function configureConnection(Request $request)
     {
         $targetDb = $request->header('X-Target-DB') ?? $request->query('target_db');
-        
+
         if ($targetDb && in_array($targetDb, ['resortwala', 'resortwala_prod', 'resortwala_staging', 'resortwala_backup'])) {
-             // Purge previous connection to ensure fresh config
-             DB::purge('mysql');
-             
-             // Update Config
-             config(['database.connections.mysql.database' => $targetDb]);
-             
-             // Reconnect
-             DB::reconnect('mysql');
+            // Purge previous connection to ensure fresh config
+            DB::purge('mysql');
+
+            // Update Config
+            config(['database.connections.mysql.database' => $targetDb]);
+
+            // Reconnect
+            DB::reconnect('mysql');
         }
     }
 
@@ -47,8 +47,8 @@ class AdminIntelligenceController extends Controller
 
         foreach ($tables as $table) {
             // Robustly get table name
-            $tableName = $table->$keyName ?? array_values((array)$table)[0];
-            
+            $tableName = $table->$keyName ?? array_values((array) $table)[0];
+
             $columns = $this->getTableColumns($tableName);
             $foreignKeys = $this->getLocalForeignKeys($tableName);
 
@@ -73,7 +73,7 @@ class AdminIntelligenceController extends Controller
     private function getAllTables()
     {
         // MySQL specific
-        return DB::select('SHOW TABLES'); 
+        return DB::select('SHOW TABLES');
     }
 
     private function getTableColumns($table)
@@ -81,11 +81,11 @@ class AdminIntelligenceController extends Controller
         // Use Laravel Schema Builder
         $columns = Schema::getColumnListing($table);
         $details = [];
-        
+
         foreach ($columns as $col) {
             $type = Schema::getColumnType($table, $col);
-            $isPrimary = $col === 'id' || $col === 'ID' || $col === 'PropertyId' || $col === 'BookingId'; 
-            
+            $isPrimary = $col === 'id' || $col === 'ID' || $col === 'PropertyId' || $col === 'BookingId';
+
             $details[] = [
                 'name' => $col,
                 'type' => $type,
@@ -99,7 +99,7 @@ class AdminIntelligenceController extends Controller
     {
         // Getting FKs in MySQL is tricky without Doctrine, using information_schema
         $dbName = config('database.connections.mysql.database');
-        
+
         $fks = DB::select("
             SELECT 
                 COLUMN_NAME as column_name,
@@ -133,7 +133,7 @@ class AdminIntelligenceController extends Controller
         } else {
             // Default sort by ID if exists, else first column
             $columns = Schema::getColumnListing($table);
-            
+
             // Try explicit PKs first
             if (in_array('id', $columns)) {
                 $query->orderBy('id', 'desc');
@@ -149,7 +149,7 @@ class AdminIntelligenceController extends Controller
         // Search/Filter (Simple text search across all cols for now)
         if ($request->has('search') && $request->search) {
             $term = $request->search;
-            $query->where(function($q) use ($table, $term) {
+            $query->where(function ($q) use ($table, $term) {
                 $columns = Schema::getColumnListing($table);
                 foreach ($columns as $col) {
                     $q->orWhere($col, 'LIKE', "%{$term}%");
@@ -174,9 +174,9 @@ class AdminIntelligenceController extends Controller
         }
 
         // Security: ID column validation
-        
+
         $updates = $request->except(['id', '_token']); // Exclude protected
-        
+
         // Validation: Block updating critical columns directly if needed (e.g., passwords)
         $blockedColumns = ['password', 'remember_token', 'email_verified_at'];
         foreach ($blockedColumns as $col) {
@@ -191,14 +191,14 @@ class AdminIntelligenceController extends Controller
 
         try {
             DB::beginTransaction();
-            
+
             // Determine PK
             $columns = Schema::getColumnListing($table);
             $pk = in_array('id', $columns) ? 'id' : (in_array('PropertyId', $columns) ? 'PropertyId' : (in_array('BookingId', $columns) ? 'BookingId' : 'id'));
 
             // 1. Audit Log (Before Update)
             $oldData = DB::table($table)->where($pk, $id)->first();
-            
+
             // 2. Perform Update
             DB::table($table)->where($pk, $id)->update($updates);
 
@@ -217,7 +217,8 @@ class AdminIntelligenceController extends Controller
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
 
             DB::commit();
 
@@ -266,7 +267,8 @@ class AdminIntelligenceController extends Controller
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
 
             DB::commit();
 
@@ -277,8 +279,32 @@ class AdminIntelligenceController extends Controller
         }
     }
 
+    public function getLogs(Request $request)
+    {
+        $this->configureConnection($request);
+
+        $logs = DB::table('user_events')
+            ->where('event_category', 'admin_action')
+            ->orderBy('created_at', 'desc')
+            ->limit(100)
+            ->get();
+
+        return response()->json($logs->map(function ($log) {
+            $data = json_decode($log->event_data);
+            return [
+                'id' => $log->id,
+                'action' => str_contains($log->event_type, 'update') ? 'UPDATE' : (str_contains($log->event_type, 'delete') ? 'DELETE' : 'CREATE'),
+                'target_type' => $data->table ?? 'Unknown',
+                'target_id' => $data->row_id ?? 0,
+                'details' => "Changed fields: " . implode(', ', array_keys((array) ($data->new ?? []))),
+                'admin_id' => $log->user_id,
+                'created_at' => $log->created_at
+            ];
+        }));
+    }
+
     private function isValidTable($table)
     {
-        return Schema::hasTable($table); 
+        return Schema::hasTable($table);
     }
 }

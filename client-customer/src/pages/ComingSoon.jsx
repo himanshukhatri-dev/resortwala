@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaWhatsapp, FaEnvelope, FaBell } from 'react-icons/fa';
 
 const ComingSoon = ({ content, logo }) => {
     const data = content || {
         title: "Something amazing is coming ✨",
-        description: "We're building the future of resort bookings. Stay tuned!",
-        allow_email_capture: true
+        description: "We're building the future of premium resort bookings. Experience luxury like never before.",
+        allow_email_capture: true,
+        launch_date: '2026-02-15T00:00:00'
     };
 
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -13,8 +16,7 @@ const ComingSoon = ({ content, logo }) => {
     const [subscribed, setSubscribed] = useState(false);
 
     useEffect(() => {
-        // Default to a 7-day countdown if no specific date is provided
-        const launchDate = new Date('2026-02-01T00:00:00').getTime();
+        const launchDate = new Date(data.launch_date || '2026-02-15T00:00:00').getTime();
 
         const timer = setInterval(() => {
             const now = new Date().getTime();
@@ -33,12 +35,25 @@ const ComingSoon = ({ content, logo }) => {
         }, 1000);
 
         return () => clearInterval(timer);
-    }, []);
+    }, [data.launch_date]);
 
     const handleSubscribe = (e) => {
         e.preventDefault();
         setSubscribed(true);
     };
+
+    const CountdownCard = ({ value, label }) => (
+        <div className="flex flex-col items-center">
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl w-16 h-16 md:w-24 md:h-24 flex items-center justify-center mb-3 shadow-xl">
+                <span className="text-2xl md:text-5xl font-black text-white font-mono leading-none">
+                    {String(value).padStart(2, '0')}
+                </span>
+            </div>
+            <span className="text-[10px] md:text-xs text-gray-400 uppercase tracking-[0.2em] font-black">
+                {label}
+            </span>
+        </div>
+    );
 
     return (
         <>
@@ -47,83 +62,128 @@ const ComingSoon = ({ content, logo }) => {
                 <meta name="robots" content="noindex, nofollow" />
             </Helmet>
 
-            <div className="h-[100dvh] w-screen flex flex-col items-center justify-center relative overflow-hidden bg-slate-50 overscroll-none touch-none">
-                <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-                    {data.background_url ? (
-                        <div
-                            className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 blur-[2px]"
-                            style={{ backgroundImage: `url(${data.background_url})` }}
-                        />
-                    ) : (
-                        <>
-                            <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-blue-100/60 rounded-full blur-[120px] animate-pulse"></div>
-                            <div className="absolute -bottom-[10%] right-[10%] w-[60%] h-[60%] bg-pink-100/40 rounded-full blur-[120px] animate-pulse"></div>
-                        </>
-                    )}
+            <div className="h-[100dvh] w-screen flex flex-col items-center justify-center relative overflow-hidden bg-[#050505] selection:bg-blue-500/30">
+                {/* Background Video or Image Overlay */}
+                <div className="absolute inset-0 z-0">
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80 z-10"></div>
+                    <img
+                        src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=2000"
+                        alt="Background"
+                        className="w-full h-full object-cover opacity-50 blur-[4px] scale-105"
+                    />
                 </div>
 
-                <div className="relative z-10 p-6 md:p-12 bg-white/70 backdrop-blur-xl border border-white/50 rounded-3xl shadow-xl max-w-2xl w-[90%] text-center">
-                    <div className="mb-6 flex justify-center">
-                        <img src={logo || "/resortwala-logo.png"} alt="ResortWala" className="h-10 md:h-16 w-auto" />
-                    </div>
+                {/* Animated Light Trails */}
+                <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+                    <div className="absolute top-[20%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse"></div>
+                    <div className="absolute bottom-[20%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[120px] animate-pulse delay-700"></div>
+                </div>
 
-                    <h2 className="text-2xl md:text-4xl font-black text-slate-800 mb-2">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 1 }}
+                    className="relative z-20 max-w-4xl w-[92%] text-center"
+                >
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="mb-8 flex justify-center"
+                    >
+                        <img src={logo || "/resortwala-logo-white.png"} alt="ResortWala" className="h-12 md:h-20 w-auto drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]" />
+                    </motion.div>
+
+                    <motion.h2
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="text-4xl md:text-7xl font-black text-white mb-6 leading-tight tracking-tighter"
+                    >
                         {data.title}
-                    </h2>
+                    </motion.h2>
 
-                    <p className="text-slate-500 text-sm md:text-lg mb-8 max-w-lg mx-auto leading-relaxed font-medium">
+                    <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.6 }}
+                        className="text-gray-300 text-lg md:text-xl mb-12 max-w-2xl mx-auto leading-relaxed font-medium opacity-80"
+                    >
                         {data.description}
-                    </p>
+                    </motion.p>
 
-                    <div className="grid grid-cols-4 gap-2 md:gap-4 mb-8">
-                        {[
-                            { label: 'Days', value: timeLeft.days },
-                            { label: 'Hrs', value: timeLeft.hours },
-                            { label: 'Mins', value: timeLeft.minutes },
-                            { label: 'Secs', value: timeLeft.seconds }
-                        ].map((item, idx) => (
-                            <div key={idx} className="bg-white rounded-xl p-3 md:p-4 shadow-sm border border-slate-100 flex flex-col items-center">
-                                <span className="text-xl md:text-3xl font-black text-slate-800 font-mono">
-                                    {String(item.value).padStart(2, '0')}
-                                </span>
-                                <span className="text-[8px] md:text-[10px] text-slate-400 uppercase tracking-widest mt-1 font-bold">
-                                    {item.label}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.8 }}
+                        className="flex justify-center gap-4 md:gap-8 mb-16"
+                    >
+                        <CountdownCard value={timeLeft.days} label="Days" />
+                        <CountdownCard value={timeLeft.hours} label="Hours" />
+                        <CountdownCard value={timeLeft.minutes} label="Minutes" />
+                        <CountdownCard value={timeLeft.seconds} label="Seconds" />
+                    </motion.div>
 
-                    {data.allow_email_capture && !subscribed && (
-                        <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto mb-8 animate-fade-in-up">
-                            <input
-                                type="email"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="Enter your email"
-                                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm font-medium transition-all"
-                            />
-                            <button type="submit" className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg shadow-slate-900/10 hover:bg-black transition-all">
-                                Notify Me
-                            </button>
-                        </form>
-                    )}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1 }}
+                        className="max-w-md mx-auto"
+                    >
+                        <AnimatePresence mode="wait">
+                            {!subscribed ? (
+                                <motion.form
+                                    key="form"
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    onSubmit={handleSubscribe}
+                                    className="relative flex items-center p-1.5 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[1.2rem] shadow-2xl focus-within:border-white/20 transition-all"
+                                >
+                                    <input
+                                        type="email"
+                                        required
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="your@email.com"
+                                        className="w-full bg-transparent px-5 py-3 text-white placeholder:text-gray-500 focus:outline-none text-base font-medium"
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="flex items-center gap-2 whitespace-nowrap bg-white text-black px-6 py-3 rounded-xl font-black text-sm hover:bg-gray-100 transition-all active:scale-95 shadow-[0_10px_20px_-5px_rgba(255,255,255,0.2)]"
+                                    >
+                                        <FaBell className="text-xs" /> Join Waitlist
+                                    </button>
+                                </motion.form>
+                            ) : (
+                                <motion.div
+                                    key="success"
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="p-5 bg-blue-500/10 backdrop-blur-md border border-blue-500/20 text-blue-400 rounded-2xl font-black text-lg shadow-2xl shadow-blue-500/5 animate-pulse"
+                                >
+                                    ✨ Welcome to the elite circle.
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
 
-                    {subscribed && (
-                        <div className="mb-8 p-4 bg-green-50 text-green-700 rounded-xl font-bold text-sm animate-fade-in">
-                            ✨ You're on the list! We'll notify you.
-                        </div>
-                    )}
-
-                    <div className="flex justify-center flex-wrap gap-4">
-                        <a href="https://wa.me/919136276555" className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold shadow-lg shadow-slate-900/10 hover:bg-black transition-all">
-                            WhatsApp Us
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.2 }}
+                        className="mt-12 flex justify-center gap-6"
+                    >
+                        <a href="https://wa.me/919136276555" className="text-gray-400 hover:text-white transition-colors text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                            <FaWhatsapp size={18} /> WhatsApp
                         </a>
-                    </div>
-                </div>
+                        <span className="w-1 h-1 bg-gray-800 rounded-full my-auto"></span>
+                        <a href="mailto:support@resortwala.com" className="text-gray-400 hover:text-white transition-colors text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                            <FaEnvelope size={18} /> Email
+                        </a>
+                    </motion.div>
+                </motion.div>
 
-                <div className="absolute bottom-4 text-slate-400 text-xs font-medium">
-                    &copy; 2026 ResortWala.
+                <div className="absolute bottom-8 text-gray-600 text-[10px] font-black tracking-[0.3em] uppercase opacity-40">
+                    &copy; 2026 ResortWala. The Future of Booking.
                 </div>
             </div>
         </>

@@ -681,7 +681,7 @@ export default function ChatWindow({ config, onClose, isOpen }) {
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    onClick={() => window.open('https://wa.me/919022510122', '_blank')}
+                                    onClick={() => window.open('https://wa.me/919136276555', '_blank')}
                                     className="flex-[1.5] bg-[#25D366] text-white py-3.5 rounded-2xl font-bold text-sm shadow-lg shadow-green-100 flex items-center justify-center gap-2 hover:bg-[#20bd5a] transition-colors"
                                 >
                                     <FaWhatsapp size={20} /> Talk to Human

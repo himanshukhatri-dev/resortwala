@@ -58,6 +58,7 @@ Route::get('/user', function (Request $request) {
 // Client-Customer Routes
 Route::get('/properties', [PropertyMasterController::class, 'index']);
 Route::get('/properties/locations', [PropertyMasterController::class, 'getLocations']); // Locations aggregation
+Route::get('/system-mode', [\App\Http\Controllers\SystemModeController::class, 'getMode']);
 Route::get('/properties/{id}', [PropertyMasterController::class, 'show']);
 Route::get('/properties/{id}/reviews', [App\Http\Controllers\PropertyReviewController::class, 'index']);
 Route::post('/reviews', [App\Http\Controllers\PropertyReviewController::class, 'store']);
@@ -235,6 +236,7 @@ Route::post('/payment/simulate', [\App\Http\Controllers\PaymentSimulationControl
 
 // Admin Intelligence
 Route::prefix('admin/intelligence')->middleware(['auth:sanctum', 'verified'])->group(function () {
+    Route::get('/logs', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getLogs']);
     Route::get('/schema', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getSchema']);
     Route::get('/data/{table}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getTableData']);
     Route::put('/data/{table}/{id}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'updateTableData']);
@@ -270,7 +272,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/stats', [\App\Http\Controllers\AdminController::class, 'getStats']);
     Route::get('/admin/stats/sidebar', [\App\Http\Controllers\AdminController::class, 'getSidebarStats']);
     Route::get('/admin/developer/report', [\App\Http\Controllers\AdminController::class, 'getDeveloperReport']);
-    Route::get('/system-mode', [\App\Http\Controllers\SystemModeController::class, 'getMode']);
     Route::get('/admin/search', [\App\Http\Controllers\AdminController::class, 'globalSearch']);
     Route::get('/admin/vendors', [\App\Http\Controllers\AdminController::class, 'getAllVendors'])->middleware('acl:users.manage');
     Route::get('/admin/vendors/pending', [\App\Http\Controllers\AdminController::class, 'getPendingVendors'])->middleware('acl:users.manage');

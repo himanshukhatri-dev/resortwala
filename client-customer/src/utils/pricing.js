@@ -16,15 +16,11 @@ export const getPricing = (property, dateOverride = null) => {
 
     // 1. Determine Market Price (Vendor Ask / Base Rate)
     let marketPrice = parseFloat(
+        property?.market_price ||
         (isWaterpark
             ? (adminPricing[wpKey]?.current || adminPricing.adult_rate?.current || adminPricing.adult?.current)
             : adminPricing[dayName]?.villa?.current) ||
         adminPricing.mon_thu?.villa?.current || // Legacy fallback
-        property?.display_price ||
-        property?.lowest_price_next_30 ||
-        pricing.weekday ||
-        pricing.mon_thu ||
-        pricing.base_price ||
         property?.Price ||
         property?.price ||
         0
@@ -43,28 +39,22 @@ export const getPricing = (property, dateOverride = null) => {
         0
     );
 
-
-
     // If no specific Customer Rate is set, fallback to Market Price
     if (!sellingPrice || sellingPrice === 0) {
         sellingPrice = marketPrice;
     }
 
-    // Logic Check: If Customer Rate > Market Price, assume the higher one is Market
-    if (sellingPrice > marketPrice) {
-        marketPrice = sellingPrice;
-    }
-
     // Calculations
     const savings = marketPrice - sellingPrice;
-    const percentage = marketPrice > 0 ? Math.round((savings / marketPrice) * 100) : 0;
+    const percentage = (marketPrice > 0 && savings > 0) ? Math.round((savings / marketPrice) * 100) : 0;
 
     return {
         sellingPrice,
         marketPrice,
-        savings,
+        savings: Math.max(0, savings),
         percentage,
-        isFallback: marketPrice === sellingPrice
+        isFallback: marketPrice === sellingPrice,
+        isMarkup: sellingPrice > marketPrice
     };
 };
 

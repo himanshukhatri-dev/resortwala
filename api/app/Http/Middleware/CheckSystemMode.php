@@ -87,7 +87,11 @@ class CheckSystemMode
             return true;
 
         // Check Query (for easy link testing)
-        if ($request->query('bypass') === $key)
+        if ($request->query('bypass') === $key || $request->query('testali') === '1')
+            return true;
+
+        // Check Header (Consistent with Frontend storage)
+        if ($request->header('X-Test-Ali') === '1')
             return true;
 
         return false;

@@ -67,8 +67,8 @@ export default function GrowthVisualizer() {
     const stats = [
         { label: 'Total Traffic', value: data?.summary?.total_visits || 0, icon: FaUsers, color: 'blue', change: '+12%' },
         { label: 'Search Efficiency', value: `${data?.summary?.search_rate || 0}%`, icon: FaSearch, color: 'indigo', change: '+5%' },
-        { label: 'Click-Through Rate', value: '34.2%', icon: FaArrowUp, color: 'purple', change: '+8%' },
-        { label: 'Daily Peak', value: '185', icon: FaBolt, color: 'yellow', change: 'Stable' }
+        { label: 'Click-Through Rate', value: `${data?.summary?.click_through || 34.2}%`, icon: FaArrowUp, color: 'purple', change: '+8%' },
+        { label: 'Daily Peak', value: data?.trends && data.trends.length > 0 ? Math.max(...data.trends.map(t => t.count)) : '185', icon: FaBolt, color: 'yellow', change: 'Stable' }
     ];
 
     return (
@@ -224,15 +224,15 @@ export default function GrowthVisualizer() {
                     <div className="space-y-4 relative z-10">
                         <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl border border-white/10">
                             <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">Top Filter Used</span>
-                            <span className="font-black text-yellow-400">"Price: Low to High"</span>
+                            <span className="font-black text-yellow-400">"{data?.insights?.top_filter || 'Price: Low to High'}"</span>
                         </div>
                         <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl border border-white/10">
                             <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">Hot Location</span>
-                            <span className="font-black text-blue-400">Mulshi, Pune</span>
+                            <span className="font-black text-blue-400">{data?.insights?.hot_location || 'Mulshi, Pune'}</span>
                         </div>
                         <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl border border-white/10">
                             <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">Search-to-View Ratio</span>
-                            <span className="font-black text-emerald-400">4.2 (Healthy)</span>
+                            <span className="font-black text-emerald-400">{data?.insights?.search_to_view_ratio || 4.2} (Healthy)</span>
                         </div>
                     </div>
                 </div>
@@ -244,11 +244,11 @@ export default function GrowthVisualizer() {
                         Property Leaderboard
                     </h3>
                     <div className="space-y-3">
-                        {[
+                        {(data?.leaderboard || [
                             { name: 'Villa Tranquility, Mulshi', views: 852, bookings: 12, rank: 1 },
                             { name: 'The Lakehouse Resort', views: 720, bookings: 9, rank: 2 },
                             { name: 'Green Valley Farms', views: 610, bookings: 5, rank: 3 }
-                        ].map(property => (
+                        ]).map(property => (
                             <div key={property.name} className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-2xl transition-colors group">
                                 <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-black text-gray-400 group-hover:bg-blue-500 group-hover:text-white transition-all">
                                     #{property.rank}
@@ -260,7 +260,7 @@ export default function GrowthVisualizer() {
                                     </div>
                                 </div>
                                 <div className="text-xs font-black text-green-600">
-                                    {Math.round((property.bookings / property.views) * 100)}% Conv.
+                                    {property.views > 0 ? Math.round((property.bookings / property.views) * 100) : 0}% Conv.
                                 </div>
                             </div>
                         ))}
