@@ -470,6 +470,7 @@ export default function PropertyDetails() {
     const isWaterpark = checkIsWaterpark(property);
 
     const handleReserve = () => {
+        // Waterparks only need 'from' date (single day visit). Villas need range.
         if (!dateRange.from || (!isWaterpark && !dateRange.to)) {
             setIsDatePickerOpen(true);
             return;
@@ -552,17 +553,21 @@ export default function PropertyDetails() {
                 } else {
                     // Fallback to Legacy Buckets
                     if (w === 6) { // Saturday
-                        rate = PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY;
+                        rate = parseFloat(PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY);
                         marketDayRate = parseFloat(adminPricing.sat?.villa?.current || adminPricing.fri_sun?.villa?.current || property.Price || rate);
                     } else if (w === 0 || w === 5) { // Fri/Sun
-                        rate = PRICE_FRISUN || PRICE_WEEKDAY;
+                        rate = parseFloat(PRICE_FRISUN || PRICE_WEEKDAY);
                         marketDayRate = parseFloat(adminPricing.fri_sun?.villa?.current || property.Price || rate);
                     } else { // Mon-Thu
-                        rate = PRICE_WEEKDAY;
+                        rate = parseFloat(PRICE_WEEKDAY);
                         marketDayRate = parseFloat(adminPricing.mon_thu?.villa?.current || property.Price || rate);
                     }
                 }
             }
+
+            // Fallback if rate is NaN
+            if (isNaN(rate)) rate = 0;
+            if (isNaN(marketDayRate)) marketDayRate = rate;
 
             totalVillaRate += rate;
             totalMarketRate += marketDayRate;
@@ -1498,14 +1503,16 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
                             <span>GST (18%)</span>
                             <span>₹{priceBreakdown.gstAmount?.toLocaleString()}</span>
                         </div>
-                        <button onClick={handleReserve} className="w-full bg-black text-white p-3 rounded-lg flex justify-between items-center shadow-md hover:scale-[1.02] transition active:scale-[0.98] group">
-                            <div className="flex flex-col items-start translate-x-0 group-hover:translate-x-1 transition-transform">
+                        <button onClick={(e) => { e.stopPropagation(); handleReserve(); }} className="w-full bg-black text-white p-3 rounded-lg flex justify-between items-center shadow-md hover:scale-[1.02] transition active:scale-[0.98] cursor-pointer">
+                            <div className="flex flex-col items-start">
                                 <span className="text-[9px] uppercase font-bold text-gray-400">Pay Now to Reserve</span>
                                 <span className="text-lg font-black">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className="text-[8px] bg-white/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider mb-1">₹50 / Ticket</span>
-                                <FaArrowRight size={10} className="text-blue-400 group-hover:translate-x-1 transition-transform" />
+                                <span className="text-[8px] bg-white/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider mb-1">
+                                    {isWaterpark ? 'Per Ticket' : '₹50 / Ticket'}
+                                </span>
+                                <FaArrowRight size={10} className="text-blue-400" />
                             </div>
                         </button>
                     </div>
@@ -1513,11 +1520,13 @@ const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, date
             }
             <button
                 onClick={() => {
+                    // For Waterparks, we need at least one date selected (single day visit)
                     if (!dateRange.from) {
                         console.log("Opening DatePicker from WaterparkBooking Button");
                         setIsDatePickerOpen(true);
                         return;
                     }
+                    // If date is selected, proceed to reserve
                     handleReserve();
                 }}
                 className="w-full font-bold py-3.5 rounded-xl transition mb-4 text-white text-lg bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
@@ -2075,7 +2084,7 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                                     <div className="text-[10px] text-gray-300 uppercase tracking-widest font-bold mb-1">Pay Now to Reserve</div>
                                                     <div className="text-2xl font-black">₹{priceBreakdown.tokenAmount?.toLocaleString()}</div>
                                                     <div className="text-[10px] text-gray-400 mt-1 uppercase font-bold">
-                                                        {isWaterpark ? '₹50 Per Ticket' : '10% Token Amount'}
+                                                        {isWaterpark ? 'Per Ticket Charge' : '10% Token Amount'}
                                                     </div>
                                                 </div>
                                                 <div className="p-2 bg-white/10 rounded-full">
@@ -2115,10 +2124,10 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                 )}
                             </div>
                             <button
-                                onClick={onReserve}
-                                className="flex-1 bg-gradient-to-r from-[#FF385C] to-[#E00B41] text-white py-3 rounded-lg font-bold text-sm shadow-lg shadow-red-200 active:scale-95 transition"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReserve(); }}
+                                className="flex-1 bg-gradient-to-r from-[#FF385C] to-[#E00B41] text-white py-3 rounded-lg font-bold text-sm shadow-lg shadow-red-200 active:scale-95 transition cursor-pointer z-50 pointer-events-auto"
                             >
-                                {(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : 'Book Now'}
+                                {(!dateRange.from) ? 'Select Date' : 'Book Now'}
                             </button>
                         </div>
                     </motion.div>

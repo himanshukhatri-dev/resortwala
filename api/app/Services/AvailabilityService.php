@@ -20,6 +20,27 @@ class AvailabilityService
 
         Log::info("Availability Request for Property: {$propertyId}", $property->toArray());
 
+        // 0. GLOBAL SYSTEM LOCK CHECK
+        $settings = \App\Models\SystemSetting::current();
+        if ($settings->system_locked_until && now()->lt($settings->system_locked_until)) {
+            $lockDate = $settings->system_locked_until;
+            $today = now()->startOfDay();
+
+            // If request end date is BEFORE lock date, everything is blocked
+            // Return empty blocked_dates but blocked_ranges covering everything
+            // Or explicitly fill blocked_dates. Let's fill blocked_dates for calendar visual.
+
+            $globalBlockDates = [];
+            $curr = $today->copy();
+            $lockEnd = $lockDate->copy(); // Exclusive or inclusive? Usually "until" implies inclusive lock up to that point.
+
+            while ($curr->lt($lockEnd)) {
+                $globalBlockDates[] = $curr->toDateString();
+                $curr->addDay();
+            }
+        }
+        $globalBlockDates = $globalBlockDates ?? [];
+
         $propertyType = strtolower($property->PropertyType ?? '');
         $isWaterpark = str_contains($propertyType, 'water') || str_contains($propertyType, 'waterpark');
 
@@ -77,9 +98,9 @@ class AvailabilityService
         $result = [
             'property_type' => 'villa',
             'availability_type' => 'villa',
-            'blocked_dates' => array_values(array_unique($blockedDates)),
+            'blocked_dates' => array_values(array_unique(array_merge($blockedDates, $globalBlockDates ?? []))),
             'blocked_ranges' => $blockedRanges,
-            'status' => count($blockedDates) > 0 ? 'partially_booked' : 'available'
+            'status' => (count($blockedDates) > 0 || !empty($globalBlockDates)) ? 'partially_booked' : 'available'
         ];
 
         Log::info("Final Availability Result for {$propertyId}:", [
@@ -100,6 +121,11 @@ class AvailabilityService
         $isWaterpark = str_contains($propertyType, 'water') || str_contains($propertyType, 'waterpark');
 
         if ($isWaterpark) {
+            // Even waterparks respect system lock
+            $settings = \App\Models\SystemSetting::current();
+            if ($settings->system_locked_until && Carbon::parse($startDate)->lt($settings->system_locked_until)) {
+                return false;
+            }
             return true; // No capacity check as per request
         }
 

@@ -10,37 +10,39 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('system_settings', function (Blueprint $table) {
-            $table->id();
-            $table->boolean('maintenance_mode')->default(false);
-            $table->boolean('coming_soon_mode')->default(false);
-            $table->json('maintenance_content')->nullable();
-            $table->json('coming_soon_content')->nullable();
-            $table->string('logo_url')->nullable();
-            $table->string('developer_bypass_key')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('system_settings')) {
+            Schema::create('system_settings', function (Blueprint $table) {
+                $table->id();
+                $table->boolean('maintenance_mode')->default(false);
+                $table->boolean('coming_soon_mode')->default(false);
+                $table->json('maintenance_content')->nullable();
+                $table->json('coming_soon_content')->nullable();
+                $table->string('logo_url')->nullable();
+                $table->string('developer_bypass_key')->nullable();
+                $table->unsignedBigInteger('updated_by')->nullable();
+                $table->timestamps();
+            });
 
-        // Insert default record
-        DB::table('system_settings')->insert([
-            'maintenance_mode' => false,
-            'coming_soon_mode' => false,
-            'maintenance_content' => json_encode([
-                'title' => 'We\'ll be back soon!',
-                'description' => 'Our site is currently undergoing scheduled maintenance.',
-                'estimated_return' => '2 hours',
-                'contact_email' => 'support@resortwala.com'
-            ]),
-            'coming_soon_content' => json_encode([
-                'title' => 'Something Amazing is Coming',
-                'description' => 'We\'re working hard to bring you something special.',
-                'allow_email_capture' => true
-            ]),
-            'logo_url' => '/resortwala-logo.png',
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
+            // Insert default record
+            DB::table('system_settings')->insert([
+                'maintenance_mode' => false,
+                'coming_soon_mode' => false,
+                'maintenance_content' => json_encode([
+                    'title' => 'We\'ll be back soon!',
+                    'description' => 'Our site is currently undergoing scheduled maintenance.',
+                    'estimated_return' => '2 hours',
+                    'contact_email' => 'support@resortwala.com'
+                ]),
+                'coming_soon_content' => json_encode([
+                    'title' => 'Something Amazing is Coming',
+                    'description' => 'We\'re working hard to bring you something special.',
+                    'allow_email_capture' => true
+                ]),
+                'logo_url' => '/resortwala-logo.png',
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
     }
 
     /**

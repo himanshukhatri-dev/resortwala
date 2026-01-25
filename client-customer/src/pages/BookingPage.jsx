@@ -122,9 +122,25 @@ export default function BookingPage() {
     const getPricingDetails = () => {
         if (!property) return null;
         // Basic date validation
-        if (!isValid(dateRange.from) || !isValid(dateRange.to)) return null;
+        if (!isValid(dateRange.from)) return null;
 
-        const nights = differenceInDays(dateRange.to, dateRange.from);
+        // Waterpark check early to handle single date
+        const checkIsWaterpark = (p) => {
+            if (!p) return false;
+            const type = (p.PropertyType || p.property_type || p.display_type || '').toLowerCase();
+            const name = (p.Name || '').toLowerCase();
+            return type.includes('water') || name.includes('water') || type.includes('resort');
+        };
+        const isWaterpark = checkIsWaterpark(property);
+
+        let nights = 0;
+        if (isValid(dateRange.to)) {
+            nights = differenceInDays(dateRange.to, dateRange.from);
+        }
+
+        // For Waterparks, if nights=0 (same day) or just 'from' is valid, treat as 1 day visit
+        if (isWaterpark && nights === 0) nights = 1;
+
         if (nights < 1) return null;
 
         const ob = property.onboarding_data && typeof property.onboarding_data === 'string'
@@ -153,15 +169,7 @@ export default function BookingPage() {
 
         let totalVillaRate = 0;
 
-        // Robust check for Waterpark (Standardized)
-        const checkIsWaterpark = (p) => {
-            if (!p) return false;
-            const type = (p.PropertyType || p.property_type || p.display_type || '').toLowerCase();
-            const name = (p.Name || '').toLowerCase();
-            return type.includes('water') || name.includes('water') || type.includes('resort');
-        };
-
-        const isWaterpark = checkIsWaterpark(property);
+        // isWaterpark is already calculated above
 
         if (isWaterpark) {
             const adminPricing = property.admin_pricing || {};
@@ -504,10 +512,12 @@ export default function BookingPage() {
                                     <div className="text-xs text-gray-300 uppercase tracking-widest font-bold mb-1">Pay Now to Book</div>
                                     <div className="text-2xl font-black">₹{payNowAmount.toLocaleString()}</div>
                                     <div className="text-xs text-gray-400 mt-1">
-                                        {details?.isWaterpark
-                                            ? `Advance (₹50 x ${guestCount} Guests)`
-                                            : '10% Token Amount'
-                                        }
+                                        <div className="text-xs text-gray-400 mt-1">
+                                            {details?.isWaterpark
+                                                ? `Per Ticket Charge`
+                                                : '10% Token Amount'
+                                            }
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -532,7 +542,7 @@ export default function BookingPage() {
                                 disabled={bookingStatus === 'submitting' || !details}
                                 className="w-full bg-[#FF385C] hover:bg-[#D9324E] text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-200 hover:shadow-red-300 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {bookingStatus === 'submitting' ? 'Processing...' : 'Pay now to Reserve'}
+                                {bookingStatus === 'submitting' ? 'Processing...' : 'Proceed to Pay'}
                             </button>
 
                         </div>
@@ -544,7 +554,7 @@ export default function BookingPage() {
                 <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 lg:hidden z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex flex-col">
-                            <span className="text-xs text-gray-500 font-bold uppercase">Pay Now (10%)</span>
+                            <span className="text-xs text-gray-500 font-bold uppercase">Pay Now {details?.isWaterpark ? '(Ticket Charge)' : '(10%)'}</span>
                             <div className="flex items-baseline gap-1">
                                 <span className="text-xl font-bold text-gray-900">₹{payNowAmount.toLocaleString()}</span>
                                 <span className="text-xs text-gray-400 line-through">₹{details?.total.toLocaleString()}</span>
@@ -555,7 +565,7 @@ export default function BookingPage() {
                             disabled={bookingStatus === 'submitting'}
                             className="bg-[#FF385C] hover:bg-[#d9324e] text-white px-8 py-3 rounded-xl font-bold shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
-                            {bookingStatus === 'submitting' ? 'Processing...' : 'Pay now to Reserve'}
+                            {bookingStatus === 'submitting' ? 'Processing...' : 'Proceed to Pay'}
                         </button>
                     </div>
                 </div>
