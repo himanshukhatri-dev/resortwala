@@ -400,7 +400,7 @@ export default function Home() {
 
         if (shouldScroll) {
             setTimeout(() => {
-                if (searchResultsRef.current && window.innerWidth >= 768) { // Disable auto-scroll on mobile
+                if (searchResultsRef.current) {
                     const yOffset = -100; // Offset for sticky header
                     const y = searchResultsRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
                     window.scrollTo({ top: y, behavior: 'smooth' });

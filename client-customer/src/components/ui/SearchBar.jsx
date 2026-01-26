@@ -123,19 +123,15 @@ export default function SearchBar({ compact = false, isSticky = false, onSearch,
                 // Set 'to'
                 setDateRange({ from: dateRange.from, to: day });
 
-                // ONLY close automatically on Desktop. 
-                // Mobile users expect to click "Search" or "Close" manually.
-                if (window.innerWidth >= 768) {
-                    setTimeout(() => {
-                        const filters = {
-                            location,
-                            dateRange: { from: dateRange.from, to: day },
-                            guests
-                        };
-                        if (onSearch) onSearch(filters);
-                        setActiveTab(null);
-                    }, 200);
-                }
+                setTimeout(() => {
+                    const filters = {
+                        location,
+                        dateRange: { from: dateRange.from, to: day },
+                        guests
+                    };
+                    if (onSearch) onSearch(filters);
+                    setActiveTab(null);
+                }, 200);
             }
         }
     };
