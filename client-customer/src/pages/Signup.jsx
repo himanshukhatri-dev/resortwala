@@ -116,7 +116,8 @@ export default function Signup() {
                 });
             }
         } catch (err) {
-            const msg = err.response?.data?.message || 'Invalid OTP or Registration Failed.';
+            console.error("Signup Verify Error:", err.response?.data);
+            const msg = err.response?.data?.errors ? Object.values(err.response.data.errors).flat()[0] : (err.response?.data?.message || 'Invalid OTP or Registration Failed.');
             setError(msg);
         } finally {
             setLoading(false);
@@ -167,17 +168,17 @@ export default function Signup() {
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
                                     <input type="text" className="w-full px-5 py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-red-500 focus:bg-white outline-none font-bold text-gray-900 transition-all shadow-sm hover:border-gray-200"
-                                        placeholder="Rahul Sharma" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                                        placeholder="Enter Full Name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Mobile</label>
                                     <input type="tel" className="w-full px-5 py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-red-500 focus:bg-white outline-none font-bold text-gray-900 transition-all shadow-sm hover:border-gray-200"
-                                        placeholder="+91 98765 43210" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} maxLength={10} />
+                                        placeholder="Enter Valid Mobile Number" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} maxLength={10} />
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email <span className="text-gray-300">(Optional)</span></label>
                                     <input type="email" className="w-full px-5 py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-red-500 focus:bg-white outline-none font-bold text-gray-900 transition-all shadow-sm hover:border-gray-200"
-                                        placeholder="rahul@example.com" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                                        placeholder="Enter Valid Email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                                 </div>
 
                                 <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#FF385C] to-[#E00B41] text-white font-black py-4 rounded-xl shadow-lg shadow-red-500/30 active:scale-[0.98] transition-all uppercase text-xs tracking-widest flex items-center justify-center gap-2 mt-4 transform hover:-translate-y-1">

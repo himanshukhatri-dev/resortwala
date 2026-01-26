@@ -36,7 +36,7 @@ export default function Contact() {
                         Help Center
                     </h1>
                     <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-                        Have questions? We're here to help 24/7. Reach out and we'll get back to you within 2 hours.
+                        Have questions? We're here to help between 9 AM to 7 PM. Reach out and we'll get back to you within 2 hours.
                     </p>
                 </div>
 
@@ -55,7 +55,7 @@ export default function Contact() {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-gray-900 mb-1">Call Us</h3>
-                                    <p className="text-gray-500 text-sm mb-2">Available 24/7 for your convenience</p>
+                                    <p className="text-gray-500 text-sm mb-2">Available 9 AM - 7 PM for your convenience</p>
                                     <a href="tel:+919136276555" className="text-blue-600 font-semibold hover:underline">
                                         +91 91362 76555
                                     </a>
