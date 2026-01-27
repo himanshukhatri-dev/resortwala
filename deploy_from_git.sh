@@ -16,6 +16,13 @@ NC='\033[0m'
 REPO_URL="git@github.com:himanshukhatri-dev/resortwala.git"
 CACHE_DIR="/var/www/resortwala_cache"
 
+# Load NVM for non-interactive shells
+if [ -f "$HOME/.nvm/nvm.sh" ]; then
+    export NVM_DIR="$HOME/.nvm"
+    source "$NVM_DIR/nvm.sh"
+    nvm use 22 > /dev/null 2>&1 || nvm use default > /dev/null 2>&1
+fi
+
 # Deployment paths
 BETA_CUSTOMER_PATH="/var/www/html/staging.resortwala.com"
 BETA_VENDOR_PATH="/var/www/html/stagingvendor.resortwala.com"
@@ -107,11 +114,17 @@ deploy_api() {
     cd "$DEST_PATH"
     
     # Set permissions
-    print_status "Applying permissions..."
+    print_status "Applying permissions and creating storage link..."
     chown -R www-data:www-data "$DEST_PATH"
     chmod -R 755 "$DEST_PATH"
-    [ -d "storage" ] && chmod -R 775 storage
+    
+    # Ensure storage folders exist and have correct permissions
+    mkdir -p storage/app/public
+    chmod -R 775 storage
     [ -d "bootstrap/cache" ] && chmod -R 775 bootstrap/cache
+    
+    # Create symbolic link for public storage
+    php artisan storage:link --force || true
     
     # Clear Laravel cache
     print_status "Clearing Laravel cache..."
