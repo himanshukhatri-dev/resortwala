@@ -38,7 +38,7 @@ import Communications from './pages/Communications';
 import Connectors from './pages/Connectors';
 import Notifications from './pages/Notifications';
 import NotificationCenter from './pages/NotificationCenter/NotificationCenter';
-import LeadCrawler from './pages/Intelligence/LeadCrawler';
+import LeadCrawler from './pages/intelligence/LeadCrawler';
 import ComingSoon from './pages/ComingSoon';
 import ChatbotManager from './pages/ChatbotManager';
 import AIVideoGenerator from './pages/AIVideoGenerator';

@@ -14,142 +14,81 @@ This guide will help you set up the ResortWala application locally for developme
 3. **PHP** (v8.2 or higher)
 4. **Composer**
 
-## Quick Start
+## Custom Domain Setup
 
-### 1. Clone the Repository
+To use `local.resortwala.com`, you must add an entry to your Windows hosts file.
 
-```bash
-git clone <repository-url>
-cd resortwala
-git checkout master
+1. Open Notepad as **Administrator**.
+2. Open `C:\Windows\System32\drivers\etc\hosts`.
+3. Add the following line at the end:
+   ```
+   127.0.0.1  local.resortwala.com
+   ```
+4. Save the file.
+
+---
+
+## Quick Start (Automated)
+
+We have created scripts to automate the entire setup process.
+
+### 1. Initial Setup
+Run this once to configure Docker, environment files, and database:
+```powershell
+.\setup_local.ps1
 ```
 
-### 2. Start Local Services (Docker)
-
-```bash
-# Start MySQL, Redis, and other services
-docker-compose up -d
+### 2. Daily Development
+Run this to start all servers (Database, API, and three Frontends):
+```powershell
+.\start_local.ps1
 ```
+This script will open a separate terminal for each service.
 
-This will start:
-- MySQL on `localhost:3306`
-- Redis on `localhost:6379`
-- phpMyAdmin on `localhost:8080`
+---
 
-### 3. Setup API (Laravel Backend)
+## Manual Setup (Step-by-Step)
 
+If you prefer to run things manually:
+
+### 1. Start Database (Docker)
+```bash
+docker-compose -f docker-compose.local.yml up -d
+```
+Starts MySQL on `localhost:3306` and Adminer on `localhost:8080`.
+
+### 2. Setup API
 ```bash
 cd api
-
-# Install dependencies
-composer install
-
-# Copy local environment file
 cp .env.local .env
-
-# Generate application key
+composer install
 php artisan key:generate
-
-# Run migrations
 php artisan migrate
-
-# Seed database (optional)
-php artisan db:seed
-
-# Start Laravel development server
-php artisan serve
+php artisan serve --host=local.resortwala.com --port=8000
 ```
+API available at: `http://local.resortwala.com:8000`
 
-API will be available at: `http://localhost:8000`
-
-### 4. Setup Customer App (React Frontend)
-
+### 3. Setup Frontends
+In each frontend directory (`client-customer`, `client-vendor`, `client-admin`):
 ```bash
-cd client-customer
-
-# Install dependencies
+cp .env.local .env
 npm install
-
-# Start development server
 npm run dev
 ```
 
-Customer app will be available at: `http://localhost:5173`
-
-### 5. Setup Vendor App
-
-```bash
-cd client-vendor
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-Vendor app will be available at: `http://localhost:5174`
-
-### 6. Setup Admin App
-
-```bash
-cd client-admin
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-Admin app will be available at: `http://localhost:5175`
+---
 
 ## Environment Files
 
-### API (.env.local)
+### API (`api/.env.local`)
+- **DB_HOST**: `127.0.0.1`
+- **DB_PORT**: `3306`
+- **DB_DATABASE**: `resortwala_local`
+- **APP_URL**: `http://local.resortwala.com:8000`
 
-```env
-APP_NAME=ResortWala
-APP_ENV=local
-APP_DEBUG=true
-APP_URL=http://localhost:8000
+### Frontend (`.env.local`)
+- **VITE_API_URL**: `http://local.resortwala.com:8000/api`
 
-DB_CONNECTION=mysql
-DB_HOST=localhost
-DB_PORT=3306
-DB_DATABASE=resortwala_local
-DB_USERNAME=root
-DB_PASSWORD=root
-
-CACHE_DRIVER=redis
-QUEUE_CONNECTION=redis
-SESSION_DRIVER=redis
-
-REDIS_HOST=localhost
-REDIS_PASSWORD=null
-REDIS_PORT=6379
-```
-
-### Customer App (.env.local)
-
-```env
-VITE_API_URL=http://localhost:8000/api
-VITE_APP_ENV=local
-```
-
-### Vendor App (.env.local)
-
-```env
-VITE_API_URL=http://localhost:8000/api
-VITE_APP_ENV=local
-```
-
-### Admin App (.env.local)
-
-```env
-VITE_API_URL=http://localhost:8000/api
-VITE_APP_ENV=local
-```
 
 ## Database Setup
 
