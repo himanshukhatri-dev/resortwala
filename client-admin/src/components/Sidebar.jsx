@@ -10,7 +10,7 @@ import {
     FiDatabase, FiDollarSign, FiCalendar, FiSettings,
     FiMessageSquare, FiTruck, FiActivity, FiLayers,
     FiPlusCircle, FiUploadCloud, FiBarChart2, FiCpu,
-    FiHash, FiArchive, FiBell, FiSearch, FiVideo, FiMic, FiLock
+    FiHash, FiArchive, FiBell, FiSearch, FiVideo, FiMic, FiLock, FiServer
 } from 'react-icons/fi';
 
 export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile, onToggle }) {
@@ -118,6 +118,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             bgLight: 'bg-slate-50',
             items: [
                 { path: '/intelligence', icon: <FiCpu />, label: 'Control Plane', permission: 'system.manage_settings', developerOnly: true },
+                { path: '/internal/deployment', icon: <FiServer />, label: 'Deployments', permission: 'system.manage_settings' },
                 { path: '/chatbot', icon: <FiMessageSquare />, label: 'Chatbot AI', permission: 'chatbot.manage' },
                 { path: '/communications', icon: <FiMessageSquare />, label: 'Communications', permission: 'notifications.manage_templates' },
                 { path: '/notifications', icon: <FiBell />, label: 'Push Notifications', permission: 'notifications.manage_templates' },

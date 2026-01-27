@@ -5,13 +5,20 @@
 
 echo "Installing Java..."
 apt-get update
-apt-get install -y fontconfig openjdk-17-jre
+# Ensure correct Java version for modern Jenkins (Java 17)
+apt-get install -y fontconfig openjdk-17-jre software-properties-common
 
 echo "Installing Jenkins..."
-wget -O /usr/share/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
-echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+# Use the official Debian package repository
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | tee \
+  /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+  https://pkg.jenkins.io/debian-stable binary/ | tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+
 apt-get update
-apt-get install -y jenkins
+# Fail if installation fails
+apt-get install -y jenkins || { echo "Jenkins Install Failed"; exit 1; }
 
 echo "Configuring Jenkins Port to 9090..."
 # Override systemd config for port
@@ -30,7 +37,7 @@ sleep 30
 
 echo "----------------------------------------------------------------"
 echo "Jenkins Installed Successfully!"
-echo "URL: http://72.61.242.42:9090"
+echo "URL: http://77.37.47.243:9090"
 echo "----------------------------------------------------------------"
 echo "Initial Admin Password:"
 cat /var/lib/jenkins/secrets/initialAdminPassword

@@ -56,6 +56,7 @@ import AclManagement from './pages/AclManagement';
 import AuditLogs from './pages/AuditLogs';
 import { ProtectedRoute, PermissionGate } from './components/ACL';
 import SystemControl from './pages/Internal/SystemControl';
+import DeploymentDashboard from './pages/Internal/DeploymentDashboard';
 import './App.css';
 
 
@@ -145,6 +146,9 @@ function App() {
               {/* ACL Management Tool */}
               <Route path="/security/acl" element={<ProtectedRoute permission="system.manage_acl"><AclManagement /></ProtectedRoute>} />
               <Route path="/security/audit" element={<ProtectedRoute permission="system.manage_acl"><AuditLogs /></ProtectedRoute>} />
+
+              {/* Deployment Dashboard */}
+              <Route path="/internal/deployment" element={<ProtectedRoute permission="system.manage_settings"><DeploymentDashboard /></ProtectedRoute>} />
 
               <Route path="*" element={<div className="p-20 text-center font-bold text-red-500">404: Route Not Found. Path: {window.location.pathname}</div>} />
             </Route>

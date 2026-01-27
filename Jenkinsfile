@@ -7,7 +7,7 @@ pipeline {
 
     environment {
         REMOTE_USER = 'root'
-        REMOTE_HOST = '72.61.242.42'
+        REMOTE_HOST = '77.37.47.243'
         SSH_KEY = credentials('resortwala-deploy-key')
         
         // Directories

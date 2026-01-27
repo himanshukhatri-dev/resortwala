@@ -1,0 +1,188 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'DEPLOY_TARGET', choices: ['Beta', 'Production'], description: 'Select the target environment.')
+        string(name: 'RELEASE_TAG', defaultValue: '', description: 'Optional: Release Tag (e.g. v1.2.0). If empty, generates one.')
+    }
+
+    environment {
+        REMOTE_USER = 'root'
+        REMOTE_HOST = '77.37.47.243'
+        
+        // Base Directories
+        BASE_DIR = '/var/www/html/resortwala_v2'
+        RELEASES_DIR = '/var/www/html/resortwala_v2/releases'
+        SHARED_DIR = '/var/www/html/resortwala_v2/shared'
+        
+        // SSH Credential ID
+        SSH_KEY = credentials('resortwala-deploy-key')
+    }
+
+    stages {
+        stage('Initialize') {
+            steps {
+                script {
+                    def now = new Date()
+                    env.BUILD_TIMESTAMP = now.format("yyyyMMdd_HHmmss", TimeZone.getTimeZone('UTC'))
+                    
+                    if (params.RELEASE_TAG == '') {
+                        env.RELEASE_ID = "build_${env.BUILD_NUMBER}_${env.BUILD_TIMESTAMP}"
+                    } else {
+                        env.RELEASE_ID = "${params.RELEASE_TAG}_${env.BUILD_NUMBER}"
+                    }
+                    
+                    echo "Preparing Release: ${env.RELEASE_ID}"
+                }
+            }
+        }
+
+        stage('Build & Package') {
+            parallel {
+                stage('Build Customer') {
+                    steps {
+                        dir('client-customer') {
+                            sh 'npm ci && npm run build'
+                        }
+                    }
+                }
+                stage('Build Vendor') {
+                    steps {
+                        dir('client-vendor') {
+                            sh 'npm ci && npm run build'
+                        }
+                    }
+                }
+                stage('Build Admin') {
+                    steps {
+                        dir('client-admin') {
+                            sh 'npm ci && npm run build'
+                        }
+                    }
+                }
+                stage('Build API') {
+                    steps {
+                        dir('api') {
+                            sh 'composer install --no-dev --optimize-autoloader'
+                        }
+                    }
+                }
+            }
+            post {
+                success {
+                    script {
+                        // Assemble the Artifact
+                        sh 'mkdir -p dist_package/vendor dist_package/admin dist_package/api'
+                        
+                        // Copy Frontends
+                        sh 'cp -r client-customer/dist/* dist_package/'
+                        sh 'cp -r client-vendor/dist/* dist_package/vendor/'
+                        sh 'cp -r client-admin/dist/* dist_package/admin/'
+                        
+                        // Copy Backend
+                        // Exclude .env (managed on server), storage (symlinked), .git
+                        sh 'rsync -av --exclude=.env --exclude=storage --exclude=.git api/ dist_package/api/'
+                        
+                        // Copy Ops Tools (for backup/rollback/setup scripts to be available on server)
+                        sh 'mkdir -p dist_package/dev_tools'
+                        sh 'cp -r dev_tools/ops dist_package/dev_tools/'
+                        
+                        // Create Tarball
+                        sh "tar -czf release_${env.RELEASE_ID}.tar.gz -C dist_package ."
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Production') {
+            when {
+                expression { params.DEPLOY_TARGET == 'Production' }
+            }
+            steps {
+                sshagent(['resortwala-deploy-key']) {
+                    script {
+                        def releasePath = "${RELEASES_DIR}/${env.RELEASE_ID}"
+                        
+                        // 1. Upload Artifact
+                        sh "scp -o StrictHostKeyChecking=no release_${env.RELEASE_ID}.tar.gz ${REMOTE_USER}@${REMOTE_HOST}:/tmp/"
+                        
+                        // 2. Remote Execution
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
+                                set -e
+                                
+                                # A. Ensure Infrastructure Exists
+                                # Run the setup script if it exists, roughly ensuring structure
+                                # But we need to make sure directory exists to extract first? 
+                                # Actually we extract to release path.
+                                
+                                mkdir -p ${releasePath}
+                                
+                                # B. Extract
+                                echo "Extracting release..."
+                                tar -xzf /tmp/release_${env.RELEASE_ID}.tar.gz -C ${releasePath}
+                                rm /tmp/release_${env.RELEASE_ID}.tar.gz
+                                
+                                # C. Run Infrastructure Setup (migrates keys/storage if needed, creates shared dirs)
+                                # We assume setup_atomic_structure.sh is now in dev_tools/ops
+                                chmod +x ${releasePath}/dev_tools/ops/*.sh
+                                bash ${releasePath}/dev_tools/ops/setup_atomic_structure.sh
+                                
+                                # D. Link Shared Resources
+                                echo "Linking shared resources..."
+                                ln -sfn ${SHARED_DIR}/.env ${releasePath}/api/.env
+                                rm -rf ${releasePath}/api/storage
+                                ln -sfn ${SHARED_DIR}/storage ${releasePath}/api/storage
+                                
+                                # Link Media (if applicable)
+                                mkdir -p ${releasePath}/api/public
+                                rm -rf ${releasePath}/api/public/uploads
+                                ln -sfn ${SHARED_DIR}/media/uploads ${releasePath}/api/public/uploads
+
+                                # E. Backup Database (BLOCKING)
+                                echo "backing up database..."
+                                bash ${releasePath}/dev_tools/ops/backup_db.sh "${env.RELEASE_ID}"
+                                
+                                # F. Permission Fixes
+                                chown -R www-data:www-data ${releasePath}
+                                chmod -R 775 ${releasePath}/api/bootstrap/cache
+                                
+                                # G. Migration
+                                cd ${releasePath}/api
+                                php artisan migrate --force
+                                php artisan config:cache
+                                php artisan route:cache
+                                php artisan view:clear
+                                
+                                # H. Atomic Switch
+                                echo "Switching Symlink..."
+                                ln -sfn ${releasePath} ${BASE_DIR}/current
+                                
+                                # I. Reload Services
+                                service nginx reload
+                                # Adjust PHP service name as needed
+                                if systemctl is-active --quiet php8.1-fpm; then systemctl reload php8.1-fpm; fi
+                                if systemctl is-active --quiet php8.2-fpm; then systemctl reload php8.2-fpm; fi
+                                
+                                echo "Deployment Complete: ${env.RELEASE_ID}"
+                            '
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Post-Deploy Verify') {
+             steps {
+                 // Check if the site is reachable
+                 // Note: Until Nginx is updated to point to /var/www/html/resortwala_v2/current, 
+                 // this check tests the OLD site unless we update Nginx independently or manually first.
+                 // This pipeline assumes Nginx IS updated or will be updated.
+                 // Ideally, we should add a step to update Nginx config if it detects it's looking at the old path.
+                 script {
+                     echo "Verify manually or run automated checks against https://resortwala.com"
+                 }
+             }
+        }
+    }
+}

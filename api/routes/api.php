@@ -571,6 +571,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/audit-logs', [\App\Http\Controllers\Internal\DbControlController::class, 'auditLogs']);
     });
 
+    // Deployment Dashboard Routes (New)
+    Route::prefix('internal/deployment')->middleware('acl:system.manage_settings')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Internal\DeploymentController::class, 'index']);
+        Route::post('/deploy', [\App\Http\Controllers\Internal\DeploymentController::class, 'deploy']);
+        Route::post('/rollback', [\App\Http\Controllers\Internal\DeploymentController::class, 'rollback']);
+    });
+
     // --- ACL Management Routes (New Phase 2) ---
     Route::prefix('admin/acl')->middleware('acl:system.manage_acl')->group(function () {
         Route::get('/matrix', [\App\Http\Controllers\Admin\AclController::class, 'getMatrix']);

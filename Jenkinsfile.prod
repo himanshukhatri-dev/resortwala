@@ -7,7 +7,7 @@ pipeline {
 
     environment {
         REMOTE_USER = 'root'
-        REMOTE_HOST = '72.61.242.42'
+        REMOTE_HOST = '77.37.47.243'
         PROD_DIR = '/var/www/html/resortwala.com'
         SSH_KEY = credentials('resortwala-deploy-key')
     }
