@@ -52,7 +52,7 @@ deploy_frontend() {
     # Backup current deployment (only if DEST_PATH exists)
     if [ -d "$DEST_PATH" ]; then
         print_status "Backing up current $APP_NAME..."
-        tar -czf "${DEST_PATH}_backup_$(date +%Y%m%d_%H%M%S).tar.gz" -C "$DEST_PATH" . --exclude="*.tar.gz"
+        tar --exclude="*.tar.gz" -czf "${DEST_PATH}_backup_$(date +%Y%m%d_%H%M%S).tar.gz" -C "$DEST_PATH" .
     fi
     
     # Deploy new build
@@ -84,10 +84,10 @@ deploy_api() {
     # Backup current deployment
     if [ -d "$DEST_PATH" ]; then
         print_status "Backing up current API..."
-        tar -czf "${DEST_PATH}_backup_$(date +%Y%m%d_%H%M%S).tar.gz" \
+        tar --exclude="*.tar.gz" \
             --exclude="storage" \
             --exclude=".env" \
-            --exclude="*.tar.gz" \
+            -czf "${DEST_PATH}_backup_$(date +%Y%m%d_%H%M%S).tar.gz" \
             -C "$DEST_PATH" .
     fi
     
