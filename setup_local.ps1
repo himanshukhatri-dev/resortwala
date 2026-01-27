@@ -16,7 +16,7 @@ else {
 }
 
 # 2. Start Docker Containers
-Write-Host "[2/6] Starting Docker containers (MySQL & Adminer)..." -ForegroundColor Yellow
+Write-Host "[2/6] Starting Docker containers (MySQL and Adminer)..." -ForegroundColor Yellow
 docker-compose -f docker-compose.local.yml up -d
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to start Docker containers."
@@ -99,8 +99,9 @@ Write-Host "1. Add '127.0.0.1 local.resortwala.com' to your hosts file"
 Write-Host "2. Run '.\start_local.ps1' to start dev servers"
 Write-Host ""
 Write-Host "URLs:" -ForegroundColor Cyan
-Write-Host "- API:     http://local.resortwala.com:8000"
-Write-Host "- Adminer: http://localhost:8080 (Login: Server=db, User=root, Pass=root)"
-Write-Host "- Customer: http://localhost:5173"
-Write-Host "- Vendor:   http://localhost:5174"
-Write-Host "- Admin:    http://localhost:5175"
+Write-Host "- Unified App: http://local.resortwala.com"
+Write-Host "- Customer:    http://local.resortwala.com/"
+Write-Host "- Vendor:      http://local.resortwala.com/vendor"
+Write-Host "- Admin:       http://local.resortwala.com/admin"
+Write-Host "- API:         http://local.resortwala.com/api"
+Write-Host "- Adminer:     http://localhost:8080"

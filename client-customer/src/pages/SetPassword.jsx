@@ -4,7 +4,8 @@ import axios from 'axios';
 import { FaLock, FaCheckCircle, FaExclamationTriangle, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+import { API_BASE_URL } from '../config';
+const API_BASE_URL_FOR_PAGE = API_BASE_URL;
 
 export default function SetPassword() {
     const [searchParams] = useSearchParams();

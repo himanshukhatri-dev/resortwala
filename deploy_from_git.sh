@@ -126,6 +126,10 @@ deploy_api() {
     # Create symbolic link for public storage
     php artisan storage:link --force || true
     
+    # Run migrations
+    print_status "Running database migrations..."
+    php artisan migrate --force
+    
     # Clear Laravel cache
     print_status "Clearing Laravel cache..."
     php artisan config:clear

@@ -6,8 +6,9 @@ export default defineConfig({
   base: '/admin/',
   plugins: [react()],
   server: {
-    port: 3004,
+    port: 5175,
     host: true,
+    allowedHosts: ['local.resortwala.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

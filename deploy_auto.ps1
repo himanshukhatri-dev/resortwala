@@ -175,7 +175,8 @@ Write-Host "[3/3] Executing deployment on server..." -ForegroundColor Yellow
 Write-Host "This may take several minutes..." -ForegroundColor Gray
 Write-Host ""
 
-ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "/tmp/deploy_from_git.sh $Environment $Branch $Component"
+# Fix line endings (CRLF -> LF) and then execute
+ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "sed -i 's/\r$//' /tmp/deploy_from_git.sh && /bin/bash /tmp/deploy_from_git.sh $Environment $Branch $Component"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Deployment failed!"

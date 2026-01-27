@@ -16,8 +16,9 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3002,
+    port: 5174,
     host: true,
+    allowedHosts: ['local.resortwala.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

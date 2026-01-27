@@ -66,7 +66,7 @@ php artisan key:generate
 php artisan migrate
 php artisan serve --host=local.resortwala.com --port=8000
 ```
-API available at: `http://local.resortwala.com:8000`
+API available at: `http://local.resortwala.com/api` (via Proxy) or `http://local.resortwala.com:8000` (Direct)
 
 ### 3. Setup Frontends
 In each frontend directory (`client-customer`, `client-vendor`, `client-admin`):
@@ -84,10 +84,10 @@ npm run dev
 - **DB_HOST**: `127.0.0.1`
 - **DB_PORT**: `3306`
 - **DB_DATABASE**: `resortwala_local`
-- **APP_URL**: `http://local.resortwala.com:8000`
+- **APP_URL**: `http://local.resortwala.com`
 
 ### Frontend (`.env.local`)
-- **VITE_API_URL**: `http://local.resortwala.com:8000/api`
+- **VITE_API_URL**: `http://local.resortwala.com/api`
 
 
 ## Database Setup
