@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
@@ -19,9 +19,11 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
-import { format, differenceInDays, isWithinInterval, parseISO, parse, startOfDay } from 'date-fns';
+import { format, differenceInDays, isWithinInterval, parseISO, parse, startOfDay, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import RoomCard from '../components/RoomCard';
+import SEO from '../components/SEO';
+import { getPricing } from '../utils/pricing';
 
 const PROPERTY_RULES = [
     "Primary guest must be 18+",
@@ -72,11 +74,11 @@ const AMENITY_METADATA = {
     game_room: { label: 'Game Room', icon: <FaGamepad className="text-purple-600" /> }
 };
 
-import { getPricing } from '../utils/pricing';
-import SEO from '../components/SEO';
+
 
 export default function PropertyDetails() {
-    const { id } = useParams();
+    const { slug } = useParams();
+    const id = slug; // Backward compatibility for legacy refs
     const [urlParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
@@ -115,8 +117,8 @@ export default function PropertyDetails() {
 
     // Sync isSaved with WishlistContext
     useEffect(() => {
-        if (id) setIsSaved(isWishlisted(id));
-    }, [id, isWishlisted]);
+        if (property?.PropertyId) setIsSaved(isWishlisted(property.PropertyId));
+    }, [property?.PropertyId, isWishlisted]);
 
     const [mealSelection, setMealSelection] = useState(0); // Single counter for meals
     const bookedDates = availability.blocked_dates || [];
@@ -146,9 +148,10 @@ export default function PropertyDetails() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get(`${API_BASE_URL}/properties/${id}`);
+                const response = await axios.get(`${API_BASE_URL}/properties/${slug}`);
                 const propData = response.data;
-
+                const propId = propData.PropertyId || propData.id;
+                1
                 // Dev Only Check
                 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                 if (propData.is_developer_only && !isLocal) {
@@ -159,8 +162,15 @@ export default function PropertyDetails() {
 
                 setProperty(propData);
 
+                // Canonical URL Redirect: If slug exists but URL uses ID, redirect to Slug
+                if (propData.slug && slug === propId.toString()) {
+                    console.log(`[SEO] Redirecting from ID ${propId} to SLUG ${propData.slug}`);
+                    navigate(`/property/${propData.slug}${window.location.search}`, { replace: true });
+                    return;
+                }
+
                 // Fetch Availability separately for real-time accuracy
-                const availResponse = await axios.get(`${API_BASE_URL}/properties/${id}/availability`);
+                const availResponse = await axios.get(`${API_BASE_URL}/properties/${propId}/availability`);
                 setAvailability(availResponse.data);
             } catch (error) {
                 console.error('Failed to fetch property details/availability:', error);
@@ -170,19 +180,20 @@ export default function PropertyDetails() {
             }
         };
         fetchData();
-    }, [id, navigate]);
+    }, [slug, navigate]);
 
     // Refresh availability periodically or on window focus
     useEffect(() => {
+        if (!property?.PropertyId) return;
         const refreshAvail = async () => {
             try {
-                const res = await axios.get(`${API_BASE_URL}/properties/${id}/availability`);
+                const res = await axios.get(`${API_BASE_URL}/properties/${property.PropertyId}/availability`);
                 setAvailability(res.data);
             } catch (e) { }
         };
         window.addEventListener('focus', refreshAvail);
         return () => window.removeEventListener('focus', refreshAvail);
-    }, [id]);
+    }, [property?.PropertyId]);
 
     // -- AVAILABILITY CHECK --
     const isDateUnavailable = (checkDate) => {
@@ -763,6 +774,52 @@ export default function PropertyDetails() {
         });
     };
 
+    // -- SCHEMA GENERATION --
+    const generatePropertySchema = () => {
+        if (!property) return null;
+
+        const isWaterpark = checkIsWaterpark(property);
+        const schemaType = isWaterpark ? "AmusementPark" : (property.PropertyType === 'Villa' ? 'Hotel' : 'LodgingBusiness');
+        const images = property.images?.map(img => img.image_url) || [property.image_url];
+        const rating = property.rating_display?.total || property.Rating || 4.5;
+        const reviewCount = property.rating_display?.count || 1;
+
+        return {
+            "@context": "https://schema.org",
+            "@type": schemaType,
+            "name": property.display_name || property.Name,
+            "description": property.LongDescription || property.ShortDescription,
+            "image": images,
+            "url": window.location.href,
+            "address": {
+                "@type": "PostalAddress",
+                "addressLocality": property.City || property.CityName,
+                "addressRegion": property.State || "Maharashtra",
+                "addressCountry": "IN"
+            },
+            "geo": {
+                "@type": "GeoCoordinates",
+                "latitude": property.Latitude,
+                "longitude": property.Longitude
+            },
+            "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": rating,
+                "bestRating": "5",
+                "worstRating": "1",
+                "reviewCount": reviewCount
+            },
+            "offers": {
+                "@type": "Offer",
+                "priceCurrency": "INR",
+                "price": property.Price || property.ResortWalaRate || 5000,
+                "priceValidUntil": format(addDays(new Date(property.updated_at || new Date()), 30), 'yyyy-MM-dd'),
+                "availability": "https://schema.org/InStock",
+                "url": window.location.href
+            }
+        };
+    };
+
     return (
         <div className="bg-white min-h-screen pb-20 pt-[110px]">
             {property && (
@@ -772,43 +829,26 @@ export default function PropertyDetails() {
                     image={property.images?.[0]?.image_url || property.image_url}
                     url={window.location.href}
                     type="place"
-                    schema={{
-                        "@context": "https://schema.org",
-                        "@type": property.PropertyType === 'Villa' ? 'Hotel' : 'LodgingBusiness',
-                        "name": property.display_name || property.Name,
-                        "description": property.LongDescription,
-                        "image": property.images?.map(i => i.image_url) || [property.image_url],
-                        "address": {
-                            "@type": "PostalAddress",
-                            "addressLocality": property.City,
-                            "addressRegion": property.State,
-                            "addressCountry": "IN"
-                        },
-                        "priceRange": `₹${property.Price || property.ResortWalaRate || 5000} - ₹${(property.Price || 5000) * 2}`,
-                        "starRating": {
-                            "@type": "Rating",
-                            "ratingValue": "4.5" // Mock for now
-                        }
-                    }}
+                    schema={generatePropertySchema()}
                 />
             )}
             {/* 1. HERO GALLERY */}
             <div className="container mx-auto px-4 lg:px-8 py-6 max-w-7xl">
-                <Header property={property} isSaved={isSaved} setIsSaved={setIsSaved} setIsShareModalOpen={setIsShareModalOpen} user={user} navigate={navigate} location={window.location} toggleWishlist={toggleWishlist} id={id} />
+                <Header property={property} isSaved={isSaved} setIsSaved={setIsSaved} setIsShareModalOpen={setIsShareModalOpen} user={user} navigate={navigate} location={window.location} toggleWishlist={toggleWishlist} id={property?.PropertyId || property?.id} />
 
                 {galleryImages.length > 0 ? (
                     /* DESKTOP GRID GALLERY */
                     <div className="hidden md:grid rounded-2xl overflow-hidden shadow-sm h-[350px] md:h-[500px] mb-8 grid-cols-1 md:grid-cols-4 grid-rows-2 gap-2 relative">
                         {/* Main Image */}
                         <div className="col-span-1 md:col-span-2 row-span-2 relative cursor-pointer group overflow-hidden" onClick={() => handleGalleryOpen(0)}>
-                            <img src={galleryImages[0]} alt="Main" className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
+                            <img src={galleryImages[0]} alt={`${property.Name} - Main Image`} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
                         </div>
 
                         {/* Side Images */}
                         {[1, 2, 3, 4].map((idx) => (
                             <div key={idx} className={`hidden md:block col-span-1 row-span-1 relative cursor-pointer group overflow-hidden ${idx === 2 ? 'rounded-tr-2xl' : ''} ${idx === 4 ? 'rounded-br-2xl' : ''}`} onClick={() => handleGalleryOpen(idx)}>
-                                <img src={galleryImages[idx] || galleryImages[0]} alt={`Gallery ${idx}`} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
+                                <img src={galleryImages[idx] || galleryImages[0]} alt={`${property.Name} - View ${idx}`} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" loading="lazy" />
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition" />
                                 {idx === 4 && (
                                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center hover:bg-black/40 transition">
@@ -864,7 +904,7 @@ export default function PropertyDetails() {
                                     onClick={() => handleGalleryOpen(idx)}
                                 >
                                     <div className="w-full h-full rounded-2xl overflow-hidden relative shadow-sm">
-                                        <img src={img} alt={`Slide ${idx}`} className="w-full h-full object-cover" loading="lazy" />
+                                        <img src={img} alt={`${property.Name} - Slide ${idx}`} className="w-full h-full object-cover" loading="lazy" />
                                     </div>
                                 </div>
                             ))}
@@ -1319,7 +1359,9 @@ const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navi
                     <div className="flex items-center gap-1.5 font-bold text-black"><span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs">NEW</span></div>
                 )}
                 <span className="hidden md:inline text-gray-300">|</span>
-                <span className="underline text-gray-600 hover:text-black cursor-pointer">{property.CityName}, {property.Location}</span>
+                <Link to={`/locations/${(property.CityName || property.City || '').toLowerCase()}`} className="underline text-gray-600 hover:text-black cursor-pointer">
+                    {property.CityName || property.City}, {property.Location}
+                </Link>
             </div>
             <div className="flex gap-2 text-sm font-semibold">
                 <button onClick={() => {

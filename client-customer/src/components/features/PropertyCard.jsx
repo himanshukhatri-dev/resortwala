@@ -73,7 +73,8 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
     const active = id ? isWishlisted(id) : false;
 
     const handleCardClick = (e) => {
-        window.open(`/property/${id}?${queryString}`, '_blank');
+        const target = property?.slug || id;
+        window.open(`/property/${target}?${queryString}`, '_blank');
     };
 
 
@@ -107,7 +108,7 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                     <motion.img
                         key={currentImageIndex}
                         src={images[currentImageIndex]}
-                        alt={name}
+                        alt={`${name} - ${property.CityName || property.City || 'ResortWala'}`}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}

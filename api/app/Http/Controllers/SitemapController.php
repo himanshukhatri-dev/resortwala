@@ -13,12 +13,22 @@ class SitemapController extends Controller
      */
     public function index()
     {
-        $properties = PropertyMaster::select('PropertyId', 'Name', 'updated_at')
+        $properties = PropertyMaster::select('slug', 'updated_at')
+            ->whereNotNull('slug')
             ->orderBy('updated_at', 'desc')
             ->get();
 
+        $cities = PropertyMaster::select('CityName')
+            ->distinct()
+            ->whereNotNull('CityName')
+            ->get();
+
+        $baseUrl = config('app.frontend_url', 'https://resortwala.com');
+
         $content = view('sitemap', [
             'properties' => $properties,
+            'cities' => $cities,
+            'baseUrl' => $baseUrl,
         ])->render();
 
         return Response::make($content, 200, [

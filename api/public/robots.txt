@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /vendor
+Allow: /api/sitemap.xml
 Disallow: /api
 Disallow: /storage/*.key
-Sitemap: https://api.resortwala.com/sitemap.xml
+Sitemap: https://resortwala.com/sitemap.xml

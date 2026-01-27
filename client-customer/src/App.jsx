@@ -99,9 +99,10 @@ function App() {
                         <Route path="/" element={<MainLayout />}>
                           <Route index element={<Home />} />
                           <Route path="/notifications" element={<Notifications />} />
-                          <Route path="/property/:id" element={<PropertyDetails />} />
-                          <Route path="/book/:id" element={<BookingPage />} />
-                          <Route path="/checkout/:id" element={<BookingPage />} />
+                          <Route path="/property/:slug" element={<PropertyDetails />} />
+                          <Route path="/book/:slug" element={<BookingPage />} />
+                          <Route path="/checkout/:slug" element={<BookingPage />} />
+                          <Route path="/locations/:city" element={<Home />} />
                           <Route path="/bookings" element={<UserBookings />} />
                           <Route path="/bookings/:id" element={<BookingDetails />} />
                           <Route path="/booking/success" element={<BookingSuccess />} />

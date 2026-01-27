@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/ui/FilterBar';
@@ -34,6 +34,8 @@ export default function Home() {
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
     const [searchParams, setSearchParams] = useSearchParams();
+    const { city } = useParams();
+    const navigate = useNavigate();
     const location = useLocation();
     const searchResultsRef = useRef(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -119,8 +121,11 @@ export default function Home() {
         const to = p.get('check_out');
         const amenities = p.getAll('amenities') || [];
 
+        // Priority for location: Param city > URL Query location
+        const targetLocation = city || p.get('location') || '';
+
         const nextFilters = {
-            location: p.get('location') || '',
+            location: targetLocation,
             type: p.get('type') || 'all',
             minPrice: p.get('min_price') || '',
             maxPrice: p.get('max_price') || '',
@@ -146,7 +151,7 @@ export default function Home() {
         if (JSON.stringify(filters) !== JSON.stringify(nextFilters)) {
             setFilters(nextFilters);
         }
-    }, [location.search]);
+    }, [location.search, city]);
 
     const {
         location: contextLocation, setLocation: setContextLocation,
@@ -412,12 +417,11 @@ export default function Home() {
     // Popular Location Click
     const handleLocationClick = (locName) => {
         const isActive = filters.location === locName;
-        handleFilterChange(prev => ({
-            ...prev,
-            location: isActive ? '' : locName,
-            distance: { ...prev.distance, center: null },
-            page: 1
-        }));
+        if (isActive) {
+            navigate('/');
+        } else {
+            navigate(`/locations/${locName.toLowerCase()}`);
+        }
 
         // Scroll to results
         setTimeout(() => {
@@ -448,8 +452,9 @@ export default function Home() {
     return (
         <div className="pb-20" >
             <SEO
-                title="Book Luxury Villas & Stays"
-                description="Discover the best luxury villas, resorts, and waterparks in Lonavala and beyond. Verified stays, best prices, and instant booking."
+                title={city ? `Luxury Villas & Stays in ${city.charAt(0).toUpperCase() + city.slice(1)} | ResortWala` : "Book Luxury Villas & Stays | ResortWala"}
+                description={city ? `Find and book the best luxury villas, resorts, and vacation stays in ${city}. Verified properties with the best rates and instant booking.` : "Discover the best luxury villas, resorts, and waterparks in Lonavala and beyond. Verified stays, best prices, and instant booking."}
+                url={window.location.href}
             />
 
             <div className="relative min-h-[80vh] md:min-h-[90vh] w-full bg-gray-900 flex flex-col items-center justify-center text-center px-4 pt-24 pb-8 md:pt-40 md:pb-20">

@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 const PAY_NOW_PERCENT = 0.1; // 10% Token Amount
 
 export default function BookingPage() {
-    const { id } = useParams();
+    const { slug } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     const locationState = location.state || {};
@@ -77,25 +77,23 @@ export default function BookingPage() {
     useEffect(() => {
         const fetchProperty = async () => {
             try {
-                const response = await axios.get(`${API_BASE_URL}/properties/${id}`);
+                const response = await axios.get(`${API_BASE_URL}/properties/${slug}`);
                 setProperty(response.data);
-            } catch (error) { console.error("Error fetching property", error); }
-        };
-        const fetchHolidays = async () => {
-            try {
-                const res = await axios.get(`${API_BASE_URL}/holidays?property_id=${id}`);
-                setHolidays(res.data);
-            } catch (err) { console.error("Error fetching holidays", err); }
+
+                // Fetch Holidays after property is loaded using the real ID
+                const propId = response.data.PropertyId || response.data.id;
+                const hRes = await axios.get(`${API_BASE_URL}/holidays?property_id=${propId}`);
+                setHolidays(hRes.data);
+            } catch (error) { console.error("Error fetching property/holidays", error); }
         };
         fetchProperty();
-        fetchHolidays();
-    }, [id]);
+    }, [slug]);
 
     // -- ACTIONS --
 
     // "Edit" Action -> Go back to Property Page
     const handleEdit = () => {
-        navigate(`/property/${id}`, {
+        navigate(`/property/${slug}`, {
             state: {
                 ...locationState,
                 // Preserve current search if needed, or let PropertyPage handle it
@@ -279,7 +277,7 @@ export default function BookingPage() {
         setBookingStatus('submitting');
 
         const payload = {
-            PropertyId: id,
+            PropertyId: property.PropertyId || property.id,
             CustomerName: form.CustomerName,
             CustomerMobile: form.CustomerMobile,
             CustomerEmail: form.CustomerEmail,

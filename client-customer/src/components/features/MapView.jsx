@@ -304,7 +304,7 @@ export default function MapView({ properties, onLocationSelect, currentUserLocat
                                             <span className="font-bold text-lg text-gray-900">₹{Number(p.Price).toLocaleString()}</span>
                                         </div>
                                         <Link
-                                            to={`/property/${p.id || p.PropertyID || p.PropertyId}`}
+                                            to={`/property/${p.slug || p.id || p.PropertyID || p.PropertyId}`}
                                             className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-lg shadow-gray-200"
                                         >
                                             View Details

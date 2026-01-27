@@ -182,7 +182,8 @@ class PropertyMaster extends Model
         'video_url',
         'admin_pricing',
         'Rating',
-        'is_developer_only'
+        'is_developer_only',
+        'slug'
     ];
 
     protected $casts = [
@@ -259,5 +260,28 @@ class PropertyMaster extends Model
     {
         $type = strtolower($this->PropertyType ?? '');
         return str_contains($type, 'water') || str_contains(strtolower($this->Name), 'water') || str_contains($type, 'resort');
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($model) {
+            if (empty($model->slug)) {
+                $model->slug = $model->generateUniqueSlug();
+            }
+        });
+    }
+
+    public function generateUniqueSlug()
+    {
+        $type = strtolower($this->PropertyType ?? 'stay');
+        $city = strtolower($this->CityName ?? $this->City ?? 'india');
+        $name = strtolower($this->Name);
+
+        // Sanitize
+        $slug = \Illuminate\Support\Str::slug("{$type}-{$city}-{$name}-{$this->PropertyId}");
+
+        return $slug;
     }
 }

@@ -175,13 +175,30 @@ class PropertyMasterController extends Controller
         }
     }
 
-    public function show($id)
+    public function show($idOrSlug)
     {
         try {
-            $property = PropertyMaster::with(['images', 'videos', 'holidays', 'dailyRates'])->find($id);
+            // 1. Try finding by ID first
+            if (is_numeric($idOrSlug)) {
+                $property = PropertyMaster::with(['images', 'videos', 'holidays', 'dailyRates'])->find($idOrSlug);
+
+                // If found by ID and has a slug, we SHOULD return the property but 
+                // ideally the frontend should know to update its URL.
+                // For SEO, we'll include the slug in the response so the frontend can canonicalize.
+                if ($property) {
+                    return response()->json($property);
+                }
+            }
+
+            // 2. Try finding by Slug
+            $property = PropertyMaster::with(['images', 'videos', 'holidays', 'dailyRates'])
+                ->where('slug', $idOrSlug)
+                ->first();
+
             if (!$property) {
                 return response()->json(['message' => 'Property not found'], 404);
             }
+
             return response()->json($property);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);

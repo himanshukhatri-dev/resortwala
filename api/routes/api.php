@@ -6,6 +6,7 @@ use App\Http\Controllers\PropertyMasterController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\StatusController;
 use App\Http\Controllers\BookingController;
+use App\Http\Middleware\VerifyCsrfToken;
 
 // EMERGENCY FIX: Manually load Controller if Autoloader is stale
 if (file_exists(app_path('Http/Controllers/Admin/VoiceStudioController.php'))) {
@@ -25,6 +26,7 @@ require_once __DIR__ . '/debug_route.php';
 Route::get('/status', [StatusController::class, 'check']);
 Route::post('/events/batch', [\App\Http\Controllers\Admin\AnalyticsController::class, 'batch']);
 Route::post('/analytics/track', [\App\Http\Controllers\Admin\AnalyticsController::class, 'track']);
+Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index']);
 Route::get('/admin/system-info', [\App\Http\Controllers\AdminController::class, 'getDeveloperReport']);
 
 // TEMPORARY: PhonePe Enterprise API Test Route (Enhanced Debug)
@@ -72,7 +74,6 @@ Route::get('/properties/{id}/booked-dates', [PropertyMasterController::class, 'g
 Route::post('/coupons/check', [\App\Http\Controllers\CouponController::class, 'check']);
 
 // Event Tracking (Analytics)
-Route::post('/analytics/track', [\App\Http\Controllers\Admin\AnalyticsController::class, 'track']);
 Route::post('/events/track', [\App\Http\Controllers\EventController::class, 'track']);
 // Route::post('/events/batch', [\App\Http\Controllers\EventController::class, 'batchTrack']); // Duplicate
 
