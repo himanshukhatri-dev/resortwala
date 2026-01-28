@@ -24,10 +24,11 @@ export default function EmailTemplates() {
         fetchTemplates();
     }, []);
 
-    const fetchTemplates = async () => {
+    const fetchTemplates = async (channelOverride = null) => {
         setLoading(true);
+        const ch = channelOverride || formData.channel;
         try {
-            const res = await axios.get(`${API_BASE_URL}/admin/notifications/setup/templates?channel=email`, {
+            const res = await axios.get(`${API_BASE_URL}/admin/notifications/setup/templates?channel=${ch}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setTemplates(res.data);
@@ -80,9 +81,27 @@ export default function EmailTemplates() {
         <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
             {/* List Sidebar */}
             <div className="w-full lg:w-1/4 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-700">Templates</h3>
-                    <button onClick={handleCreate} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"><FiPlus /></button>
+                <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-slate-700">Templates</h3>
+                        <button onClick={handleCreate} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"><FiPlus /></button>
+                    </div>
+                    {/* Channel Tabs */}
+                    <div className="flex bg-slate-200 p-1 rounded-lg">
+                        {['email', 'sms', 'whatsapp'].map(ch => (
+                            <button
+                                key={ch}
+                                onClick={() => {
+                                    setFormData({ ...formData, channel: ch });
+                                    fetchTemplates(ch);
+                                }}
+                                className={`flex-1 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${formData.channel === ch ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                {ch}
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 <div className="overflow-y-auto flex-1 p-2 space-y-2">
                     {templates.map(tpl => (
@@ -152,7 +171,7 @@ export default function EmailTemplates() {
                                 </div>
                                 <div className="flex-1 overflow-y-auto bg-white p-4">
                                     <iframe
-                                        srcDoc={formData.content}
+                                        srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f7f6; }.wrapper { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }.header { background-color: #f8fafc; padding: 20px; text-align: center; border-bottom: 3px solid #3b82f6; }.logo { height: 50px; width: auto; }.tagline { color: #64748b; font-size: 12px; margin-top: 5px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }.content { padding: 30px; }.footer { background-color: #1e293b; color: #94a3b8; padding: 20px; text-align: center; font-size: 12px; }.footer a { color: #3b82f6; text-decoration: none; }.btn { display: inline-block; background-color: #3b82f6; color: white !important; padding: 12px 24px; border-radius: 6px; text-decoration: none; margin-top: 15px; font-weight: bold; }@media only screen and (max-width: 600px) { .wrapper { margin: 0; border-radius: 0; } .content { padding: 20px; } }</style></head><body><div class="wrapper"><div class="header"><img src="${API_BASE_URL.replace('/api', '')}/resortwala-logo.png" alt="ResortWala" class="logo"><div class="tagline">Your Gateway to Fun</div></div><div class="content">${formData.content}</div><div class="footer"><p style="margin-bottom: 10px; color: #fff; font-weight: bold;">Team ResortWala</p><p><a href="#">www.resortwala.com</a> | <a href="mailto:support@resortwala.com">support@resortwala.com</a></p></div></div></body></html>`}
                                         className="w-full h-full border-none pointer-events-none"
                                         title="Preview"
                                         sandbox="allow-same-origin"

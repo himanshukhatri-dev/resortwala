@@ -101,7 +101,7 @@ class NotificationEngine
             }
 
             // Send via Mail Facade
-            Mail::html($content, function ($message) use ($email, $subject) {
+            Mail::html(view('emails.layout', ['content' => $content])->render(), function ($message) use ($email, $subject) {
                 $message->to($email)
                     ->subject($subject);
             });
