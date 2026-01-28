@@ -32,8 +32,8 @@ if (!$user) {
 echo "\n--- Testing 'admin.login' (Should send Email + SMS) ---\n";
 $data = [
     'name' => 'Himanshu Test',
-    'email' => 'test@resortwala.com',
-    'ip' => '127.0.0.1', 
+    'email' => 'himanshukhatri.1988@gmail.com',
+    'ip' => '127.0.0.1',
     'time' => date('d-M H:i A'),
     'user_agent' => 'TestScript/1.0'
 ];

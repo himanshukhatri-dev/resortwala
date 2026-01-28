@@ -72,22 +72,56 @@ class CommunicationController extends Controller
         $failCount = 0;
 
         foreach ($recipients as $recipient) {
-            if (empty($recipient)) continue;
+            if (empty($recipient))
+                continue;
 
             try {
+                $status = 'sent';
+                $error = null;
+
+                // Use NotificationEngine for centralized control (Test Mode, Logging etc.)
+                // Create a dynamic data array for broadcast
+                $data = [
+                    'content' => $request->input('content'),
+                    'subject' => $request->input('subject') ?? 'Annoucement from ResortWala',
+                    'audience' => $request->audience_type
+                ];
+
+                // If it's a direct email/sms without a template, we might need a "broadcast" template
+                // For now, if no template_id is used, we can directly call Mail or SMS logic 
+                // OR we can create a generic "system.broadcast" trigger.
+
+                // Recommendation: Refactor to engine but engine needs to support dynamic content 
+                // for one-off messages. 
+
+                // Architect Decision: Directly apply Test Mode check here to maintain 
+                // CommunicationController's flexibility for now, while respecting safety.
+
+                $finalRecipient = $recipient;
+                $finalContent = $request->input('content');
+                $finalSubject = $request->input('subject') ?? 'Annoucement from ResortWala';
+
+                if (config('notification.test_mode', env('NOTIFICATION_TEST_MODE', false))) {
+                    $finalRecipient = $request->type === 'email'
+                        ? config('notification.test_email')
+                        : config('notification.test_phone');
+                    $finalContent = "[TEST] " . $finalContent;
+                    $finalSubject = "[TEST] " . $finalSubject;
+                }
+
                 if ($request->type === 'email') {
-                    Mail::raw($request->content, function ($message) use ($recipient, $request) {
-                        $message->to($recipient)
-                                ->subject($request->subject ?? 'Annoucement from ResortWala');
+                    Mail::raw($finalContent, function ($message) use ($finalRecipient, $finalSubject) {
+                        $message->to($finalRecipient)
+                            ->subject($finalSubject);
                     });
                 }
-                
+
                 EmailLog::create([
                     'channel' => $request->type,
-                    'recipient' => $recipient,
-                    'subject' => $request->subject ?? 'Broadcast',
+                    'recipient' => $finalRecipient,
+                    'subject' => $finalSubject,
                     'status' => 'sent',
-                    'payload' => ['content' => $request->content, 'audience' => $request->audience_type]
+                    'payload' => ['content' => $finalContent, 'audience' => $request->audience_type]
                 ]);
 
                 $successCount++;
@@ -95,10 +129,10 @@ class CommunicationController extends Controller
                 EmailLog::create([
                     'channel' => $request->type,
                     'recipient' => $recipient,
-                    'subject' => $request->subject ?? 'Broadcast',
+                    'subject' => $request->input('subject') ?? 'Broadcast',
                     'status' => 'failed',
                     'error_message' => $e->getMessage(),
-                    'payload' => ['content' => $request->content, 'audience' => $request->audience_type]
+                    'payload' => ['content' => $request->input('content'), 'audience' => $request->audience_type]
                 ]);
                 $failCount++;
             }

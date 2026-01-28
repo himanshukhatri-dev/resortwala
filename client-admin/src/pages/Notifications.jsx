@@ -2,106 +2,96 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
-import { FiSend, FiBell, FiRefreshCw, FiTarget, FiUsers } from 'react-icons/fi';
+import {
+    FiSend, FiBell, FiRefreshCw, FiTarget, FiMail,
+    FiMessageSquare, FiSettings, FiActivity, FiEye
+} from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 
 export default function Notifications() {
     const { token } = useAuth();
+    const [activeTab, setActiveTab] = useState('logs');
     const [loading, setLoading] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
-
-    // Compose State
-    const [notification, setNotification] = useState({
-        title: '',
-        body: '',
-        audience: 'all', // all, vendor, specific
-        user_ids: '' // Comma separated IDs for 'specific'
-    });
-
-    // Logs State
     const [logs, setLogs] = useState([]);
-    const [pagination, setPagination] = useState({});
+    const [templates, setTemplates] = useState([]);
 
-    // Counters
-    const [stats, setStats] = useState({
-        sent_today: 0,
-        failed_today: 0
+    // Testing Form State
+    const [testForm, setTestForm] = useState({
+        type: 'email',
+        recipient: '',
+        template_id: '',
+        data: {
+            customer_name: 'John Doe',
+            otp: '123456',
+            propertyName: 'The Grand Resort',
+            bookingId: 'RW-TEST-001'
+        }
     });
 
     useEffect(() => {
         fetchLogs();
+        fetchTemplates(testForm.type);
     }, [token]);
 
     const fetchLogs = async () => {
-        setRefreshing(true);
+        setLoading(true);
         try {
-            const res = await axios.get(`${API_BASE_URL}/notifications/logs`, {
+            const res = await axios.get(`${API_BASE_URL}/admin/notifications/setup/logs`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setLogs(res.data.data || []);
-            setPagination(res.data);
-
-            // Calculate pseudo-stats from recent logs
-            // Ideally backend provides this
-            const today = new Date().toISOString().split('T')[0];
-            const todaysLogs = (res.data.data || []).filter(l => l.created_at.startsWith(today));
-            setStats({
-                sent_today: todaysLogs.reduce((acc, l) => acc + (parseInt(l.success_count) || 0), 0),
-                failed_today: todaysLogs.reduce((acc, l) => acc + (parseInt(l.failure_count) || 0), 0)
-            });
-
+            setLogs(res.data);
         } catch (error) {
-            console.error('Failed to fetch logs:', error);
-            toast.error('Failed to refresh logs');
+            console.error('Logs fetch failed', error);
+            toast.error("Failed to load delivery logs");
         } finally {
-            setRefreshing(false);
+            setLoading(false);
         }
     };
 
-    const handleSend = async (e) => {
-        e.preventDefault();
-
-        // Validation
-        if (!notification.title || !notification.body) {
-            toast.error('Title and Body are required');
-            return;
-        }
-        if (notification.audience === 'specific' && !notification.user_ids) {
-            toast.error('Please specify User IDs');
-            return;
-        }
-
-        if (!window.confirm('Are you sure you want to send this notification?')) return;
-
-        setLoading(true);
+    const fetchTemplates = async (channel) => {
         try {
-            const payload = { ...notification };
-            if (payload.audience === 'specific') {
-                // Convert string "1, 2, 3" to array [1, 2, 3]
-                payload.user_ids = payload.user_ids.split(',').map(id => id.trim()).filter(id => id);
-            } else {
-                delete payload.user_ids;
-            }
-
-            const res = await axios.post(`${API_BASE_URL}/notifications/send`, payload, {
+            const res = await axios.get(`${API_BASE_URL}/admin/notifications/setup/templates?channel=${channel}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-
-            toast.success(res.data.message || 'Notification Sent');
-
-            // Reset Form
-            setNotification({
-                title: '',
-                body: '',
-                audience: 'all',
-                user_ids: ''
-            });
-
-            fetchLogs();
-
+            setTemplates(res.data);
+            if (res.data.length > 0) {
+                setTestForm(prev => ({ ...prev, template_id: res.data[0].id }));
+            }
         } catch (error) {
-            console.error(error);
-            toast.error(error.response?.data?.message || 'Failed to send');
+            console.error('Templates fetch failed', error);
+        }
+    };
+
+    const handleSendTest = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const res = await axios.post(`${API_BASE_URL}/admin/notifications/setup/test`, testForm, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success(res.data.message);
+            fetchLogs();
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Test dispatch failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSimulate = async (eventName) => {
+        setLoading(true);
+        try {
+            const res = await axios.post(`${API_BASE_URL}/admin/notifications/setup/simulate-event`, {
+                event_name: eventName,
+                email: 'himanshukhatri.1988@gmail.com',
+                phone: '919870646548'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success(res.data.message);
+            fetchLogs();
+        } catch (error) {
+            toast.error("Simulation failed");
         } finally {
             setLoading(false);
         }
@@ -109,183 +99,178 @@ export default function Notifications() {
 
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-8">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                    <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3">
                         <FiBell className="text-indigo-600" />
-                        Push Notifications
+                        Notification Center
                     </h1>
-                    <p className="text-slate-500 text-sm font-medium mt-1">
-                        Send mobile alerts to users, vendors, or specific devices.
-                    </p>
+                    <p className="text-slate-500 font-medium">Control and monitor system-wide communications.</p>
                 </div>
-
-                {/* Quick Stats */}
-                <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-wider">
-                    <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl flex items-center gap-2">
-                        <span className="text-slate-400">Sent Today:</span>
-                        <span className="text-lg">{stats.sent_today}</span>
-                    </div>
+                <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
+                    {['logs', 'test', 'settings'].map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold capitalize transition-all ${activeTab === tab ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            {tab}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Compose Form */}
-                <div className="lg:col-span-1">
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden sticky top-6">
-                        <div className="bg-slate-50 border-b border-slate-100 px-6 py-4">
-                            <h2 className="font-bold text-slate-800 flex items-center gap-2">
-                                <FiSend /> Compose Alert
-                            </h2>
-                        </div>
-                        <form onSubmit={handleSend} className="p-6 space-y-5">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Target Audience</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {[
-                                        { id: 'all', label: 'All Users', icon: <FiUsers /> },
-                                        { id: 'vendor', label: 'Vendors', icon: <FiUsers /> },
-                                        { id: 'specific', label: 'Specific', icon: <FiTarget /> }
-                                    ].map(type => (
-                                        <button
-                                            key={type.id}
-                                            type="button"
-                                            onClick={() => setNotification({ ...notification, audience: type.id })}
-                                            className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-xs font-bold gap-2
-                                                ${notification.audience === type.id
-                                                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                                                    : 'border-slate-200 text-slate-400 hover:border-indigo-200 hover:text-slate-600'}`
-                                            }
-                                        >
-                                            <span className="text-lg">{type.icon}</span>
-                                            {type.label}
-                                        </button>
-                                    ))}
-                                </div>
+            {activeTab === 'logs' && (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <FiActivity className="text-emerald-500" /> Delivery Logs
+                        </h2>
+                        <button onClick={fetchLogs} className="p-2 hover:bg-slate-100 rounded-lg">
+                            <FiRefreshCw className={loading ? 'animate-spin' : ''} />
+                        </button>
+                    </div>
+
+                    <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-50 border-b text-xs font-black text-slate-400 uppercase tracking-widest">
+                                <tr>
+                                    <th className="px-6 py-4">Channel</th>
+                                    <th className="px-6 py-4">Recipient</th>
+                                    <th className="px-6 py-4">Event / Template</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4">Latency</th>
+                                    <th className="px-6 py-4 text-right">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y text-sm">
+                                {logs.map(log => (
+                                    <tr key={log.id} className="hover:bg-slate-50 transition-all">
+                                        <td className="px-6 py-4 font-bold flex items-center gap-2">
+                                            {log.channel === 'email' && <FiMail className="text-blue-500" />}
+                                            {log.channel === 'sms' && <FiMessageSquare className="text-amber-500" />}
+                                            {log.channel === 'whatsapp' && <FiMessageSquare className="text-emerald-500" />}
+                                            <span className="capitalize">{log.channel}</span>
+                                        </td>
+                                        <td className="px-6 py-4 font-medium text-slate-600">{log.recipient}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-slate-800">{log.event_name || 'Manual'}</div>
+                                            <div className="text-[10px] text-slate-400 font-bold uppercase">{log.template_name}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${log.status === 'sent' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                                }`}>
+                                                {log.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 font-mono text-xs text-slate-400">
+                                            {log.latency_ms ? `${log.latency_ms}ms` : '-'}
+                                        </td>
+                                        <td className="px-6 py-4 text-right text-slate-400 font-medium whitespace-nowrap">
+                                            {new Date(log.created_at).toLocaleString()}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'test' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4">
+                    {/* Manual Send */}
+                    <div className="bg-white border rounded-2xl shadow-sm p-8 space-y-6">
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <FiTarget className="text-indigo-600" /> Dispatch Tool
+                        </h2>
+
+                        <form onSubmit={handleSendTest} className="space-y-4">
+                            <div className="grid grid-cols-3 gap-2">
+                                {['email', 'sms', 'whatsapp'].map(ch => (
+                                    <button
+                                        key={ch}
+                                        type="button"
+                                        onClick={() => {
+                                            setTestForm({ ...testForm, type: ch });
+                                            fetchTemplates(ch);
+                                        }}
+                                        className={`px-4 py-3 rounded-xl border-2 font-black text-xs uppercase tracking-tighter transition-all ${testForm.type === ch ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 text-slate-400'
+                                            }`}
+                                    >
+                                        {ch}
+                                    </button>
+                                ))}
                             </div>
 
-                            {notification.audience === 'specific' && (
-                                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">User IDs</label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. 1, 45, 102"
-                                        value={notification.user_ids}
-                                        onChange={e => setNotification({ ...notification, user_ids: e.target.value })}
-                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-600 transition-all font-bold text-slate-700 placeholder:text-slate-300 outline-none"
-                                    />
-                                    <p className="text-[10px] text-slate-400 mt-1 font-bold">Comma separated User IDs</p>
-                                </div>
-                            )}
-
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Title</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Recipient</label>
                                 <input
                                     type="text"
-                                    value={notification.title}
-                                    onChange={e => setNotification({ ...notification, title: e.target.value })}
-                                    placeholder="Alert Title"
-                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-600 transition-all font-bold text-slate-700 placeholder:text-slate-300 outline-none"
+                                    value={testForm.recipient}
+                                    onChange={e => setTestForm({ ...testForm, recipient: e.target.value })}
+                                    placeholder={testForm.type === 'email' ? 'email@example.com' : '91XXXXXXXXXX'}
+                                    className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-indigo-600 outline-none transition-all font-bold"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Message Body</label>
-                                <textarea
-                                    value={notification.body}
-                                    onChange={e => setNotification({ ...notification, body: e.target.value })}
-                                    placeholder="Type your message here..."
-                                    rows="4"
-                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-transparent focus:bg-white focus:border-indigo-600 transition-all font-bold text-slate-700 placeholder:text-slate-300 outline-none resize-none"
-                                />
+                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Template</label>
+                                <select
+                                    value={testForm.template_id}
+                                    onChange={e => setTestForm({ ...testForm, template_id: e.target.value })}
+                                    className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-indigo-600 outline-none transition-all font-bold"
+                                >
+                                    {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                </select>
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black uppercase tracking-widest shadow-lg shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50 transition-all"
                             >
-                                {loading ? <FiRefreshCw className="animate-spin" /> : <FiSend />}
-                                {loading ? 'Sending...' : 'Send Notification'}
+                                Dispatch Test
                             </button>
                         </form>
                     </div>
-                </div>
 
-                {/* Logs Table */}
-                <div className="lg:col-span-2 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-bold text-slate-700">Recent Dispatches</h2>
-                        <button
-                            onClick={fetchLogs}
-                            disabled={refreshing}
-                            className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors"
-                        >
-                            <FiRefreshCw className={refreshing ? 'animate-spin' : ''} />
-                        </button>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-100 text-xs font-black text-slate-400 uppercase tracking-wider">
-                                        <th className="px-6 py-4">Message</th>
-                                        <th className="px-6 py-4">Audience</th>
-                                        <th className="px-6 py-4 text-center">Stats</th>
-                                        <th className="px-6 py-4 text-right">Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {logs.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="4" className="px-6 py-12 text-center text-slate-400 font-bold text-sm">
-                                                No notifications sent yet.
-                                            </td>
-                                        </tr>
-                                    ) : logs.map(log => (
-                                        <tr key={log.id} className="hover:bg-indigo-50/30 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="font-bold text-slate-800">{log.title}</div>
-                                                <div className="text-xs text-slate-500 font-medium truncate max-w-md">{log.body}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide
-                                                    ${log.audience_type === 'all' ? 'bg-purple-100 text-purple-800' :
-                                                        log.audience_type === 'vendor' ? 'bg-blue-100 text-blue-800' :
-                                                            'bg-gray-100 text-gray-800'}`}>
-                                                    {log.audience_type}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="flex flex-col items-center">
-                                                    <span className="text-xs font-black text-emerald-600">
-                                                        {log.success_count} Sent
-                                                    </span>
-                                                    {log.failure_count > 0 && (
-                                                        <span className="text-[10px] font-bold text-rose-500">
-                                                            {log.failure_count} Failed
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="text-xs font-bold text-slate-500">
-                                                    {new Date(log.created_at).toLocaleDateString()}
-                                                </div>
-                                                <div className="text-[10px] text-slate-400 font-mono">
-                                                    {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                    {/* Quick Simulation */}
+                    <div className="space-y-4">
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <FiSettings className="text-slate-400" /> Event Simulator
+                        </h2>
+                        <div className="grid grid-cols-1 gap-2">
+                            {[
+                                { event: 'otp.sms', label: 'OTP via SMS', color: 'border-blue-100 bg-blue-50 text-blue-700' },
+                                { event: 'booking.confirmed', label: 'Booking Confirmation', color: 'border-emerald-100 bg-emerald-50 text-emerald-700' },
+                                { event: 'vendor.approved', label: 'Vendor Approval', color: 'border-indigo-100 bg-indigo-50 text-indigo-700' },
+                                { event: 'property.created_admin', label: 'New Property Alert', color: 'border-amber-100 bg-amber-50 text-amber-700' },
+                            ].map(s => (
+                                <button
+                                    key={s.event}
+                                    onClick={() => handleSimulate(s.event)}
+                                    className={`px-6 py-4 rounded-2xl border text-sm font-bold flex items-center justify-between transition-all hover:scale-[1.01] ${s.color}`}
+                                >
+                                    {s.label}
+                                    <FiActivity className="opacity-50" />
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
+
+            {activeTab === 'settings' && (
+                <div className="bg-white border rounded-2xl p-12 text-center space-y-4">
+                    <FiSettings className="text-5xl text-slate-200 mx-auto" />
+                    <h3 className="text-lg font-bold text-slate-800">Advanced Configuration</h3>
+                    <p className="text-slate-500 max-w-md mx-auto">
+                        Template and Trigger editing is restricted to Developer accounts to prevent production delivery errors.
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

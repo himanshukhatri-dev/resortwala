@@ -97,6 +97,21 @@ class NotificationTemplateSeeder extends Seeder
                         <p style="color: #666; font-size: 12px;">If this was not you, please contact the developer immediately.</p>
                     </div>',
                 'variables' => ['name', 'email', 'time', 'ip', 'user_agent']
+            ],
+            [
+                'name' => 'email_property_created_admin',
+                'subject' => 'New Property Submitted 🏠',
+                'content' => '
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #4F46E5;">New Property Alert</h2>
+                        <p>A new property has been submitted for approval.</p>
+                        <ul>
+                            <li><strong>Property:</strong> {{propertyName}}</li>
+                            <li><strong>Vendor:</strong> {{vendorName}}</li>
+                        </ul>
+                        <p>Please review it in the admin dashboard.</p>
+                    </div>',
+                'variables' => ['propertyName', 'vendorName']
             ]
         ];
 
@@ -146,6 +161,7 @@ class NotificationTemplateSeeder extends Seeder
             'booking.new_request_vendor' => ['email' => 'email_booking_request_vendor', 'sms' => 'sms_vendor_new_booking'],
             'vendor.approved' => ['email' => 'email_vendor_approved', 'sms' => null],
             'admin.login' => ['email' => 'email_admin_login_alert', 'sms' => 'sms_admin_login_alert'],
+            'property.created_admin' => ['email' => 'email_property_created_admin', 'sms' => null],
         ];
 
         foreach ($mappings as $event => $tpls) {

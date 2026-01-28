@@ -9,35 +9,74 @@ class WhatsAppService
 {
     public function send(WhatsAppMessage $message)
     {
-        // 1. Prepare Payload
-        $payload = [
-            'to' => $message->recipient,
-            'content' => $message->content,
-            'template' => $message->templateName,
-            'variables' => $message->variables
-        ];
+        $phoneId = config('services.whatsapp.phone_id') ?? env('META_WHATSAPP_PHONE_ID');
+        $token = config('services.whatsapp.token') ?? env('META_WHATSAPP_TOKEN');
 
-        // 2. Simulate Sending (Log to file)
-        Log::channel('daily')->info("WhatsApp Simulation: To: {$message->recipient} | Msg: " . ($message->templateName ?? $message->content));
-        
-        // TODO: Integrate actual Provider (Twilio / Interakt / Gupshup) here
-        // $success = Http::post('...', $payload)->successful();
-        $success = true; // Simulation success
-
-        // 3. Log to DB (Unified Communication Log)
-        try {
-            EmailLog::create([
-                'channel' => 'whatsapp',
-                'recipient' => $message->recipient,
-                'subject' => $message->templateName ? "Template: {$message->templateName}" : substr($message->content, 0, 50) . '...',
-                'status' => $success ? 'sent' : 'failed',
-                'template_name' => $message->templateName ?? 'manual_text',
-                'payload' => $payload
-            ]);
-        } catch (\Exception $e) {
-            Log::error("Failed to log WhatsApp message: " . $e->getMessage());
+        if (!$phoneId || !$token) {
+            Log::error("WhatsAppService: Meta Phone ID or Token missing.");
+            return false;
         }
 
-        return $success;
+        // Normalize mobile (ensure 91 prefix for India if not present)
+        $mobile = preg_replace('/\D/', '', $message->recipient);
+        if (strlen($mobile) === 10)
+            $mobile = '91' . $mobile;
+
+        // Meta Cloud API Endpoint
+        $url = "https://graph.facebook.com/v17.0/{$phoneId}/messages";
+
+        // Prepare Meta Payload for Template Message
+        $payload = [
+            'messaging_product' => 'whatsapp',
+            'to' => $mobile,
+            'type' => 'template',
+            'template' => [
+                'name' => $message->templateName,
+                'language' => ['code' => 'en_US'],
+                'components' => [
+                    [
+                        'type' => 'body',
+                        'parameters' => []
+                    ]
+                ]
+            ]
+        ];
+
+        // Map variables to Meta parameters (ordered list)
+        foreach (($message->variables ?? []) as $val) {
+            $payload['template']['components'][0]['parameters'][] = [
+                'type' => 'text',
+                'text' => (string) $val
+            ];
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withToken($token)
+                ->post($url, $payload);
+
+            $success = $response->successful();
+            $body = $response->json();
+            $messageId = $body['messages'][0]['id'] ?? null;
+
+            Log::info("WhatsAppService API Response", [
+                'to' => $mobile,
+                'status' => $response->status(),
+                'message_id' => $messageId
+            ]);
+
+            return [
+                'success' => $success,
+                'provider_id' => $messageId,
+                'body' => $response->body()
+            ];
+
+        } catch (\Exception $e) {
+            Log::error("WhatsAppService Exception: " . $e->getMessage());
+            return [
+                'success' => false,
+                'provider_id' => null,
+                'body' => $e->getMessage()
+            ];
+        }
     }
 }

@@ -4,9 +4,11 @@ import EmailTemplates from './EmailTemplates';
 import DltRegistry from './DltRegistry';
 import TriggerManager from './TriggerManager';
 import GatewaySettings from './GatewaySettings';
+import DeliveryLogs from './DeliveryLogs';
+import NotificationTester from './NotificationTester';
 
 export default function NotificationCenter() {
-    const [activeTab, setActiveTab] = useState('templates');
+    const [activeTab, setActiveTab] = useState('logs');
 
     return (
         <div className="p-4 lg:p-8 max-w-7xl mx-auto min-h-screen bg-slate-50/50">
@@ -22,6 +24,20 @@ export default function NotificationCenter() {
 
             {/* Navigation Tabs */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-2 mb-8 flex flex-wrap gap-2 sticky top-4 z-30">
+                <TabButton
+                    id="logs"
+                    label="Audit Logs"
+                    icon={<FiFileText />}
+                    active={activeTab}
+                    onClick={setActiveTab}
+                />
+                <TabButton
+                    id="test"
+                    label="Test & Simulate"
+                    icon={<FiActivity />} // Changed icon for better representation
+                    active={activeTab}
+                    onClick={setActiveTab}
+                />
                 <TabButton
                     id="templates"
                     label="Email Templates"
@@ -57,23 +73,17 @@ export default function NotificationCenter() {
                     active={activeTab}
                     onClick={setActiveTab}
                 />
-                <TabButton
-                    id="logs"
-                    label="Audit Logs"
-                    icon={<FiFileText />}
-                    active={activeTab}
-                    onClick={setActiveTab}
-                />
             </div>
 
             {/* Content Area */}
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {activeTab === 'logs' && <DeliveryLogs />}
+                {activeTab === 'test' && <NotificationTester />}
                 {activeTab === 'templates' && <EmailTemplates />}
                 {activeTab === 'dlt' && <DltRegistry />}
                 {activeTab === 'whatsapp' && <div className="p-10 text-center text-slate-400 font-bold">WhatsApp Template Manager Coming Soon</div>}
                 {activeTab === 'triggers' && <TriggerManager />}
                 {activeTab === 'settings' && <GatewaySettings />}
-                {activeTab === 'logs' && <div className="p-10 text-center text-slate-400 font-bold">Use the existing 'Communications' page for logs until migrated.</div>}
             </div>
         </div>
     );

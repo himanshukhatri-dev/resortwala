@@ -336,6 +336,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/gateway', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'saveGateway']);
 
         Route::post('/test', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'sendTest']);
+        Route::post('/simulate-event', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'simulateEvent']);
+        Route::get('/logs', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'getLogs']);
     });
 
     // Admin Finance & Reconciliation (Phase 7)

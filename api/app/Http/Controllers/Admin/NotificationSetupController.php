@@ -90,7 +90,6 @@ class NotificationSetupController extends Controller
         return response()->json(['message' => 'Trigger saved', 'data' => $trigger]);
     }
 
-    // --- Test Sending ---
     public function sendTest(Request $request)
     {
         $request->validate([
@@ -101,44 +100,82 @@ class NotificationSetupController extends Controller
         ]);
 
         $engine = new \App\Services\NotificationEngine();
-        $template = NotificationTemplate::find($request->template_id);
-        
-        // Mock Event Name for logging
-        $eventName = 'admin.test_send';
+        $templateId = $request->template_id;
+        $recipient = $request->recipient;
+        $data = $request->data ?? [];
 
-        if ($request->type === 'email') {
-             // We can use a protected method accessor or just copy logic for test
-             // For cleaner code, we might expose a public method in Engine for "sendTemplateDirectly"
-             // But for now, let's just trigger a dummy event or duplicate sending logic briefly for test?
-             // Actually, the Engine is designed for Triggers. 
-             // To test a specific template, we should verify specific template logic.
-             // Let's refactor Engine or just use Mail facade here for test validation.
-             
-             // BUT user wants to verify the Engine works.
-             // We can't use dispatch matching event because we want to force a specific TEMPLATE ID.
-             
-             // HACK: We will instantiate engine and use reflection or just assume
-             // we'll implement a 'sendDirect' method in Engine.
-             
-             // Let's add sendDirect to Engine? No, let's keep it simple.
-             // Just duplicate the "Resolution" logic here for the test to verify content.
-             
-             $content = $template->content;
-             foreach (($request->data ?? []) as $k => $v) {
-                 $content = str_replace("{{".$k."}}", $v, $content);
-             }
-             
-             if ($request->type === 'email') {
-                 \Illuminate\Support\Facades\Mail::html($content, function($msg) use ($request, $template) {
-                     $msg->to($request->recipient)->subject($template->subject ?? 'Test');
-                 });
-             } else {
-                 // Log SMS
-                 \Illuminate\Support\Facades\Log::info("Test SMS to {$request->recipient}: {$content}");
-             }
+        // Mock Event Name for logging
+        $eventName = 'admin.manual_test';
+
+        try {
+            if ($request->type === 'email') {
+                $engine->sendEmail($templateId, $recipient, $data, $eventName);
+            } elseif ($request->type === 'sms') {
+                $engine->sendSMS($templateId, $recipient, $data, $eventName);
+            } elseif ($request->type === 'whatsapp') {
+                $engine->sendWhatsApp($templateId, $recipient, $data, $eventName);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Test request dispatched through Engine. Check Notification Logs for status.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Engine failure: ' . $e->getMessage()
+            ], 500);
         }
-        
-        return response()->json(['message' => 'Test sent (Check logs)']);
+    }
+
+    /**
+     * Simulate a specific system event with mock data.
+     */
+    public function simulateEvent(Request $request)
+    {
+        $request->validate([
+            'event_name' => 'required|string',
+            'email' => 'required|email',
+            'phone' => 'required|string',
+        ]);
+
+        $eventName = $request->event_name;
+        $recipient = [
+            'email' => $request->email,
+            'mobile' => $request->phone
+        ];
+
+        // 1. Generate Mock Data based on event type
+        $data = $this->getMockData($eventName);
+
+        // 2. Dispatch using Engine
+        $engine = new \App\Services\NotificationEngine();
+        $success = $engine->dispatch($eventName, $recipient, $data);
+
+        return response()->json([
+            'success' => $success,
+            'message' => $success ? "Simulation for '{$eventName}' dispatched." : "Failed to find active trigger for '{$eventName}'.",
+            'mock_data' => $data
+        ]);
+    }
+
+    protected function getMockData($event)
+    {
+        $data = [
+            'otp' => '123456',
+            'userName' => 'Test User',
+            'customerName' => 'Test Customer',
+            'vendorName' => 'Test Vendor',
+            'propertyName' => 'The Blue Lagoon Resort',
+            'bookingId' => 'RW-' . rand(1000, 9999),
+            'amount' => '₹5,000',
+            'checkIn' => date('d M Y', strtotime('+1 day')),
+            'checkOut' => date('d M Y', strtotime('+2 days')),
+            'status' => 'Confirmed',
+            'rejection_comment' => 'Missing document proof for the property address.'
+        ];
+
+        return $data;
     }
 
     // --- Gateway Settings ---
@@ -153,14 +190,19 @@ class NotificationSetupController extends Controller
         $data = $request->config;
 
         if ($request->section === 'sms') {
-            if (!empty($data['sms_provider'])) $envUpdates['SMS_PROVIDER'] = $data['sms_provider'];
-            if (!empty($data['sms_api_key'])) $envUpdates['SMS_API_KEY'] = $data['sms_api_key'];
-            if (!empty($data['sms_sender_id'])) $envUpdates['SMS_SENDER_ID'] = $data['sms_sender_id'];
-            if (!empty($data['dlt_n_key'])) $envUpdates['SMS_DLT_ENTITY_ID'] = $data['dlt_n_key'];
-        } 
-        elseif ($request->section === 'whatsapp') {
-            if (!empty($data['whatsapp_phone_id'])) $envUpdates['META_WHATSAPP_PHONE_ID'] = $data['whatsapp_phone_id'];
-            if (!empty($data['whatsapp_access_token'])) $envUpdates['META_WHATSAPP_TOKEN'] = $data['whatsapp_access_token'];
+            if (!empty($data['sms_provider']))
+                $envUpdates['SMS_PROVIDER'] = $data['sms_provider'];
+            if (!empty($data['sms_api_key']))
+                $envUpdates['SMS_API_KEY'] = $data['sms_api_key'];
+            if (!empty($data['sms_sender_id']))
+                $envUpdates['SMS_SENDER_ID'] = $data['sms_sender_id'];
+            if (!empty($data['dlt_n_key']))
+                $envUpdates['SMS_DLT_ENTITY_ID'] = $data['dlt_n_key'];
+        } elseif ($request->section === 'whatsapp') {
+            if (!empty($data['whatsapp_phone_id']))
+                $envUpdates['META_WHATSAPP_PHONE_ID'] = $data['whatsapp_phone_id'];
+            if (!empty($data['whatsapp_access_token']))
+                $envUpdates['META_WHATSAPP_TOKEN'] = $data['whatsapp_access_token'];
         }
 
         $this->updateEnv($envUpdates);
@@ -182,5 +224,14 @@ class NotificationSetupController extends Controller
             }
             file_put_contents($path, $content);
         }
+    }
+
+    public function getLogs()
+    {
+        $logs = \App\Models\NotificationLog::orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
+
+        return response()->json($logs);
     }
 }
