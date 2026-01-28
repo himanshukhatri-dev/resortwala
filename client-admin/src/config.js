@@ -13,7 +13,7 @@ const getApiBaseUrl = () => {
         // or just use /api if Nginx is proxying. 
         // For ResortWala local setup, 8085 is the API port.
         if (window.location.port === '5173' || window.location.port === '5174') {
-            return 'http://local.resortwala.com:8085/api';
+            return `${window.location.protocol}//${hostname}:8085/api`;
         }
     }
 
