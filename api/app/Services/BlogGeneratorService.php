@@ -44,8 +44,22 @@ class BlogGeneratorService
         // Generate detailed SEO tags
         $metaDesc = "Stay at {$property->Name} in {$locationName}. Features {$property->NoofRooms} BHK, Pool, and more. constant maintenance ensures a premium experience. Book now on ResortWala.";
 
-        // Image Handling
-        $coverImage = $property->image_url;
+        // Image Handling (Store RELATIVE path, not full URL)
+        $coverImage = $property->getRawOriginal('ImageUrl');
+
+        if (!$coverImage) {
+            $primary = $property->primaryImage;
+            if ($primary) {
+                // PropertyImage model has 'image_path' column
+                $coverImage = $primary->image_path;
+            }
+        }
+
+        // Final fallback if still null (though generator shouldn't fail)
+        // Ensure we don't save a full URL unless it really is external
+        if ($coverImage && str_starts_with($coverImage, 'http')) {
+            // Leave as is
+        }
 
         // Create or Update Blog
         $slug = Str::slug($title);

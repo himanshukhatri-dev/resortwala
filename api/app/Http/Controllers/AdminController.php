@@ -616,10 +616,6 @@ class AdminController extends Controller
                     'in_lock_file' => in_array('phonepe/pg-php-sdk-v2', $packages),
                     'merchant_id' => config('phonepe.merchant_id'),
                     'env' => config('phonepe.env'),
-                ],
-                'firebase' => [
-                    'in_lock_file' => in_array('kreait/firebase-php', $packages),
-                    'config_exists' => file_exists(storage_path('app/firebase-auth.json')),
                 ]
             ],
             'storage' => [

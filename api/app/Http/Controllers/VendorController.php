@@ -120,14 +120,14 @@ class VendorController extends Controller
     public function getBookings(Request $request)
     {
         $vendor = $request->user();
-        
+
         // Get all bookings for properties owned by this vendor
-        $bookings = \App\Models\Booking::whereHas('property', function($query) use ($vendor) {
+        $bookings = \App\Models\Booking::whereHas('property', function ($query) use ($vendor) {
             $query->where('vendor_id', $vendor->id);
         })
-        ->with(['property:PropertyId,Name,Location'])
-        ->orderBy('created_at', 'desc')
-        ->get();
+            ->with(['property:PropertyId,Name,Location'])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return response()->json($bookings);
     }
@@ -155,7 +155,7 @@ class VendorController extends Controller
     public function getStats(Request $request)
     {
         $vendor = $request->user();
-        
+
         // Get vendor's properties
         $totalProperties = \App\Models\PropertyMaster::where('vendor_id', $vendor->id)->count();
         $approvedProperties = \App\Models\PropertyMaster::where('vendor_id', $vendor->id)
@@ -166,34 +166,34 @@ class VendorController extends Controller
             ->count();
 
         // Get bookings for vendor's properties
-        $totalBookings = \App\Models\Booking::whereHas('property', function($query) use ($vendor) {
+        $totalBookings = \App\Models\Booking::whereHas('property', function ($query) use ($vendor) {
             $query->where('vendor_id', $vendor->id);
         })->count();
 
         // Granular Booking Stats
-        $todayBookings = \App\Models\Booking::whereHas('property', function($query) use ($vendor) {
+        $todayBookings = \App\Models\Booking::whereHas('property', function ($query) use ($vendor) {
             $query->where('vendor_id', $vendor->id);
         })->whereDate('created_at', now()->toDateString())->count();
 
-        $weekBookings = \App\Models\Booking::whereHas('property', function($query) use ($vendor) {
+        $weekBookings = \App\Models\Booking::whereHas('property', function ($query) use ($vendor) {
             $query->where('vendor_id', $vendor->id);
         })->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count();
 
-        $monthBookings = \App\Models\Booking::whereHas('property', function($query) use ($vendor) {
+        $monthBookings = \App\Models\Booking::whereHas('property', function ($query) use ($vendor) {
             $query->where('vendor_id', $vendor->id);
         })->whereMonth('created_at', now()->month)->count();
 
         // Get recent bookings (last 5)
-        $recentBookings = \App\Models\Booking::whereHas('property', function($query) use ($vendor) {
+        $recentBookings = \App\Models\Booking::whereHas('property', function ($query) use ($vendor) {
             $query->where('vendor_id', $vendor->id);
         })
-        ->with(['property:PropertyId,Name,Location'])
-        ->orderBy('created_at', 'desc')
-        ->limit(5)
-        ->get();
+            ->with(['property:PropertyId,Name,Location'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
 
         // Calculate total revenue (if you have pricing in bookings)
-        $totalRevenue = \App\Models\Booking::whereHas('property', function($query) use ($vendor) {
+        $totalRevenue = \App\Models\Booking::whereHas('property', function ($query) use ($vendor) {
             $query->where('vendor_id', $vendor->id);
         })->sum('TotalAmount') ?? 0;
 
@@ -232,7 +232,7 @@ class VendorController extends Controller
 
         $vendor = $request->user();
         $booking = \App\Models\Booking::findOrFail($id);
-        
+
         // Verify ownership
         $property = \App\Models\PropertyMaster::where('PropertyId', $booking->PropertyId)
             ->where('vendor_id', $vendor->id)
@@ -268,7 +268,7 @@ class VendorController extends Controller
         ]);
 
         $vendor = $request->user();
-        
+
         // Verify ownership
         $property = \App\Models\PropertyMaster::where('PropertyId', $request->property_id)
             ->where('vendor_id', $vendor->id)
@@ -328,8 +328,8 @@ class VendorController extends Controller
             ->where(function ($query) use ($request) {
                 $identifier = $request->identifier;
                 $query->where('email', $identifier)
-                      ->orWhere('phone', $identifier);
-                
+                    ->orWhere('phone', $identifier);
+
                 // If identifier looks like a phone number, try variations
                 $digits = preg_replace('/[^0-9]/', '', $identifier);
                 if (strlen($digits) >= 10) {
@@ -345,10 +345,10 @@ class VendorController extends Controller
 
         // Generate 6-digit OTP
         $otp = rand(100000, 999999);
-        
+
         // Generate 6-digit OTP
         $otp = rand(100000, 999999);
-        
+
         // Store OTP in cache for 5 minutes
         \Cache::put('vendor_otp_' . $request->identifier, $otp, now()->addMinutes(5));
 
@@ -358,7 +358,7 @@ class VendorController extends Controller
                 $this->notificationService->sendEmailOTP($user->email, $otp, 'vendor_login');
                 \Log::info("Vendor Login OTP sent to Email: {$user->email}");
             }
-            
+
             // Also try SMS to registered phone
             if ($user->phone) {
                 $this->notificationService->sendSMSOTP($user->phone, $otp, 'vendor_login');
@@ -368,12 +368,13 @@ class VendorController extends Controller
         }
 
         return response()->json([
-            'message' => 'OTP sent to your registered email ' . ($user->email ? '('.$this->maskEmail($user->email).')' : ''),
+            'message' => 'OTP sent to your registered email ' . ($user->email ? '(' . $this->maskEmail($user->email) . ')' : ''),
             'otp' => $otp // Remove in production!
         ]);
     }
 
-    private function maskEmail($email) {
+    private function maskEmail($email)
+    {
         $parts = explode('@', $email);
         return substr($parts[0], 0, 2) . '***@' . $parts[1];
     }
@@ -388,18 +389,11 @@ class VendorController extends Controller
 
         $isValid = false;
 
-        // 1. Check Firebase Token (Priority for Mobile)
-        if ($request->firebase_token) {
-            // TODO: Verify token with Firebase Admin SDK
-            // Implicit trust for now
+        // Check Backend OTP
+        $storedOTP = \Cache::get('vendor_otp_' . $request->identifier);
+        if ($storedOTP && $storedOTP == $request->otp) {
             $isValid = true;
-        } else {
-            // 2. Check Backend OTP
-            $storedOTP = \Cache::get('vendor_otp_' . $request->identifier);
-            if ($storedOTP && $storedOTP == $request->otp) {
-                $isValid = true;
-                \Cache::forget('vendor_otp_' . $request->identifier);
-            }
+            \Cache::forget('vendor_otp_' . $request->identifier);
         }
 
         if (!$isValid) {
@@ -412,8 +406,8 @@ class VendorController extends Controller
             ->where(function ($query) use ($request) {
                 $identifier = $request->identifier;
                 $query->where('email', $identifier)
-                      ->orWhere('phone', $identifier);
-                
+                    ->orWhere('phone', $identifier);
+
                 // Flex match for phone
                 $digits = preg_replace('/[^0-9]/', '', $identifier);
                 if (strlen($digits) >= 10) {
@@ -455,18 +449,10 @@ class VendorController extends Controller
         }
 
         $otpService = app(\App\Services\OtpService::class);
-        
-        // Skip OTP generation if coming from Firebase Phone Auth
-        if ($request->skip_otp && $request->phone) {
-            // Just cache the data for registration step
-            $cacheKey = $request->phone;
-             \Cache::put('vendor_reg_data_' . $cacheKey, $request->all(), now()->addMinutes(10));
-             return response()->json(['message' => 'OTP handled by Firebase']);
-        }
-        
+
         // Generate ONE OTP for both email and phone
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        
+
         // Store OTP for both identifiers if provided
         try {
             if ($request->email) {
@@ -479,7 +465,7 @@ class VendorController extends Controller
                 $this->notificationService->sendEmailOTP($request->email, $otp, 'vendor_registration');
                 \Log::info("Vendor Registration OTP sent to email: {$request->email}, OTP: {$otp}");
             }
-            
+
             if ($request->phone) {
                 \App\Models\Otp::create([
                     'identifier' => $request->phone,
@@ -503,7 +489,7 @@ class VendorController extends Controller
                 ]
             ], 500);
         }
-        
+
         // Store registration data in cache
         $cacheKey = $request->email ?: $request->phone;
         \Cache::put('vendor_reg_data_' . $cacheKey, $request->all(), now()->addMinutes(10));
@@ -522,29 +508,23 @@ class VendorController extends Controller
         ]);
 
         $otpService = app(\App\Services\OtpService::class);
-        
+
         // Try to verify OTP for email or phone
         $isValid = false;
         $cacheKey = null;
 
-        // Verify Firebase Token if present
-        if ($request->firebase_token) {
-            // TODO: Verify token with Firebase Admin SDK
-            // For now, implicit trust as per CustomerAuthController pattern
-             $isValid = true;
-             $cacheKey = $request->email ?: $request->phone; // Match sendOTP logic
-        } else {
-             // Normal OTP verification logic
+        $isValid = false;
+        $cacheKey = null;
 
+        // Normal OTP verification logic
         if ($request->email) {
             $isValid = $otpService->verify($request->email, $request->otp, 'vendor_registration');
             $cacheKey = $request->email;
         }
-        
+
         if (!$isValid && $request->phone) {
-                $isValid = $otpService->verify($request->phone, $request->otp, 'vendor_registration');
-                $cacheKey = $request->phone;
-            }
+            $isValid = $otpService->verify($request->phone, $request->otp, 'vendor_registration');
+            $cacheKey = $request->phone;
         }
 
         if (!$isValid) {

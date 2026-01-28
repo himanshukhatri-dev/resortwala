@@ -30,18 +30,22 @@ class PropertyImage extends Model
         if (str_starts_with($this->image_path, 'http')) {
             return $this->image_path;
         }
-        
+
+        // Reliable Base URL
+        $baseUrl = config('app.asset_url', config('app.url'));
+        $baseUrl = rtrim($baseUrl, '/');
+
         $path = $this->image_path;
-        // If path already starts with storage/, use it as is
+
+        // Normalize Path
         if (str_starts_with($path, 'storage/')) {
-            return asset('api/' . $path);
+            return $baseUrl . '/' . $path;
         }
-        // If path starts with properties/, prepend storage/
         if (str_starts_with($path, 'properties/')) {
-            return asset('api/storage/' . $path);
+            return $baseUrl . '/storage/' . $path;
         }
-        
+
         // Default fallback
-        return asset('api/storage/properties/' . $path);
+        return $baseUrl . '/storage/properties/' . $path;
     }
 }
