@@ -19,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if($this->app->environment('production') || $this->app->environment('UAT')) {
+        if ($this->app->environment('production') || $this->app->environment('UAT')) {
             // \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
@@ -29,13 +29,13 @@ class AppServiceProvider extends ServiceProvider
             config(['mail.from.name' => 'ResortWala']);
         } else {
             // Staging / Local / Dev
-            config(['mail.from.address' => 'no-reply@staging.resortwala.com']);
+            config(['mail.from.address' => 'support@resortwala.com']);
             config(['mail.from.name' => 'ResortWala [Staging]']);
         }
 
         // Global CC Configuration
         $globalCCs = ['himanshukhatri.1988@gmail.com'];
-        
+
         \Illuminate\Support\Facades\Event::listen(
             \Illuminate\Mail\Events\MessageSending::class,
             function ($event) use ($globalCCs) {
