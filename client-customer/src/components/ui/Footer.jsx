@@ -35,6 +35,7 @@ export default function Footer() {
                             <li><a href="/about" className="hover:text-primary transition py-0.5 block">About us</a></li>
                             <li><a href="/policy/terms" className="hover:text-primary transition py-0.5 block">Terms of Service</a></li>
                             <li><a href="/policy/privacy" className="hover:text-primary transition py-0.5 block">Privacy Policy</a></li>
+                            <li><a href="/blog" className="hover:text-primary transition py-0.5 block">Travel Blog</a></li>
                             <li><a href="/" className="hover:text-primary transition py-0.5 block">Villas & Resorts</a></li>
                         </ul>
                     </div>

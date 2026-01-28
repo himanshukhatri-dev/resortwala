@@ -69,6 +69,8 @@ const BookingFailed = lazy(() => import('./pages/BookingFailed'));
 const BookingPending = lazy(() => import('./pages/BookingPending'));
 const Maintenance = lazy(() => import('./pages/Maintenance'));
 const ComingSoon = lazy(() => import('./pages/ComingSoon'));
+const BlogList = lazy(() => import('./pages/BlogList'));
+const BlogPost = lazy(() => import('./pages/BlogPost'));
 
 // Loading Fallback
 const PageLoader = () => (
@@ -113,6 +115,8 @@ function App() {
                           <Route path="/contact" element={<Contact />} />
                           <Route path="/about" element={<About />} />
                           <Route path="/policy/:type" element={<Policy />} />
+                          <Route path="/blog" element={<BlogList />} />
+                          <Route path="/blog/:slug" element={<BlogPost />} />
                         </Route>
 
                         {/* Public Standalone Calendar View */}

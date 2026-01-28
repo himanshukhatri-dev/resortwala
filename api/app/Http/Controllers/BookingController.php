@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 use App\Services\WhatsApp\WhatsAppService;
 use App\Services\WhatsApp\WhatsAppMessage;
-use App\Services\FCMService;
+
 
 class BookingController extends Controller
 {
@@ -19,7 +19,7 @@ class BookingController extends Controller
     protected $phonePeService;
     protected $whatsAppService;
     protected $commissionService;
-    protected $fcmService;
+
     protected $availabilityService;
 
     public function __construct(
@@ -27,14 +27,13 @@ class BookingController extends Controller
         PhonePeService $phonePeService,
         WhatsAppService $whatsAppService,
         \App\Services\CommissionService $commissionService,
-        \App\Services\FCMService $fcmService,
         \App\Services\AvailabilityService $availabilityService
     ) {
         $this->notificationService = $notificationService;
         $this->phonePeService = $phonePeService;
         $this->whatsAppService = $whatsAppService;
         $this->commissionService = $commissionService;
-        $this->fcmService = $fcmService;
+        // $this->fcmService = $fcmService;
         $this->availabilityService = $availabilityService;
     }
 
@@ -212,7 +211,8 @@ class BookingController extends Controller
                     ])
                 );
 
-                // Mobile Push
+                // Mobile Push - DISABLED
+                /*
                 $user = \App\Models\User::where('email', $booking->CustomerEmail)->first();
                 if ($user) {
                     $this->fcmService->sendToUsers(
@@ -222,6 +222,7 @@ class BookingController extends Controller
                         ['type' => 'booking', 'id' => $booking->id]
                     );
                 }
+                */
             }
 
             return response()->json([

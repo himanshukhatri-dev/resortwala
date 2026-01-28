@@ -77,6 +77,11 @@ Route::post('/coupons/check', [\App\Http\Controllers\CouponController::class, 'c
 Route::post('/events/track', [\App\Http\Controllers\EventController::class, 'track']);
 // Route::post('/events/batch', [\App\Http\Controllers\EventController::class, 'batchTrack']); // Duplicate
 
+// Blog Routes (Content Intelligence)
+Route::get('/blogs', [\App\Http\Controllers\BlogController::class, 'index']);
+Route::get('/blogs/{slug}', [\App\Http\Controllers\BlogController::class, 'show']);
+Route::post('/admin/blogs/generate', [\App\Http\Controllers\BlogController::class, 'generate']);
+
 
 // Customer Authentication Routes
 // Public Availability (Shareable Links)

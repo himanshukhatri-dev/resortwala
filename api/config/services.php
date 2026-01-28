@@ -39,9 +39,7 @@ return [
         'places_api_key' => env('GOOGLE_PLACES_API_KEY'),
     ],
 
-    'fcm' => [
-        'server_key' => env('FCM_SERVER_KEY'),
-    ],
+
 
     'sms' => [
         'api_key' => env('SMS_API_KEY'),

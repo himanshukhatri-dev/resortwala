@@ -12,6 +12,7 @@ import { useSearch } from '../context/SearchContext';
 import { useCompare } from '../context/CompareContext';
 import CompareModal from '../components/features/CompareModal';
 import SEO from '../components/SEO';
+import LocationRichContent from '../components/location/LocationRichContent';
 import { PropertyCardSkeleton } from '../components/ui/Skeleton';
 import { getPricing } from '../utils/pricing';
 import toast from 'react-hot-toast';
@@ -645,6 +646,12 @@ export default function Home() {
                         </div>
                     </div>
                 </div>
+
+
+                {/* Local SEO Content - Only shows if city/location is selected */}
+                {(filters.location || city) && (
+                    <LocationRichContent locationKey={filters.location || city} />
+                )}
 
                 <FilterModal
                     isOpen={isFilterModalOpen}

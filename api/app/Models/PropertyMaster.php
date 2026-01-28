@@ -107,15 +107,19 @@ class PropertyMaster extends Model
             return $path;
         }
 
+        // Get configured asset URL (Reliable)
+        $baseUrl = config('app.asset_url', config('app.url'));
+        $baseUrl = rtrim($baseUrl, '/');
+
         // Apply same logic as PropertyImage
         if (str_starts_with($path, 'storage/')) {
-            return asset($path);
+            return $baseUrl . '/' . $path;
         }
         if (str_starts_with($path, 'properties/')) {
-            return asset('storage/' . $path);
+            return $baseUrl . '/storage/' . $path;
         }
 
-        return asset('storage/properties/' . $path);
+        return $baseUrl . '/storage/properties/' . $path;
     }
     protected $table = 'property_masters';
     protected $primaryKey = 'PropertyId';

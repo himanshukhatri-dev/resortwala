@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    host: true,
+    host: '0.0.0.0',
+    strictPort: true,
     allowedHosts: ['local.resortwala.com'],
     proxy: {
       '/api': {

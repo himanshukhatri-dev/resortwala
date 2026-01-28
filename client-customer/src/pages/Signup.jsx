@@ -226,7 +226,7 @@ export default function Signup() {
                         </div>
                     )}
 
-                    <div id="signup-recaptcha"></div>
+
                 </div>
             </div>
         </div>

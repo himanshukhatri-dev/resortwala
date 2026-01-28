@@ -17,36 +17,17 @@ export default function Login() {
     const [error, setError] = useState('');
     const [showOtpInput, setShowOtpInput] = useState(false);
     const [otp, setOtp] = useState('');
-    const [confirmationResult, setConfirmationResult] = useState(null); // Firebase confirmation result
     const [isPhoneAuth, setIsPhoneAuth] = useState(true); // Toggle between phone/email logic
 
     // const API_URL = import.meta.env.VITE_API_BASE_URL; // Replaced by API_BASE_URL from config
 
     // Auto-trigger from Signup redirection
     // Auto-trigger from Signup redirection & Cleanup Recaptcha
+    // Auto-trigger from Signup redirection
     useEffect(() => {
-        // Cleanup stale recaptcha from previous renders
-        if (window.recaptchaVerifier) {
-            try {
-                window.recaptchaVerifier.clear();
-            } catch (e) {
-                console.warn("Recaptcha clear error", e);
-            }
-            window.recaptchaVerifier = null;
-        }
-
         if (location.state?.autoTrigger && location.state?.identifier) {
             handleLoginSubmit({ preventDefault: () => { } });
         }
-
-        return () => {
-            if (window.recaptchaVerifier) {
-                try {
-                    window.recaptchaVerifier.clear();
-                } catch (e) { }
-                window.recaptchaVerifier = null;
-            }
-        };
     }, []);
 
     useEffect(() => {
@@ -279,7 +260,7 @@ export default function Login() {
                         </form>
                     )}
 
-                    <div id="login-recaptcha"></div>
+
 
                     <div className="mt-10 pt-6 border-t border-gray-100 text-center">
                         <p className="text-gray-500 text-sm font-medium">
