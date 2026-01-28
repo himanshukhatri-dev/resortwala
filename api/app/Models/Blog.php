@@ -54,17 +54,15 @@ class Blog extends Model
         $baseUrl = config('app.asset_url', config('app.url'));
         $baseUrl = rtrim($baseUrl, '/');
 
-        // Path normalization
+        // Path normalization (Mirroring PropertyMaster logic)
         $path = $value;
+        if (str_starts_with($path, 'storage/')) {
+            return $baseUrl . '/' . $path;
+        }
         if (str_starts_with($path, 'properties/')) {
-            $path = 'storage/' . $path;
-        } elseif (str_starts_with($path, 'storage/')) {
-            // It's already prefixed
-        } else {
-            // Assume relative to storage root
-            $path = 'storage/' . $path;
+            return $baseUrl . '/storage/' . $path;
         }
 
-        return $baseUrl . '/' . ltrim($path, '/');
+        return $baseUrl . '/storage/properties/' . $path;
     }
 }
