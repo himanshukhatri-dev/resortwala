@@ -16,7 +16,9 @@ const BlogList = () => {
 
     const fetchPosts = async () => {
         try {
-            const { data } = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:8085/api'}/blogs`);
+            // Using centralized config for API URL
+            const { API_BASE_URL } = await import('../config');
+            const { data } = await axios.get(`${API_BASE_URL}/blogs`);
             setPosts(data.data || []); // Handle paginated response
             setLoading(false);
         } catch (error) {

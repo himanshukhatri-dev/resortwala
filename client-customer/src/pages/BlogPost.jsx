@@ -19,7 +19,8 @@ const BlogPost = () => {
     const fetchPost = async () => {
         try {
             setLoading(true);
-            const { data } = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:8085/api'}/blogs/${slug}`);
+            const { API_BASE_URL } = await import('../config');
+            const { data } = await axios.get(`${API_BASE_URL}/blogs/${slug}`);
             setPost(data);
             setLoading(false);
         } catch (error) {
