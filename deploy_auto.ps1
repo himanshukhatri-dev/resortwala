@@ -10,7 +10,7 @@
     Deployment environment: beta or production
     
 .PARAMETER Branch
-    Git branch to deploy: master (for beta) or release (for production)
+    Git branch to deploy: main (for beta) or release (for production)
     
 .EXAMPLE
     .\deploy_auto.ps1 -Environment beta -Branch master
@@ -27,7 +27,7 @@ param (
     [string]$Environment,
     
     [Parameter(Mandatory = $false)]
-    [ValidateSet("master", "release")]
+    [ValidateSet("main", "release")]
     [string]$Branch,
     
     [Parameter(Mandatory = $false)]
@@ -66,11 +66,11 @@ if (-not $Branch) {
     Write-Host ""
     Write-Host "Select Git branch to deploy:" -ForegroundColor Yellow
     if ($Environment -eq "beta") {
-        Write-Host "  1. master (recommended for beta)" -ForegroundColor Green
+        Write-Host "  1. main (recommended for beta)" -ForegroundColor Green
         Write-Host "  2. release" -ForegroundColor Gray
     }
     else {
-        Write-Host "  1. master" -ForegroundColor Gray
+        Write-Host "  1. main" -ForegroundColor Gray
         Write-Host "  2. release (recommended for production)" -ForegroundColor Green
     }
     Write-Host ""
@@ -78,7 +78,7 @@ if (-not $Branch) {
     $choice = Read-Host "Enter choice (1 or 2)"
     
     switch ($choice) {
-        "1" { $Branch = "master" }
+        "1" { $Branch = "main" }
         "2" { $Branch = "release" }
         default {
             Write-Error "Invalid choice. Please enter 1 or 2."
@@ -113,8 +113,8 @@ if (-not $Component) {
 }
 
 # Validate environment and branch combination
-if ($Environment -eq "beta" -and $Branch -ne "master") {
-    Write-Warning "Beta environment should use 'master' branch. You specified '$Branch'."
+if ($Environment -eq "beta" -and $Branch -ne "main") {
+    Write-Warning "Beta environment should use 'main' branch. You specified '$Branch'."
     $confirm = Read-Host "Continue anyway? (yes/no)"
     if ($confirm -ne "yes") {
         Write-Host "Deployment cancelled." -ForegroundColor Yellow

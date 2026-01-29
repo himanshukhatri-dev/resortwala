@@ -56,12 +56,12 @@
 
 ## Git Branch Strategy
 
-- **`master` branch** → Deploys to **Beta/Staging** (`staging.resortwala.com`)
+- **`main` branch**   → Deploys to **Beta/Staging** (`staging.resortwala.com`)
 - **`release` branch** → Deploys to **Production** (`resortwala.com`)
 
 ## Deployment Process
 
-### Deploy to Beta (from master branch)
+### Deploy to Beta (from main branch)
 
 ```bash
 # 1. Build all apps locally
@@ -71,7 +71,7 @@ cd ../client-admin && npm run build
 cd ../api && composer install --no-dev
 
 # 2. Deploy to server
-./deploy.ps1 -Environment Beta
+./deploy_auto.ps1 -Environment beta -Branch main -Component all
 
 # 3. On server, the files should be placed in:
 # - Customer: /var/www/html/staging.resortwala.com/
@@ -83,9 +83,9 @@ cd ../api && composer install --no-dev
 ### Deploy to Production (from release branch)
 
 ```bash
-# 1. Merge master to release
+# 1. Merge main to release
 git checkout release
-git merge master
+git merge main
 git push origin release
 
 # 2. Build all apps locally
@@ -95,7 +95,7 @@ cd ../client-admin && npm run build
 cd ../api && composer install --no-dev
 
 # 3. Deploy to server
-./deploy.ps1 -Environment Production
+./deploy_auto.ps1 -Environment production -Branch release -Component all
 
 # 4. On server, the files should be placed in:
 # - Customer: /var/www/html/resortwala.com/

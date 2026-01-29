@@ -15,7 +15,8 @@ class SitemapController extends Controller
     public function index()
     {
         $xml = Cache::remember('sitemap_index', config('sitemap.cache_duration', 1440), function () {
-            $baseUrl = config('app.url');
+            // Use FRONTEND_URL for public sitemap links
+            $baseUrl = rtrim(env('FRONTEND_URL', config('app.url')), '/');
 
             return view('sitemap.index', [
                 'sitemaps' => [
@@ -52,7 +53,7 @@ class SitemapController extends Controller
     {
         $xml = Cache::remember('sitemap_properties', config('sitemap.cache_duration', 1440), function () {
             $properties = PropertyMaster::where('is_approved', true)
-                ->select('PropertyId', 'Name', 'updated_at')
+                ->select('PropertyId', 'Name', 'slug', 'updated_at')
                 ->orderBy('updated_at', 'desc')
                 ->get();
 

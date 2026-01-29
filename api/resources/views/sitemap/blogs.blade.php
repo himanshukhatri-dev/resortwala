@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 @foreach($blogs as $blog)
     <url>
-        <loc>{{ config('app.url') }}/blog/{{ $blog->slug }}</loc>
+        <loc>{{ rtrim(env('FRONTEND_URL', 'https://resortwala.com'), '/') }}/blog/{{ $blog->slug }}</loc>
         <lastmod>{{ $blog->updated_at->toAtomString() }}</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.8</priority>
