@@ -73,14 +73,19 @@ Route::post('/bookings/{id}/cancel', [\App\Http\Controllers\BookingController::c
 Route::get('/properties/{id}/booked-dates', [PropertyMasterController::class, 'getBookedDates']);
 Route::post('/coupons/check', [\App\Http\Controllers\CouponController::class, 'check']);
 
+
 // Event Tracking (Analytics)
 Route::post('/events/track', [\App\Http\Controllers\EventController::class, 'track']);
 // Route::post('/events/batch', [\App\Http\Controllers\EventController::class, 'batchTrack']); // Duplicate
 
-// Blog Routes (Content Intelligence)
+// Blog Routes (Public)
 Route::get('/blogs', [\App\Http\Controllers\BlogController::class, 'index']);
 Route::get('/blogs/{slug}', [\App\Http\Controllers\BlogController::class, 'show']);
-Route::post('/admin/blogs/generate', [\App\Http\Controllers\BlogController::class, 'generate']);
+
+// SEO & Sitemap
+Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index']);
+Route::get('/sitemap-blogs.xml', [\App\Http\Controllers\SitemapController::class, 'blogs']);
+Route::get('/sitemap-properties.xml', [\App\Http\Controllers\SitemapController::class, 'properties']);
 
 
 // Customer Authentication Routes
@@ -338,6 +343,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/test', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'sendTest']);
         Route::post('/simulate-event', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'simulateEvent']);
         Route::get('/logs', [\App\Http\Controllers\Admin\NotificationSetupController::class, 'getLogs']);
+    });
+
+    // Admin Blog Management (Phase 11)
+    Route::prefix('admin/blogs')->middleware('acl:content.manage')->group(function () {
+        Route::get('/', [\App\Http\Controllers\BlogController::class, 'adminIndex']);
+        Route::post('/', [\App\Http\Controllers\BlogController::class, 'store']);
+        Route::get('/{id}', [\App\Http\Controllers\BlogController::class, 'adminShow']);
+        Route::put('/{id}', [\App\Http\Controllers\BlogController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\BlogController::class, 'destroy']);
+        Route::post('/{id}/publish', [\App\Http\Controllers\BlogController::class, 'publish']);
+        Route::post('/generate-ai', [\App\Http\Controllers\BlogController::class, 'generateAI']);
     });
 
     // Admin Finance & Reconciliation (Phase 7)

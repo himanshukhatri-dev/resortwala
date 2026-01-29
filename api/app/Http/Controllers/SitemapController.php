@@ -2,38 +2,63 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Blog;
 use App\Models\PropertyMaster;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Cache;
 
 class SitemapController extends Controller
 {
     /**
-     * Generate sitemap.xml
+     * Sitemap index - links to all sub-sitemaps
      */
     public function index()
     {
-        $properties = PropertyMaster::select('slug', 'updated_at')
-            ->whereNotNull('slug')
-            ->orderBy('updated_at', 'desc')
-            ->get();
+        $xml = Cache::remember('sitemap_index', config('sitemap.cache_duration', 1440), function () {
+            $baseUrl = config('app.url');
 
-        $cities = PropertyMaster::select('CityName')
-            ->distinct()
-            ->whereNotNull('CityName')
-            ->get();
+            return view('sitemap.index', [
+                'sitemaps' => [
+                    ['loc' => $baseUrl . '/sitemap-blogs.xml', 'lastmod' => Blog::max('updated_at')],
+                    ['loc' => $baseUrl . '/sitemap-properties.xml', 'lastmod' => PropertyMaster::max('updated_at')],
+                ]
+            ])->render();
+        });
 
-        $baseUrl = config('app.frontend_url', 'https://resortwala.com');
+        return response($xml)->header('Content-Type', 'application/xml');
+    }
 
-        $content = view('sitemap', [
-            'properties' => $properties,
-            'cities' => $cities,
-            'baseUrl' => $baseUrl,
-        ])->render();
+    /**
+     * Blog sitemap
+     */
+    public function blogs()
+    {
+        $xml = Cache::remember('sitemap_blogs', config('sitemap.cache_duration', 1440), function () {
+            $blogs = Blog::published()
+                ->select('slug', 'updated_at', 'created_at')
+                ->orderBy('updated_at', 'desc')
+                ->get();
 
-        return Response::make($content, 200, [
-            'Content-Type' => 'application/xml',
-            'Cache-Control' => 'public, max-age=3600',
-        ]);
+            return view('sitemap.blogs', compact('blogs'))->render();
+        });
+
+        return response($xml)->header('Content-Type', 'application/xml');
+    }
+
+    /**
+     * Properties sitemap
+     */
+    public function properties()
+    {
+        $xml = Cache::remember('sitemap_properties', config('sitemap.cache_duration', 1440), function () {
+            $properties = PropertyMaster::where('is_approved', true)
+                ->select('PropertyId', 'Name', 'updated_at')
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            return view('sitemap.properties', compact('properties'))->render();
+        });
+
+        return response($xml)->header('Content-Type', 'application/xml');
     }
 }

@@ -57,6 +57,8 @@ import AuditLogs from './pages/AuditLogs';
 import { ProtectedRoute, PermissionGate } from './components/ACL';
 import SystemControl from './pages/Internal/SystemControl';
 import DeploymentDashboard from './pages/Internal/DeploymentDashboard';
+import BlogManager from './pages/Content/BlogManager';
+import BlogEditor from './pages/Content/BlogEditor';
 import './App.css';
 
 
@@ -137,6 +139,11 @@ function App() {
               <Route path="/connectors" element={<Connectors />} /> {/* New Route */}
               <Route path="/reconciliation" element={<Reconciliation />} /> {/* New Route */}
               <Route path="/communications" element={<Communications />} />
+
+              {/* Blog & Content Management */}
+              <Route path="/content/blogs" element={<BlogManager />} />
+              <Route path="/content/blogs/new" element={<BlogEditor />} />
+              <Route path="/content/blogs/edit/:id" element={<BlogEditor />} />
 
               <Route path="/notifications" element={<ProtectedRoute permission="notifications.manage_templates"><NotificationCenter /></ProtectedRoute>} />
               <Route path="/accounts-center" element={<ProtectedRoute permission="accounts.view"><AccountsCenter /></ProtectedRoute>} />

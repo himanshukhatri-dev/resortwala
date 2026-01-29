@@ -26,11 +26,19 @@ class NotificationSetupController extends Controller
             'content' => 'required|string',
         ]);
 
+        if (strpos($request->content, '{{') !== false && strpos($request->content, '}}') === false) {
+            return response()->json(['message' => 'Syntax Error: Unclosed variable bracket {{ found.'], 422);
+        }
+
+        // Sanitize for XSS (Allowing email-safe tags)
+        $allowedTags = '<p><a><b><strong><i><em><u><br><div><span><h1><h2><h3><h4><h5><h6><ul><ol><li><table><thead><tbody><tr><th><td><img><style>';
+        $safeContent = strip_tags($request->content, $allowedTags);
+
         $template = NotificationTemplate::updateOrCreate(
             ['name' => $request->name, 'channel' => $request->channel],
             [
                 'subject' => $request->subject,
-                'content' => $request->content,
+                'content' => $safeContent,
                 'variables' => $request->variables ?? [],
                 'is_active' => $request->is_active ?? true
             ]

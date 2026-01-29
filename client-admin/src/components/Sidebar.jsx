@@ -10,7 +10,7 @@ import {
     FiDatabase, FiDollarSign, FiCalendar, FiSettings,
     FiMessageSquare, FiTruck, FiActivity, FiLayers,
     FiPlusCircle, FiUploadCloud, FiBarChart2, FiCpu,
-    FiHash, FiArchive, FiBell, FiSearch, FiVideo, FiMic, FiLock, FiServer
+    FiHash, FiArchive, FiBell, FiSearch, FiVideo, FiMic, FiLock, FiServer, FiFileText
 } from 'react-icons/fi';
 
 export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile, onToggle }) {
@@ -119,6 +119,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             items: [
                 { path: '/intelligence', icon: <FiCpu />, label: 'Control Plane', permission: 'system.manage_settings', developerOnly: true },
                 { path: '/internal/deployment', icon: <FiServer />, label: 'Deployments', permission: 'system.manage_settings' },
+                { path: '/content/blogs', icon: <FiFileText />, label: 'Blog Manager', permission: 'content.manage' },
                 { path: '/chatbot', icon: <FiMessageSquare />, label: 'Chatbot AI', permission: 'chatbot.manage' },
                 { path: '/communications', icon: <FiMessageSquare />, label: 'Communications', permission: 'notifications.manage_templates' },
                 { path: '/notifications', icon: <FiBell />, label: 'Push Notifications', permission: 'notifications.manage_templates' },
@@ -133,6 +134,7 @@ export default function Sidebar({ userType = 'admin', isOpen, onClose, isMobile,
             textColor: 'text-red-700',
             bgLight: 'bg-red-50',
             items: [
+                { path: '/users', icon: <FiLock />, label: 'Super Admin', permission: 'users.manage', developerOnly: true },
                 { path: '/security/acl', icon: <FiLock />, label: 'Access Control', permission: 'system.manage_acl', developerOnly: true },
                 { path: '/security/audit', icon: <FiActivity />, label: 'Audit Logs', permission: 'system.manage_acl', developerOnly: true },
             ]
