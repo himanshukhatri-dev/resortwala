@@ -5,7 +5,7 @@ import { API_BASE_URL } from '../../config';
 import { useAuth } from '../../context/AuthContext';
 import {
     FiPlus, FiEdit2, FiTrash2, FiEye, FiEyeOff, FiSearch,
-    FiFilter, FiDownload, FiRefreshCw
+    FiFilter, FiDownload, FiRefreshCw, FiZap
 } from 'react-icons/fi';
 
 export default function BlogManager() {
@@ -80,6 +80,27 @@ export default function BlogManager() {
         }
     };
 
+    const generateAIBlogs = async () => {
+        if (!confirm('Generate 5 AI-powered blog posts? This may take a minute.')) return;
+
+        setLoading(true);
+        try {
+            await axios.post(`${API_BASE_URL}/admin/blogs/generate-ai`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'X-Generator-Secret': 'ResortWala2026'
+                }
+            });
+            alert('✅ Successfully generated 5 AI blogs!');
+            fetchBlogs(1);
+        } catch (err) {
+            console.error('Failed to generate AI blogs:', err);
+            alert('Failed to generate blogs. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="p-6">
             {/* Header */}
@@ -88,12 +109,21 @@ export default function BlogManager() {
                     <h1 className="text-2xl font-bold text-gray-800">Blog Manager</h1>
                     <p className="text-gray-600">Manage your blog posts and content</p>
                 </div>
-                <button
-                    onClick={() => navigate('/content/blogs/new')}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-                >
-                    <FiPlus /> New Blog Post
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={generateAIBlogs}
+                        disabled={loading}
+                        className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition disabled:opacity-50"
+                    >
+                        <FiZap /> AI Generate (5 Blogs)
+                    </button>
+                    <button
+                        onClick={() => navigate('/content/blogs/new')}
+                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                    >
+                        <FiPlus /> New Blog Post
+                    </button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -196,8 +226,8 @@ export default function BlogManager() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${blog.is_published
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-yellow-100 text-yellow-800'
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-yellow-100 text-yellow-800'
                                                 }`}>
                                                 {blog.is_published ? 'Published' : 'Draft'}
                                             </span>
