@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -19,11 +19,10 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
-import { format, differenceInDays, isWithinInterval, parseISO, parse, startOfDay, addDays, isValid } from 'date-fns';
+import { format, differenceInDays, isWithinInterval, parseISO, parse, startOfDay, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import RoomCard from '../components/RoomCard';
 import SEO from '../components/SEO';
-import WaterParkBookingPanel from '../components/ui/WaterParkBookingPanel';
 import { getPricing } from '../utils/pricing';
 
 const PROPERTY_RULES = [
@@ -90,36 +89,16 @@ export default function PropertyDetails() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
 
-    const [dateRange, setDateRange] = useState(() => {
-        const parseDate = (d) => {
-            if (!d) return undefined;
-            const pd = new Date(d);
-            return isValid(pd) ? pd : undefined;
-        };
-
-        const sFrom = state.dateRange?.from || urlParams.get('start');
-        const sTo = state.dateRange?.to || urlParams.get('end');
-
-        return {
-            from: parseDate(sFrom),
-            to: parseDate(sTo)
-        };
+    const [dateRange, setDateRange] = useState({
+        from: state.dateRange?.from ? new Date(state.dateRange.from) : (urlParams.get('start') ? new Date(urlParams.get('start')) : undefined),
+        to: state.dateRange?.to ? new Date(state.dateRange.to) : (urlParams.get('end') ? new Date(urlParams.get('end')) : undefined)
     });
 
-    const [guests, setGuests] = useState(() => {
-        const locState = location.state || {};
-        const adults = parseInt(urlParams.get('adults'));
-        const children = parseInt(urlParams.get('children'));
-
-        if (!isNaN(adults)) {
-            return {
-                adults: adults,
-                children: !isNaN(children) ? children : 0,
-                infants: parseInt(urlParams.get('infants')) || 0,
-                pets: parseInt(urlParams.get('pets')) || 0
-            };
-        }
-        return locState.guests || { adults: 2, children: 0, infants: 0, pets: 0 };
+    const [guests, setGuests] = useState(state.guests || {
+        adults: parseInt(urlParams.get('adults')) || 2,
+        children: parseInt(urlParams.get('children')) || 0,
+        infants: parseInt(urlParams.get('infants')) || 0,
+        pets: parseInt(urlParams.get('pets')) || 0
     });
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false); // Explicitly FALSE by default
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
@@ -141,50 +120,7 @@ export default function PropertyDetails() {
         if (property?.PropertyId) setIsSaved(isWishlisted(property.PropertyId));
     }, [property?.PropertyId, isWishlisted]);
 
-    const [mealSelection, setMealSelection] = useState(() => {
-        return state.mealSelection || parseInt(urlParams.get('meals')) || 0;
-    }); // Single counter for meals
-
-    // Sync state when location.state or URL params change (for prefilling on back navigation)
-    useEffect(() => {
-        const parseDate = (d) => {
-            if (!d) return undefined;
-            const pd = new Date(d);
-            return isValid(pd) ? pd : undefined;
-        };
-
-        const locState = location.state || {};
-
-        // Priority: 1. URL Params, 2. Location State
-        const sFrom = urlParams.get('start') || locState.dateRange?.from;
-        const sTo = urlParams.get('end') || locState.dateRange?.to;
-        const adults = parseInt(urlParams.get('adults'));
-        const children = parseInt(urlParams.get('children'));
-        const meals = parseInt(urlParams.get('meals'));
-
-        if (sFrom && sTo) {
-            const from = parseDate(sFrom);
-            const to = parseDate(sTo);
-            if (from && to) setDateRange({ from, to });
-        }
-
-        if (!isNaN(adults)) {
-            setGuests(prev => ({ ...prev, adults, children: !isNaN(children) ? children : prev.children }));
-        } else if (locState.guests) {
-            setGuests(locState.guests);
-        }
-
-        if (!isNaN(meals)) {
-            setMealSelection(meals);
-        } else if (locState.mealSelection !== undefined) {
-            setMealSelection(locState.mealSelection);
-        }
-
-        if (locState.openDatePicker) {
-            setIsDatePickerOpen(true);
-        }
-    }, [urlParams, location.state]);
-
+    const [mealSelection, setMealSelection] = useState(0); // Single counter for meals
     const bookedDates = availability.blocked_dates || [];
 
     // -- REFS FOR SCROLLING --
@@ -215,7 +151,7 @@ export default function PropertyDetails() {
                 const response = await axios.get(`${API_BASE_URL}/properties/${slug}`);
                 const propData = response.data;
                 const propId = propData.PropertyId || propData.id;
-
+                1
                 // Dev Only Check
                 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                 if (propData.is_developer_only && !isLocal) {
@@ -314,13 +250,24 @@ export default function PropertyDetails() {
     }, [property]);
 
     // Verify reset on mount to prevent auto-open (Defensive check)
-    // Verify reset on mount to prevent auto-open (Defensive check)
-    // Only reset if NO explicit instruction to open exists in state
     useEffect(() => {
-        if (!location.state?.openDatePicker) {
-            setIsDatePickerOpen(false);
-        }
-    }, [id, location.state]);
+        setIsDatePickerOpen(false); // Immediate close
+        const timer = setTimeout(() => {
+            setIsDatePickerOpen(false); // Double check after any rehydration
+        }, 150);
+
+        // Reset State on Property Change
+        setDateRange({ from: undefined, to: undefined });
+        setGuests({
+            adults: parseInt(urlParams.get('adults')) || 1,
+            children: parseInt(urlParams.get('children')) || 0,
+            infants: parseInt(urlParams.get('infants')) || 0,
+            pets: parseInt(urlParams.get('pets')) || 0
+        });
+        setMealSelection(0);
+
+        return () => clearTimeout(timer);
+    }, [id]); // Reset when checking a new property
 
     // -- HANDLERS --
     useEffect(() => {
@@ -410,8 +357,7 @@ export default function PropertyDetails() {
         if (isWaterparkLocal) {
             const isWeekend = (w === 0 || w === 6 || w === 5);
             const wpKey = isWeekend ? 'adult_weekend' : 'adult_weekday';
-            const val = adminPricing[wpKey]?.final || adminPricing[wpKey];
-            if (val) return parseFloat(val);
+            if (adminPricing[wpKey]?.final) return parseFloat(adminPricing[wpKey].final);
         }
 
         // 4. Legacy Buckets / Fallback
@@ -566,7 +512,7 @@ export default function PropertyDetails() {
     const PRICE_WEEKDAY = property ? (property.display_price || getPrice(adminPricing?.mon_thu) || parseFloat(property.price_mon_thu) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0) : 0;
     const PRICE_FRISUN = property ? (property.display_price || getPrice(adminPricing?.fri_sun) || parseFloat(property.price_fri_sun) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0) : 0;
     const PRICE_SATURDAY = property ? (property.display_price || getPrice(adminPricing?.sat) || parseFloat(property.price_sat) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0) : 0;
-    const EXTRA_GUEST_CHARGE = safeFloat(property?.extra_guest_charge || onboardingPricing?.extraGuestCharge || onboardingPricing?.extraMattressCharge || property?.ExtraGuestCharge, 1000);
+    const EXTRA_GUEST_CHARGE = safeFloat(onboardingPricing?.extraGuestCharge, 1000);
     const FOOD_CHARGE = safeFloat(ob.foodRates?.perPerson || ob.foodRates?.veg, 1000);
     const GST_PERCENTAGE = safeFloat(property?.gst_percentage, 18);
     const pricing = property ? getPricing(property) : null;
@@ -586,29 +532,11 @@ export default function PropertyDetails() {
         let totalChildTicket = 0;
         let nightDetails = [];
 
-        // For Waterpark reference rates
-        let adultTicketRate = 0;
-        let adultMarketRate = 0;
-        let childTicketRate = 0;
-        let childMarketRate = 0;
-
-        const baseGuestLimit = parseInt(property?.Occupancy || onboardingPricing?.extraGuestLimit || 12);
-        const extraGuests = Math.max(0, (guests.adults + guests.children) - baseGuestLimit);
-        let totalExtra = 0;
-        let totalFood = 0;
-
-        // Base Meal Rates
-        const VEG_RATE = safeFloat(ob.foodRates?.veg || FOOD_CHARGE, 1000);
-        const NONVEG_RATE = safeFloat(ob.foodRates?.nonVeg || ob.foodRates?.nonveg || FOOD_CHARGE, 1200);
-        const JAIN_RATE = safeFloat(ob.foodRates?.jain || VEG_RATE, 1000);
-        const MAX_MEAL_RATE = Math.max(VEG_RATE, NONVEG_RATE, JAIN_RATE);
-
         for (let i = 0; i < nights; i++) {
             const d = new Date(dateRange.from); d.setDate(d.getDate() + i);
             const w = d.getDay();
-            const isW = (w === 0 || w === 6 || w === 5);
+            const isWeekend = (w === 0 || w === 6 || w === 5);
 
-            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
             // 1. Check for Holiday Override
             const holiday = property.holidays?.find(h => {
                 const dStr = format(d, 'yyyy-MM-dd');
@@ -617,20 +545,24 @@ export default function PropertyDetails() {
                 return dStr >= hStart && dStr <= hEnd;
             });
 
-            let rate = 0;
-            let marketDayRate = 0;
+            let rate = 0; // Customer Rate
+            let marketDayRate = 0; // Vendor Rate
 
             if (holiday) {
                 rate = parseFloat(holiday.base_price);
-                marketDayRate = rate;
+                marketDayRate = rate; // Assume no discount on holidays unless specified
             } else {
+                // Prioritize 7-Day Pricing (New Format)
+                const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
                 const dayKey = dayNames[w];
                 const dayPricing = adminPricing?.[dayKey];
 
                 if (dayPricing?.villa?.final) {
+                    // Use new 7-day explicit pricing
                     rate = parseFloat(dayPricing.villa.final);
                     marketDayRate = parseFloat(dayPricing.villa.current || rate);
                 } else {
+                    // Fallback to Legacy Buckets
                     if (w === 6) { // Saturday
                         rate = parseFloat(PRICE_SATURDAY || PRICE_FRISUN || PRICE_WEEKDAY);
                         marketDayRate = parseFloat(adminPricing.sat?.villa?.current || adminPricing.fri_sun?.villa?.current || property.Price || rate);
@@ -644,98 +576,92 @@ export default function PropertyDetails() {
                 }
             }
 
+            // Fallback if rate is NaN
             if (isNaN(rate)) rate = 0;
             if (isNaN(marketDayRate)) marketDayRate = rate;
 
-            // Daily Extra Guest Logic
-            let dailyExtraRate = EXTRA_GUEST_CHARGE;
-            if (!holiday && adminPricing?.[dayNames[w]]?.extra_person?.final) {
-                dailyExtraRate = parseFloat(adminPricing[dayNames[w]].extra_person.final);
-            }
-            const dailyExtraTotal = extraGuests * dailyExtraRate;
-            totalExtra += dailyExtraTotal;
-
-            // Daily Food Logic
-            let dailyVeg = VEG_RATE;
-            let dailyJain = JAIN_RATE;
-
-            if (!holiday && adminPricing?.[dayNames[w]]) {
-                if (adminPricing[dayNames[w]].meal_person?.final) dailyVeg = parseFloat(adminPricing[dayNames[w]].meal_person.final);
-                if (adminPricing[dayNames[w]].jain_meal_person?.final) dailyJain = parseFloat(adminPricing[dayNames[w]].jain_meal_person.final);
-            }
-            const dailyMaxMeal = Math.max(dailyVeg, NONVEG_RATE, dailyJain);
-            const dailyFoodTotal = mealSelection * dailyMaxMeal;
-            totalFood += dailyFoodTotal;
-
             totalVillaRate += rate;
             totalMarketRate += marketDayRate;
-            nightDetails.push({
-                date: format(d, 'MMM dd'),
-                rate,
-                extraRate: dailyExtraRate,
-                dailyExtraTotal,
-                foodRate: dailyMaxMeal,
-                dailyFoodTotal
-            });
+            nightDetails.push({ date: format(d, 'MMM dd'), rate });
 
             if (isWaterpark) {
-                const suffix = isW ? 'weekend' : 'weekday';
-                const wpKey = `adult_${suffix}`;
-                const wpKeyChild = `child_${suffix}`;
-                let aRate = parseFloat(adminPricing[wpKey]?.final || adminPricing[wpKey] || (isW ? (PRICE_SATURDAY || PRICE_FRISUN) : PRICE_WEEKDAY));
-                let cRate = parseFloat(adminPricing[wpKeyChild]?.final || adminPricing[wpKeyChild] || 500);
+                const typeSuffix = isWeekend ? 'weekend' : 'weekday';
+
+                // Priority for Waterpark: admin_pricing[adult_weekday/weekend] -> Legacy PRICE
+                let aRate = parseFloat(adminPricing[`adult_${typeSuffix}`]?.final || adminPricing[`adult_${typeSuffix}`] || (isWeekend ? (PRICE_SATURDAY || PRICE_FRISUN) : PRICE_WEEKDAY));
+
+                // Priority for Child: admin_pricing[child_weekday/weekend] -> ob.childCriteria -> legacy
+                let cRate = parseFloat(adminPricing[`child_${typeSuffix}`]?.final || adminPricing[`child_${typeSuffix}`] || ob.childCriteria?.[`${typeSuffix}Price`] || ob.childCriteria?.price || 500);
 
                 totalAdultTicket += (aRate * guests.adults);
                 totalChildTicket += (cRate * guests.children);
-
-                // For reference display (use the first night's rates as representative)
-                if (i === 0) {
-                    adultTicketRate = aRate;
-                    adultMarketRate = parseFloat(adminPricing[`adult_${suffix}`]?.current || aRate);
-                    childTicketRate = cRate;
-                    childMarketRate = parseFloat(adminPricing[`child_${suffix}`]?.current || cRate);
-                }
             }
         }
 
         if (isWaterpark) {
             let totalMarketTickets = 0;
-            for (let j = 0; j < nights; j++) {
-                const dj = new Date(dateRange.from); dj.setDate(dj.getDate() + j);
-                const wj = dj.getDay();
-                const isWj = (wj === 0 || wj === 6 || wj === 5);
-                const suffix = isWj ? 'weekend' : 'weekday';
-                let ma = parseFloat(adminPricing[`adult_${suffix}`]?.current || adminPricing[`adult_${suffix}`]?.final || adminPricing[`adult_${suffix}`] || (isWj ? (PRICE_SATURDAY || PRICE_FRISUN) : PRICE_WEEKDAY));
-                let mc = parseFloat(adminPricing[`child_${suffix}`]?.current || adminPricing[`child_${suffix}`]?.final || adminPricing[`child_${suffix}`] || 500);
-                totalMarketTickets += (ma * guests.adults) + (mc * guests.children);
+
+            for (let i = 0; i < nights; i++) {
+                const d = new Date(dateRange.from); d.setDate(d.getDate() + i);
+                const w = d.getDay();
+                const isWeekend = (w === 0 || w === 6 || w === 5);
+
+                const typeSuffix = isWeekend ? 'weekend' : 'weekday';
+                const adultMarket = parseFloat(adminPricing[`adult_${typeSuffix}`]?.current || PRICE_WEEKDAY || 0);
+                const childMarket = parseFloat(adminPricing[`child_${typeSuffix}`]?.current || (ob.childCriteria?.monFriPrice || 500));
+
+                totalMarketTickets += (adultMarket * guests.adults) + (childMarket * guests.children);
             }
 
-            const grantTotal = totalAdultTicket + totalChildTicket;
-            const savings = totalMarketTickets - grantTotal;
-            const totalG = guests.adults + guests.children;
+            const taxableAmount = totalAdultTicket + totalChildTicket;
+            const gstAmount = (taxableAmount * GST_PERCENTAGE) / 100;
+            const totalSavings = Math.max(0, Math.round((totalMarketTickets || 0) - taxableAmount));
+            const totalTickets = guests.adults + guests.children;
+            const wpTokenAmountPerGuest = 50; // Will be synced with config if possible, but 50 is stable default
+            const tokenAmount = totalTickets * wpTokenAmountPerGuest;
 
             return {
                 nights,
                 totalAdultTicket,
                 totalChildTicket,
-                adultTicketRate,
-                adultMarketRate,
-                childTicketRate,
-                childMarketRate,
-                grantTotal,
-                totalSavings: savings > 0 ? savings : 0,
-                tokenAmount: (totalG * 50),
-                gstAmount: 0,
+                gstAmount,
+                grantTotal: taxableAmount + gstAmount,
+                totalSavings,
+                tokenAmount,
+                tokenAmountPerGuest: wpTokenAmountPerGuest,
                 isWaterpark: true,
+                minNightlyRate: nights > 0 ? (totalAdultTicket / nights / (guests.adults || 1)) : 0,
                 nightDetails
             };
         }
 
-        // Villa Logic - Final Summation
+
+        // Children are exempt from capacity in Villas. Only Adults count towards limits/extra charges.
+        const totalGuests = guests.adults;
+        // Prioritize 'Occupancy' (e.g. 8) as the base limit before extra charges apply.
+        // Fallback to 'obPricing.extraGuestLimit' if Occupancy is missing.
+        const baseGuestLimit = parseInt(property?.Occupancy || obPricing?.extraGuestLimit || 12);
+
+        // "from next person" means if total > limit, charge for (total - limit)
+        const extraGuests = Math.max(0, totalGuests - baseGuestLimit);
+        const totalExtra = extraGuests * EXTRA_GUEST_CHARGE * nights;
+
+        // Food Calculation (Simplified: Single Highest Rate)
+        const VEG_RATE = safeFloat(ob.foodRates?.veg || FOOD_CHARGE, 1000);
+        const NONVEG_RATE = safeFloat(ob.foodRates?.nonVeg || ob.foodRates?.nonveg || FOOD_CHARGE, 1200);
+        const JAIN_RATE = safeFloat(ob.foodRates?.jain || VEG_RATE, 1000);
+        const MAX_MEAL_RATE = Math.max(VEG_RATE, NONVEG_RATE, JAIN_RATE);
+
+        const totalFood = (mealSelection * MAX_MEAL_RATE) * nights;
+
         const taxableAmount = totalVillaRate + totalExtra + totalFood;
         const gstAmount = (taxableAmount * GST_PERCENTAGE) / 100;
-        const tokenAmount = Math.ceil(taxableAmount * 0.10);
-        const totalSavings = (totalMarketRate > totalVillaRate) ? Math.round(totalMarketRate - totalVillaRate) : 0;
+        const tokenAmount = Math.ceil(taxableAmount * 0.10); // 10% token for villas
+
+        // Savings Calculation (Real: Daily Vendor Ask vs Customer Price)
+        const totalSavings = (totalMarketRate > totalVillaRate)
+            ? Math.round(totalMarketRate - totalVillaRate)
+            : 0;
 
         return {
             nights,
@@ -744,50 +670,16 @@ export default function PropertyDetails() {
             totalExtra,
             totalFood,
             gstAmount,
-            subtotal: taxableAmount,
             grantTotal: taxableAmount + gstAmount,
             rates: { veg: VEG_RATE, nonVeg: NONVEG_RATE, jain: JAIN_RATE, max: MAX_MEAL_RATE },
             totalSavings,
             tokenAmount,
             isWaterpark: false,
-            nightDetails,
-            extraGuests // Pass explicit count for UI
+            minNightlyRate: nights > 0 ? (totalVillaRate / nights) : 0,
+            nightDetails
         };
     };
     const priceBreakdown = calculateBreakdown();
-
-    const getMinPrice = () => {
-        if (!property) return 0;
-        const prices = [];
-
-        // 1. Check admin_pricing 7-day matrix
-        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-        days.forEach(d => {
-            const val = property.admin_pricing?.[d]?.villa?.final || property.admin_pricing?.[d]?.adult_rate?.discounted || property.admin_pricing?.[d]?.adult?.discounted;
-            if (val) prices.push(parseFloat(val));
-        });
-
-        // 2. Waterpark pricing check
-        if (isWaterpark) {
-            const wpKeys = ['adult_weekday', 'adult_weekend'];
-            wpKeys.forEach(k => {
-                const val = adminPricing[k]?.final || adminPricing[k];
-                if (val) prices.push(parseFloat(val));
-            });
-        }
-
-        // 3. Fallbacks
-        if (property.display_price) prices.push(parseFloat(property.display_price));
-        if (property.lowest_price_next_30) prices.push(parseFloat(property.lowest_price_next_30));
-        if (property.ResortWalaRate) prices.push(parseFloat(property.ResortWalaRate));
-        if (property.Price) prices.push(parseFloat(property.Price));
-        if (PRICE_WEEKDAY) prices.push(PRICE_WEEKDAY);
-
-        const validPrices = prices.filter(p => !isNaN(p) && p > 0);
-        return validPrices.length > 0 ? Math.min(...validPrices) : 0;
-    };
-
-    const minPrice = getMinPrice();
 
     // Defensive Check: Price Parity (Hook must be at top level)
     useEffect(() => {
@@ -865,7 +757,6 @@ export default function PropertyDetails() {
                         propertyName: property.Name,
                         dateRange,
                         guests,
-                        mealSelection,
                         breakdown: priceBreakdown
                     }
                 }
@@ -878,7 +769,6 @@ export default function PropertyDetails() {
                 property,
                 dateRange,
                 guests,
-                mealSelection,
                 breakdown: priceBreakdown
             }
         });
@@ -1064,8 +954,8 @@ export default function PropertyDetails() {
                                         <p className="text-xs md:text-sm text-gray-500 leading-relaxed max-w-2xl mb-2 font-medium">{ob.shortDescription}</p>
                                     )}
                                     <p className="text-gray-500 text-sm font-medium">
-                                        {property.PropertyType} · {property.Occupancy || property.MaxCapacity} - {property.MaxCapacity} guests
-                                        {!isWaterpark && <> · {roomConfig.bedrooms?.length || property.NoofRooms} bedrooms · {roomConfig.bedrooms?.filter(r => r.bathroom).length || 0} bathrooms</>}
+                                        {property.PropertyType} ┬╖ {property.Occupancy || property.MaxCapacity} - {property.MaxCapacity} guests
+                                        {!isWaterpark && <> ┬╖ {roomConfig.bedrooms?.length || property.NoofRooms} bedrooms ┬╖ {roomConfig.bedrooms?.filter(r => r.bathroom).length || 0} bathrooms</>}
                                     </p>
                                 </div>
                             </div>
@@ -1216,9 +1106,9 @@ export default function PropertyDetails() {
                                 </h3>
 
                                 <div className="bg-orange-50/50 rounded-xl p-6 border border-orange-100 mb-6">
-                                    <h4 className="font-bold text-gray-900 mb-2 text-lg">🍴 Dining Made Just for You ❤️</h4>
+                                    <h4 className="font-bold text-gray-900 mb-2 text-lg">≡ƒì┤ Dining Made Just for You Γ¥ñ∩╕Å</h4>
                                     <p className="text-gray-700 leading-relaxed mb-4">
-                                        Indulge in freshly prepared meals made with care and local flavours 😋. From comforting home-style dishes to regional specialties, enjoy delicious food without stepping out of your villa.
+                                        Indulge in freshly prepared meals made with care and local flavours ≡ƒÿï. From comforting home-style dishes to regional specialties, enjoy delicious food without stepping out of your villa.
                                     </p>
                                     <div className="mb-4">
                                         <p className="font-bold text-gray-800 mb-2">What to expect:</p>
@@ -1283,7 +1173,7 @@ export default function PropertyDetails() {
                                                                     <span className="w-2 h-2 rounded-full bg-green-500 ring-2 ring-green-200"></span>
                                                                     <span className="text-sm font-medium text-gray-700">Vegetarian</span>
                                                                 </div>
-                                                                <span className="font-bold text-gray-900">₹{mData.vegRate}</span>
+                                                                <span className="font-bold text-gray-900">Γé╣{mData.vegRate}</span>
                                                             </div>
                                                         )}
                                                         {mData.nonVegRate && (
@@ -1292,7 +1182,7 @@ export default function PropertyDetails() {
                                                                     <span className="w-2 h-2 rounded-full bg-red-500 ring-2 ring-red-200"></span>
                                                                     <span className="text-sm font-medium text-gray-700">Non-Veg</span>
                                                                 </div>
-                                                                <span className="font-bold text-gray-900">₹{mData.nonVegRate}</span>
+                                                                <span className="font-bold text-gray-900">Γé╣{mData.nonVegRate}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -1362,27 +1252,11 @@ export default function PropertyDetails() {
                     </div>
 
                     <div className="relative h-full hidden lg:block">
-                        <div className="sticky top-28 border border-gray-200 rounded-3xl p-6 shadow-xl bg-white/95 backdrop-blur-md z-30">
+                        <div className="sticky top-28 border border-gray-200 rounded-3xl p-6 shadow-xl bg-white/95 backdrop-blur-md">
                             {isWaterpark ? (
-                                <WaterParkBookingPanel
-                                    property={property}
-                                    guests={guests}
-                                    setGuests={setGuests}
-                                    dateRange={dateRange}
-                                    priceBreakdown={priceBreakdown}
-                                    isDatePickerOpen={isDatePickerOpen}
-                                    setIsDatePickerOpen={setIsDatePickerOpen}
-                                    handleDateSelect={handleDateSelect}
-                                    datePickerRef={datePickerRef}
-                                    bookedDates={bookedDates}
-                                    pricing={pricing}
-                                    getPriceForDate={getPriceForDate}
-                                    handleReserve={handleReserve}
-                                    isWaterpark={true}
-                                    minPrice={minPrice}
-                                />
+                                <WaterparkBooking property={property} ob={ob} handleReserve={handleReserve} guests={guests} setGuests={setGuests} dateRange={dateRange} priceBreakdown={priceBreakdown} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} datePickerRef={datePickerRef} bookedDates={bookedDates} isWaterpark={isWaterpark} pricing={pricing} getPriceForDate={getPriceForDate} />
                             ) : (
-                                <VillaBooking price={PRICE_WEEKDAY} rating={property.Rating} dateRange={dateRange} setDateRange={setDateRange} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} handleReserve={handleReserve} priceBreakdown={priceBreakdown} datePickerRef={datePickerRef} property={property} guests={guests} setGuests={setGuests} mealSelection={mealSelection} setMealSelection={setMealSelection} isWaterpark={isWaterpark} bookedDates={bookedDates} getPriceForDate={getPriceForDate} pricing={pricing} minPrice={minPrice} />
+                                <VillaBooking price={PRICE_WEEKDAY} rating={property.Rating} dateRange={dateRange} setDateRange={setDateRange} isDatePickerOpen={isDatePickerOpen} setIsDatePickerOpen={setIsDatePickerOpen} handleDateSelect={handleDateSelect} handleReserve={handleReserve} priceBreakdown={priceBreakdown} datePickerRef={datePickerRef} property={property} guests={guests} setGuests={setGuests} mealSelection={mealSelection} setMealSelection={setMealSelection} isWaterpark={isWaterpark} bookedDates={bookedDates} getPriceForDate={getPriceForDate} pricing={pricing} />
                             )}
                         </div>
                         <div className="mt-6 text-center text-gray-400 text-xs flex items-center justify-center gap-1"><FaShieldAlt /> Secure Booking via ResortWala</div>
@@ -1390,13 +1264,10 @@ export default function PropertyDetails() {
                 </div>
 
                 <MobileFooter
-                    price={priceBreakdown || minPrice || property.display_price || PRICE_WEEKDAY}
+                    price={priceBreakdown?.minNightlyRate || priceBreakdown || property.display_price || PRICE_WEEKDAY}
                     unit={isWaterpark ? '/ person' : '/ night'}
                     buttonText={(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : 'Reserve'}
                     dateRange={dateRange}
-                    guests={guests}
-                    mealSelection={mealSelection}
-                    isWaterpark={isWaterpark}
                     onDateClick={() => {
                         setIsDatePickerOpen(true);
                         setTimeout(() => {
@@ -1483,7 +1354,7 @@ const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navi
         <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-gray-700">
                 {property.rating_display?.total > 0 ? (
-                    <div className="flex items-center gap-1.5 font-bold text-black"><FaStar size={14} className="text-yellow-400" /><span>{Number(property.rating_display.total || 0).toFixed(1)}</span></div>
+                    <div className="flex items-center gap-1.5 font-bold text-black"><FaStar size={14} className="text-yellow-400" /><span>{Number(property.rating_display.total).toFixed(1)}</span></div>
                 ) : (
                     <div className="flex items-center gap-1.5 font-bold text-black"><span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs">NEW</span></div>
                 )}
@@ -1526,7 +1397,187 @@ const Header = ({ property, isSaved, setIsSaved, setIsShareModalOpen, user, navi
 
 
 
+const WaterparkBooking = ({ property, ob, handleReserve, guests, setGuests, dateRange, priceBreakdown, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, datePickerRef, bookedDates = [], isWaterpark, pricing, getPriceForDate }) => {
+    const effectiveDate = dateRange?.from ? new Date(dateRange.from) : new Date();
+    const adultRate = getPriceForDate(effectiveDate) || property.Price || 0;
 
+    // Calculate market rate based on percentage if available, otherwise fallback
+    const marketRate = (pricing && pricing.marketPrice && pricing.sellingPrice)
+        ? Math.round(adultRate * (pricing.marketPrice / pricing.sellingPrice))
+        : Math.round(adultRate * 1.25);
+
+    const percentage = pricing ? pricing.percentage : 20;
+
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between items-end mb-4 border-b pb-4">
+                <div className="flex flex-col gap-2 w-full">
+                    {pricing && pricing.percentage > 0 && (
+                        <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">Γé╣{marketRate.toLocaleString()}</span>
+                            <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">{percentage}% OFF</span>
+                        </div>
+                    )}
+                    <div className="flex justify-between items-center w-full">
+                        <div><span className="text-xl font-bold">Γé╣{Math.round(adultRate).toLocaleString()}</span><span className="text-xs text-gray-500 ml-1">/ person</span></div>
+                    </div>
+                </div>
+            </div>
+            <div className="border border-gray-200 rounded-xl p-3 mb-4 bg-gray-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Adults</span>
+                    <div className="flex items-center gap-3 bg-white px-2 py-1 rounded shadow-sm">
+                        <button onClick={() => setGuests({ ...guests, adults: Math.max(1, guests.adults - 1) })} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded transition font-bold">-</button>
+                        <span className="text-sm font-bold w-4 text-center">{guests.adults}</span>
+                        <button onClick={() => setGuests({ ...guests, adults: guests.adults + 1 })} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded transition font-bold">+</button>
+                    </div>
+                </div>
+                <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Children</span>
+                    <div className="flex items-center gap-3 bg-white px-2 py-1 rounded shadow-sm">
+                        <button onClick={() => setGuests({ ...guests, children: Math.max(0, guests.children - 1) })} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded transition font-bold">-</button>
+                        <span className="text-sm font-bold w-4 text-center">{guests.children}</span>
+                        <button onClick={() => setGuests({ ...guests, children: guests.children + 1 })} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded transition font-bold">+</button>
+                    </div>
+                </div>
+            </div>
+            <div className="border border-gray-300 rounded-lg mb-4 relative hover:border-black transition" ref={datePickerRef}>
+                <div className="flex border-b border-gray-300 cursor-pointer" onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}>
+                    <div className="flex-1 p-3 border-r border-gray-300 hover:bg-gray-50"><label className="block text-[10px] font-bold text-gray-800">{isWaterpark ? 'VISIT DATE' : 'CHECK-IN'}</label><div className="text-sm">{dateRange.from ? format(dateRange.from, 'dd/MM/yyyy') : 'Select Date'}</div></div>
+                    {!isWaterpark && <div className="flex-1 p-3 hover:bg-gray-50"><label className="block text-[10px] font-bold text-gray-800">CHECK-OUT</label><div className="text-sm">{dateRange.to ? format(dateRange.to, 'dd/MM/yyyy') : 'Select Date'}</div></div>}
+                </div>
+                <AnimatePresence>
+                    {/* Desktop Date Picker - Absolute Dropdown Only */}
+                    {isDatePickerOpen && window.innerWidth >= 1024 && (
+                        <motion.div
+                            onClick={(e) => e.stopPropagation()}
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-2xl shadow-xl p-3 z-[10000] border border-gray-100 ring-1 ring-black/5 w-[320px] max-w-[90vw] absolute top-full right-0 mt-2"
+                        >
+                            <DayPicker
+                                mode={isWaterpark ? "single" : "range"}
+                                selected={isWaterpark ? dateRange.from : dateRange}
+                                onDayClick={handleDateSelect}
+                                numberOfMonths={1}
+                                modifiers={{ booked: (date) => bookedDates.includes(format(date, 'yyyy-MM-dd')) }}
+                                disabled={[
+                                    { before: startOfDay(new Date()) },
+                                    ...bookedDates.map(d => parse(d, 'yyyy-MM-dd', new Date()))
+                                ]}
+                                components={{
+                                    DayButton: (props) => {
+                                        const { day, children, className, modifiers, ...buttonProps } = props;
+                                        const date = day?.date;
+                                        if (!date) return <button className={className} {...buttonProps}>{children}</button>;
+
+                                        const isWeekend = date.getDay() === 0 || date.getDay() === 6 || date.getDay() === 5;
+                                        const isPastDate = buttonProps.disabled;
+                                        const isBooked = modifiers.booked;
+
+                                        let price = getPriceForDate(date);
+                                        if (!price || isNaN(price)) price = property.Price || 0;
+
+                                        // Use same logic as VillaBooking
+                                        let combinedClassName = `${className || ''} flex flex-col items-center justify-center gap-0.5 h-full w-full py-1 transition-all duration-200`.trim();
+
+                                        if (isPastDate) {
+                                            combinedClassName += " opacity-50 cursor-not-allowed bg-gray-50 text-gray-300 line-through";
+                                        } else if (isBooked) {
+                                            combinedClassName += " relative overflow-hidden bg-red-50/50 text-red-300 decoration-red-300 line-through hover:bg-red-50";
+                                        }
+
+                                        // console.log(`[DEBUG] Rendering date ${dateStr}: isPast=${isPastDate}, isBooked=${isBooked}`);
+
+                                        return (
+                                            <button
+                                                className={combinedClassName}
+                                                {...buttonProps}
+                                                disabled={buttonProps.disabled}
+                                                style={{ pointerEvents: buttonProps.disabled ? 'none' : 'auto' }}
+                                                onClick={(e) => {
+                                                    if (isBooked) {
+                                                        console.log(`[DEBUG] Clicked on BOOKED date: ${dateStr}`);
+                                                        toast.error("This date is already booked.");
+                                                        return;
+                                                    }
+                                                    buttonProps.onClick?.(e);
+                                                }}
+                                            >
+                                                <span className={`text-sm font-medium leading-tight ${isWeekend && !isBooked ? 'text-red-600 font-bold' : ''}`}>
+                                                    {children}
+                                                </span>
+                                                {!isPastDate && !isBooked && (
+                                                    <span className="text-[9px] font-bold leading-tight text-green-600 group-hover:text-green-700 group-aria-selected:text-white">
+                                                        {price >= 1000 ? `Γé╣${(parseFloat(price) / 1000).toFixed(1)}k` : `Γé╣${price}`}
+                                                    </span>
+                                                )}
+                                                {isBooked && (
+                                                    <span className="text-[8px] font-bold leading-tight text-red-400">Sold</span>
+                                                )}
+                                            </button>
+                                        );
+                                    }
+                                }}
+                                classNames={{
+                                    day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
+                                    selected: "!bg-blue-600 !text-white hover:!bg-blue-700 hover:!text-white",
+                                    day_selected: "!bg-blue-600 !text-white"
+                                }}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+            {
+                priceBreakdown && (
+                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4 space-y-1">
+                        <div className="flex justify-between text-sm text-gray-600">
+                            <span>Adult Tickets</span>
+                            <span>Γé╣{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-600">
+                            <span>Child Tickets</span>
+                            <span>Γé╣{(priceBreakdown.totalChildTicket || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-600">
+                            <span>GST (18%)</span>
+                            <span>Γé╣{priceBreakdown.gstAmount?.toLocaleString()}</span>
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); handleReserve(); }} className="w-full bg-black text-white p-3 rounded-lg flex justify-between items-center shadow-md hover:scale-[1.02] transition active:scale-[0.98] cursor-pointer">
+                            <div className="flex flex-col items-start">
+                                <span className="text-[9px] uppercase font-bold text-gray-400">Pay Now to Reserve</span>
+                                <span className="text-lg font-black">Γé╣{priceBreakdown.tokenAmount?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[8px] bg-white/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider mb-1">
+                                    {isWaterpark ? 'Per Ticket' : 'Γé╣50 / Ticket'}
+                                </span>
+                                <FaArrowRight size={10} className="text-blue-400" />
+                            </div>
+                        </button>
+                    </div>
+                )
+            }
+            <button
+                onClick={() => {
+                    // For Waterparks, we need at least one date selected (single day visit)
+                    if (!dateRange.from) {
+                        console.log("Opening DatePicker from WaterparkBooking Button");
+                        setIsDatePickerOpen(true);
+                        return;
+                    }
+                    // If date is selected, proceed to reserve
+                    handleReserve();
+                }}
+                className="w-full font-bold py-3.5 rounded-xl transition mb-4 text-white text-lg bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
+            >
+                {!dateRange.from ? 'Select Visit Date' : 'Book Tickets Now'}
+            </button>
+        </div >
+    );
+};
 
 const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen, setIsDatePickerOpen, handleDateSelect, handleReserve, priceBreakdown, datePickerRef, property, guests, setGuests, mealSelection, setMealSelection, isWaterpark, bookedDates = [], getPriceForDate, pricing }) => {
     const ob = property?.onboarding_data || {};
@@ -1535,15 +1586,12 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
     const totalGuests = guests.adults + guests.children;
     const rates = priceBreakdown?.rates || ob.foodRates || {};
 
-
     // Use pricing from props
-    const [showAutoRates, setShowAutoRates] = useState(false);
-
 
 
     const MealCounter = ({ label, rate, count, type }) => (
         <div className="flex flex-col items-center bg-gray-50 border border-gray-100 rounded-lg p-1.5">
-            <span className="text-[10px] uppercase font-bold text-gray-500 mb-1">{label} <span className="text-gray-900">(₹{rate})</span></span>
+            <span className="text-[10px] uppercase font-bold text-gray-500 mb-1">{label} <span className="text-gray-900">(Γé╣{rate})</span></span>
             <div className="flex items-center gap-2 bg-white px-1.5 py-0.5 rounded-md border border-gray-200 shadow-sm">
                 <button onClick={() => setMealSelection(p => ({ ...p, [type]: Math.max(0, p[type] - 1) }))} className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-black transition"><FaMinus size={8} /></button>
                 <span className="text-xs font-bold w-3 text-center">{count}</span>
@@ -1560,12 +1608,12 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                     <div className="flex flex-col">
                         {pricing.percentage > 0 && (
                             <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">₹{Math.round(pricing.marketPrice).toLocaleString()}</span>
+                                <span className="text-xs text-gray-400 font-medium line-through decoration-red-400">Γé╣{Math.round(pricing.marketPrice).toLocaleString()}</span>
                                 <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-200">{pricing.percentage}% OFF</span>
                             </div>
                         )}
                         <div className="flex items-baseline gap-1.5">
-                            <span className="text-2xl font-bold font-serif text-gray-900">₹{(priceBreakdown?.minNightlyRate || property.display_price || pricing.sellingPrice).toLocaleString()}</span>
+                            <span className="text-2xl font-bold font-serif text-gray-900">Γé╣{(priceBreakdown?.minNightlyRate || property.display_price || pricing.sellingPrice).toLocaleString()}</span>
                             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">/ night</span>
                         </div>
                     </div>
@@ -1604,7 +1652,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                         ...bookedDates.map(d => parse(d, 'yyyy-MM-dd', new Date()))
                                     ]}
                                     classNames={{
-                                        day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 disabled:line-through",
+                                        day_button: "h-14 w-14 !p-0.5 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent hover:border-gray-200 rounded-lg transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through",
                                         selected: "!bg-black !text-white hover:!bg-black hover:!text-white",
                                         day_selected: "!bg-black !text-white"
                                     }}
@@ -1629,7 +1677,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
 
                                             // Add "scratch out" check for disabled/booked
                                             if (isPastDate) {
-                                                combinedClassName += " opacity-70 cursor-not-allowed bg-gray-50 text-gray-300 line-through";
+                                                combinedClassName += " opacity-50 cursor-not-allowed bg-gray-50 text-gray-300 line-through";
                                             } else if (isBooked) {
                                                 // Booked: Visual indication but CLICKABLE (to show toast)
                                                 // Removed pointer-events-none and cursor-not-allowed to allow click
@@ -1658,7 +1706,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                                     </span>
                                                     {!isPastDate && !isBooked && (
                                                         <span className="text-[9px] font-bold leading-tight text-green-600 group-hover:text-green-700 group-aria-selected:text-white">
-                                                            {price >= 1000 ? `₹${(price / 1000).toFixed(1)}k` : `₹${price}`}
+                                                            {price >= 1000 ? `Γé╣${(price / 1000).toFixed(1)}k` : `Γé╣${price}`}
                                                         </span>
                                                     )}
                                                     {isBooked && (
@@ -1694,7 +1742,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                             </div>
                         </div>
                         <div className="bg-white border border-gray-200 rounded-lg p-1.5 px-2 flex justify-between items-center shadow-sm">
-                            <span className="text-xs font-bold text-gray-700">Children</span>
+                            <span className="text-xs font-bold text-gray-700">Kids</span>
                             <div className="flex items-center gap-2 text-sm font-bold">
                                 <button onClick={() => setGuests({ ...guests, children: Math.max(0, guests.children - 1) })} className="text-gray-400 hover:text-black w-5 h-5 flex items-center justify-center bg-gray-50 rounded" disabled={guests.children <= 0}><FaMinus size={8} /></button>
                                 <span className="w-4 text-center">{guests.children}</span>
@@ -1702,14 +1750,14 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                             </div>
                         </div>
                     </div>
-
+                    {totalGuests > baseCapacity && <div className="text-[9px] text-orange-600 font-bold text-right mt-1 px-1">Extra mattress charges apply</div>}
                 </div>
 
                 {/* MEALS - Single Counter */}
                 <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-2 mt-2">
                     <div className="flex items-center justify-between mb-1.5 px-0.5">
                         <span className="text-[10px] uppercase font-bold text-gray-500 flex items-center gap-1"><FaUtensils className="text-orange-400" size={10} /> Meals (All-Inclusive)</span>
-                        <span className="text-[9px] text-gray-400 font-medium">₹{rates.veg || rates.nonveg || rates.max || 1200} / person</span>
+                        <span className="text-[9px] text-gray-400 font-medium">approx Γé╣{rates.max || 1200} / person</span>
                     </div>
                     <div className="bg-white border border-gray-200 rounded-lg p-2 flex justify-between items-center shadow-sm">
                         <span className="text-xs font-bold text-gray-700">Add Meal Package</span>
@@ -1721,99 +1769,53 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                     </div>
                 </div>
 
-                {/* BREAKDOWN - Simplified & Compact */}
+                {/* BREAKDOWN - Simplified */}
                 {priceBreakdown && (
-                    <div className="bg-gray-50/50 rounded-lg p-2 border border-gray-100 space-y-1 text-[10px] mt-1">
-                        {/* Night Breakdown List - Collapsible for compact view */}
+                    <div className="bg-gray-50 rounded-xl p-2 border border-gray-200 space-y-1 text-[10px] mt-2">
+                        {/* Night Breakdown List */}
                         {priceBreakdown.nightDetails?.length > 1 && (
-                            <div className="mb-1">
-                                <button onClick={(e) => { e.stopPropagation(); setShowAutoRates(!showAutoRates); }} className="text-[9px] text-blue-600 font-bold underline mb-1 flex items-center gap-1">
-                                    View Nightly Rates ({priceBreakdown.nightDetails.length} nights)
-                                </button>
-                                {showAutoRates && (
-                                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={(e) => { e.stopPropagation(); setShowAutoRates(false); }}>
-                                        <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
-                                            <div className="flex justify-between items-center p-3 border-b border-gray-100 bg-gray-50">
-                                                <h3 className="font-bold text-gray-900">Nightly Breakdown</h3>
-                                                <button onClick={() => setShowAutoRates(false)} className="p-1 hover:bg-gray-200 rounded-full"><FaTimes /></button>
-                                            </div>
-                                            <div className="p-3 max-h-[60vh] overflow-y-auto space-y-2">
-                                                {priceBreakdown.nightDetails.map((night, idx) => (
-                                                    <div key={idx} className="bg-gray-50 p-2 rounded border border-gray-100">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="font-bold text-gray-700">{night.date}</span>
-                                                            <span className="font-bold text-gray-900">₹{night.rate.toLocaleString()}</span>
-                                                        </div>
-                                                        {night.dailyExtraTotal > 0 && (
-                                                            <div className="flex justify-between items-center mt-1 text-[10px] text-orange-600 border-t border-gray-200 pt-1">
-                                                                <span>+ Extra ({priceBreakdown.extraGuests} × ₹{night.extraRate.toLocaleString()})</span>
-                                                                <span>₹{night.dailyExtraTotal.toLocaleString()}</span>
-                                                            </div>
-                                                        )}
-                                                        {night.dailyFoodTotal > 0 && (
-                                                            <div className="flex justify-between items-center mt-1 text-[10px] text-blue-600 border-t border-gray-200 pt-1">
-                                                                <span>+ Meals ({mealSelection} × ₹{night.foodRate?.toLocaleString()})</span>
-                                                                <span>₹{night.dailyFoodTotal.toLocaleString()}</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="p-3 border-t border-gray-100">
-                                                <div className="flex justify-between items-center mb-3 px-2">
-                                                    <span className="font-bold text-gray-700">Total</span>
-                                                    <span className="font-bold text-gray-900 text-lg">₹{(priceBreakdown.totalVillaRate + priceBreakdown.totalExtra + priceBreakdown.totalFood).toLocaleString()}</span>
-                                                </div>
-                                                <button onClick={() => setShowAutoRates(false)} className="w-full bg-gray-100 text-gray-900 py-2 rounded-lg font-bold hover:bg-gray-200 transition">Close</button>
-                                            </div>
-                                        </div>
+                            <div className="py-2 space-y-1 border-b border-gray-100 mb-1">
+                                <div className="text-[8px] uppercase font-bold text-gray-400 mb-1">Nightly Rates</div>
+                                {priceBreakdown.nightDetails.map((night, idx) => (
+                                    <div key={idx} className="flex justify-between text-gray-500 font-medium scale-95 origin-left">
+                                        <span>{night.date}</span>
+                                        <span>Γé╣{night.rate.toLocaleString()}</span>
                                     </div>
-                                )}
+                                ))}
                             </div>
                         )}
-                        <div className="flex justify-between text-gray-600 px-0.5"><span>Villa Rental ({priceBreakdown.nights} Nights)</span><span>₹{priceBreakdown.totalVillaRate.toLocaleString()}</span></div>
+                        <div className="flex justify-between text-gray-600"><span>Villa Rental ({priceBreakdown.nights} Nights)</span><span>Γé╣{priceBreakdown.totalVillaRate.toLocaleString()}</span></div>
+                        {priceBreakdown.totalExtra > 0 && <div className="flex justify-between text-orange-600 font-bold"><span>Extra Mattress</span><span>+Γé╣{priceBreakdown.totalExtra.toLocaleString()}</span></div>}
+                        {priceBreakdown.totalFood > 0 && <div className="flex justify-between text-blue-600 font-bold"><span>Meals & Dining</span><span>+Γé╣{priceBreakdown.totalFood.toLocaleString()}</span></div>}
 
-                        {/* Explicit check for visibility with Breakdown */}
-                        {(priceBreakdown.totalExtra > 0) && (
-                            <div className="flex justify-between text-gray-600 px-0.5">
-                                <span>Extra Mattress ({priceBreakdown.nights} Nights)</span>
-                                <span>+₹{priceBreakdown.totalExtra.toLocaleString()}</span>
-                            </div>
-                        )}
-
-                        {(priceBreakdown.totalFood > 0) && (
-                            <div className="flex justify-between text-gray-600 px-0.5">
-                                <span>Meals & Dining ({priceBreakdown.nights} Nights)</span>
-                                <span>+₹{priceBreakdown.totalFood.toLocaleString()}</span>
-                            </div>
-                        )}
-
-                        {/* Combined Compact Summary */}
-                        <div className="mt-1 pt-1 border-t border-gray-100 space-y-1">
-                            <div className="flex justify-between items-baseline px-0.5">
-                                <span className="text-[10px] font-bold text-gray-500 uppercase">Total Amount</span>
-                                <span className="text-sm font-black text-gray-900">₹{(priceBreakdown.grantTotal - priceBreakdown.gstAmount).toLocaleString()} <span className="text-[8px] font-normal text-gray-400">+ GST</span></span>
-                            </div>
-
-                            {/* Pay Now Field */}
-                            <div className="flex justify-between items-center bg-blue-50/50 p-1 px-2 rounded-md border border-blue-50">
-                                <span className="text-[10px] font-bold text-blue-700 uppercase tracking-tight">Pay Now</span>
-                                <span className="text-sm font-black text-blue-700">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
-                            </div>
-
-                            {/* Pay Later Field */}
-                            <div className="flex justify-between items-center px-2 py-0.5">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Pay Later</span>
-                                <span className="text-[10px] font-bold text-gray-500">
-                                    ₹{Math.max(0, (priceBreakdown.grantTotal - priceBreakdown.gstAmount) - (priceBreakdown.tokenAmount || 0)).toLocaleString()} <span className="text-[8px] text-gray-400 font-normal">+ GST</span>
+                        {/* Summary Row instead of Detailed Tax */}
+                        <div className="flex border-t border-gray-100 mt-2 pt-2 flex-col gap-2">
+                            <div className="flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                                <span className="font-bold text-xs text-gray-900 uppercase tracking-tighter">Total Amount</span>
+                                <span className="text-xl font-black text-gray-900 leading-none flex flex-col items-end">
+                                    Γé╣{(priceBreakdown.grantTotal - priceBreakdown.gstAmount).toLocaleString()}
+                                    <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest mt-1">+ GST Applicable</span>
                                 </span>
                             </div>
+
+                            {/* Token Section */}
+                            <button onClick={handleReserve} className="w-full bg-black text-white p-3 rounded-lg flex justify-between items-center shadow-md relative overflow-hidden group hover:scale-[1.02] transition active:scale-[0.98]">
+                                <div className="absolute top-0 right-0 w-10 h-10 bg-white/5 rounded-bl-full -mr-3 -mt-3"></div>
+                                <div className="relative z-10 flex flex-col items-start translate-x-0 group-hover:translate-x-1 transition-transform">
+                                    <span className="text-[8px] uppercase font-bold text-gray-400">Pay Now to Reserve</span>
+                                    <span className="text-lg font-black leading-none mt-1">Γé╣{priceBreakdown.tokenAmount?.toLocaleString()}</span>
+                                </div>
+                                <div className="relative z-10 flex flex-col items-end">
+                                    <span className="relative z-10 text-[8px] bg-white/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider mb-1">10% Token</span>
+                                    <FaArrowRight size={10} className="text-red-400 group-hover:translate-x-1 transition-transform" />
+                                </div>
+                            </button>
                         </div>
 
                         {/* Savings Display */}
                         {priceBreakdown.totalSavings > 0 && (
-                            <div className="mt-1 text-center bg-green-100 text-green-700 font-bold py-1 px-2 rounded-lg border border-green-200 text-xs shadow-sm">
-                                🎉 You saved ₹{priceBreakdown.totalSavings.toLocaleString()}!
+                            <div className="mt-3 text-center bg-green-100 text-green-700 font-bold py-2 px-3 rounded-lg border border-green-200 text-sm shadow-sm animate-pulse">
+                                ≡ƒÄë You saved Γé╣{priceBreakdown.totalSavings.toLocaleString()} on this booking!
                             </div>
                         )}
                     </div>
@@ -1821,7 +1823,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
 
                 <button onClick={() => { if (!dateRange.from || !dateRange.to) { setIsDatePickerOpen(true); return; } handleReserve(); }}
                     className="w-full font-bold py-3.5 rounded-xl transition text-white text-base bg-gradient-to-r from-[#FF385C] to-[#E00B41] hover:shadow-lg hover:shadow-red-200 active:scale-[0.98]">
-                    {(!dateRange.from || !dateRange.to) ? 'Check Availability' : (priceBreakdown ? `Pay ₹${priceBreakdown.tokenAmount?.toLocaleString()} Now` : 'Calculate Total')}
+                    {(!dateRange.from || !dateRange.to) ? 'Check Availability' : (priceBreakdown ? 'Reserve Now' : 'Calculate Total')}
                 </button>
             </div>
             {/* Removed Booking Fees Text as per request */}
@@ -1834,15 +1836,13 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
 const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDates, property, pricing, isWaterpark, guests, setGuests, maxCapacity = 20, priceBreakdown, defaultPrice, onReserve, mealSelection, setMealSelection }) => {
 
     // Helper to format price explanation text
-    const totalGuests = (Number(guests?.adults) || 0) + (Number(guests?.children) || 0);
-
     const getPriceText = () => {
         if (!priceBreakdown) return null;
         if (isWaterpark) {
             return `Adults (${guests.adults}) + Child (${guests.children})`;
         }
         if (priceBreakdown.nights > 0) {
-            return `₹${defaultPrice.toLocaleString()} x ${priceBreakdown.nights} Nights`;
+            return `Γé╣${defaultPrice.toLocaleString()} x ${priceBreakdown.nights} Nights`;
         }
         return '';
     };
@@ -1852,27 +1852,19 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
             {isOpen && (
                 <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm lg:hidden flex items-end justify-center"
+                    className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm lg:hidden flex items-end justify-center"
                     onClick={onClose}
                 >
                     <motion.div
                         initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="bg-white w-full rounded-t-3xl shadow-2xl h-[75vh] flex flex-col"
+                        className="bg-white w-full rounded-t-3xl shadow-2xl h-[85vh] flex flex-col"
                         onClick={e => e.stopPropagation()}
                     >
                         {/* Compact Header */}
                         <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 flex-shrink-0">
                             <div>
-                                <h3 className="text-lg font-bold font-serif text-gray-900 leading-tight">
-                                    {dateRange.from ? 'Review Selection' : 'Select Dates'}
-                                </h3>
-                                {dateRange.from ? (
-                                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-tight truncate">
-                                        {`${format(dateRange.from, 'MMM dd')}${!isWaterpark && dateRange.to ? ` - ${format(dateRange.to, 'MMM dd')}` : ''} • ${(Number(guests.adults) || 0) + (Number(guests.children) || 0)} Guests${mealSelection > 0 ? ` • ${mealSelection} Meals` : ''}`}
-                                    </p>
-                                ) : (
-                                    <p className="text-[10px] text-gray-500 font-medium">Pick check-in & check-out</p>
-                                )}
+                                <h3 className="text-lg font-bold font-serif text-gray-900 leading-tight">Select Dates</h3>
+                                <p className="text-[10px] text-gray-500 font-medium">Pick check-in & check-out</p>
                             </div>
                             <button onClick={onClose} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition text-gray-500">
                                 <FaTimes size={14} />
@@ -1880,7 +1872,7 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                         </div>
 
                         {/* Scrollable Content - Compact */}
-                        <div id="mobile-scroll-container" className="flex-1 overflow-y-auto px-2 pt-0">
+                        <div className="flex-1 overflow-y-auto px-2 pt-0">
                             <div className="flex justify-center border-b border-gray-50 pb-2 mb-2 scale-95 origin-top">
                                 <DayPicker
                                     mode={isWaterpark ? "single" : "range"}
@@ -1900,13 +1892,13 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                         ...(bookedDates || []).map(d => parse(d, 'yyyy-MM-dd', new Date()))
                                     ]}
                                     classNames={{
-                                        caption: "flex justify-center pt-0 relative items-center mb-1",
-                                        caption_label: "text-xs font-bold text-gray-900",
+                                        caption: "flex justify-center pt-1 relative items-center mb-2",
+                                        caption_label: "text-sm font-bold text-gray-900",
                                         nav: "flex items-center",
-                                        nav_button: "h-6 w-6 bg-transparent hover:bg-gray-50 p-1 rounded-md transition-colors text-gray-400",
-                                        head_cell: "text-gray-400 font-medium text-[9px] w-8",
-                                        cell: "text-center text-xs p-0 m-0 relative [&:has([aria-selected])]:bg-transparent focus-within:relative focus-within:z-20",
-                                        day: "h-8 w-8 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-50 rounded-md",
+                                        nav_button: "h-7 w-7 bg-transparent hover:bg-gray-50 p-1 rounded-md transition-colors text-gray-400",
+                                        head_cell: "text-gray-400 font-medium text-[10px] w-9",
+                                        cell: "text-center text-sm p-0 m-0 relative [&:has([aria-selected])]:bg-transparent focus-within:relative focus-within:z-20",
+                                        day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-50 rounded-md",
                                         day_selected: "text-white hover:bg-[#FF385C] hover:text-white bg-[#FF385C]",
                                         day_today: "bg-gray-50 text-gray-900 font-bold",
                                         day_outside: "text-gray-300 opacity-50",
@@ -1914,7 +1906,7 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                         day_range_middle: "aria-selected:bg-red-50 aria-selected:text-red-900",
                                         day_hidden: "invisible",
 
-                                        day_button: "h-8 w-8 !p-0 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-100 border border-transparent rounded-lg transition-all flex flex-col items-center justify-center gap-0 disabled:opacity-30",
+                                        day_button: "h-9 w-9 !p-0 font-normal aria-selected:opacity-100 bg-transparent hover:bg-gray-50 border border-transparent rounded-lg transition-all flex flex-col items-center justify-center gap-0 disabled:opacity-30",
                                         selected: "!bg-[#FF385C] !text-white",
                                         range_middle: "!bg-[#FF385C]/5 !text-[#FF385C] !rounded-none",
                                         range_start: "!bg-[#FF385C] !text-white rounded-l-lg rounded-r-none",
@@ -1974,7 +1966,7 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                                     <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
                                                         <button onClick={() => setGuests({ ...guests, adults: Math.max(1, guests.adults - 1) })} className="w-6 h-6 flex items-center justify-center bg-white text-gray-600 rounded-md shadow-sm border border-gray-100 disabled:opacity-50" disabled={guests.adults <= 1}><FaMinus size={8} /></button>
                                                         <span className="w-4 text-center font-bold text-sm">{guests.adults}</span>
-                                                        <button onClick={() => setGuests({ ...guests, adults: guests.adults + 1 })} className="w-6 h-6 flex items-center justify-center bg-white text-gray-600 rounded-md shadow-sm border border-gray-100 disabled:opacity-50" disabled={totalGuests >= maxCapacity}><FaPlus size={8} /></button>
+                                                        <button onClick={() => setGuests({ ...guests, adults: guests.adults + 1 })} className="w-6 h-6 flex items-center justify-center bg-white text-gray-600 rounded-md shadow-sm border border-gray-100 disabled:opacity-50" disabled={guests.adults >= maxCapacity}><FaPlus size={8} /></button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1988,15 +1980,10 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                                     <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
                                                         <button onClick={() => setGuests({ ...guests, children: Math.max(0, guests.children - 1) })} className="w-6 h-6 flex items-center justify-center bg-white text-gray-600 rounded-md shadow-sm border border-gray-100 disabled:opacity-50" disabled={guests.children <= 0}><FaMinus size={8} /></button>
                                                         <span className="w-4 text-center font-bold text-sm">{guests.children}</span>
-                                                        <button onClick={() => setGuests({ ...guests, children: guests.children + 1 })} className="w-6 h-6 flex items-center justify-center bg-white text-gray-600 rounded-md shadow-sm border border-gray-100 disabled:opacity-50" disabled={totalGuests >= maxCapacity}><FaPlus size={8} /></button>
+                                                        <button onClick={() => setGuests({ ...guests, children: guests.children + 1 })} className="w-6 h-6 flex items-center justify-center bg-white text-gray-600 rounded-md shadow-sm border border-gray-100 disabled:opacity-50"><FaPlus size={8} /></button>
                                                     </div>
                                                 </div>
                                             </div>
-                                            {totalGuests >= maxCapacity && (
-                                                <div className="text-[10px] text-orange-600 font-bold text-center bg-orange-50 py-1 rounded border border-orange-100">
-                                                    Max capacity of {maxCapacity} guests reached
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 )
@@ -2006,13 +1993,15 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                     <div className="pb-4 px-2">
                                         <h4 className="font-bold text-sm font-serif mb-2 text-gray-900">Select Tickets</h4>
                                         <div className="space-y-2">
-                                            {/* Adult Ticket Selector */}
                                             <div className="flex items-center justify-between p-3 border border-blue-100 bg-blue-50/30 rounded-xl shadow-sm">
                                                 <div>
                                                     <p className="font-bold text-xs text-gray-900">Adult Ticket</p>
-                                                    <p className="text-[10px] text-blue-600 font-medium whitespace-nowrap">Height &gt; 3.5 ft • ₹{(priceBreakdown?.adultTicketRate || defaultPrice)?.toLocaleString()} / person</p>
+                                                    <p className="text-[10px] text-blue-600 font-medium">Height &gt; 3.5 ft</p>
                                                 </div>
                                                 <div className="flex items-center gap-3">
+                                                    <div className="text-right mr-1">
+                                                        <p className="text-xs font-bold text-blue-900">Γé╣{defaultPrice?.toLocaleString()}</p>
+                                                    </div>
                                                     <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-blue-100">
                                                         <button onClick={() => setGuests({ ...guests, adults: Math.max(1, guests.adults - 1) })} className="w-6 h-6 flex items-center justify-center bg-blue-50 text-blue-600 rounded-md shadow-sm border border-blue-100"><FaMinus size={8} /></button>
                                                         <span className="w-4 text-center font-bold text-sm">{guests.adults}</span>
@@ -2020,13 +2009,15 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                                     </div>
                                                 </div>
                                             </div>
-                                            {/* Child Ticket Selector */}
                                             <div className="flex items-center justify-between p-3 border border-orange-100 bg-orange-50/30 rounded-xl shadow-sm">
                                                 <div>
                                                     <p className="font-bold text-xs text-gray-900">Child Ticket</p>
-                                                    <p className="text-[10px] text-orange-600 font-medium whitespace-nowrap">Height 2.5 - 3.5 ft • ₹{(priceBreakdown?.childTicketRate || property?.admin_pricing?.child_weekday?.final || property?.admin_pricing?.child_weekday || 400)?.toLocaleString()} / person</p>
+                                                    <p className="text-[10px] text-orange-600 font-medium">Height 2.5 - 3.5 ft</p>
                                                 </div>
                                                 <div className="flex items-center gap-3">
+                                                    <div className="text-right mr-1">
+                                                        <p className="text-xs font-bold text-orange-900">Γé╣{(defaultPrice * 0.7).toFixed(0)}</p>
+                                                    </div>
                                                     <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-orange-100">
                                                         <button onClick={() => setGuests({ ...guests, children: Math.max(0, guests.children - 1) })} className="w-6 h-6 flex items-center justify-center bg-orange-50 text-orange-600 rounded-md shadow-sm border border-orange-100"><FaMinus size={8} /></button>
                                                         <span className="w-4 text-center font-bold text-sm">{guests.children}</span>
@@ -2047,7 +2038,7 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                         <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 flex justify-between items-center shadow-sm">
                                             <div>
                                                 <p className="font-bold text-xs text-gray-900">All-Inclusive Meal Pack</p>
-                                                <p className="text-[10px] text-gray-500 font-medium">approx ₹1,200 / person</p>
+                                                <p className="text-[10px] text-gray-500 font-medium">approx Γé╣1,200 / person</p>
                                             </div>
                                             <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-orange-200 shadow-sm">
                                                 <button onClick={() => setMealSelection && setMealSelection(Math.max(0, (mealSelection || 0) - 1))} className="w-6 h-6 flex items-center justify-center bg-orange-50 text-orange-600 rounded-md hover:bg-orange-100 transition"><FaMinus size={8} /></button>
@@ -2070,23 +2061,9 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                             <div className="space-y-2 border-b border-gray-100 pb-3 mb-2">
                                                 <div className="text-[9px] uppercase font-black text-gray-400 mb-1">Nightly Rates</div>
                                                 {priceBreakdown.nightDetails.map((night, idx) => (
-                                                    <div key={idx} className="bg-white border border-gray-50 p-2 rounded-lg shadow-sm">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-xs font-bold text-gray-800">{night.date}</span>
-                                                            <span className="text-sm font-black text-gray-900">₹{night.rate.toLocaleString()}</span>
-                                                        </div>
-                                                        {night.dailyExtraTotal > 0 && (
-                                                            <div className="flex justify-between items-center mt-1 text-[9px] text-orange-600 border-t border-gray-100 pt-1">
-                                                                <span>+ Extra ({priceBreakdown.extraGuests} × ₹{night.extraRate.toLocaleString()})</span>
-                                                                <span>₹{night.dailyExtraTotal.toLocaleString()}</span>
-                                                            </div>
-                                                        )}
-                                                        {night.dailyFoodTotal > 0 && (
-                                                            <div className="flex justify-between items-center mt-1 text-[9px] text-blue-600 border-t border-gray-100 pt-1">
-                                                                <span>+ Meals ({mealSelection} × ₹{night.foodRate?.toLocaleString()})</span>
-                                                                <span>₹{night.dailyFoodTotal.toLocaleString()}</span>
-                                                            </div>
-                                                        )}
+                                                    <div key={idx} className="flex justify-between items-center bg-white border border-gray-50 p-2 rounded-lg shadow-sm">
+                                                        <span className="text-xs font-bold text-gray-800">{night.date}</span>
+                                                        <span className="text-sm font-black text-gray-900">Γé╣{night.rate.toLocaleString()}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -2097,74 +2074,30 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-xs text-gray-600 font-medium">
                                                     <span>Villa Rental ({priceBreakdown.nights} nights)</span>
-                                                    <span className="text-gray-900">₹{priceBreakdown.totalVillaRate?.toLocaleString()}</span>
+                                                    <span className="text-gray-900">Γé╣{priceBreakdown.totalVillaRate?.toLocaleString()}</span>
                                                 </div>
                                                 {priceBreakdown.totalExtra > 0 && (
-                                                    <div className="flex justify-between text-xs text-gray-600 font-medium">
-                                                        <span>Extra Mattress ({priceBreakdown.nights} Nights)</span>
-                                                        <span>+₹{priceBreakdown.totalExtra?.toLocaleString()}</span>
+                                                    <div className="flex justify-between text-xs text-orange-600 font-bold">
+                                                        <span>Extra Guest Charges</span>
+                                                        <span>+Γé╣{priceBreakdown.totalExtra?.toLocaleString()}</span>
                                                     </div>
                                                 )}
-                                                {priceBreakdown.totalFood > 0 && (
-                                                    <div className="flex justify-between text-xs text-gray-600 font-medium">
-                                                        <span>Meals & Dining ({priceBreakdown.nights} Nights)</span>
-                                                        <span>+₹{priceBreakdown.totalFood?.toLocaleString()}</span>
-                                                    </div>
-                                                )}
-                                                {/* Pay Now Section (Synced with Desktop) */}
-                                                {/* Pay Now Section Removed */}
-                                                <div className="flex justify-between text-[10px] text-gray-400 font-medium px-1">
-                                                    <span>Pay Later</span>
-                                                    <span>
-                                                        ₹{Math.max(0, (priceBreakdown.grantTotal - priceBreakdown.gstAmount) - (priceBreakdown.tokenAmount || 0)).toLocaleString()}
-                                                        <span className="text-[8px] font-normal text-gray-400 ml-1"></span>
-                                                    </span>
-                                                </div>
                                             </div>
                                         )}
 
-                                        {/* Waterpark Breakdown Updated Format */}
+                                        {/* Waterpark Breakdown */}
                                         {isWaterpark && (
-                                            <div className="space-y-1.5 text-xs">
-                                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 border-b border-gray-100 pb-1">TICKETS</div>
-                                                <div className="flex justify-between items-center text-gray-600">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-gray-900">Adult ({guests.adults})</span>
-                                                        <span className="text-[9px]">₹{priceBreakdown.adultTicketRate} x {guests.adults}</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-end">
-                                                        {priceBreakdown.adultMarketRate > priceBreakdown.adultTicketRate && (
-                                                            <span className="text-[9px] text-gray-400 line-through">₹{(priceBreakdown.adultMarketRate * guests.adults).toLocaleString()}</span>
-                                                        )}
-                                                        <span className="font-bold text-gray-900">₹{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
-                                                    </div>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-xs text-gray-600 font-medium">
+                                                    <span>Adult Tickets (x{guests.adults})</span>
+                                                    <span className="text-gray-900">Γé╣{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
                                                 </div>
                                                 {guests.children > 0 && (
-                                                    <div className="flex justify-between items-center text-gray-600">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-bold text-gray-900">Child ({guests.children})</span>
-                                                            <span className="text-[9px]">₹{priceBreakdown.childTicketRate} x {guests.children}</span>
-                                                        </div>
-                                                        <div className="flex flex-col items-end">
-                                                            {priceBreakdown.childMarketRate > priceBreakdown.childTicketRate && (
-                                                                <span className="text-[9px] text-gray-400 line-through">₹{(priceBreakdown.childMarketRate * guests.children).toLocaleString()}</span>
-                                                            )}
-                                                            <span className="font-bold text-gray-900">₹{priceBreakdown.totalChildTicket?.toLocaleString()}</span>
-                                                        </div>
+                                                    <div className="flex justify-between text-xs text-gray-600 font-medium">
+                                                        <span>Child Tickets (x{guests.children})</span>
+                                                        <span className="text-gray-900">Γé╣{priceBreakdown.totalChildTicket?.toLocaleString()}</span>
                                                     </div>
                                                 )}
-                                                <div className="flex justify-between items-center pt-1 border-t border-gray-200 mt-2 font-black text-gray-900">
-                                                    <span>Total:</span>
-                                                    <span>₹{priceBreakdown.grantTotal?.toLocaleString()}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center text-green-700 font-bold bg-green-50 px-2 py-1 rounded">
-                                                    <span>Pay Now:</span>
-                                                    <span>₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center text-orange-700 font-bold bg-orange-50 px-2 py-1 rounded">
-                                                    <span>Pay Later:</span>
-                                                    <span>₹{(priceBreakdown.grantTotal - (priceBreakdown.tokenAmount || 0)).toLocaleString()}</span>
-                                                </div>
                                             </div>
                                         )}
 
@@ -2172,23 +2105,39 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                         {priceBreakdown.totalFood > 0 && (
                                             <div className="flex justify-between text-xs text-blue-600 font-bold">
                                                 <span>Meal Package Charges</span>
-                                                <span>+₹{priceBreakdown.totalFood?.toLocaleString()}</span>
+                                                <span>+Γé╣{priceBreakdown.totalFood?.toLocaleString()}</span>
                                             </div>
                                         )}
 
                                         {/* GST and Total - Simplified */}
                                         <div className="pt-2 border-t border-gray-200 mt-2 flex flex-col gap-2">
                                             <div className="flex justify-between items-center">
-                                                <span className="font-bold text-xs text-gray-900 uppercase">{isWaterpark ? 'Total Amount' : 'Subtotal'}</span>
-                                                <span className="text-xl font-black text-gray-900">₹{(priceBreakdown.grantTotal - priceBreakdown.gstAmount).toLocaleString()}</span>
+                                                <span className="font-bold text-xs text-gray-900 uppercase">Subtotal</span>
+                                                <span className="text-xl font-black text-gray-900">Γé╣{(priceBreakdown.grantTotal - priceBreakdown.gstAmount).toLocaleString()}</span>
                                             </div>
-                                            {!isWaterpark && <div className="text-[10px] text-gray-400 font-bold text-right italic uppercase tracking-wider">+ GST APPLICABLE</div>}
+                                            <div className="text-[10px] text-gray-400 font-bold text-right italic uppercase tracking-wider">+ GST APPLICABLE</div>
                                         </div>
 
+                                        {/* Pay Now Section - Clickable */}
+                                        <button onClick={onReserve} className="w-full mt-4 bg-black text-white p-4 rounded-xl relative overflow-hidden shadow-lg border border-white/10 active:scale-95 transition text-left">
+                                            <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-bl-full -mr-6 -mt-6"></div>
+                                            <div className="relative z-10 flex justify-between items-end">
+                                                <div>
+                                                    <div className="text-[10px] text-gray-300 uppercase tracking-widest font-bold mb-1">Pay Now to Reserve</div>
+                                                    <div className="text-2xl font-black">Γé╣{priceBreakdown.tokenAmount?.toLocaleString()}</div>
+                                                    <div className="text-[10px] text-gray-400 mt-1 uppercase font-bold">
+                                                        {isWaterpark ? 'Per Ticket Charge' : '10% Token Amount'}
+                                                    </div>
+                                                </div>
+                                                <div className="p-2 bg-white/10 rounded-full">
+                                                    <FaArrowRight size={16} className="text-white/70" />
+                                                </div>
+                                            </div>
+                                        </button>
 
                                         {priceBreakdown.totalSavings > 0 && (
                                             <div className="text-[10px] font-bold text-center text-green-600 bg-green-50 py-1.5 rounded-md border border-green-100">
-                                                🎉 You saved ₹{priceBreakdown.totalSavings.toLocaleString()} on this booking!
+                                                ≡ƒÄë You saved Γé╣{priceBreakdown.totalSavings.toLocaleString()} on this booking!
                                             </div>
                                         )}
                                     </div>
@@ -2201,14 +2150,11 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                             <div className="flex flex-col">
                                 {priceBreakdown ? (
                                     <>
-                                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
-                                            <span className="text-[10px] font-bold text-gray-500 uppercase font-outfit">Pay Now</span>
-                                            <span className="text-xl font-black text-gray-900 font-outfit">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
-                                            <span className="text-[10px] font-bold text-gray-500 uppercase font-outfit">Pay Later</span>
-                                            <span className="text-sm font-black text-gray-900 font-outfit">₹{(priceBreakdown.grantTotal - priceBreakdown.tokenAmount).toLocaleString()} {!isWaterpark && <span className="text-[8px] text-gray-400">+ GST</span>}</span>
-                                        </div>
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase">Pay Now</span>
+                                        <span className="text-lg font-bold text-gray-900 leading-none">Γé╣{priceBreakdown.tokenAmount?.toLocaleString()}</span>
+                                        <span className="text-[9px] text-gray-400 font-medium mt-0.5 whitespace-nowrap">
+                                            {isWaterpark ? `Γé╣50 x ${guests.adults + guests.children} Tickets` : `10% of Γé╣${(priceBreakdown.grantTotal - priceBreakdown.gstAmount).toLocaleString()}`}
+                                        </span>
                                     </>
                                 ) : (
                                     <>
@@ -2221,9 +2167,9 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                             </div>
                             <button
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReserve(); }}
-                                className="flex-1 bg-gradient-to-r from-[#FF385C] to-[#E00B41] text-white py-4 rounded-xl font-black text-sm shadow-lg shadow-red-200 active:scale-95 transition cursor-pointer z-50 pointer-events-auto"
+                                className="flex-1 bg-gradient-to-r from-[#FF385C] to-[#E00B41] text-white py-3 rounded-lg font-bold text-sm shadow-lg shadow-red-200 active:scale-95 transition cursor-pointer z-50 pointer-events-auto"
                             >
-                                {(!dateRange.from) ? 'Select Date' : (priceBreakdown ? `Pay ₹${priceBreakdown.tokenAmount?.toLocaleString()} Now` : 'Reserve Now')}
+                                {(!dateRange.from) ? 'Select Date' : 'Book Now'}
                             </button>
                         </div>
                     </motion.div>
@@ -2233,48 +2179,43 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
     );
 };
 
-function MobileFooter({ price, unit, onReserve, buttonText, dateRange, onDateClick, guests, mealSelection, isWaterpark }) {
+function MobileFooter({ price, unit, onReserve, buttonText, dateRange, onDateClick }) {
+    // If we have a full breakdown passed as 'price' (object), use it. 
+    // Otherwise fall back to simple price display.
     const isBreakdown = typeof price === 'object' && price !== null;
-    const totalAmount = isBreakdown ? (isWaterpark ? price.grantTotal : price.subtotal) : price;
-
-    const hasDates = dateRange.from;
-    const dateStr = hasDates ? (isWaterpark ? format(dateRange.from, 'MMM dd') : `${format(dateRange.from, 'MMM dd')} - ${dateRange.to ? format(dateRange.to, 'MMM dd') : '...'}`) : 'Dates';
-
-    // Summary line for Mobile
-    const guestCount = (Number(guests?.adults) || 0) + (Number(guests?.children) || 0);
-    const summary = `${dateStr} • ${guestCount} Guests${mealSelection > 0 ? ` • ${mealSelection} Meals` : ''}`;
+    const finalAmount = isBreakdown ? (price.grantTotal - price.gstAmount) : price;
 
     return (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 z-40 flex justify-between items-center shadow-[0_-5px_20px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
-            <div className="flex flex-col cursor-pointer max-w-[50%]" onClick={onDateClick}>
-                {hasDates ? (
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-tighter truncate">{summary}</span>
+            <div className="flex flex-col cursor-pointer" onClick={onDateClick}>
+                {dateRange?.from ? (
+                    <>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1">
+                            {format(new Date(dateRange.from), 'dd MMM')}
+                            {dateRange.to ? ` - ${format(new Date(dateRange.to), 'dd MMM')}` : ''}
+                            <FaArrowRight size={8} className="rotate-[-45deg] text-blue-500" />
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="flex flex-col">
-                                <span className="font-bold text-lg text-gray-900 leading-tight">₹{totalAmount?.toLocaleString()}</span>
-                                {!isWaterpark && isBreakdown && <span className="text-[8px] text-gray-400 font-bold uppercase">+ GST</span>}
+                        <div className="flex flex-col">
+                            <div className="flex items-baseline gap-1">
+                                <span className="font-bold text-xl text-gray-900">Γé╣{finalAmount?.toLocaleString()}</span>
+                                <span className="text-[9px] text-gray-400 font-bold uppercase">+ GST</span>
                             </div>
-                            <button onClick={onDateClick} className="text-[10px] font-bold text-blue-600 underline whitespace-nowrap">Edit / View Details</button>
                         </div>
-                    </div>
+                    </>
                 ) : (
-                    <div className="flex flex-col">
-                        <div className="text-[10px] font-bold text-gray-500 uppercase">Starts at</div>
+                    <>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase">Per Night</div>
                         <div className="flex items-baseline gap-1">
-                            <span className="font-bold text-xl text-gray-900">₹{price?.toLocaleString()}</span>
-                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tight ml-1">{unit}</span>
+                            <span className="font-bold text-xl text-gray-900">Γé╣{price?.toLocaleString()}</span>
                         </div>
-                    </div>
+                    </>
                 )}
             </div>
             <button
                 onClick={onReserve}
-                className="bg-[#FF385C] hover:bg-[#d9324e] text-white px-5 py-3.5 rounded-xl font-black text-sm shadow-lg shadow-red-100 transition active:scale-95 disabled:opacity-50"
+                className="bg-[#FF385C] hover:bg-[#d9324e] text-white px-6 py-3 rounded-xl font-bold shadow-lg transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                {isBreakdown && price.tokenAmount ? `Pay ₹${price.tokenAmount.toLocaleString()} Now` : buttonText}
+                {buttonText}
             </button>
         </div>
     );

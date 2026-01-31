@@ -109,16 +109,28 @@ export default function BookingPage() {
 
         const EXTRA_GUEST_CHARGE = safeFloat(obPricing?.extraGuestCharge, 1000);
         const GST_PERCENTAGE = safeFloat(property?.gst_percentage, 18);
+        const FOOD_CHARGE = safeFloat(ob.foodRates?.perPerson || ob.foodRates?.veg, 1000);
 
         let totalVillaRate = 0;
+        let totalExtra = 0;
+        let totalFood = 0;
         let nightDetails = [];
+
+        // Meal Rates
+        const mealSelection = locationState.mealSelection || 0;
+        const VEG_RATE = safeFloat(ob.foodRates?.veg || FOOD_CHARGE, 1000);
+        const NONVEG_RATE = safeFloat(ob.foodRates?.nonVeg || ob.foodRates?.nonveg || FOOD_CHARGE, 1200);
+        const JAIN_RATE = safeFloat(ob.foodRates?.jain || VEG_RATE, 1000);
+        const MAX_MEAL_RATE = Math.max(VEG_RATE, NONVEG_RATE, JAIN_RATE);
+
+        const baseLimit = parseInt(property?.Occupancy || ob.pricing?.extraGuestLimit || 12);
 
         for (let i = 0; i < nights; i++) {
             const d = new Date(dateRange.from);
             d.setDate(d.getDate() + i);
             const w = d.getDay();
 
-            // Check for Holiday Override (Same as PropertyDetails)
+            // Check for Holiday Override
             const holiday = property.holidays?.find(h => {
                 const dStr = format(d, 'yyyy-MM-dd');
                 const hStart = h.from_date ? h.from_date.substring(0, 10) : '';
@@ -126,15 +138,15 @@ export default function BookingPage() {
                 return dStr >= hStart && dStr <= hEnd;
             });
 
+            // 1. Base Rate
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const dayKey = dayNames[w];
+            const dayPricing = adminPricing?.[dayKey];
+
             let rate = 0;
             if (holiday) {
                 rate = parseFloat(holiday.base_price);
             } else {
-                // 7-Day Pricing Matrix
-                const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                const dayKey = dayNames[w];
-                const dayPricing = adminPricing?.[dayKey];
-
                 if (dayPricing?.villa?.final) {
                     rate = parseFloat(dayPricing.villa.final);
                 } else {
@@ -143,10 +155,39 @@ export default function BookingPage() {
                     else rate = parseFloat(PRICE_WEEKDAY);
                 }
             }
-
             if (isNaN(rate)) rate = 0;
             totalVillaRate += rate;
-            nightDetails.push({ date: format(d, 'MMM dd'), rate });
+
+            // 2. Extra Guest (Day-wise)
+            let dailyExtraCharge = EXTRA_GUEST_CHARGE;
+            if (dayPricing?.extra_person?.final) {
+                dailyExtraCharge = parseFloat(dayPricing.extra_person.final);
+            }
+            const currentTotalGuests = (guests.adults || 0) + (guests.children || 0);
+            const extraCount = Math.max(0, currentTotalGuests - baseLimit);
+            const dailyExtraTotal = extraCount * dailyExtraCharge;
+            totalExtra += dailyExtraTotal;
+
+            // 3. Food (Max of Veg/NonVeg/Jain vs Daily DB Rates)
+            let dailyVeg = VEG_RATE;
+            let dailyJain = JAIN_RATE;
+
+            if (dayPricing?.meal_person?.final) {
+                dailyVeg = parseFloat(dayPricing.meal_person.final);
+            }
+            if (dayPricing?.jain_meal_person?.final) {
+                dailyJain = parseFloat(dayPricing.jain_meal_person.final);
+            }
+            const dailyMaxMeal = Math.max(dailyVeg, NONVEG_RATE, dailyJain);
+            const dailyFoodTotal = mealSelection * dailyMaxMeal;
+            totalFood += dailyFoodTotal;
+
+            nightDetails.push({
+                date: format(d, 'MMM dd'),
+                rate,
+                extra: dailyExtraTotal,
+                food: dailyFoodTotal
+            });
         }
 
         if (isWaterpark) {
@@ -198,17 +239,12 @@ export default function BookingPage() {
             };
         }
 
-        const baseLimit = parseInt(property?.Occupancy || ob.pricing?.extraGuestLimit || 12);
-        const extraGuests = Math.max(0, guests.adults - baseLimit);
-        const totalExtra = extraGuests * EXTRA_GUEST_CHARGE * nights;
+        // Legacy Calculation Removed - Now Calculated in Loop
+        // const extraGuests = Math.max(0, guests.adults - baseLimit);
+        // const totalExtra = extraGuests * EXTRA_GUEST_CHARGE * nights; --> Replaced by totalExtra
 
-        // Food
-        const mealSelection = locationState.mealSelection || 0;
-        const VEG_RATE = safeFloat(ob.foodRates?.veg, 1000);
-        const NONVEG_RATE = safeFloat(ob.foodRates?.nonVeg || ob.foodRates?.nonveg, 1200);
-        const JAIN_RATE = safeFloat(ob.foodRates?.jain, VEG_RATE);
-        const MAX_MEAL_RATE = Math.max(VEG_RATE, NONVEG_RATE, JAIN_RATE);
-        const totalFood = (mealSelection * MAX_MEAL_RATE) * nights;
+        // const mealSelection = locationState.mealSelection || 0;
+        // const VEG_RATE = ... --> Replaced by totalFood logic in loop
 
         const taxable = totalVillaRate + totalExtra + totalFood;
         const gst = (taxable * GST_PERCENTAGE) / 100;
@@ -295,7 +331,7 @@ export default function BookingPage() {
 
     if (!property || !details) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
-    const buildBackUrl = () => {
+    const getBackUrl = () => {
         const params = new URLSearchParams();
         if (dateRange.from) params.set('start', format(dateRange.from, 'yyyy-MM-dd'));
         if (dateRange.to) params.set('end', format(dateRange.to, 'yyyy-MM-dd'));
@@ -305,13 +341,25 @@ export default function BookingPage() {
         return `/property/${slug}?${params.toString()}`;
     };
 
+    const handleBackToChange = () => {
+        navigate(getBackUrl(), {
+            state: {
+                ...locationState,
+                guests,
+                dateRange,
+                mealSelection: locationState.mealSelection,
+                openDatePicker: true
+            }
+        });
+    };
+
     return (
         <div className="bg-gray-50 min-h-screen pb-32 pt-28 font-outfit">
             <div className="container mx-auto px-4 max-w-6xl">
 
                 {/* Header with Back */}
                 <div className="mb-8 flex items-center gap-4">
-                    <button onClick={() => navigate(buildBackUrl())} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center hover:bg-gray-100 transition">
+                    <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center hover:bg-gray-100 transition">
                         <FaArrowLeft className="text-gray-600" />
                     </button>
                     <h1 className="text-2xl font-bold text-gray-900">Confirm and Pay</h1>
@@ -333,14 +381,14 @@ export default function BookingPage() {
                                         <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Dates</div>
                                         <div className="font-bold text-gray-900">{format(dateRange.from, 'dd MMM yyyy')} – {format(dateRange.to, 'dd MMM yyyy')}</div>
                                     </div>
-                                    <button onClick={() => navigate(buildBackUrl())} className="text-xs font-bold text-blue-600 hover:underline">Change Date</button>
+                                    <button onClick={handleBackToChange} className="text-xs font-bold text-blue-600 hover:underline">Change Date</button>
                                 </div>
                                 <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50 flex justify-between items-center">
                                     <div>
                                         <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Guests</div>
                                         <div className="font-bold text-gray-900">{guests.adults} Adults, {guests.children} Children</div>
                                     </div>
-                                    <button onClick={() => navigate(buildBackUrl())} className="text-xs font-bold text-blue-600 hover:underline">Change Guests</button>
+                                    <button onClick={handleBackToChange} className="text-xs font-bold text-blue-600 hover:underline">Change Guests</button>
                                 </div>
                             </div>
                         </div>
@@ -511,37 +559,24 @@ export default function BookingPage() {
                                         )}
                                     </>
                                 )}
-                                <div className="flex justify-between items-start text-gray-900 pt-3 border-t border-gray-100">
-                                    <div className="flex flex-col">
-                                        <span className="text-base font-black uppercase tracking-tight">Total Amount</span>
-                                        {!details.isWaterpark && <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">+ GST APPLICABLE</span>}
-                                    </div>
-                                    <span className="text-3xl font-black">₹{finalTotal.toLocaleString()}</span>
+                                <div className="flex justify-between items-center text-gray-900 pt-4 border-t border-gray-100 mt-4">
+                                    <span className="text-base font-black uppercase tracking-tight">Total Amount</span>
+                                    <span className="text-2xl font-black">₹{finalTotal.toLocaleString()} {!details.isWaterpark && <span className="text-xs text-gray-400 font-bold">+ GST</span>}</span>
                                 </div>
-                                {!details.isWaterpark && (
-                                    <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 uppercase">
-                                        <FaReceipt className="text-green-500" />
-                                        <span>+ GST Applicable</span>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="h-px bg-gray-100 my-6"></div>
 
                             {/* Pay Now Section (Production Style) */}
-                            <div className="bg-blue-50/50 rounded-3xl p-6 border border-blue-100 mb-8">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Pay Now to Book</span>
+                            {/* Pay Now Section (Simplified) */}
+                            <div className="bg-gray-50 rounded-2xl p-5 mt-6 border border-gray-100">
+                                <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200/60">
+                                    <span className="text-xs font-black text-gray-500 uppercase font-outfit">Pay Now</span>
+                                    <span className="text-xl font-black text-gray-900 font-outfit">₹{payNowAmount.toLocaleString()}</span>
                                 </div>
-                                <div className="text-4xl font-black text-gray-900 mb-1">₹{payNowAmount.toLocaleString()}</div>
                                 <div className="flex justify-between items-center">
-                                    <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                                        {details.isWaterpark ? 'Registration Token' : '10% Token Amount'}
-                                    </div>
-                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">
-                                        Pay at {details.isWaterpark ? 'Park' : 'Villa'}: <span className="text-gray-900 font-black">₹{balanceAmount.toLocaleString()}</span>
-                                    </div>
+                                    <span className="text-xs font-black text-gray-500 uppercase font-outfit">Pay Later</span>
+                                    <span className="text-base font-black text-gray-900 font-outfit">₹{balanceAmount.toLocaleString()} {!details.isWaterpark && <span className="text-[10px] text-gray-400 font-bold">+ GST</span>}</span>
                                 </div>
                             </div>
 
@@ -571,9 +606,9 @@ export default function BookingPage() {
                             <button
                                 onClick={handleSubmit}
                                 disabled={bookingStatus === 'submitting'}
-                                className="w-full bg-[#FF385C] hover:bg-[#D9324E] text-white h-16 rounded-2xl font-black text-lg shadow-xl shadow-red-100 items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 flex mb-4"
+                                className="w-full bg-[#FF385C] hover:bg-[#D9324E] text-white h-16 rounded-2xl font-black text-lg shadow-xl shadow-red-100 items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 flex mb-4 mt-8"
                             >
-                                {bookingStatus === 'submitting' ? 'Processing...' : 'Proceed to Pay'}
+                                {bookingStatus === 'submitting' ? 'Processing...' : `Pay ₹${payNowAmount.toLocaleString()} Now`}
                             </button>
 
                         </div>
@@ -584,7 +619,12 @@ export default function BookingPage() {
                 <div className="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-100 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] lg:hidden z-50">
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Pay Now (Token)</span>
+                            <button
+                                onClick={handleBackToChange}
+                                className="text-[10px] font-bold text-blue-600 uppercase tracking-wider text-left hover:underline mb-1 flex items-center gap-1"
+                            >
+                                Edit Details
+                            </button>
                             <span className="text-2xl font-black text-gray-900">₹{payNowAmount.toLocaleString()}</span>
                             <span className="text-[8px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">
                                 Total: ₹{finalTotal.toLocaleString()} {details.isWaterpark ? '' : '+ GST'}
@@ -596,7 +636,7 @@ export default function BookingPage() {
                             className="bg-[#FF385C] hover:bg-[#d9324e] text-white h-14 px-8 rounded-2xl font-black text-base shadow-xl shadow-red-200 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2"
                         >
                             {bookingStatus === 'submitting' ? 'Processing...' : (
-                                <><span>Proceed to Pay</span> <FaArrowLeft className="rotate-180 text-sm" /></>
+                                <><span>Pay ₹{payNowAmount.toLocaleString()} Now</span> <FaArrowLeft className="rotate-180 text-sm" /></>
                             )}
                         </button>
                     </div>
