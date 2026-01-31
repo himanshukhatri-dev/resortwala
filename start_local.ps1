@@ -7,14 +7,15 @@ Write-Host ""
 
 # 1. Start SSH Tunnel for Staging Database
 Write-Host "Opening SSH Tunnel to Staging Database (Port 3307)..." -ForegroundColor Yellow
+# Using -f to run SSH in background if possible, or keeping it in separate window as per script design
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "ssh -N -L 3307:127.0.0.1:3306 root@77.37.47.243"
 
 # 2. Sync Local Environment
-Write-Host "Syncing environment files..." -ForegroundColor Yellow
-Copy-Item api/.env.local api/.env
-Copy-Item client-customer/.env.local client-customer/.env
-Copy-Item client-vendor/.env.local client-vendor/.env
-Copy-Item client-admin/.env.local client-admin/.env
+Write-Host "Syncing environment files from .env.local ..." -ForegroundColor Yellow
+Copy-Item -Path api\.env.local -Destination api\.env -Force
+Copy-Item -Path client-customer\.env.local -Destination client-customer\.env -Force
+Copy-Item -Path client-vendor\.env.local -Destination client-vendor\.env -Force
+Copy-Item -Path client-admin\.env.local -Destination client-admin\.env -Force
 
 # 3. Start Docker Containers
 Write-Host "Starting Local Docker Services..." -ForegroundColor Yellow

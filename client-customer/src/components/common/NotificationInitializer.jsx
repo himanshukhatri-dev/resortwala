@@ -6,9 +6,12 @@ import { requestNotificationPermission } from '../../utils/notifications';
 const NotificationInitializer = () => {
     const { user, token } = useAuth();
 
+    const requestedRef = React.useRef(false);
+
     useEffect(() => {
-        if (user && token) {
+        if (user && token && !requestedRef.current) {
             // Request permission and sync token
+            requestedRef.current = true;
             requestNotificationPermission(user.id, token);
         }
     }, [user, token]);

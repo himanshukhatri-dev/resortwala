@@ -14,17 +14,30 @@ class SystemModeController extends Controller
      */
     public function getMode()
     {
-        $settings = Cache::remember('system_settings', 60, function () {
-            return SystemSetting::current();
-        });
+        try {
+            $settings = Cache::remember('system_settings', 60, function () {
+                try {
+                    return SystemSetting::current();
+                } catch (\Exception $e) {
+                    return new SystemSetting(); // Fallback to empty default
+                }
+            });
 
-        return response()->json([
-            'maintenance' => $settings->maintenance_mode,
-            'coming_soon' => $settings->coming_soon_mode,
-            'logo_url' => $settings->logo_url,
-            'maintenance_content' => $settings->maintenance_content,
-            'coming_soon_content' => $settings->coming_soon_content,
-        ]);
+            return response()->json([
+                'maintenance' => $settings->maintenance_mode ?? false,
+                'coming_soon' => $settings->coming_soon_mode ?? false,
+                'logo_url' => $settings->logo_url ?? null,
+                'maintenance_content' => $settings->maintenance_content ?? null,
+                'coming_soon_content' => $settings->coming_soon_content ?? null,
+            ]);
+        } catch (\Exception $e) {
+            // Absolute fallback if Cache or anything else fails
+            return response()->json([
+                'maintenance' => false,
+                'coming_soon' => false,
+                'logo_url' => null
+            ]);
+        }
     }
 
     /**

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
+import { SPECIAL_EVENTS } from '../config/special_events';
+import SparkleEffect from '../components/special/SparkleEffect';
+import ValentineHearts from '../components/special/ValentineHearts';
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/ui/FilterBar';
 import FilterModal from '../components/features/FilterModal';
@@ -452,6 +455,8 @@ export default function Home() {
 
     return (
         <div className="pb-20" >
+            {SPECIAL_EVENTS.REPUBLIC_DAY_LAUNCH.showSparkles && <SparkleEffect />}
+            {SPECIAL_EVENTS.VALENTINES_MONTH.enabled && SPECIAL_EVENTS.VALENTINES_MONTH.showHearts && <ValentineHearts />}
             <SEO
                 title={city ? `Luxury Villas & Stays in ${city.charAt(0).toUpperCase() + city.slice(1)} | ResortWala` : "Book Luxury Villas & Stays | ResortWala"}
                 description={city ? `Find and book the best luxury villas, resorts, and vacation stays in ${city}. Verified properties with the best rates and instant booking.` : "Discover the best luxury villas, resorts, and waterparks in Lonavala and beyond. Verified stays, best prices, and instant booking."}
@@ -474,17 +479,48 @@ export default function Home() {
                     </AnimatePresence>
                     <div className="absolute inset-0 bg-black/50" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-black/40" />
+
+                    {/* Valentine Blush Gradient Overlay */}
+                    {SPECIAL_EVENTS.VALENTINES_MONTH.enabled && SPECIAL_EVENTS.VALENTINES_MONTH.showHeroGradient && (
+                        <div className="absolute inset-0 bg-rose-500/10 mix-blend-soft-light pointer-events-none" />
+                    )}
                 </div>
 
                 <div className="relative z-50 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
-                    <h1 className="text-4xl md:text-5xl lg:text-7xl font-extrabold text-white mb-2 md:mb-6 drop-shadow-2xl font-display tracking-tight leading-tight text-center">
-                        Find your peace in <br className="hidden md:block" />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-1">paradise</span>
-                    </h1>
+                    {SPECIAL_EVENTS.VALENTINES_MONTH.enabled ? (
+                        <>
+                            <motion.span
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-secondary font-bold text-sm md:text-lg mb-2 tracking-wide flex items-center gap-2"
+                            >
+                                <span className="w-6 h-[1px] bg-secondary/50" />
+                                {SPECIAL_EVENTS.VALENTINES_MONTH.heroTitle}
+                                <span className="w-6 h-[1px] bg-secondary/50" />
+                            </motion.span>
+                            <h1 className="text-4xl md:text-5xl lg:text-7xl font-extrabold text-white mb-2 md:mb-6 drop-shadow-2xl font-display tracking-tight leading-loose text-center">
+                                {SPECIAL_EVENTS.VALENTINES_MONTH.heroSubtitle}
+                            </h1>
+                        </>
+                    ) : (
+                        <h1 className="text-4xl md:text-5xl lg:text-7xl font-extrabold text-white mb-2 md:mb-6 drop-shadow-2xl font-display tracking-tight leading-tight text-center">
+                            Find your peace in <br className="hidden md:block" />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-pink-500 not-italic transform hover:scale-105 transition-transform duration-500 inline-block mt-1">paradise</span>
+                        </h1>
+                    )}
 
                     <p className="text-white/95 text-base md:text-xl mb-4 md:mb-8 max-w-2xl text-center font-light drop-shadow-lg px-2 leading-relaxed">
-                        Discover luxury villas, water parks, and hidden gems across India.
+                        {SPECIAL_EVENTS.VALENTINES_MONTH.enabled
+                            ? SPECIAL_EVENTS.VALENTINES_MONTH.heroHeroText
+                            : "Discover luxury villas, water parks, and hidden gems across India."
+                        }
                     </p>
+
+                    {SPECIAL_EVENTS.VALENTINES_MONTH.enabled && (
+                        <div className="mb-4 text-rose-200/80 text-[10px] md:text-xs font-bold uppercase tracking-widest bg-rose-900/20 px-4 py-1.5 rounded-full border border-rose-500/20 backdrop-blur-sm">
+                            Perfect for Valentine’s Week • Feb Getaways • Couple Specials
+                        </div>
+                    )}
 
                     <div className="w-full max-w-4xl h-auto scale-100 md:scale-100 origin-top mt-4 md:mt-0 flex flex-col items-center gap-6">
                         <div className="w-full">

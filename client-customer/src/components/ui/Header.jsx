@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 
 import SearchBar from '../ui/SearchBar';
 import BellIcon from '../common/BellIcon';
+import { SPECIAL_EVENTS } from '../../config/special_events';
 
 export default function Header({ onOpenSearch, onSearch, properties, categories, activeCategory, onCategoryChange }) {
     const location = useLocation();
@@ -69,13 +70,15 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
 
                 {/* 3. RIGHT - MENU */}
                 <div className="flex items-center gap-4 relative" ref={menuRef}>
-                    <a
+                    <motion.a
                         href="/vendor/"
                         target="_self"
-                        className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all group"
+                        animate={SPECIAL_EVENTS.VALENTINES_MONTH.enabled ? { scale: [1, 1.02, 1] } : {}}
+                        transition={SPECIAL_EVENTS.VALENTINES_MONTH.enabled ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : {}}
+                        className={`hidden lg:flex items-center gap-2 px-4 py-2 rounded-full border transition-all group ${SPECIAL_EVENTS.VALENTINES_MONTH.enabled ? 'bg-rose-50 border-rose-200 hover:border-rose-400' : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md'}`}
                     >
-                        <span className="font-bold text-xs text-gray-700">List your property</span>
-                    </a>
+                        <span className={`font-bold text-xs ${SPECIAL_EVENTS.VALENTINES_MONTH.enabled ? 'text-rose-600' : 'text-gray-700'}`}>List your property</span>
+                    </motion.a>
 
                     {/* Notification Bell */}
                     {user && <div className="mx-1"><BellIcon /></div>}

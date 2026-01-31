@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaStar, FaHeart, FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaWifi, FaSwimmingPool, FaParking, FaSnowflake, FaBed, FaBath, FaUserFriends, FaExchangeAlt, FaShieldAlt, FaCheck } from 'react-icons/fa';
+import { SPECIAL_EVENTS } from '../../config/special_events';
 
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useWishlist } from '../../context/WishlistContext';

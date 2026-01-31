@@ -48,7 +48,7 @@ const ComingSoonGuard = ({ children }) => {
         } else {
             fetchMode();
         }
-    }, [searchParams, location.pathname]);
+    }, [searchParams]);
 
     if (loading) return (
         <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center p-6 text-center">

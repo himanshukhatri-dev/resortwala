@@ -65,9 +65,20 @@ export default function MainLayout() {
 
     const handleSearch = (filters) => {
         setShowSearchModal(false);
-        // Navigate to Home with search filters
-        // No need to pass activeCategory, it's global now
-        navigate('/', { state: { searchFilters: filters } });
+
+        const params = new URLSearchParams();
+        if (filters.location) params.append('location', filters.location);
+        if (filters.dateRange?.from) params.append('check_in', filters.dateRange.from.toISOString());
+        if (filters.dateRange?.to) params.append('check_out', filters.dateRange.to.toISOString());
+
+        if (filters.guests) {
+            params.append('adults', filters.guests.adults || 1);
+            params.append('children', filters.guests.children || 0);
+            // params.append('rooms', filters.guests.rooms || 1); // Optional depending on usage
+        }
+
+        // Navigate to Home with search params
+        navigate(`/?${params.toString()}`);
     };
 
     const [scrolled, setScrolled] = useState(false);
