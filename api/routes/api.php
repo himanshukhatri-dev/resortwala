@@ -231,6 +231,35 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/vendor/bookings/lock', [App\Http\Controllers\VendorCalendarController::class, 'lock']);
     Route::post('/vendor/bookings/{id}/approve', [App\Http\Controllers\VendorCalendarController::class, 'approve']);
     Route::post('/vendor/bookings/{id}/reject', [App\Http\Controllers\VendorCalendarController::class, 'reject']);
+
+    // Vendor Learn & Grow System (Phase 1)
+    Route::prefix('vendor/learning')->group(function () {
+        // Learning Hub
+        Route::get('/videos', [\App\Http\Controllers\LearningVideoController::class, 'index']);
+        Route::get('/videos/{slug}', [\App\Http\Controllers\LearningVideoController::class, 'show']);
+        Route::post('/videos/{id}/progress', [\App\Http\Controllers\LearningVideoController::class, 'updateProgress']);
+
+        // Guided Walkthroughs
+        Route::get('/walkthroughs', [\App\Http\Controllers\WalkthroughController::class, 'getForPage']);
+        Route::post('/walkthroughs/{id}/progress', [\App\Http\Controllers\WalkthroughController::class, 'updateProgress']);
+
+        // Onboarding Progress
+        Route::get('/onboarding/status', [\App\Http\Controllers\VendorOnboardingController::class, 'getStatus']);
+        Route::post('/onboarding/update', [\App\Http\Controllers\VendorOnboardingController::class, 'updateMilestone']);
+
+        // Contextual Help
+        Route::get('/help', [\App\Http\Controllers\ContextualHelpController::class, 'getForPage']);
+        Route::post('/help/track', [\App\Http\Controllers\ContextualHelpController::class, 'trackInteraction']);
+
+        // AI Assistant
+        Route::post('/ai/chat', [\App\Http\Controllers\AIAssistantController::class, 'sendMessage']);
+        Route::get('/ai/history', [\App\Http\Controllers\AIAssistantController::class, 'getHistory']);
+        Route::post('/ai/feedback', [\App\Http\Controllers\AIAssistantController::class, 'submitFeedback']);
+
+        // Smart Triggers
+        Route::post('/triggers/check', [\App\Http\Controllers\SmartTriggerController::class, 'checkTriggers']);
+        Route::post('/triggers/interact', [\App\Http\Controllers\SmartTriggerController::class, 'recordInteraction']);
+    });
 });
 
 Route::post('/vendor/calendar/seed', [App\Http\Controllers\VendorCalendarController::class, 'seed']);

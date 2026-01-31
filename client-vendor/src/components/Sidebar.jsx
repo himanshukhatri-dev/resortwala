@@ -40,6 +40,7 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
         { path: '/calendar', icon: '🗓️', label: 'Calendar', roles: ['vendor', 'admin'] },
         { path: '/holiday-management', icon: '🌴', label: 'Holiday', roles: ['vendor', 'admin'] },
         { path: '/reviews', icon: '⭐', label: 'Reviews', roles: ['vendor', 'admin'] },
+        { path: '/learning', icon: '🎓', label: 'Learn & Grow', roles: ['vendor'] },
     ];
 
     const filteredItems = menuItems.filter(item => item.roles.includes(userType));
@@ -76,7 +77,7 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
                 </div>
 
                 {/* Menu Items */}
-                <nav className="flex-1 py-4 overflow-y-auto overflow-x-hidden">
+                <nav className="sidebar-nav flex-1 py-4 overflow-y-auto overflow-x-hidden">
                     {filteredItems.map((item) => {
                         const isActive = location.pathname === item.path;
                         return (

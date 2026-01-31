@@ -6,6 +6,9 @@ import AccountPending from './AccountPending';
 import NotificationBell from './NotificationBell';
 import ConfirmModal from './ConfirmModal';
 import axios from 'axios';
+import WalkthroughOverlay from '../modules/LearnGrow/components/WalkthroughOverlay';
+import AIChatWidget from '../modules/LearnGrow/components/AIChatWidget';
+import { useLocation } from 'react-router-dom';
 
 export default function VendorLayout({ children, title }) {
     const navigate = useNavigate();
@@ -182,6 +185,22 @@ export default function VendorLayout({ children, title }) {
                 confirmText="Logout"
                 cancelText="Cancel"
             />
+            <ConfirmModal
+                isOpen={showLogoutModal}
+                onClose={() => setShowLogoutModal(false)}
+                onConfirm={handleLogout}
+                title="Confirm Logout"
+                message="Are you sure you want to log out?"
+                type="danger"
+                confirmText="Logout"
+                cancelText="Cancel"
+            />
+
+            {/* Auto-Triggered Walkthrough based on current route */}
+            <WalkthroughOverlay pageRoute={useLocation().pathname} />
+
+            {/* Global AI Chat Assistant */}
+            <AIChatWidget />
         </div>
     );
 }

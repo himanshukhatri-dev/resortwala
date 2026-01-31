@@ -95,7 +95,7 @@ export default function Dashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-                    <div className="bg-orange-50 rounded-xl md:rounded-2xl p-4 md:p-5 border border-orange-100 cursor-pointer hover:bg-orange-100 transition" onClick={() => navigate('/bookings')}>
+                    <div className="stats-card-bookings bg-orange-50 rounded-xl md:rounded-2xl p-4 md:p-5 border border-orange-100 cursor-pointer hover:bg-orange-100 transition" onClick={() => navigate('/bookings')}>
                         <div className="text-2xl md:text-3xl font-bold text-orange-600 mb-1">{stats?.pending_bookings || 0}</div>
                         <div className="font-bold text-gray-700 text-sm md:text-base">Pending Bookings</div>
                         <div className="text-xs text-gray-500">Require your confirmation</div>

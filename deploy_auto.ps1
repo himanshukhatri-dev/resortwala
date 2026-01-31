@@ -66,11 +66,11 @@ if (-not $Branch) {
     Write-Host ""
     Write-Host "Select Git branch to deploy:" -ForegroundColor Yellow
     if ($Environment -eq "beta") {
-        Write-Host "  1. main (recommended for beta)" -ForegroundColor Green
+        Write-Host "  1. beta (recommended for beta)" -ForegroundColor Green
         Write-Host "  2. release" -ForegroundColor Gray
     }
     else {
-        Write-Host "  1. main" -ForegroundColor Gray
+        Write-Host "  1. beta" -ForegroundColor Gray
         Write-Host "  2. release (recommended for production)" -ForegroundColor Green
     }
     Write-Host ""
@@ -78,7 +78,7 @@ if (-not $Branch) {
     $choice = Read-Host "Enter choice (1 or 2)"
     
     switch ($choice) {
-        "1" { $Branch = "main" }
+        "1" { $Branch = "beta" }
         "2" { $Branch = "release" }
         default {
             Write-Error "Invalid choice. Please enter 1 or 2."
