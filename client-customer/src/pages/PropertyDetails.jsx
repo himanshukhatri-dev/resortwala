@@ -750,8 +750,7 @@ export default function PropertyDetails() {
             totalSavings,
             tokenAmount,
             isWaterpark: false,
-            nightDetails,
-            extraGuests // Pass explicit count for UI
+            nightDetails
         };
     };
     const priceBreakdown = calculateBreakdown();
