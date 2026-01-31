@@ -1,4 +1,3 @@
-```javascript
 import React, { useState } from 'react';
 import { LearningProvider, useLearning } from '../context/LearningContext';
 import VideoList from '../components/VideoList';
@@ -14,10 +13,8 @@ const LearningHubContent = () => {
         const matchesSearch = video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             video.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-        // Map UI category names to DB enum values if needed, or simple match
-        // For simplicity, assuming 'All' checks everything
         const matchesCategory = activeCategory === 'All' ||
-            (video.category && video.category.replace('_', ' ').toLowerCase().includes(activeCategory.toLowerCase().split(' ')[0])); // Loose matching for simplicity
+            (video.category && video.category.replace('_', ' ').toLowerCase().includes(activeCategory.toLowerCase().split(' ')[0]));
 
         return matchesSearch && matchesCategory;
     });
@@ -30,7 +27,6 @@ const LearningHubContent = () => {
                     <p className="text-gray-500 text-sm mt-1">Master the vendor panel and grow your business</p>
                 </div>
 
-                {/* Search Bar */}
                 <div className="relative md:w-64">
                     <input
                         type="text"
@@ -45,7 +41,6 @@ const LearningHubContent = () => {
                 </div>
             </div>
 
-            {/* Progress Widget (Desktop Only for layout balance) */}
             <div className="hidden md:block bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-4 text-white shadow-lg">
                 <div className="flex items-center justify-between mb-2 gap-4">
                     <div>
@@ -62,17 +57,15 @@ const LearningHubContent = () => {
                 </div>
             </div>
 
-            {/* Categories */}
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {['All', 'Getting Started', 'Listing & Pricing', 'Availability & Bookings'].map((cat, idx) => (
+                {['All', 'Getting Started', 'Listing & Pricing', 'Availability & Bookings'].map((cat) => (
                     <button
                         key={cat}
                         onClick={() => setActiveCategory(cat)}
-                        className={`px - 4 py - 2 rounded - full text - sm font - medium whitespace - nowrap transition - colors ${
-    activeCategory === cat
-        ? 'bg-blue-600 text-white shadow-md'
-        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-} `}
+                        className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeCategory === cat
+                                ? 'bg-blue-600 text-white shadow-md'
+                                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                            }`}
                     >
                         {cat}
                     </button>
@@ -84,7 +77,6 @@ const LearningHubContent = () => {
                 onVideoSelect={setSelectedVideo}
             />
 
-            {/* Video Modal */}
             {selectedVideo && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-xl w-full max-w-4xl overflow-hidden shadow-2xl animate-fade-in relative">
