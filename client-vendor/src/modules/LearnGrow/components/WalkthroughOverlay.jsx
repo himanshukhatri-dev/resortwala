@@ -3,23 +3,30 @@ import { createPortal } from 'react-dom';
 import { useWalkthrough } from '../context/WalkthroughContext';
 
 const WalkthroughOverlay = () => {
-    const { currentWalkthrough, isActive, endWalkthrough } = useWalkthrough();
-    const [currentStepIndex, setCurrentStepIndex] = useState(0);
+    const {
+        activeWalkthrough,
+        currentStepIndex,
+        nextStep,
+        prevStep,
+        skipWalkthrough,
+        currentStep: contextStep,
+        totalSteps
+    } = useWalkthrough();
+
     const [targetRect, setTargetRect] = useState(null);
 
-    // Reset index when walkthrough changes
-    useEffect(() => {
-        if (isActive) setCurrentStepIndex(0);
-    }, [isActive, currentWalkthrough]);
-
-    const steps = currentWalkthrough?.steps || [];
-    const currentStep = steps[currentStepIndex];
+    // Use Context's current step
+    const currentStep = contextStep;
+    const isActive = !!activeWalkthrough;
 
     useEffect(() => {
         if (!isActive || !currentStep) return;
 
         const updatePosition = () => {
-            const element = document.querySelector(currentStep.element_selector);
+            // Support both 'element_selector' and 'target' properties
+            const selector = currentStep.element_selector || currentStep.target;
+            const element = document.querySelector(selector);
+
             if (element) {
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 const rect = element.getBoundingClientRect();
@@ -32,7 +39,7 @@ const WalkthroughOverlay = () => {
                     viewportLeft: rect.left
                 });
             } else {
-                console.warn(`Walkthrough element not found: ${currentStep.element_selector}`);
+                console.warn(`Walkthrough element not found: ${selector}`);
             }
         };
 
@@ -47,15 +54,11 @@ const WalkthroughOverlay = () => {
     if (!isActive || !currentStep || !targetRect) return null;
 
     const handleNext = () => {
-        if (currentStepIndex < steps.length - 1) {
-            setCurrentStepIndex(currentStepIndex + 1);
-        } else {
-            endWalkthrough();
-        }
+        nextStep();
     };
 
     const handleBack = () => {
-        if (currentStepIndex > 0) setCurrentStepIndex(currentStepIndex - 1);
+        prevStep();
     };
 
     return createPortal(
@@ -88,9 +91,9 @@ const WalkthroughOverlay = () => {
                 <div className="bg-white rounded-xl shadow-2xl p-5 border border-gray-100 animate-fade-in-up">
                     <div className="flex justify-between items-start mb-3">
                         <span className="text-xs font-bold text-blue-600 tracking-wider">
-                            STEP {currentStepIndex + 1} OF {steps.length}
+                            STEP {currentStepIndex + 1} OF {totalSteps}
                         </span>
-                        <button onClick={endWalkthrough} className="text-gray-400 hover:text-gray-600">
+                        <button onClick={skipWalkthrough} className="text-gray-400 hover:text-gray-600">
                             <span className="sr-only">Close</span>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -103,7 +106,7 @@ const WalkthroughOverlay = () => {
 
                     <div className="flex items-center justify-between">
                         <div className="flex gap-2">
-                            {steps.map((_, idx) => (
+                            {Array.from({ length: totalSteps }).map((_, idx) => (
                                 <div key={idx} className={`w-2 h-2 rounded-full transition-colors ${idx === currentStepIndex ? 'bg-blue-600' : 'bg-gray-200'}`} />
                             ))}
                         </div>
@@ -115,7 +118,7 @@ const WalkthroughOverlay = () => {
                                 onClick={handleNext}
                                 className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all"
                             >
-                                {currentStepIndex === steps.length - 1 ? 'Finish' : 'Next'}
+                                {currentStepIndex === totalSteps - 1 ? 'Finish' : 'Next'}
                             </button>
                         </div>
                     </div>

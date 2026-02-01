@@ -46,8 +46,11 @@ export const LearningProvider = ({ children }) => {
 
     const updateVideoProgress = async (videoId, progressData) => {
         // Optimistic update
-        // await learningService.updateProgress(videoId, progressData);
-        console.log("Updating progress", videoId, progressData);
+        try {
+            await learningService.updateProgress(videoId, progressData);
+        } catch (error) {
+            console.error("Failed to update progress", error);
+        }
     };
 
     const value = {

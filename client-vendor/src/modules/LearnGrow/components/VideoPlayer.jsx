@@ -6,10 +6,12 @@ const VideoPlayer = ({ url, onProgress, onComplete, initialProgress = 0 }) => {
     const [progress, setProgress] = useState(initialProgress);
     const [duration, setDuration] = useState(0);
 
-    useEffect(() => {
-        const video = videoRef.current;
-        if (!video) return;
+    const isYouTube = url && (url.includes('youtube.com') || url.includes('youtu.be'));
 
+    useEffect(() => {
+        if (isYouTube || !videoRef.current) return;
+
+        const video = videoRef.current;
         const handleTimeUpdate = () => {
             const current = video.currentTime;
             const total = video.duration;
@@ -18,7 +20,6 @@ const VideoPlayer = ({ url, onProgress, onComplete, initialProgress = 0 }) => {
                 const percent = (current / total) * 100;
                 setProgress(percent);
 
-                // Report progress every 5 seconds or 5%
                 if (onProgress) {
                     onProgress({
                         watch_duration_seconds: Math.floor(current),
@@ -50,9 +51,10 @@ const VideoPlayer = ({ url, onProgress, onComplete, initialProgress = 0 }) => {
             video.removeEventListener('ended', handleEnded);
             video.removeEventListener('loadedmetadata', handleLoadedMetadata);
         };
-    }, [onProgress, onComplete, initialProgress]);
+    }, [url, isYouTube, onProgress, onComplete, initialProgress]);
 
     const togglePlay = () => {
+        if (isYouTube) return;
         if (videoRef.current) {
             if (isPlaying) {
                 videoRef.current.pause();
@@ -62,6 +64,21 @@ const VideoPlayer = ({ url, onProgress, onComplete, initialProgress = 0 }) => {
             setIsPlaying(!isPlaying);
         }
     };
+
+    if (isYouTube) {
+        // Extract ID for embed if needed, but seeder uses /embed/ already
+        return (
+            <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
+                <iframe
+                    src={url}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title="Video Player"
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-lg group">
