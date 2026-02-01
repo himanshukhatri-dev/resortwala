@@ -80,6 +80,7 @@ class VendorLearningSeeder extends Seeder
                 'video_url' => $video['video_url'],
                 'thumbnail_url' => $video['thumbnail_url'],
                 'duration_seconds' => $video['duration_seconds'],
+                'difficulty_level' => $video['difficulty_level'],
                 'display_order' => $video['order'],
                 'is_active' => true,
                 'created_at' => now(),

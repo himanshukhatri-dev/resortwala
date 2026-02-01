@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { learningService } from '../services/learningService';
 import { useLocation } from 'react-router-dom';
 
-const WalkthroughContext = createContext(null);
+const WalkthroughContext = createContext();
 
 export const useWalkthrough = () => {
     const context = useContext(WalkthroughContext);
@@ -13,58 +13,105 @@ export const useWalkthrough = () => {
 };
 
 export const WalkthroughProvider = ({ children }) => {
-    const [currentWalkthrough, setCurrentWalkthrough] = useState(null);
-    const [isActive, setIsActive] = useState(false);
+    const [activeWalkthrough, setActiveWalkthrough] = useState(null);
+    const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [completedWalkthroughs, setCompletedWalkthroughs] = useState([]);
+    const [loading, setLoading] = useState(true);
     const location = useLocation();
 
-    // Fetch walkthroughs/check status on route change
+    // Check for walkthroughs on route change
     useEffect(() => {
-        const checkWalkthrough = async () => {
+        const checkWalkthroughForPage = async (route) => {
             try {
-                // In a real implementation, we would fetch from API based on location.pathname
-                // For now, we'll simulating fetching or matching a static list
-                // const response = await axios.get(`/api/vendor/walkthroughs/active?route=${location.pathname}`);
-                // if (response.data) setCurrentWalkthrough(response.data);
+                // Fetch main walkthrough for this page
+                // Note: In real app, we might want to cache this or check local storage first
+                const data = await learningService.getMainWalkthrough(route);
 
-                // Temporary Mock Logic
-                if (location.pathname === '/vendor/dashboard' && !completedWalkthroughs.includes('dashboard')) {
-                    // Only trigger if not completed
-                    // For dev/demo, we might want to manually trigger or check query params
+                // If data exists and NOT completed
+                // We need a list of completed IDs. For now, we assume backend filters or we fetch status separate
+                if (data && !completedWalkthroughs.includes(data.id)) {
+                    // Logic to auto-start or show "New Tour available" badge?
+                    // For now, we just expose the data. 
+                    // To auto-start: setActiveWalkthrough(data);
                 }
             } catch (error) {
-                console.error('Failed to check walkthroughs', error);
+                console.error('Failed to check walkthrough:', error);
             }
         };
 
-        checkWalkthrough();
+        if (location.pathname) {
+            checkWalkthroughForPage(location.pathname);
+        }
     }, [location.pathname, completedWalkthroughs]);
 
-    const startWalkthrough = (walkthroughId) => {
-        // Logic to fetch specific walkthrough by ID
-        // setCurrentWalkthrough(walkthrough);
-        setIsActive(true);
-    };
+    const startWalkthrough = async (walkthroughIdOrRoute) => {
+        try {
+            // Support passing ID or letting service find by current route if no ID
+            let walkthrough = null;
+            if (walkthroughIdOrRoute) {
+                // Try to fetch by ID or Route? Service only has getMainWalkthrough(route) currently
+                // Use current route as fallback
+                walkthrough = await learningService.getMainWalkthrough(location.pathname);
+            } else {
+                walkthrough = await learningService.getMainWalkthrough(location.pathname);
+            }
 
-    const endWalkthrough = () => {
-        setIsActive(false);
-        if (currentWalkthrough) {
-            markAsComplete(currentWalkthrough.id);
+            if (walkthrough && walkthrough.steps?.length > 0) {
+                setActiveWalkthrough(walkthrough);
+                setCurrentStepIndex(0);
+            }
+        } catch (error) {
+            console.error('Failed to start walkthrough:', error);
         }
-        setCurrentWalkthrough(null);
     };
 
-    const markAsComplete = async (id) => {
+    const nextStep = () => {
+        if (activeWalkthrough && currentStepIndex < activeWalkthrough.steps.length - 1) {
+            setCurrentStepIndex(prev => prev + 1);
+        } else {
+            completeWalkthrough();
+        }
+    };
+
+    const prevStep = () => {
+        if (currentStepIndex > 0) {
+            setCurrentStepIndex(prev => prev - 1);
+        }
+    };
+
+    const skipWalkthrough = () => {
+        setActiveWalkthrough(null);
+        setCurrentStepIndex(0);
+    };
+
+    const completeWalkthrough = async () => {
+        if (!activeWalkthrough) return;
+
+        const id = activeWalkthrough.id;
+        setActiveWalkthrough(null);
+        setCurrentStepIndex(0);
+
         setCompletedWalkthroughs(prev => [...prev, id]);
-        // await axios.post(`/api/vendor/walkthroughs/${id}/complete`);
+
+        try {
+            await learningService.updateWalkthroughProgress(id, { status: 'completed' });
+        } catch (error) {
+            console.error('Failed to save walkthrough completion:', error);
+        }
     };
 
     const value = {
-        currentWalkthrough,
-        isActive,
+        activeWalkthrough,
+        currentStepIndex,
+        completedWalkthroughs,
+        loading,
         startWalkthrough,
-        endWalkthrough,
-        completedWalkthroughs
+        nextStep,
+        prevStep,
+        skipWalkthrough,
+        currentStep: activeWalkthrough?.steps?.[currentStepIndex] || null,
+        totalSteps: activeWalkthrough?.steps?.length || 0,
+        isLastStep: activeWalkthrough?.steps?.length ? currentStepIndex === activeWalkthrough.steps.length - 1 : false
     };
 
     return (

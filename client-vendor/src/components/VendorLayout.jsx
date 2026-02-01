@@ -8,6 +8,7 @@ import ConfirmModal from './ConfirmModal';
 import axios from 'axios';
 import WalkthroughOverlay from '../modules/LearnGrow/components/WalkthroughOverlay';
 import AIChatWidget from '../modules/LearnGrow/components/AIChatWidget';
+import SmartTriggerManager from '../modules/LearnGrow/components/SmartTriggerManager';
 import { useLocation } from 'react-router-dom';
 
 export default function VendorLayout({ children, title }) {
@@ -198,6 +199,9 @@ export default function VendorLayout({ children, title }) {
 
             {/* Auto-Triggered Walkthrough based on current route */}
             <WalkthroughOverlay pageRoute={useLocation().pathname} />
+
+            {/* Smart Triggers (Behavioral Rules) */}
+            <SmartTriggerManager />
 
             {/* Global AI Chat Assistant */}
             <AIChatWidget />

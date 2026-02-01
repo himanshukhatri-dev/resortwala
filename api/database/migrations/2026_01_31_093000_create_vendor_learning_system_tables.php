@@ -32,6 +32,7 @@ return new class extends Migration {
                 'offers_promotions',
                 'support_best_practices'
             ]);
+            $table->enum('difficulty_level', ['beginner', 'intermediate', 'advanced'])->default('beginner');
             $table->string('subcategory', 100)->nullable();
             $table->json('tags')->nullable()->comment('Search tags');
 
