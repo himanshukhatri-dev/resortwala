@@ -198,13 +198,13 @@ export default function VendorLayout({ children, title }) {
             />
 
             {/* Auto-Triggered Walkthrough based on current route */}
-            <WalkthroughOverlay pageRoute={useLocation().pathname} />
+            {/* <WalkthroughOverlay pageRoute={useLocation().pathname} /> */}
 
             {/* Smart Triggers (Behavioral Rules) */}
-            <SmartTriggerManager />
+            {/* <SmartTriggerManager /> */}
 
             {/* Global AI Chat Assistant */}
-            <AIChatWidget />
+            {/* <AIChatWidget /> */}
         </div>
     );
 }
