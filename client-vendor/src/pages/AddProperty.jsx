@@ -74,7 +74,7 @@ const PROPERTY_RULES = [
 ];
 
 // --- REUSABLE COMPONENTS ---
-const InputField = ({ label, name, type = "text", placeholder, className, value, onChange, required }) => (
+const InputField = ({ label, name, type = "text", placeholder, className, value, onChange, required, dataTestId }) => (
     <div className={`space-y-1.5 group ${className}`}>
         <label className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 group-focus-within:text-black transition-colors">
             {label}
@@ -86,6 +86,7 @@ const InputField = ({ label, name, type = "text", placeholder, className, value,
             <input
                 type={type}
                 name={name}
+                data-testid={dataTestId}
                 value={value !== undefined ? value : ''}
                 onChange={onChange}
                 min={type === 'number' ? 0 : undefined}
@@ -670,7 +671,7 @@ export default function AddProperty() {
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
                 <h4 className="font-bold text-gray-800 border-b pb-2 mb-2">Basic Details</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField label="Property Name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
+                    <InputField label="Property Name" name="name" dataTestId="input-property-name" value={formData.name} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
                     <InputField label="Display Name" name="displayName" value={formData.displayName} onChange={handleInputChange} placeholder="Ex: Royal Palms" required />
                     <InputField label="City" name="cityName" value={formData.cityName} onChange={handleInputChange} placeholder="Ex: Lonavala" />
                     <InputField label="Location (Landmark)" name="location" value={formData.location} onChange={handleInputChange} placeholder="Ex: Near Station" />

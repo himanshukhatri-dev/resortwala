@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\LearningVideo;
+use App\Models\LearningModule;
 use App\Models\VendorLearningProgress;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -10,69 +10,56 @@ use Illuminate\Support\Facades\DB;
 class LearningService
 {
     /**
-     * Get learning videos with user progress
+     * Get learning modules with user progress
      */
     public function getVideos(int $vendorId, ?string $category = null): Collection
     {
-        $query = LearningVideo::query()
+        // Renaming method conceptually but keeping name for Controller compatibility for now
+        $query = LearningModule::query()
             ->where('is_active', true)
             ->with([
                 'progress' => function ($q) use ($vendorId) {
                     $q->where('vendor_id', $vendorId);
-                }
+                },
+                'steps' // Added steps here
             ]);
 
         if ($category) {
             $query->where('category', $category);
         }
 
-        return $query->orderBy('display_order')->get();
+        // Default sort by id since we don't have display_order yet
+        return $query->orderBy('id')->get();
     }
 
     /**
-     * Get a single video by slug with progress
+     * Get a single module by slug with progress and steps
      */
-    public function getVideoBySlug(string $slug, int $vendorId): ?LearningVideo
+    public function getVideoBySlug(string $slug, int $vendorId): ?LearningModule
     {
-        return LearningVideo::query()
+        return LearningModule::query()
             ->where('slug', $slug)
             ->where('is_active', true)
             ->with([
                 'progress' => function ($q) use ($vendorId) {
                     $q->where('vendor_id', $vendorId);
-                }
+                },
+                'steps' // Eager load steps
             ])
             ->first();
     }
 
     /**
-     * Update video progress
+     * Update module progress
      */
-    public function updateProgress(int $vendorId, int $videoId, array $data): VendorLearningProgress
+    public function updateProgress(int $vendorId, int $moduleId, array $data): VendorLearningProgress
     {
         return VendorLearningProgress::updateOrCreate(
-            ['vendor_id' => $vendorId, 'video_id' => $videoId],
+            ['vendor_id' => $vendorId, 'module_id' => $moduleId],
             array_merge($data, [
-                'last_viewed_at' => now(),
-                'status' => $this->determineStatus($data)
+                'completed_at' => isset($data['status']) && $data['status'] === 'completed' ? now() : null,
+                // 'status' => $this->determineStatus($data) // status is usually passed directly now
             ])
         );
-    }
-
-    /**
-     * Determine status based on percentage
-     */
-    private function determineStatus(array $data): string
-    {
-        if (isset($data['status']))
-            return $data['status'];
-
-        $percentage = $data['completion_percentage'] ?? 0;
-
-        if ($percentage >= 95)
-            return 'completed';
-        if ($percentage > 0)
-            return 'in_progress';
-        return 'not_started';
     }
 }

@@ -11,12 +11,12 @@ class AIAssistantService
     private $openAIKey;
     private $googleKey;
     private $openAIEndpoint = 'https://api.openai.com/v1/chat/completions';
-    private $geminiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+    private $geminiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
     public function __construct()
     {
         $this->openAIKey = config('services.openai.api_key');
-        $this->googleKey = env('GOOGLE_API_KEY'); // Direct env access for simplicity or add to config
+        $this->googleKey = env('GOOGLE_API_KEY');
     }
 
     /**
@@ -65,51 +65,61 @@ class AIAssistantService
     private function callGemini(array $messages, string $systemPrompt): string
     {
         try {
-            // Convert messages to Gemini format
-            // Gemini expects: contents: [{ role: 'user'|'model', parts: [{ text: '...' }] }]
-            $geminiHistory = [];
+            // Convert messages to Gemini format (strictly user/model)
+            $contents = [];
 
-            // Add system prompt as the first user message for context
-            $geminiHistory[] = [
-                'role' => 'user',
-                'parts' => [['text' => "System Instructions:\n" . $systemPrompt]]
-            ];
-            $geminiHistory[] = [
-                'role' => 'model',
-                'parts' => [['text' => "Understood. I am ready to help as the ResortWala Vendor Assistant."]]
-            ];
-
-            // Append last 10 messages
+            // Append last 10 messages with alternation check
             $recentMessages = array_slice($messages, -10);
             foreach ($recentMessages as $msg) {
                 $role = $msg['role'] === 'user' ? 'user' : 'model';
-                $geminiHistory[] = [
-                    'role' => $role,
-                    'parts' => [['text' => $msg['content']]]
-                ];
+
+                // Gemini rejects non-alternating roles. Force alternation by merging consecutive roles.
+                if (!empty($contents) && end($contents)['role'] === $role) {
+                    $lastIdx = count($contents) - 1;
+                    $contents[$lastIdx]['parts'][0]['text'] .= "\n" . $msg['content'];
+                } else {
+                    $contents[] = [
+                        'role' => $role,
+                        'parts' => [['text' => $msg['content']]]
+                    ];
+                }
+            }
+
+            // Gemini REQUIREMENT: First message MUST be 'user'
+            if (!empty($contents) && $contents[0]['role'] !== 'user') {
+                array_unshift($contents, [
+                    'role' => 'user',
+                    'parts' => [['text' => "Hello assistant."]]
+                ]);
             }
 
             $response = Http::withHeaders(['Content-Type' => 'application/json'])
-                ->withOptions(['verify' => false]) // Fix for local SSL error (Windows)
+                ->withOptions(['verify' => false])
                 ->post("{$this->geminiEndpoint}?key={$this->googleKey}", [
-                    'contents' => $geminiHistory,
+                    'contents' => $contents,
+                    'system_instruction' => [
+                        'parts' => [['text' => $systemPrompt]]
+                    ],
                     'generationConfig' => [
-                        'temperature' => 0.7,
-                        'maxOutputTokens' => 800,
+                        'temperature' => 0.4,
+                        'maxOutputTokens' => 1000,
                     ]
                 ]);
 
             if ($response->successful()) {
-                // Gemini response structure: candidates[0].content.parts[0].text
                 return $response->json('candidates.0.content.parts.0.text') ?? "I'm sorry, I couldn't generate a response.";
             }
 
-            Log::error('Gemini API Error', $response->json());
-            return "I'm having trouble connecting to Google Gemini. Please check the API key.";
+            $error = $response->json();
+            Log::error('Gemini API Error', ['error' => $error, 'payload' => $contents]);
+
+            // Inform the user about the specific refusal if possible
+            $msg = $error['error']['message'] ?? 'Refusal';
+            return "Connection established, but Gemini is refusing ($msg). I'm adjusting the prompt logic now.";
 
         } catch (\Exception $e) {
             Log::error('Gemini Connection Error: ' . $e->getMessage());
-            return "I'm experiencing a technical glitch with the AI service.";
+            return "I'm experiencing a technical connection glitch with Gemini.";
         }
     }
 
@@ -142,9 +152,11 @@ class AIAssistantService
 
     private function buildSystemPrompt(?string $context): string
     {
-        $basePrompt = "You are a helpful, warm, and encourage support assistant for the ResortWala Vendor Panel. 
-        Your goal is to help vendors set up their property, manage bookings, and grow their business. 
-        Keep answers concise and actionable.";
+        $basePrompt = "You are the ResortWala Master Assistant. 
+        1. Tone: Professional, warm, and highly efficient. 
+        2. Knowledge: You know everything about the ResortWala Vendor Panel (Dashboard, Properties, Bookings, Calendar, Learning).
+        3. Rules: Do NOT mention you are an AI. Do NOT give generic advice. Give specific steps for ResortWala.
+        4. Conciseness: Keep responses under 3 paragraphs unless a guide is requested.";
 
         if ($context) {
             $basePrompt .= "\n\nCurrent Context: $context";

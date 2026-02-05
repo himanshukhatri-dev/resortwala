@@ -3,3 +3,12 @@ dist
 .git
 .env
 .DS_Store
+*.tar.gz
+*.log
+*.zip
+temp_stage
+analysis_tool
+automation/playwright-report
+error_output.html
+server_log.txt
+server_log_latest.txt

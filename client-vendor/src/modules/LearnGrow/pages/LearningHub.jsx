@@ -1,21 +1,55 @@
 import React, { useState } from 'react';
 import { useLearning } from '../context/LearningContext';
+import { useTutorial } from '../../../components/Tutorial/TutorialContext';
 import VideoList from '../components/VideoList';
 import VideoPlayer from '../components/VideoPlayer';
+import toast from 'react-hot-toast';
 import { FaSearch, FaLightbulb, FaRocket, FaQuestionCircle, FaChartLine, FaPlay } from 'react-icons/fa';
 
 const categories = [
     { id: 'All', name: 'All Tutorials', icon: FaLightbulb, color: 'text-amber-500 bg-amber-50' },
-    { id: 'getting_started', name: 'Getting Started', icon: FaRocket, color: 'text-blue-500 bg-blue-50' },
+    { id: 'onboarding', name: 'Onboarding', icon: FaRocket, color: 'text-blue-500 bg-blue-50' },
     { id: 'listing_pricing', name: 'Listing & Pricing', icon: FaChartLine, color: 'text-purple-500 bg-purple-50' },
     { id: 'availability_bookings', name: 'Availability & Bookings', icon: FaQuestionCircle, color: 'text-emerald-500 bg-emerald-50' },
 ];
 
 const LearningHub = () => {
     const { videos, updateVideoProgress, loading } = useLearning();
+    const { startTutorial } = useTutorial();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
     const [selectedVideo, setSelectedVideo] = useState(null);
+
+    const handleVideoSelect = (video) => {
+        console.log("DEBUG: Full Video Object:", video);
+
+        // Force Interactive Tutorial if it's the listing one OR has steps
+        const slug = (video.slug || '').trim().toLowerCase();
+        const title = (video.title || '').trim().toLowerCase();
+        const hasSteps = Array.isArray(video.steps) && video.steps.length > 0;
+
+        // Multi-layered check: by steps, by slug, or by title
+        const isInteractive = hasSteps ||
+            slug.includes('listing') ||
+            slug.includes('onboarding') ||
+            title.includes('first listing');
+
+        console.log("INTERACTIVE CHECK:", { slug, hasSteps, isInteractive });
+
+        if (isInteractive) {
+            console.log("Starting Interactive Mode");
+            toast.success(`Starting tutorial: ${video.title} (${video.steps?.length || 0} steps)`, { id: 'tutorial-start' });
+            setSelectedVideo(null); // Force close modal just in case
+            startTutorial(video);
+        } else if (video.video_url) {
+            console.log("Starting Video Mode");
+            toast.info(`Opening video: ${video.title}`);
+            setSelectedVideo(video);
+        } else {
+            console.warn("Module has no video and no steps:", video.slug);
+            toast.error("Content is not yet available.");
+        }
+    };
 
     const filteredVideos = videos?.filter(video => {
         const matchesSearch = video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -106,7 +140,7 @@ const LearningHub = () => {
                                         <VideoCard
                                             key={video.id}
                                             video={video}
-                                            onSelect={setSelectedVideo}
+                                            onSelect={() => handleVideoSelect(video)}
                                         />
                                     ))}
                             </div>
@@ -139,7 +173,7 @@ const LearningHub = () => {
                     {/* Video Grid */}
                     <VideoList
                         videos={filteredVideos}
-                        onVideoSelect={setSelectedVideo}
+                        onVideoSelect={handleVideoSelect}
                     />
                 </div>
             </main>
@@ -201,9 +235,24 @@ const LearningHub = () => {
                                         <p className="text-[11px] text-gray-500 leading-relaxed mb-4">
                                             Follow this guide to master the feature. You can resume anytime from where you left.
                                         </p>
-                                        <button className="w-full py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-gray-800 transition-all">
+                                        <button className="w-full py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-gray-800 transition-all mb-3 text-center">
                                             Download Transcript
                                         </button>
+
+                                        {/* Fallback button if auto-trigger failed */}
+                                        {((selectedVideo.steps && selectedVideo.steps.length > 0) ||
+                                            selectedVideo.slug?.includes('create-first-listing')) && (
+                                                <button
+                                                    onClick={() => {
+                                                        console.log("MANUAL TRIGGER: Starting Tutorial");
+                                                        startTutorial(selectedVideo);
+                                                        setSelectedVideo(null);
+                                                    }}
+                                                    className="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                                                >
+                                                    🚀 Start Interactive Guide
+                                                </button>
+                                            )}
                                     </div>
                                 </div>
                             </div>
@@ -211,7 +260,7 @@ const LearningHub = () => {
                     </div>
                 </div>
             )}
-        </div>
+        </div >
     );
 };
 

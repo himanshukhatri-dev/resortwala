@@ -152,7 +152,7 @@ export default function Sidebar({ userType = 'vendor', isOpen, onClose, ...props
             {/* Mobile Bottom Navigation */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[1000] safe-area-inset-bottom">
                 <div className="flex items-center justify-around px-2 py-2">
-                    {filteredItems.slice(0, 5).map((item) => {
+                    {filteredItems.map((item) => {
                         const isActive = location.pathname === item.path;
                         return (
                             <Link

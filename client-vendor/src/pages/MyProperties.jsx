@@ -99,6 +99,7 @@ export default function MyProperties() {
                     {user?.is_approved ? (
                         <button
                             onClick={() => navigate('/properties/add')}
+                            data-testid="btn-add-property"
                             className="bg-black text-white px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-gray-800 transition shadow-lg whitespace-nowrap"
                         >
                             <FaPlus /> <span className="hidden sm:inline">Add New</span>

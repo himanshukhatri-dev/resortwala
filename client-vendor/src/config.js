@@ -9,7 +9,7 @@ const getApiBaseUrl = () => {
 
     // Local / Dev Environment
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === 'local.resortwala.com') {
-        return 'http://local.resortwala.com:8085/api';
+        return '/api';
     }
 
     // Production / Beta / Staging (where API is on same domain under /api)
