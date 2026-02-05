@@ -173,7 +173,7 @@ export default function WaterParkBookingPanel({
                         <div className="flex items-center justify-between p-2 border border-gray-100 rounded-xl bg-white shadow-sm">
                             <div className="flex flex-col">
                                 <span className="font-bold text-gray-900 text-xs">Adult (Above 8 years)</span>
-                                <span className="text-[10px] text-gray-400 font-medium">₹{(priceBreakdown?.adultTicketRate || defaultPrice)?.toLocaleString()} / person</span>
+                                <span className="text-[10px] text-gray-400 font-medium">₹{(priceBreakdown?.adultTicketRate || adultRate)?.toLocaleString()} / person</span>
                             </div>
                             <div className="flex items-center justify-between bg-gray-50 rounded-lg p-1">
                                 <button
