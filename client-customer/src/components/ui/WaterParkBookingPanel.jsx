@@ -165,52 +165,50 @@ export default function WaterParkBookingPanel({
                     </AnimatePresence>
                 </div>
 
-                {/* Ticket Selection - Single Line */}
                 <div className="pt-1">
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Add Tickets</label>
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
                         {/* Adult Row */}
-                        <div className="flex items-center justify-between p-2 border border-gray-100 rounded-xl bg-white shadow-sm">
-                            <div className="flex flex-col">
-                                <span className="font-bold text-gray-900 text-xs">Adult (Above 8 years)</span>
-                                <span className="text-[10px] text-gray-400 font-medium">₹{(priceBreakdown?.adultTicketRate || adultRate)?.toLocaleString()} / person</span>
+                        <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg bg-white shadow-sm">
+                            <div className="flex flex-col leading-tight">
+                                <span className="font-bold text-gray-900 text-[10px]">Adults</span>
+                                <span className="text-[8px] font-bold text-gray-400 font-outfit">(8y+)</span>
                             </div>
-                            <div className="flex items-center justify-between bg-gray-50 rounded-lg p-1">
+                            <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => updateGuests('adults', -1)}
-                                    className="w-7 h-7 rounded-md bg-white flex items-center justify-center text-gray-600 border border-gray-100 shadow-sm transition-colors hover:border-gray-300"
+                                    className="w-6 h-6 rounded bg-gray-50 flex items-center justify-center text-gray-600 border border-gray-100 shadow-sm"
                                 >
-                                    <FaMinus size={8} />
+                                    <FaMinus size={6} />
                                 </button>
-                                <span className="font-bold text-base w-5 text-center">{guests.adults}</span>
+                                <span className="font-bold text-xs w-3 text-center">{guests.adults}</span>
                                 <button
                                     onClick={() => updateGuests('adults', 1)}
-                                    className="w-7 h-7 rounded-md bg-black text-white flex items-center justify-center shadow-sm hover:bg-gray-800 transition-colors"
+                                    className="w-6 h-6 rounded bg-black text-white flex items-center justify-center shadow-sm"
                                 >
-                                    <FaPlus size={8} />
+                                    <FaPlus size={6} />
                                 </button>
                             </div>
                         </div>
 
                         {/* Child Row */}
-                        <div className="flex items-center justify-between p-2 border border-gray-100 rounded-xl bg-white shadow-sm">
-                            <div className="flex flex-col">
-                                <span className="font-bold text-gray-900 text-xs">Child (Between 3 to 8 years)</span>
-                                <span className="text-[10px] text-gray-400 font-medium">₹{(priceBreakdown?.childTicketRate || property?.admin_pricing?.child_weekday?.final || 400)?.toLocaleString()} / person</span>
+                        <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg bg-white shadow-sm">
+                            <div className="flex flex-col leading-tight">
+                                <span className="font-bold text-gray-900 text-[10px]">Child</span>
+                                <span className="text-[8px] font-bold text-gray-400 font-outfit">(3-8y)</span>
                             </div>
-                            <div className="flex items-center justify-between bg-gray-50 rounded-lg p-1">
+                            <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => updateGuests('children', -1)}
-                                    className="w-7 h-7 rounded-md bg-white flex items-center justify-center text-gray-600 border border-gray-100 shadow-sm transition-colors hover:border-gray-300"
+                                    className="w-6 h-6 rounded bg-gray-50 flex items-center justify-center text-gray-600 border border-gray-100 shadow-sm"
                                 >
-                                    <FaMinus size={8} />
+                                    <FaMinus size={6} />
                                 </button>
-                                <span className="font-bold text-base w-5 text-center">{guests.children}</span>
+                                <span className="font-bold text-xs w-3 text-center">{guests.children}</span>
                                 <button
                                     onClick={() => updateGuests('children', 1)}
-                                    className="w-7 h-7 rounded-md bg-black text-white flex items-center justify-center shadow-sm hover:bg-gray-800 transition-colors"
+                                    className="w-6 h-6 rounded bg-black text-white flex items-center justify-center shadow-sm"
                                 >
-                                    <FaPlus size={8} />
+                                    <FaPlus size={6} />
                                 </button>
                             </div>
                         </div>
@@ -224,12 +222,12 @@ export default function WaterParkBookingPanel({
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="bg-gray-50 rounded-xl p-3 border border-gray-100 overflow-hidden mt-2"
+                            className="bg-gray-50 rounded-xl p-2 border border-gray-100 overflow-hidden mt-1.5"
                         >
-                            <div className="space-y-1.5 pt-1">
+                            <div className="space-y-1 pt-0.5">
                                 {/* Rate Breakdown */}
-                                <div className="space-y-1 border-b border-gray-100 pb-2 mb-2">
-                                    <div className="flex justify-between text-[10px]">
+                                <div className="space-y-1 border-b border-gray-100 pb-1.5 mb-1.5">
+                                    <div className="flex justify-between text-[9px]">
                                         <div className="flex flex-col">
                                             <span className="text-gray-900 font-bold">Adults ({guests.adults})</span>
                                             <span className="text-gray-400">₹{priceBreakdown.adultTicketRate.toLocaleString()} x {guests.adults}</span>
@@ -237,9 +235,9 @@ export default function WaterParkBookingPanel({
                                         <span className="font-bold text-gray-900">₹{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
                                     </div>
                                     {guests.children > 0 && (
-                                        <div className="flex justify-between text-[10px]">
+                                        <div className="flex justify-between text-[9px]">
                                             <div className="flex flex-col">
-                                                <span className="text-gray-900 font-bold">Children ({guests.children})</span>
+                                                <span className="text-gray-900 font-bold">Child ({guests.children})</span>
                                                 <span className="text-gray-400">₹{priceBreakdown.childTicketRate.toLocaleString()} x {guests.children}</span>
                                             </div>
                                             <span className="font-bold text-gray-900">₹{priceBreakdown.totalChildTicket?.toLocaleString()}</span>
@@ -248,30 +246,30 @@ export default function WaterParkBookingPanel({
                                 </div>
 
                                 <div className="flex justify-between items-baseline px-0.5">
-                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Total Tickets</span>
+                                    <span className="text-[9px] font-bold text-gray-500 uppercase">Total Amount</span>
                                     <span className="text-base font-black text-gray-900">₹{priceBreakdown.grantTotal?.toLocaleString()}</span>
                                 </div>
 
                                 {priceBreakdown.totalSavings > 0 && (
-                                    <div className="flex justify-between items-center bg-green-50 text-green-700 px-2 py-1.5 rounded-md border border-green-100 mt-2">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">🎉 You Saved</span>
-                                        <span className="text-xs font-black">₹{priceBreakdown.totalSavings.toLocaleString()}</span>
+                                    <div className="flex justify-between items-center bg-green-50 text-green-700 px-2 py-1 rounded-md border border-green-100 mt-1">
+                                        <span className="text-[8px] font-bold uppercase tracking-wider">🎉 Saved</span>
+                                        <span className="text-[10px] font-black">₹{priceBreakdown.totalSavings.toLocaleString()}</span>
                                     </div>
                                 )}
 
                                 {/* Token Amount */}
-                                <div className="bg-blue-50/50 rounded-lg p-3 mt-2 border border-blue-100">
-                                    <div className="flex flex-col space-y-2">
+                                <div className="bg-blue-50/50 rounded-lg p-2 mt-1.5 border border-blue-100">
+                                    <div className="flex flex-col space-y-1.5">
                                         <div className="flex justify-between items-center">
                                             <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Amount to Book</span>
-                                                <span className="text-[9px] font-bold text-blue-400">Registration Amount</span>
+                                                <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest leading-none">Amount to Book</span>
+                                                <span className="text-[9px] font-bold text-blue-400">Registration</span>
                                             </div>
                                             <span className="text-lg font-black text-blue-700">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
                                         </div>
-                                        <div className="flex justify-between items-center pt-1.5 border-t border-blue-100/50">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Pay at Park</span>
-                                            <span className="text-sm font-black text-gray-700">₹{(priceBreakdown.grantTotal - priceBreakdown.tokenAmount).toLocaleString()}</span>
+                                        <div className="flex justify-between items-center pt-1 border-t border-blue-100/30">
+                                            <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tight">Pay at Park</span>
+                                            <span className="text-xs font-black text-gray-700">₹{(priceBreakdown.grantTotal - priceBreakdown.tokenAmount).toLocaleString()}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -284,20 +282,20 @@ export default function WaterParkBookingPanel({
             </div>
 
             {/* Action Button Section */}
-            <div className="p-4 pt-2 bg-white rounded-b-3xl">
+            <div className="p-3 pt-1 bg-white rounded-b-3xl">
                 <button
                     onClick={handleReserve}
-                    className="w-full bg-[#FF385C] hover:bg-[#D9324E] text-white py-3.5 rounded-xl font-bold text-base shadow-lg shadow-red-100 hover:shadow-red-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
+                    className="w-full bg-[#FF385C] hover:bg-[#D9324E] text-white py-2.5 rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
                 >
-                    <FaTicketAlt className="text-white/90 group-hover:rotate-12 transition-transform" />
+                    <FaTicketAlt className="text-xs text-white/90 group-hover:rotate-12 transition-transform" />
                     <span>{!dateRange.from ? 'Select Dates' : (priceBreakdown ? `Pay ₹${priceBreakdown.tokenAmount?.toLocaleString()} Now` : 'Check Availability')}</span>
-                    {dateRange.from && <FaArrowRight className="text-sm opacity-80 group-hover:translate-x-1 transition-transform" />}
+                    {dateRange.from && <FaArrowRight className="text-xs opacity-80 group-hover:translate-x-1 transition-transform" />}
                 </button>
-                <div className="flex flex-col items-center mt-2.5">
-                    <p className="text-[10px] text-gray-400 flex items-center justify-center gap-1.5 font-medium">
-                        <FaCheck className="text-green-500" /> Free Cancellation up to 24hrs
+                <div className="flex flex-col items-center mt-2">
+                    <p className="text-[8px] text-gray-400 flex items-center justify-center gap-1 font-medium">
+                        <FaCheck className="text-green-500" size={6} /> Free Cancellation up to 24hrs
                     </p>
-                    <div className="text-[9px] text-gray-300 mt-1 uppercase tracking-widest font-bold">
+                    <div className="text-[7px] text-gray-300 mt-0.5 uppercase tracking-widest font-bold">
                         Instant Confirmation
                     </div>
                 </div>
