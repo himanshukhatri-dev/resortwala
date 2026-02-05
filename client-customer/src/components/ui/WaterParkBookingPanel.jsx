@@ -165,6 +165,7 @@ export default function WaterParkBookingPanel({
                     </AnimatePresence>
                 </div>
 
+<<<<<<< HEAD
                 {/* Ticket Selection - Single Line */}
                 <div className="pt-1">
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Add Tickets</label>
@@ -174,6 +175,16 @@ export default function WaterParkBookingPanel({
                             <div className="flex items-baseline gap-1 mb-1 px-0.5">
                                 <span className="font-bold text-gray-900 text-xs">Adults</span>
                                 <span className="text-[10px] text-gray-400 font-medium">(Above 8y)</span>
+=======
+                {/* Ticket Selection */}
+                {/* Ticket Selection - Label Removed */}
+                <div className="pt-1">
+                    <div className="space-y-2">
+                        {/* Adult Row */}
+                        <div className="flex items-center justify-between p-2 border border-gray-100 rounded-xl bg-white shadow-sm">
+                            <div className="flex flex-col">
+                                <span className="font-bold text-gray-900 text-xs">Adult (Above 8 years)</span>
+>>>>>>> waterpark_paymentmodal
                             </div>
                             <div className="flex items-center justify-between bg-gray-50 rounded-lg p-1">
                                 <button
@@ -193,10 +204,16 @@ export default function WaterParkBookingPanel({
                         </div>
 
                         {/* Child Row */}
+<<<<<<< HEAD
                         <div className="flex-1 flex flex-col justify-between p-2 border border-gray-100 rounded-xl bg-white shadow-sm h-full">
                             <div className="flex items-baseline gap-1 mb-1 px-0.5">
                                 <span className="font-bold text-gray-900 text-xs">Children</span>
                                 <span className="text-[10px] text-gray-400 font-medium">(3 to 8y)</span>
+=======
+                        <div className="flex items-center justify-between p-2 border border-gray-100 rounded-xl bg-white shadow-sm">
+                            <div className="flex flex-col">
+                                <span className="font-bold text-gray-900 text-xs">Child (Between 3 to 8 years)</span>
+>>>>>>> waterpark_paymentmodal
                             </div>
                             <div className="flex items-center justify-between bg-gray-50 rounded-lg p-1">
                                 <button
@@ -226,6 +243,7 @@ export default function WaterParkBookingPanel({
                             exit={{ height: 0, opacity: 0 }}
                             className="bg-gray-50 rounded-xl p-3 border border-gray-100 overflow-hidden mt-2"
                         >
+<<<<<<< HEAD
                             <div className="space-y-1 pt-1 border-t border-gray-100">
                                 {/* Rate Breakdown */}
                                 {priceBreakdown && (
@@ -271,13 +289,44 @@ export default function WaterParkBookingPanel({
                                         </div>
                                     </div>
                                 </div>
+=======
+                            <div className="space-y-1.5 pt-1 border-t border-gray-100">
 
+                                {/* Rate Breakdown REMOVED as per Phase X requirements */}
+>>>>>>> waterpark_paymentmodal
+
+                                {/* 1. You Saved */}
                                 {priceBreakdown.totalSavings > 0 && (
+<<<<<<< HEAD
                                     <div className="flex justify-between items-center bg-green-50 text-green-700 px-2 py-1.5 rounded-md border border-green-100 mt-2">
                                         <span className="text-[10px] font-bold uppercase tracking-wider">🎉 You Saved</span>
                                         <span className="text-xs font-black">₹{priceBreakdown.totalSavings.toLocaleString()}</span>
+=======
+                                    <div className="flex justify-between items-center bg-green-50 text-green-700 px-2 py-1 rounded-md border border-green-100 mb-2">
+                                        <span className="text-[8px] font-bold uppercase tracking-wider">🎉 You Saved</span>
+                                        <span className="text-[10px] font-black">₹{priceBreakdown.totalSavings.toLocaleString()}</span>
+>>>>>>> waterpark_paymentmodal
                                     </div>
                                 )}
+
+                                {/* 2. Pay Now */}
+                                <div className="flex justify-between items-baseline pt-1 border-t border-gray-100 border-dotted mt-1">
+                                    <span className="text-[10px] font-bold text-gray-900 uppercase">Pay Now</span>
+                                    <span className="text-sm font-black text-gray-900">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
+                                </div>
+
+                                {/* 3. Pay at Park */}
+                                <div className="flex justify-between items-baseline pt-1 border-t border-gray-100 border-dotted mt-1">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">Pay at Park</span>
+                                    <span className="text-sm font-black text-gray-900">₹{(priceBreakdown.grantTotal - priceBreakdown.tokenAmount).toLocaleString()}</span>
+                                </div>
+
+                                {/* Total Amount */}
+                                <div className="flex justify-between text-[10px] font-medium text-gray-500 mt-2 border-t border-gray-100 pt-2">
+                                    <span className="font-bold">Total Amount</span>
+                                    <span>₹{priceBreakdown.grantTotal?.toLocaleString()}</span>
+                                </div>
+
                             </div>
                         </motion.div>
                     )}

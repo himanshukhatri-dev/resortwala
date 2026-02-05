@@ -12,7 +12,7 @@ const getApiBaseUrl = () => {
         // Check if we are running in a context where port 8085 is expected (Docker local)
         // or just use /api if Nginx is proxying. 
         // For ResortWala local setup, 8085 is the API port.
-        if (window.location.port === '5173' || window.location.port === '5174') {
+        if (window.location.port === '5173' || window.location.port === '5174' || window.location.port === '5175') {
             return `${window.location.protocol}//${hostname}:8085/api`;
         }
     }

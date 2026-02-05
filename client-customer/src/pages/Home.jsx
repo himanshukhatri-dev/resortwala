@@ -536,7 +536,9 @@ export default function Home() {
                         {/* POPULAR LOCATIONS IN HERO - MATCHING TAB STYLE */}
                         {availableLocations && availableLocations.length > 0 && (
                             <div className="flex flex-col items-center gap-3 w-full">
-                                <span className="text-white/80 text-xs md:text-sm font-bold uppercase tracking-widest drop-shadow">Explore Popular Locations</span>
+                                <span className="text-white/80 text-[10px] md:text-sm font-bold uppercase tracking-widest drop-shadow">
+                                    {activeCategory === 'waterpark' ? 'Top Waterpark Locations' : 'Explore Popular Locations'}
+                                </span>
                                 <div className="flex flex-wrap justify-center gap-2 max-w-3xl px-2">
                                     {(showAllLocations ? availableLocations : availableLocations.slice(0, 6)).map((loc, idx) => {
                                         const isActive = filters.location === loc.name;
@@ -603,14 +605,23 @@ export default function Home() {
 
                             <div className="mb-2 px-2">
                                 <h2 className="text-xl md:text-2xl font-bold text-gray-900 font-display tracking-tight">
-                                    {filters.location
-                                        ? `Results for "${filters.location}"`
-                                        : filters.distance?.center
-                                            ? `Explore stays near ${filters.distance.center.name || 'Location'}`
-                                            : filters.type !== 'all'
-                                                ? `${CATEGORIES.find(c => c.id === filters.type)?.label || 'Selected'} Stays`
-                                                : "All Properties"
-                                    }
+                                    {(() => {
+                                        const category = CATEGORIES.find(c => c.id === filters.type);
+                                        const catLabel = category && filters.type !== 'all' ? category.label : 'Properties';
+                                        // Simple pluralization
+                                        const catPlural = catLabel.endsWith('s') ? catLabel : `${catLabel}s`;
+
+                                        if (filters.location) {
+                                            return `Popular ${catPlural} in ${filters.location}`;
+                                        }
+                                        if (filters.distance?.center) {
+                                            return `Popular ${catPlural} near ${filters.distance.center.name || 'Location'}`;
+                                        }
+                                        if (filters.type !== 'all') {
+                                            return `Popular ${catPlural}`;
+                                        }
+                                        return "Popular Properties";
+                                    })()}
                                 </h2>
                                 <p className="text-gray-500 mt-1 text-sm font-medium">{loading ? "Searching properties..." : ""}</p>
                             </div>

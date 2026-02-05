@@ -378,15 +378,24 @@ export default function BookingPage() {
                             <div className="space-y-4">
                                 <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50 flex justify-between items-center">
                                     <div>
-                                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Dates</div>
-                                        <div className="font-bold text-gray-900">{format(dateRange.from, 'dd MMM yyyy')} – {format(dateRange.to, 'dd MMM yyyy')}</div>
+                                        <div className="font-bold text-gray-900">
+                                            {format(dateRange.from, 'dd MMM yyyy')}
+                                            {!details.isWaterpark && dateRange.to && ` - ${format(dateRange.to, 'dd MMM yyyy')}`}
+                                        </div>
                                     </div>
                                     <button onClick={handleBackToChange} className="text-xs font-bold text-blue-600 hover:underline">Change Date</button>
                                 </div>
+
+                                {/* Mobile-friendly context for changes */}
+                                <div className="lg:hidden bg-blue-50/50 p-2.5 rounded-xl border border-blue-100 flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-blue-400 animate-pulse"></div>
+                                    <p className="text-[10px] text-blue-700 font-bold leading-tight">Price and availability may change if you select different dates.</p>
+                                </div>
+
                                 <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50 flex justify-between items-center">
                                     <div>
                                         <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Guests</div>
-                                        <div className="font-bold text-gray-900">{guests.adults} Adults, {guests.children} Children</div>
+                                        <div className="font-bold text-gray-900">{guests.adults} Adult, {guests.children} Child</div>
                                     </div>
                                     <button onClick={handleBackToChange} className="text-xs font-bold text-blue-600 hover:underline">Change Guests</button>
                                 </div>
@@ -509,10 +518,10 @@ export default function BookingPage() {
 
                                 {details.isWaterpark ? (
                                     <div className="space-y-3">
-                                        <div className="text-[10px] uppercase font-bold text-gray-400 border-b border-gray-50 pb-1">Entry Fees & Tickets</div>
+                                        <div className="text-[10px] uppercase font-bold text-gray-400 border-b border-gray-50 pb-1">Booking Summary</div>
                                         <div className="flex justify-between items-center text-gray-600 text-[13px]">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-gray-900">Adult Tickets ({guests.adults})</span>
+                                                <span className="font-bold text-gray-900">Adult ({guests.adults})</span>
                                                 <div className="flex items-center gap-1.5">
                                                     {details.adultMarketRate > details.adultTicketRate && (
                                                         <span className="text-[10px] text-gray-400 line-through">₹{details.adultMarketRate?.toLocaleString()}</span>
@@ -525,7 +534,7 @@ export default function BookingPage() {
                                         {guests.children > 0 && (
                                             <div className="flex justify-between items-center text-gray-600 text-[13px]">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-gray-900">Child Tickets ({guests.children})</span>
+                                                    <span className="font-bold text-gray-900">Child ({guests.children})</span>
                                                     <div className="flex items-center gap-1.5">
                                                         {details.childMarketRate > details.childTicketRate && (
                                                             <span className="text-[10px] text-gray-400 line-through">₹{details.childMarketRate?.toLocaleString()}</span>
@@ -567,22 +576,26 @@ export default function BookingPage() {
 
                             <div className="h-px bg-gray-100 my-6"></div>
 
-                            {/* Pay Now Section (Production Style) */}
-                            {/* Pay Now Section (Simplified) */}
-                            <div className="bg-gray-50 rounded-2xl p-5 mt-6 border border-gray-100">
-                                <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200/60">
-                                    <span className="text-xs font-black text-gray-500 uppercase font-outfit">Pay Now</span>
-                                    <span className="text-xl font-black text-gray-900 font-outfit">₹{payNowAmount.toLocaleString()}</span>
+                            {/* Amount to Book Section */}
+                            <div className="bg-blue-50/50 rounded-3xl p-6 border border-blue-100 mb-8">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Amount to Book</span>
                                 </div>
+                                <div className="text-4xl font-black text-gray-900 mb-1">₹{payNowAmount.toLocaleString()}</div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-xs font-black text-gray-500 uppercase font-outfit">Pay Later</span>
-                                    <span className="text-base font-black text-gray-900 font-outfit">₹{balanceAmount.toLocaleString()} {!details.isWaterpark && <span className="text-[10px] text-gray-400 font-bold">+ GST</span>}</span>
+                                    <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                        {details.isWaterpark ? 'Registration Amount' : 'Booking Amount'}
+                                    </div>
+                                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">
+                                        Pay at {details.isWaterpark ? 'Park' : 'Villa'}: <span className="text-gray-900 font-black">₹{balanceAmount.toLocaleString()}</span>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Coupon Input */}
                             <div className="mb-6">
-                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">COUPON CODE</div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">COUPON CODE (IF ANY)</div>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
@@ -610,7 +623,6 @@ export default function BookingPage() {
                             >
                                 {bookingStatus === 'submitting' ? 'Processing...' : `Pay ₹${payNowAmount.toLocaleString()} Now`}
                             </button>
-
                         </div>
                     </div>
                 </div>
@@ -636,12 +648,11 @@ export default function BookingPage() {
                             className="bg-[#FF385C] hover:bg-[#d9324e] text-white h-14 px-8 rounded-2xl font-black text-base shadow-xl shadow-red-200 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2"
                         >
                             {bookingStatus === 'submitting' ? 'Processing...' : (
-                                <><span>Pay ₹{payNowAmount.toLocaleString()} Now</span> <FaArrowLeft className="rotate-180 text-sm" /></>
+                                <><span>Pay Now</span> <FaArrowLeft className="rotate-180 text-sm" /></>
                             )}
                         </button>
                     </div>
                 </div>
-
             </div>
         </div>
     );
