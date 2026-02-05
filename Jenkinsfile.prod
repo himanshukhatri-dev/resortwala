@@ -84,31 +84,59 @@ pipeline {
             }
             steps {
                 sshagent(['resortwala-deploy-key']) {
-                    // 1. Enter Maintenance Mode (Optional, usually 0 downtime preferred, but safe for major updates)
-                    // sh "ssh ${REMOTE_USER}@${REMOTE_HOST} 'php ${PROD_DIR}/api/artisan down'"
-                    
-                    // 2. Deploy Files (Using Rsync for atomic-like file transfer)
-                    // Backend
-                    sh "rsync -avz --delete --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/api/"
-                    
-                    // 2. Deploy Frontends to respective directories
-                    // Customer (Root)
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/"
-                    // Vendor (/vendor)
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/vendor/"
-                    // Admin (/admin)
-                    sh "rsync -avz --delete -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${PROD_DIR}/admin/"
+                    script {
+                        // Define Remote Paths
+                        def TIMESTAMP = sh(returnStdout: true, script: "date +%Y%m%d_%H%M%S").trim()
+                        def REMOTE_RELEASE_DIR = "/var/www/html/releases/prod_${TIMESTAMP}"
+                        def SHARED_STORAGE = "/var/www/html/shared/prod_storage"
+                        
+                        // 1. Prepare Remote Directory
+                        sh "ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'mkdir -p ${REMOTE_RELEASE_DIR} ${SHARED_STORAGE}'"
 
-                    // 3. Set Permissions & Migrate
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
-                            cd ${PROD_DIR}/api &&
-                            php artisan migrate --force &&
-                            php artisan config:cache &&
-                            php artisan route:cache
+                        // 2. Deploy Files (Rsync to NEW Directory)
+                        // Backend
+                        sh "rsync -avz --exclude '.env' --exclude 'storage' -e 'ssh -o StrictHostKeyChecking=no' api/ ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RELEASE_DIR}/api/"
+                        
+                        // Frontends
+                        sh "rsync -avz -e 'ssh -o StrictHostKeyChecking=no' client-customer/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RELEASE_DIR}/"
+                        sh "rsync -avz -e 'ssh -o StrictHostKeyChecking=no' client-vendor/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RELEASE_DIR}/vendor/"
+                        sh "rsync -avz -e 'ssh -o StrictHostKeyChecking=no' client-admin/dist/ ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RELEASE_DIR}/admin/"
 
-                        '
-                    """
+                        // 3. Setup & Switch
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
+                                cd ${REMOTE_RELEASE_DIR}/api
+                                
+                                # Link Storage & Env
+                                rm -rf storage
+                                ln -sfn ${SHARED_STORAGE} storage
+                                # Copy .env from current or shared
+                                if [ -f /var/www/html/shared/prod.env ]; then
+                                    cp /var/www/html/shared/prod.env .env
+                                else
+                                    cp ${PROD_DIR}/api/.env .env || true
+                                fi
+
+                                # Permissions
+                                chown -R www-data:www-data ${REMOTE_RELEASE_DIR}
+                                chmod -R 775 storage bootstrap/cache
+                                
+                                # Commands
+                                export COMPOSER_ALLOW_SUPERUSER=1
+                                composer install --no-dev --optimize-autoloader --no-interaction
+                                php artisan migrate --force
+                                php artisan config:cache
+                                php artisan route:cache
+                                
+                                # ATOMIC SWITCH
+                                ln -sfn ${REMOTE_RELEASE_DIR} ${PROD_DIR}
+                                
+                                # Cleanup Old
+                                cd /var/www/html/releases
+                                ls -dt prod_* | tail -n +6 | xargs rm -rf
+                            '
+                        """
+                    }
                 }
             }
         }

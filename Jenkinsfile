@@ -51,7 +51,7 @@ pipeline {
             }
         }
 
-        // --- STAGING DEPLOYMENT (Using Tar/SCP Strategy) ---
+        // --- STAGING DEPLOYMENT (ATOMIC STRATEGY) ---
         stage('Deploy to Staging') {
             when {
                 expression { params.DEPLOY_TARGET == 'Beta' || (params.DEPLOY_TARGET == 'Auto' && env.BRANCH_NAME == 'master') }
@@ -60,45 +60,64 @@ pipeline {
                 sshagent(['resortwala-deploy-key']) {
                     script {
                         // 1. Prepare & Compress Frontends
-                        // Customer
                         sh "tar -czf customer.tar.gz -C client-customer/dist ."
-                        // Vendor
                         sh "tar -czf vendor.tar.gz -C client-vendor/dist ."
-                        // Admin
                         sh "tar -czf admin.tar.gz -C client-admin/dist ."
-                        // API (Backend)
                         sh "tar -czf api.tar.gz --exclude=.env --exclude=storage --exclude=.git -C api ."
 
                         // 2. Upload Archives
                         sh "scp -o StrictHostKeyChecking=no customer.tar.gz vendor.tar.gz admin.tar.gz api.tar.gz ${REMOTE_USER}@${REMOTE_HOST}:/tmp/"
 
-                        // 3. Extract & cleanup on Remote (Beta)
+                        // 3. ATOMIC DEPLOYMENT on Remote
                         sh """
                             ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
-                                # --- Frontend Deployment ---
-                                mkdir -p ${BETA_DIR}/vendor ${BETA_DIR}/admin
+                                # Config
+                                TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
+                                RELEASE_DIR="/var/www/html/releases/beta_\${TIMESTAMP}"
+                                CURRENT_LINK="${BETA_DIR}"
+                                STORAGE_DIR="/var/www/html/shared/beta_storage"  # Persistent Storage
                                 
-                                # Customer
-                                tar -xzf /tmp/customer.tar.gz -C ${BETA_DIR}/
-                                # Vendor
-                                tar -xzf /tmp/vendor.tar.gz -C ${BETA_DIR}/vendor/
-                                # Admin
-                                tar -xzf /tmp/admin.tar.gz -C ${BETA_DIR}/admin/
+                                # Setup Directories
+                                mkdir -p \${RELEASE_DIR}
+                                mkdir -p /var/www/html/releases
+                                mkdir -p \${STORAGE_DIR}
+                                
+                                echo "Deploying to: \${RELEASE_DIR}"
 
-                                # --- API Deployment ---
-                                mkdir -p ${BETA_API_DIR}
-                                tar -xzf /tmp/api.tar.gz -C ${BETA_API_DIR}/
+                                # Extract Frontends
+                                mkdir -p \${RELEASE_DIR}/vendor \${RELEASE_DIR}/admin
+                                tar -xzf /tmp/customer.tar.gz -C \${RELEASE_DIR}/
+                                tar -xzf /tmp/vendor.tar.gz -C \${RELEASE_DIR}/vendor/
+                                tar -xzf /tmp/admin.tar.gz -C \${RELEASE_DIR}/admin/
 
-                                # --- API Permissions & Setup ---
-                                cd ${BETA_API_DIR}
+                                # Extract API (into api/ subdirectory or root? Previous was separate BETA_API_DIR)
+                                # Assuming existing topology used separate domains, we keep it but verify atomicity for API too.
+                                # IMPORTANT: The original config deployed API to `stagingapi.resortwala.com`.
+                                # We need extended logic for API.
+                                
+                                # --- API DEPLOYMENT (Atomic Separate Dir) ---
+                                API_RELEASE_DIR="/var/www/html/releases/beta_api_\${TIMESTAMP}"
+                                API_CURRENT_LINK="${BETA_API_DIR}"
+                                
+                                mkdir -p \${API_RELEASE_DIR}
+                                tar -xzf /tmp/api.tar.gz -C \${API_RELEASE_DIR}/
+                                
+                                # Symlink Storage (Persistence)
+                                ln -sfn \${STORAGE_DIR} \${API_RELEASE_DIR}/storage
+                                # Copy .env from shared or current (Assuming .env exists in shared)
+                                if [ -f /var/www/html/shared/beta.env ]; then
+                                    cp /var/www/html/shared/beta.env \${API_RELEASE_DIR}/.env
+                                else
+                                    # Fallback: Try to copy from previous deployment
+                                    cp \${API_CURRENT_LINK}/.env \${API_RELEASE_DIR}/.env || true
+                                fi
+
+                                # Permissions & Commands (API)
+                                cd \${API_RELEASE_DIR}
                                 chown -R www-data:www-data .
-                                mkdir -p storage/logs storage/framework/views storage/framework/cache/data storage/framework/sessions bootstrap/cache
-                                chown -R www-data:www-data storage bootstrap/cache public
                                 chmod -R 775 storage bootstrap/cache
-                                chmod -R 755 public
-                                chmod -R 777 storage/logs
+                                chmod -R 777 storage/logs # Ensure logs writeable
                                 
-                                # Commands
                                 export COMPOSER_ALLOW_SUPERUSER=1
                                 composer install --no-dev --optimize-autoloader --no-interaction
                                 php artisan migrate --force
@@ -106,10 +125,21 @@ pipeline {
                                 php artisan route:cache
                                 php artisan view:clear
 
-                                # Cleanup
-                                rm /tmp/customer.tar.gz /tmp/vendor.tar.gz /tmp/admin.tar.gz /tmp/api.tar.gz
+                                # --- ATOMIC SWITCH ---
+                                # Frontend
+                                ln -sfn \${RELEASE_DIR} \${CURRENT_LINK}
+                                # API
+                                ln -sfn \${API_RELEASE_DIR} \${API_CURRENT_LINK}
+                                
+                                echo "✅ Atomic Switch Complete."
+
+                                # Cleanup (Keep last 5)
+                                cd /var/www/html/releases
+                                ls -dt beta_* | tail -n +6 | xargs rm -rf
                             '
                         """
+                        // Cleanup Local
+                        sh "rm *.tar.gz"
                     }
                 }
             }

@@ -41,10 +41,16 @@ return [
 
 
 
+    'jenkins' => [
+        'url' => env('JENKINS_URL'),
+        'user' => env('JENKINS_USER'),
+        'token' => env('JENKINS_TOKEN'),
+        'job' => env('JENKINS_JOB', 'resortwala-atomic-deploy'),
+    ],
+
     'sms' => [
         'api_key' => env('SMS_API_KEY'),
-        'username' => env('SMS_USERNAME', 'Resortwala'),
-        'sender_id' => env('SMS_SENDER_ID', 'ResWla'),
         'dlt_entity_id' => env('SMS_DLT_ENTITY_ID'),
+
     ],
 ];

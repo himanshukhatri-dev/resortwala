@@ -1056,21 +1056,34 @@ export default function PropertyDetails() {
                                     <h3 className="text-xl font-bold text-gray-900 mb-6 font-serif flex items-center gap-2"><FaMedal className="text-[#FF385C]" /> What's Included</h3>
                                     {ob.inclusions && Object.keys(ob.inclusions).length > 0 ? (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {Object.entries(ob.inclusions).map(([key, val]) => (val === true) && (
-                                                <div key={key} className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl">
-                                                    <div className="bg-white p-2 rounded-full text-green-600"><FaCheck size={12} /></div>
-                                                    <span className="font-semibold text-gray-900 uppercase text-sm mt-0.5">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                                                </div>
-                                            ))}
-                                            {Object.entries(ob.inclusions).map(([key, val]) => (typeof val === 'string' && val !== 'Not Included') && (
-                                                <div key={key} className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                                                    <div className="bg-white p-2 rounded-full text-blue-600"><FaUtensils size={12} /></div>
-                                                    <div>
-                                                        <span className="font-semibold text-blue-900 block capitalize">{key}</span>
-                                                        <span className="text-xs text-blue-600">{val}</span>
+                                            {(() => {
+                                                const processed = {};
+                                                // Priority: 1. Strings (Detailed), 2. Booleans (Simple)
+                                                Object.entries(ob.inclusions).forEach(([key, val]) => {
+                                                    const norm = key.toLowerCase().trim();
+                                                    if (typeof val === 'string' && val !== 'Not Included' && val.trim() !== '') {
+                                                        processed[norm] = { key, val, isString: true };
+                                                    } else if (val === true) {
+                                                        if (!processed[norm] || !processed[norm].isString) {
+                                                            processed[norm] = { key, val, isString: false };
+                                                        }
+                                                    }
+                                                });
+
+                                                return Object.values(processed).sort((a, b) => (b.isString ? 1 : 0) - (a.isString ? 1 : 0)).map(({ key, val, isString }) => (
+                                                    <div key={key} className={`flex items-start gap-3 p-4 rounded-xl ${isString ? 'bg-blue-50 border border-blue-100' : 'bg-gray-50'}`}>
+                                                        <div className={`bg-white p-2 rounded-full ${isString ? 'text-blue-600' : 'text-green-600'}`}>
+                                                            {isString ? <FaUtensils size={12} /> : <FaCheck size={12} />}
+                                                        </div>
+                                                        <div>
+                                                            <span className={`font-semibold text-sm ${isString ? 'text-blue-900 block capitalize' : 'text-gray-900 uppercase mt-0.5'}`}>
+                                                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                                                            </span>
+                                                            {isString && <span className="text-xs text-blue-600 block">{val}</span>}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ));
+                                            })()}
                                         </div>
                                     ) : <div className="text-gray-400 italic">No specific inclusions listed.</div>}
                                 </div>
@@ -1176,7 +1189,7 @@ export default function PropertyDetails() {
                             </section>
                         )}
 
-                        {((ob.mealPlans && Object.values(ob.mealPlans).some(m => m.available)) || (ob.foodRates && (ob.foodRates.veg || ob.foodRates.nonVeg))) && (
+                        {!isWaterpark && ((ob.mealPlans && Object.values(ob.mealPlans).some(m => m.available)) || (ob.foodRates && (ob.foodRates.veg || ob.foodRates.nonVeg))) && (
                             <section className="scroll-mt-32 space-y-6 pb-8 border-b border-gray-100">
                                 <h3 className="text-xl font-bold text-gray-900 mb-6 font-serif flex items-center gap-3">
                                     <div className="bg-orange-100 p-2 rounded-lg text-orange-600"><FaUtensils size={18} /></div>
@@ -1360,7 +1373,7 @@ export default function PropertyDetails() {
                 <MobileFooter
                     price={priceBreakdown || minPrice || property.display_price || PRICE_WEEKDAY}
                     unit={isWaterpark ? '/ person' : '/ night'}
-                    buttonText={(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : 'Reserve'}
+                    buttonText={(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : 'Book Now'}
                     dateRange={dateRange}
                     guests={guests}
                     mealSelection={mealSelection}
@@ -1725,12 +1738,27 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                             </div>
                         )}
 
-                        <div className="flex justify-between text-[10px] font-medium text-gray-500">
-                            <span className="underline decoration-dotted decoration-gray-300">
-                                {isWaterpark ? `Tickets (${guests.adults + guests.children})` : (priceBreakdown.nights > 1 ? `Villa Rental (${priceBreakdown.nights} nights)` : 'Villa Rental')}
-                            </span>
-                            <span>₹{Math.round(isWaterpark ? priceBreakdown.grantTotal : priceBreakdown.totalVillaRate || 0).toLocaleString()}</span>
-                        </div>
+                        {isWaterpark ? (
+                            <div className="space-y-1 w-full">
+                                <div className="flex justify-between items-center text-[10px] font-semibold text-gray-600">
+                                    <span>Adult ({guests.adults})</span>
+                                    <span className="text-gray-900 font-bold">₹{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
+                                </div>
+                                {guests.children > 0 && (
+                                    <div className="flex justify-between items-center text-[10px] font-semibold text-gray-600">
+                                        <span>Child ({guests.children})</span>
+                                        <span className="text-gray-900 font-bold">₹{priceBreakdown.totalChildTicket?.toLocaleString()}</span>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex justify-between text-[10px] font-medium text-gray-500 w-full">
+                                <span className="underline decoration-dotted decoration-gray-300">
+                                    {priceBreakdown.nights > 1 ? `Villa Rental (${priceBreakdown.nights} nights)` : 'Villa Rental'}
+                                </span>
+                                <span>₹{Math.round(priceBreakdown.totalVillaRate || 0).toLocaleString()}</span>
+                            </div>
+                        )}
 
                         {!isWaterpark && priceBreakdown.totalFood > 0 && (
                             <div className="flex justify-between text-[10px] font-medium text-blue-600">
@@ -1758,7 +1786,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                         <div className="hidden lg:block bg-gray-50 text-gray-600 rounded-lg p-2.5 mt-2 border border-gray-200">
                             <div className="flex justify-between items-end relative z-10">
                                 <div className="flex flex-col">
-                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Pay Now to Reserve</span>
+                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Pay Now</span>
                                     <span className="text-xl font-black leading-none text-gray-900">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
                                 </div>
                                 <div className="text-[8px] text-gray-400 font-bold mb-0.5 flex items-center gap-1 uppercase">
@@ -1775,7 +1803,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                         onClick={handleReserve}
                         className="w-full bg-[#FF385C] hover:bg-[#E00B41] text-white py-3.5 rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
                     >
-                        <span>{(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : (priceBreakdown ? `Reserve Now (₹${priceBreakdown.tokenAmount?.toLocaleString()})` : 'Reserve Now')}</span>
+                        <span>{(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : (priceBreakdown ? `Book Now (₹${priceBreakdown.tokenAmount?.toLocaleString()})` : 'Book Now')}</span>
                         <FaArrowRight className="text-sm opacity-80 group-hover:translate-x-1 transition-transform" />
                     </button>
                     {!priceBreakdown && (
@@ -1955,13 +1983,12 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                             {
                                 isWaterpark && (
                                     <div className="pb-4 px-2">
-                                        <h4 className="font-bold text-sm font-serif mb-2 text-gray-900">Select Tickets</h4>
                                         <div className="space-y-2">
                                             {/* Adult Ticket Selector */}
                                             <div className="flex items-center justify-between p-3 border border-blue-100 bg-blue-50/30 rounded-xl shadow-sm">
                                                 <div>
-                                                    <p className="font-bold text-xs text-gray-900">Adult Ticket</p>
-                                                    <p className="text-[10px] text-blue-600 font-medium whitespace-nowrap">Height &gt; 3.5 ft • ₹{(priceBreakdown?.adultTicketRate || defaultPrice)?.toLocaleString()} / person</p>
+                                                    <p className="font-bold text-xs text-gray-900">Adult (Above 8 years)</p>
+                                                    <p className="text-[10px] text-blue-600 font-medium whitespace-nowrap">₹{(priceBreakdown?.adultTicketRate || defaultPrice)?.toLocaleString()} / person</p>
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-blue-100">
@@ -1974,8 +2001,8 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                             {/* Child Ticket Selector */}
                                             <div className="flex items-center justify-between p-3 border border-orange-100 bg-orange-50/30 rounded-xl shadow-sm">
                                                 <div>
-                                                    <p className="font-bold text-xs text-gray-900">Child Ticket</p>
-                                                    <p className="text-[10px] text-orange-600 font-medium whitespace-nowrap">Height 2.5 - 3.5 ft • ₹{(priceBreakdown?.childTicketRate || property?.admin_pricing?.child_weekday?.final || property?.admin_pricing?.child_weekday || 400)?.toLocaleString()} / person</p>
+                                                    <p className="font-bold text-xs text-gray-900">Child (Between 3 to 8 years)</p>
+                                                    <p className="text-[10px] text-orange-600 font-medium whitespace-nowrap">₹{(priceBreakdown?.childTicketRate || property?.admin_pricing?.child_weekday?.final || property?.admin_pricing?.child_weekday || 400)?.toLocaleString()} / person</p>
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-orange-100">
@@ -2030,7 +2057,21 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                         )}
 
                                         {/* Villa Breakdown */}
-                                        {!isWaterpark && (
+                                        {isWaterpark ? (
+                                            <div className="space-y-2 border-b border-gray-100 pb-3 mb-2">
+                                                <p className="text-[9px] uppercase font-black text-gray-400 mb-1">Ticket Breakdown</p>
+                                                <div className="flex justify-between items-center bg-white border border-gray-50 p-2 rounded-lg shadow-sm">
+                                                    <span className="text-xs font-bold text-gray-800">Adult ({guests.adults})</span>
+                                                    <span className="text-sm font-black text-gray-900">₹{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
+                                                </div>
+                                                {guests.children > 0 && (
+                                                    <div className="flex justify-between items-center bg-white border border-gray-50 p-2 rounded-lg shadow-sm">
+                                                        <span className="text-xs font-bold text-gray-800">Child ({guests.children})</span>
+                                                        <span className="text-sm font-black text-gray-900">₹{priceBreakdown.totalChildTicket?.toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-xs text-gray-600 font-medium">
                                                     <span>Villa Rental ({priceBreakdown.nights} nights)</span>
@@ -2045,50 +2086,34 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                             </div>
                                         )}
 
-                                        {/* Waterpark Breakdown Updated Format */}
-                                        {isWaterpark && (
-                                            <div className="space-y-1.5 text-xs">
-                                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 border-b border-gray-100 pb-1">TICKETS</div>
-                                                <div className="flex justify-between items-center text-gray-600">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-gray-900">Adult ({guests.adults})</span>
-                                                        <span className="text-[9px]">₹{priceBreakdown.adultTicketRate} x {guests.adults}</span>
-                                                    </div>
-                                                    <div className="flex flex-col items-end">
-                                                        {priceBreakdown.adultMarketRate > priceBreakdown.adultTicketRate && (
-                                                            <span className="text-[9px] text-gray-400 line-through">₹{(priceBreakdown.adultMarketRate * guests.adults).toLocaleString()}</span>
-                                                        )}
-                                                        <span className="font-bold text-gray-900">₹{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
-                                                    </div>
+                                        {/* Simplified Breakdown for Mobile */}
+                                        <div className="space-y-2 text-xs">
+                                            {/* 1. You Saved */}
+                                            {priceBreakdown.totalSavings > 0 && (
+                                                <div className="flex justify-between items-center text-green-700 font-bold bg-green-50 px-2 py-1.5 rounded border border-green-100 mb-1">
+                                                    <span className="text-[9px] uppercase tracking-wider">🎉 You Saved</span>
+                                                    <span>₹{priceBreakdown.totalSavings.toLocaleString()}</span>
                                                 </div>
-                                                {guests.children > 0 && (
-                                                    <div className="flex justify-between items-center text-gray-600">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-bold text-gray-900">Child ({guests.children})</span>
-                                                            <span className="text-[9px]">₹{priceBreakdown.childTicketRate} x {guests.children}</span>
-                                                        </div>
-                                                        <div className="flex flex-col items-end">
-                                                            {priceBreakdown.childMarketRate > priceBreakdown.childTicketRate && (
-                                                                <span className="text-[9px] text-gray-400 line-through">₹{(priceBreakdown.childMarketRate * guests.children).toLocaleString()}</span>
-                                                            )}
-                                                            <span className="font-bold text-gray-900">₹{priceBreakdown.totalChildTicket?.toLocaleString()}</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                <div className="flex justify-between items-center pt-1 border-t border-gray-200 mt-2 font-black text-gray-900">
-                                                    <span>Total:</span>
-                                                    <span>₹{priceBreakdown.grantTotal?.toLocaleString()}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center text-green-700 font-bold bg-green-50 px-2 py-1 rounded">
-                                                    <span>Pay Now:</span>
-                                                    <span>₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center text-orange-700 font-bold bg-orange-50 px-2 py-1 rounded">
-                                                    <span>Pay At Park:</span>
-                                                    <span>₹{(priceBreakdown.grantTotal - (priceBreakdown.tokenAmount || 0)).toLocaleString()}</span>
-                                                </div>
+                                            )}
+
+                                            {/* 2. Pay Now */}
+                                            <div className="flex justify-between items-center text-gray-900 font-black bg-white px-2 py-2 rounded border border-gray-100 shadow-sm">
+                                                <span className="text-[10px] uppercase">Pay Now</span>
+                                                <span className="text-sm">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
                                             </div>
-                                        )}
+
+                                            {/* 3. Pay At Park */}
+                                            <div className="flex justify-between items-center text-gray-600 font-bold px-2 py-1">
+                                                <span className="text-[10px] uppercase">Pay At Park</span>
+                                                <span>₹{(priceBreakdown.grantTotal - (priceBreakdown.tokenAmount || 0)).toLocaleString()}</span>
+                                            </div>
+
+                                            {/* Total Reference (Small) */}
+                                            <div className="flex justify-between items-center pt-2 border-t border-gray-100 mt-1 text-gray-400 font-bold text-[10px]">
+                                                <span>Total Amount</span>
+                                                <span>₹{priceBreakdown.grantTotal?.toLocaleString()}</span>
+                                            </div>
+                                        </div>
 
                                         {/* Food Breakdown (Villa only usually) */}
                                         {priceBreakdown.totalFood > 0 && (
@@ -2123,11 +2148,8 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                             <div className="flex flex-col">
                                 {priceBreakdown ? (
                                     <>
-                                        <span className="text-[10px] font-bold text-gray-500 uppercase">Tokens (Reserve)</span>
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase">Pay Now</span>
                                         <span className="text-lg font-bold text-gray-900 leading-none">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
-                                        <span className="text-[9px] text-gray-400 font-medium mt-0.5 whitespace-nowrap">
-                                            {isWaterpark ? `${guests.adults + guests.children} Tickets Reservation` : `10% of ₹${(priceBreakdown.grantTotal - priceBreakdown.gstAmount).toLocaleString()}`}
-                                        </span>
                                     </>
                                 ) : (
                                     <>
@@ -2142,7 +2164,7 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReserve(); }}
                                 className="flex-1 bg-gradient-to-r from-[#FF385C] to-[#E00B41] text-white py-3 rounded-lg font-bold text-sm shadow-lg shadow-red-200 active:scale-95 transition cursor-pointer z-50 pointer-events-auto"
                             >
-                                {(!dateRange.from) ? 'Select Date' : (priceBreakdown ? `Reserve Now (₹${priceBreakdown.tokenAmount?.toLocaleString()})` : 'Reserve Now')}
+                                {(!dateRange.from) ? 'Select Date' : (priceBreakdown ? `Book Now (₹${priceBreakdown.tokenAmount?.toLocaleString()})` : 'Check Availability')}
                             </button>
                         </div>
                     </motion.div>
@@ -2168,7 +2190,9 @@ function MobileFooter({ price, unit, onReserve, buttonText, dateRange, onDateCli
             <div className="flex flex-col cursor-pointer max-w-[50%]" onClick={onDateClick}>
                 {hasDates ? (
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-tighter truncate">{summary}</span>
+                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-tighter truncate flex items-center gap-1">
+                            {summary} <span className="text-[8px] bg-blue-50 px-1 rounded border border-blue-100 uppercase ml-1">Edit</span>
+                        </span>
                         <div className="flex items-baseline gap-1">
                             <span className="font-bold text-lg text-gray-900">₹{totalAmount?.toLocaleString()}</span>
                             {!isWaterpark && isBreakdown && <span className="text-[8px] text-gray-400 font-bold uppercase ml-1">+ GST</span>}
@@ -2191,7 +2215,7 @@ function MobileFooter({ price, unit, onReserve, buttonText, dateRange, onDateCli
                 onClick={onReserve}
                 className="bg-[#FF385C] hover:bg-[#d9324e] text-white px-6 py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-red-100 transition active:scale-95 disabled:opacity-50"
             >
-                {isBreakdown && price.tokenAmount ? `Reserve (₹${price.tokenAmount.toLocaleString()})` : buttonText}
+                {isBreakdown && price.tokenAmount ? `Book Now (₹${price.tokenAmount.toLocaleString()})` : buttonText}
             </button>
         </div>
     );
