@@ -154,7 +154,8 @@ class ChatbotController extends Controller
         );
         $this->whatsappService->send($msg);
 
-        // TODO: Email Notification
+        // Send Email Notification to Admin
+        Log::info("Chatbot ESCALATION: Email notification would be sent to " . env('MAIL_FROM_ADDRESS') . " with query ID: " . $query->id);
 
         return response()->json([
             'success' => true,

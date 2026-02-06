@@ -1,49 +1,51 @@
-# ResortWala Local Development Start Script
+# ResortWala Unified Local Start Script
 
 Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host "Starting ResortWala Development Servers" -ForegroundColor Cyan
+Write-Host "Starting ResortWala Unified Environment" -ForegroundColor Cyan
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # 1. Start SSH Tunnel for Staging Database
-Write-Host "Opening SSH Tunnel to Staging Database (Port 3307)..." -ForegroundColor Yellow
-# Using -f to run SSH in background if possible, or keeping it in separate window as per script design
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "ssh -N -L 3307:127.0.0.1:3306 root@77.37.47.243"
+$sshRunning = Get-Process ssh -ErrorAction SilentlyContinue
+if (-not $sshRunning) {
+    Write-Host "Opening SSH Tunnel to Staging Database (Port 3307)..." -ForegroundColor Yellow
+    # Using specific user for SSH if needed, assuming key is loaded or passwordless
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "ssh -N -L 3307:127.0.0.1:3306 root@77.37.47.243"
+    Start-Sleep -Seconds 5
+}
+else {
+    Write-Host "SSH Tunnel appears to be running." -ForegroundColor Green
+}
 
-# 2. Sync Local Environment
-Write-Host "Syncing environment files from .env.local ..." -ForegroundColor Yellow
-Copy-Item -Path api\.env.local -Destination api\.env -Force
-Copy-Item -Path client-customer\.env.local -Destination client-customer\.env -Force
-Copy-Item -Path client-vendor\.env.local -Destination client-vendor\.env -Force
-Copy-Item -Path client-admin\.env.local -Destination client-admin\.env -Force
+# 2. Sync Local Environment Files
+Write-Host "Syncing environment files..." -ForegroundColor Yellow
+if (Test-Path "api\.env.local") { Copy-Item -Path api\.env.local -Destination api\.env -Force }
+if (Test-Path "client-customer\.env.local") { Copy-Item -Path client-customer\.env.local -Destination client-customer\.env -Force }
+if (Test-Path "client-vendor\.env.local") { Copy-Item -Path client-vendor\.env.local -Destination client-vendor\.env -Force }
+if (Test-Path "client-admin\.env.local") { Copy-Item -Path client-admin\.env.local -Destination client-admin\.env -Force }
 
-# 3. Start Docker Containers
-Write-Host "Starting Local Docker Services..." -ForegroundColor Yellow
-docker-compose -f docker-compose.local.yml up -d
+# 3. Start Docker Containers (Unified)
+Write-Host "Starting Docker Containers (Gateway + API + Frontends)..." -ForegroundColor Yellow
 
-# Helper to start terminal with updated path
-$pathCommand = "`$env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User');"
+# Ensure we are using the unified env file for variable substitution
+# We use --remove-orphans to clean up any old 'local.yml' containers
+docker-compose --env-file .env.unified -f docker-compose.unified.yml up -d --remove-orphans
 
-# 2. Start Laravel API
-Write-Host "Starting Laravel API on http://local.resortwala.com/api ..." -ForegroundColor Green
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "$pathCommand cd api; php artisan serve --host=0.0.0.0 --port=8000"
-
-# 3. Start Customer App
-Write-Host "Starting Customer App on http://local.resortwala.com ..." -ForegroundColor Cyan
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd client-customer; npm run dev"
-
-# 4. Start Vendor App
-Write-Host "Starting Vendor App on http://local.resortwala.com/vendor ..." -ForegroundColor Cyan
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd client-vendor; npm run dev"
-
-# 5. Start Admin App
-Write-Host "Starting Admin App on http://local.resortwala.com/admin ..." -ForegroundColor Cyan
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd client-admin; npm run dev"
+Write-Host "Waiting for services to initialize..." -ForegroundColor Yellow
+Start-Sleep -Seconds 5
 
 Write-Host ""
-Write-Host "All servers are starting in separate windows." -ForegroundColor Yellow
-Write-Host "Keep this window open to manage Docker or press Ctrl+C to stop this script." -ForegroundColor Gray
+Write-Host "=========================================" -ForegroundColor Green
+Write-Host "Local Environment is Running!" -ForegroundColor Green
+Write-Host "Gateway:  http://local.resortwala.com" -ForegroundColor Cyan
+Write-Host "API:      http://local.resortwala.com/api" -ForegroundColor Cyan
+Write-Host "Customer: http://local.resortwala.com" -ForegroundColor Cyan
+Write-Host "Vendor:   http://local.resortwala.com/vendor" -ForegroundColor Cyan
+Write-Host "Admin:    http://local.resortwala.com/admin" -ForegroundColor Cyan
+Write-Host "=========================================" -ForegroundColor Green
+Write-Host "Logs: docker-compose -f docker-compose.unified.yml logs -f"
+Write-Host "Stop: docker-compose -f docker-compose.unified.yml down"
 Write-Host ""
-Write-Host "Press any key to see the status of containers..."
+Write-Host "Press any key to check container status..."
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-docker-compose -f docker-compose.local.yml ps
+docker-compose --env-file .env.unified -f docker-compose.unified.yml ps

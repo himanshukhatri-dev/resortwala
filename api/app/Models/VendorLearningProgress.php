@@ -13,32 +13,26 @@ class VendorLearningProgress extends Model
 
     protected $fillable = [
         'vendor_id',
-        'video_id',
+        'module_id', // Changed from video_id
         'status',
-        'watch_duration_seconds',
-        'completion_percentage',
-        'is_helpful',
-        'rating',
-        'feedback',
-        'first_viewed_at',
-        'last_viewed_at',
+        'current_step',
         'completed_at',
+        // Keeping legacy columns if needed for migration compatibility, otherwise assume migration cleaned them
+        // 'video_id', 'watch_duration_seconds', 'completion_percentage', 'is_helpful', 'rating', 'feedback', 'first_viewed_at', 'last_viewed_at'
     ];
 
     protected $casts = [
-        'is_helpful' => 'boolean',
-        'first_viewed_at' => 'datetime',
-        'last_viewed_at' => 'datetime',
         'completed_at' => 'datetime',
     ];
+
+    public function module()
+    {
+        return $this->belongsTo(LearningModule::class, 'module_id');
+    }
 
     public function vendor()
     {
         return $this->belongsTo(User::class, 'vendor_id');
     }
 
-    public function video()
-    {
-        return $this->belongsTo(LearningVideo::class, 'video_id');
-    }
 }

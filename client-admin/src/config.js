@@ -9,12 +9,16 @@ const getApiBaseUrl = () => {
 
     // Local / Dev Environment
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === 'local.resortwala.com') {
+<<<<<<< HEAD
+        return '/api';
+=======
         // Check if we are running in a context where port 8085 is expected (Docker local)
         // or just use /api if Nginx is proxying. 
         // For ResortWala local setup, 8085 is the API port.
         if (window.location.port === '5173' || window.location.port === '5174' || window.location.port === '5175' || window.location.port === '5176') {
             return `${window.location.protocol}//${hostname}:8085/api`;
         }
+>>>>>>> master
     }
 
     // Production / Beta / Staging (where API is on same domain under /api)

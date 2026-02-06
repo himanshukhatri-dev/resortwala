@@ -31,14 +31,21 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy existing application directory contents
+# Copy only composer files first for better caching
+COPY composer.json composer.lock /var/www/html/
+
+# Install dependencies (ignoring scripts as we don't have the full code yet)
+RUN composer install --no-interaction --no-plugins --no-scripts --no-dev --prefer-dist
+
+# Now copy the rest of the code
 COPY . /var/www/html
 
-# Install dependencies
-RUN composer install --optimize-autoloader --no-dev
-
-# Set permissions
+# Final composer optimization and permissions
+RUN composer dump-autoload --optimize --no-dev
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Prevent symlink errors
+RUN rm -rf /var/www/html/public/storage
 
 EXPOSE 9000
 CMD ["php-fpm"]

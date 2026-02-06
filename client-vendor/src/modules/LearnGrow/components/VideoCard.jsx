@@ -57,6 +57,11 @@ const VideoCard = ({ video, onSelect }) => {
                             New
                         </span>
                     )}
+                    {video.steps && video.steps.length > 0 && (
+                        <span className="px-2.5 py-1 bg-green-500 text-white text-[10px] font-black uppercase tracking-wider rounded-lg shadow-lg flex items-center gap-1">
+                            Interactive
+                        </span>
+                    )}
                 </div>
 
                 {/* Duration - Bottom Right */}
@@ -117,7 +122,7 @@ const VideoCard = ({ video, onSelect }) => {
                     </div>
 
                     <button className="px-4 py-2 bg-gray-50 text-gray-900 text-xs font-bold rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm hover:shadow-blue-500/25 flex items-center gap-2">
-                        Watch
+                        Start Learning
                         <FaPlay size={8} className="opacity-50 group-hover:opacity-100" />
                     </button>
                 </div>
