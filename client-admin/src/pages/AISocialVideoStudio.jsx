@@ -33,6 +33,8 @@ export default function AISocialVideoStudio() {
     const [selectedTemplate, setSelectedTemplate] = useState('luxury');
     const [mood, setMood] = useState('luxury');
     const [showOptions, setShowOptions] = useState(false);
+    const [showSafeZones, setShowSafeZones] = useState(false);
+    const [previewPlatform, setPreviewPlatform] = useState('none'); // none, instagram, tiktok, shorts
 
     // TTS State
     const [useVoiceover, setUseVoiceover] = useState(false);
@@ -104,9 +106,77 @@ export default function AISocialVideoStudio() {
         // Try to load images?
         // We might not have the full valid media object list, we'd need to re-fetch property images
         // and then select the ones that were in job.options.media_ids
-        if (job.property_id) {
-            handlePropertySelect(job.property_id, job.options?.media_ids);
-        }
+        setStep(1);
+        toast.success("Loaded settings from Job #" + job.id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const SafeZoneOverlay = () => {
+        if (!showSafeZones || previewPlatform === 'none') return null;
+
+        return (
+            <div className="absolute inset-0 pointer-events-none z-10 border-red-500/20">
+                {/* Platform Specific UIs */}
+                {previewPlatform === 'instagram' && (
+                    <>
+                        {/* Bottom Info Bar */}
+                        <div className="absolute bottom-0 left-0 right-0 h-[25%] bg-gradient-to-t from-black/40 to-transparent" />
+                        <div className="absolute bottom-6 left-3 right-12">
+                            <div className="w-1/2 h-2.5 bg-white/30 rounded mb-1.5" />
+                            <div className="w-1/3 h-1.5 bg-white/20 rounded" />
+                        </div>
+                        {/* Right Interaction Sidebar */}
+                        <div className="absolute right-1.5 bottom-16 flex flex-col gap-3 items-center">
+                            <div className="w-6 h-6 rounded-full bg-white/30" />
+                            <div className="w-6 h-6 rounded-full bg-white/30" />
+                            <div className="w-6 h-6 rounded-full bg-white/30" />
+                        </div>
+                    </>
+                )}
+
+                {previewPlatform === 'tiktok' && (
+                    <>
+                        {/* Bottom Caption Area */}
+                        <div className="absolute bottom-0 left-0 right-0 h-[30%] bg-black/20" />
+                        <div className="absolute bottom-10 left-3 right-16">
+                            <div className="w-3/4 h-3 bg-white/30 rounded mb-1.5" />
+                            <div className="w-1/2 h-2 bg-white/20 rounded" />
+                        </div>
+                        {/* Right Sidebar */}
+                        <div className="absolute right-2 bottom-24 flex flex-col gap-5 items-center">
+                            <div className="w-8 h-8 rounded-full bg-white/30 border-2 border-white/50" />
+                            <div className="w-6 h-6 bg-white/30 rounded-md" />
+                            <div className="w-6 h-6 bg-white/30 rounded-md" />
+                            <div className="w-6 h-6 bg-white/30 rounded-md" />
+                        </div>
+                    </>
+                )}
+
+                {previewPlatform === 'shorts' && (
+                    <>
+                        <div className="absolute bottom-0 left-0 right-0 h-[20%] bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute bottom-5 left-3 right-16">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                                <div className="w-5 h-5 rounded-full bg-white/40" />
+                                <div className="w-20 h-2 bg-white/30 rounded" />
+                            </div>
+                            <div className="w-32 h-1.5 bg-white/20 rounded" />
+                        </div>
+                        <div className="absolute right-3 bottom-12 flex flex-col gap-5 items-center">
+                            <div className="w-7 h-7 rounded-full bg-white/30" />
+                            <div className="w-7 h-7 rounded-full bg-white/30" />
+                        </div>
+                    </>
+                )}
+
+                {/* Safe Zone Text Guide */}
+                <div className="absolute inset-[8%] border border-dashed border-red-500/30 rounded-md flex items-center justify-center">
+                    <span className="bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded absolute -top-2 left-1/2 -translate-x-1/2 font-bold uppercase tracking-tighter">
+                        Safe Zone
+                    </span>
+                </div>
+            </div>
+        );
     };
 
     const handlePropertySelect = async (propId, preSelectedIds = null) => {
@@ -295,7 +365,28 @@ export default function AISocialVideoStudio() {
                                     <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs">2</span>
                                     Curate Media ({mediaFiles.filter(m => m.selected).length})
                                 </h3>
-                                <div className="flex gap-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 border-r pr-3 border-gray-100 mr-2">
+                                        <label className="flex items-center gap-1.5 cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                checked={showSafeZones}
+                                                onChange={e => setShowSafeZones(e.target.checked)}
+                                                className="w-3.5 h-3.5 rounded text-pink-600 focus:ring-pink-500"
+                                            />
+                                            <span className="text-[10px] font-bold text-gray-400 group-hover:text-pink-600 transition">Safe Zones</span>
+                                        </label>
+                                        <select
+                                            value={previewPlatform}
+                                            onChange={e => setPreviewPlatform(e.target.value)}
+                                            className="text-[10px] font-bold bg-gray-50 border-0 p-1 rounded focus:ring-0 outline-none"
+                                        >
+                                            <option value="none">Platform UI: Off</option>
+                                            <option value="instagram">Instagram Reel</option>
+                                            <option value="tiktok">TikTok</option>
+                                            <option value="shorts">YouTube Shorts</option>
+                                        </select>
+                                    </div>
                                     <label className="cursor-pointer bg-pink-50 text-pink-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-pink-100 flex items-center gap-1 transition">
                                         <FaCloudUploadAlt /> Upload Media
                                         <input type="file" multiple onChange={handleUpload} className="hidden" accept="image/*,video/*" />
@@ -310,8 +401,9 @@ export default function AISocialVideoStudio() {
                                     <Reorder.Item key={item.id} value={item} className="relative">
                                         <div
                                             onClick={() => toggleMedia(item.id)}
-                                            className={`relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all group ${item.selected ? 'border-pink-500 ring-2 ring-pink-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                            className={`relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all group ${item.selected ? 'border-pink-500 ring-2 ring-pink-100 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'}`}
                                         >
+                                            <SafeZoneOverlay />
                                             {item.type === 'video' ? (
                                                 <video src={getImageUrl(item.url)} className="w-full h-full object-cover" muted />
                                             ) : (

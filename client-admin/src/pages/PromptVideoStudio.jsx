@@ -11,6 +11,8 @@ const PromptVideoStudio = () => {
     const [mood, setMood] = useState('energetic');
     const [aspectRatio, setAspectRatio] = useState('9:16');
     const [voiceId, setVoiceId] = useState('atlas');
+    const [showSafeZones, setShowSafeZones] = useState(false);
+    const [previewPlatform, setPreviewPlatform] = useState('none'); // none, instagram, tiktok, shorts
 
     const [generatedScript, setGeneratedScript] = useState('');
     const [scenes, setScenes] = useState([]);
@@ -142,7 +144,6 @@ const PromptVideoStudio = () => {
                 mood,
                 aspect_ratio: aspectRatio,
                 voice_id: voiceId,
-                voice_id: voiceId,
                 script: generatedScript,
                 scenes: scenes,
                 media_paths: uploadedFiles.map(f => f.path)
@@ -196,6 +197,74 @@ const PromptVideoStudio = () => {
         } catch (err) {
             toast.error("Delete Failed: " + (err.response?.data?.message || err.message));
         }
+    };
+
+    const SafeZoneOverlay = () => {
+        if (!showSafeZones || previewPlatform === 'none') return null;
+
+        return (
+            <div className="absolute inset-0 pointer-events-none z-10 border-red-500/20">
+                {/* Platform Specific UIs */}
+                {previewPlatform === 'instagram' && (
+                    <>
+                        {/* Bottom Info Bar */}
+                        <div className="absolute bottom-0 left-0 right-0 h-[25%] bg-gradient-to-t from-black/40 to-transparent" />
+                        <div className="absolute bottom-8 left-4 right-16">
+                            <div className="w-1/2 h-3 bg-white/30 rounded mb-2" />
+                            <div className="w-1/3 h-2 bg-white/20 rounded" />
+                        </div>
+                        {/* Right Interaction Sidebar */}
+                        <div className="absolute right-2 bottom-20 flex flex-col gap-4 items-center">
+                            <div className="w-8 h-8 rounded-full bg-white/30" />
+                            <div className="w-8 h-8 rounded-full bg-white/30" />
+                            <div className="w-8 h-8 rounded-full bg-white/30" />
+                        </div>
+                    </>
+                )}
+
+                {previewPlatform === 'tiktok' && (
+                    <>
+                        {/* Bottom Caption Area (Larger than IG) */}
+                        <div className="absolute bottom-0 left-0 right-0 h-[30%] bg-black/20" />
+                        <div className="absolute bottom-12 left-4 right-20">
+                            <div className="w-3/4 h-4 bg-white/30 rounded mb-2" />
+                            <div className="w-1/2 h-3 bg-white/20 rounded" />
+                        </div>
+                        {/* Right Sidebar */}
+                        <div className="absolute right-3 bottom-32 flex flex-col gap-6 items-center">
+                            <div className="w-10 h-10 rounded-full bg-white/30 border-2 border-white/50" />
+                            <div className="w-8 h-8 bg-white/30 rounded-md" />
+                            <div className="w-8 h-8 bg-white/30 rounded-md" />
+                            <div className="w-8 h-8 bg-white/30 rounded-md" />
+                        </div>
+                    </>
+                )}
+
+                {previewPlatform === 'shorts' && (
+                    <>
+                        <div className="absolute bottom-0 left-0 right-0 h-[20%] bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute bottom-6 left-4 right-20">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-6 h-6 rounded-full bg-white/40" />
+                                <div className="w-24 h-3 bg-white/30 rounded" />
+                            </div>
+                            <div className="w-40 h-2 bg-white/20 rounded" />
+                        </div>
+                        <div className="absolute right-4 bottom-16 flex flex-col gap-6 items-center">
+                            <div className="w-8 h-8 rounded-full bg-white/30" />
+                            <div className="w-8 h-8 rounded-full bg-white/30" />
+                        </div>
+                    </>
+                )}
+
+                {/* Safe Zone Text Guide */}
+                <div className="absolute inset-[10%] border-2 border-dashed border-red-500/30 rounded-lg flex items-center justify-center">
+                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded absolute -top-3 left-1/2 -translate-x-1/2 font-bold uppercase tracking-tighter shadow-sm">
+                        Keep Content in this Safe Zone
+                    </span>
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -279,7 +348,30 @@ const PromptVideoStudio = () => {
                             <h3 className="font-bold text-lg mb-4 text-gray-800">✅ AI Execution Plan</h3>
 
                             <div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-blue-100">
-                                <span className="text-xs font-bold text-blue-500 uppercase">Selected Theme</span>
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-xs font-bold text-blue-500 uppercase">Selected Theme</span>
+                                    <div className="flex items-center gap-3">
+                                        <label className="flex items-center gap-1.5 cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                checked={showSafeZones}
+                                                onChange={e => setShowSafeZones(e.target.checked)}
+                                                className="w-3.5 h-3.5 rounded text-purple-600 focus:ring-purple-500"
+                                            />
+                                            <span className="text-[10px] font-bold text-gray-400 group-hover:text-purple-600 transition">Safe Zones</span>
+                                        </label>
+                                        <select
+                                            value={previewPlatform}
+                                            onChange={e => setPreviewPlatform(e.target.value)}
+                                            className="text-[10px] font-bold bg-gray-50 border-0 p-1 rounded focus:ring-0 outline-none"
+                                        >
+                                            <option value="none">Platform UI: Off</option>
+                                            <option value="instagram">Instagram Reel</option>
+                                            <option value="tiktok">TikTok</option>
+                                            <option value="shorts">YouTube Shorts</option>
+                                        </select>
+                                    </div>
+                                </div>
                                 <p className="font-medium capitalize text-gray-700">{mood} &bull; {aspectRatio}</p>
                             </div>
 
@@ -328,12 +420,13 @@ const PromptVideoStudio = () => {
                                     <div className="grid grid-cols-4 gap-2 mt-3">
                                         {uploadedFiles.map((f, i) => (
                                             <div key={i} className={`relative rounded-lg overflow-hidden bg-gray-100 border group ${aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
+                                                <SafeZoneOverlay />
                                                 {f.type === 'video' ? (
                                                     <video src={f.url} className="w-full h-full object-cover" muted />
                                                 ) : (
                                                     <img src={f.url} className="w-full h-full object-cover" />
                                                 )}
-                                                <div className="absolute top-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded">
+                                                <div className="absolute top-1 right-1 bg-black/50 text-white text-[10px] px-1 rounded z-20">
                                                     {f.type === 'video' ? 'VID' : 'IMG'}
                                                 </div>
                                             </div>

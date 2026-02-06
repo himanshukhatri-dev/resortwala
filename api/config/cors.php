@@ -30,6 +30,10 @@ return [
         'http://localhost:3005',
         'http://localhost:3003',
         'http://localhost:3004',
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:5175',
+        'http://localhost:5176',
         // Local ResortWala Domains
         'http://local.resortwala.com:5173',
         'http://local.resortwala.com:5174',
