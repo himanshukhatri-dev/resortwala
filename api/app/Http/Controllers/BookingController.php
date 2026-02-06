@@ -93,7 +93,7 @@ class BookingController extends Controller
                 'paid_amount' => 'nullable|numeric', // Booking Token Amount
                 'payment_method' => 'required|string|in:hotel,card,upi',
                 'SpecialRequest' => 'nullable|string',
-                'booking_source' => 'nullable|string|in:customer_app,public_calendar,vendor_manual,admin_manual'
+                'booking_source' => 'nullable|string|in:customer_app,public_calendar,vendor_manual,admin_manual,web_direct'
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error("Booking Validation Failed", ['errors' => $e->errors()]);
