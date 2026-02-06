@@ -34,6 +34,7 @@ return [
         'http://local.resortwala.com:5173',
         'http://local.resortwala.com:5174',
         'http://local.resortwala.com:5175',
+        'http://local.resortwala.com:5176',
         'http://local.resortwala.com:8085',
         // Staging Domains
         'http://staging.resortwala.com',
