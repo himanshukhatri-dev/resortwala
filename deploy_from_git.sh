@@ -221,8 +221,8 @@ deploy() {
 }
 
 # Parse command line arguments
-if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <environment> <branch> <component>"
+if [ "$#" -lt 3 ]; then
+    echo "Usage: $0 <environment> <branch> <component> [skip_migrate]"
     exit 1
 fi
 

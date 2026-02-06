@@ -20,6 +20,8 @@ if [ -f "/var/www/html/resortwala_v2/shared/.env" ]; then
     ENV_FILE="/var/www/html/resortwala_v2/shared/.env"
 elif [ -f "/var/www/html/resortwala_v2/current/.env" ]; then
     ENV_FILE="/var/www/html/resortwala_v2/current/.env"
+elif [ -f "/var/www/html/api.resortwala.com/.env" ]; then
+    ENV_FILE="/var/www/html/api.resortwala.com/.env"
 elif [ -f "/var/www/html/resortwala.com/api/.env" ]; then
     ENV_FILE="/var/www/html/resortwala.com/api/.env"
 else
