@@ -1429,7 +1429,7 @@ export default function PropertyDetails() {
                 <MobileFooter
                     price={priceBreakdown || minPrice || property.display_price || PRICE_WEEKDAY}
                     unit={isWaterpark ? '/ person' : '/ night'}
-                    buttonText={(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : 'Book Now'}
+                    buttonText={(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : 'Reserve Now'}
                     dateRange={dateRange}
                     guests={guests}
                     mealSelection={mealSelection}
@@ -1469,10 +1469,12 @@ export default function PropertyDetails() {
                             setGuests={setGuests}
                             maxCapacity={parseInt(property?.MaxCapacity || property?.Occupancy || 20)}
                             priceBreakdown={priceBreakdown}
-                            defaultPrice={isWaterpark ? getPriceForDate(new Date()) : PRICE_WEEKDAY}
+                            defaultPrice={Number(property?.Price) || 0}
                             onReserve={handleReserve}
                             mealSelection={mealSelection}
                             setMealSelection={setMealSelection}
+                            showAutoRates={showAutoRates}
+                            setShowAutoRates={setShowAutoRates}
                         />
                     )}
                 </AnimatePresence>
@@ -1783,7 +1785,6 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                     <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-1.5 mt-1.5">
                         <div className="flex items-center justify-between mb-1 px-0.5">
                             <span className="text-[9px] uppercase font-bold text-gray-500 flex items-center gap-1"><FaUtensils className="text-orange-400" size={9} /> Meals (All-Inclusive)</span>
-                            <span className="text-[8px] text-gray-400 font-medium">₹{rates.veg || rates.nonveg || rates.max || 1200}</span>
                         </div>
                         <div className="bg-white border border-gray-200 rounded-lg p-1.5 flex justify-between items-center shadow-sm">
                             <span className="text-[11px] font-bold text-gray-700">Add Meal Package</span>
@@ -1798,14 +1799,14 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
 
                 {/* BREAKDOWN - Simplified & Compact */}
                 {priceBreakdown && (
-                    <div className="bg-gray-50/50 rounded-lg p-2 border border-gray-100 space-y-1.5 mt-1.5">
+                    <div className="bg-gray-50/50 rounded-lg p-1.5 border border-gray-100 space-y-1 mt-1">
                         {isWaterpark ? (
                             <div className="space-y-1.5 w-full">
-                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-0.5">Price Breakdown</div>
-                                <div className="space-y-1.5">
+
+                                <div className="space-y-1">
                                     <div className="flex justify-between items-start">
                                         <div className="flex flex-col">
-                                            <span className="text-[11px] font-bold text-gray-900">Adults ({guests.adults})</span>
+                                            <span className="text-[11px] font-bold text-gray-900">Adult ({guests.adults})</span>
                                             <span className="text-[9px] text-gray-400">₹{priceBreakdown.adultTicketRate.toLocaleString()} × {guests.adults}</span>
                                         </div>
                                         <span className="text-xs font-black text-gray-900">₹{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
@@ -1824,6 +1825,28 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                                         <span className="text-[9px] font-black uppercase tracking-wider">Total Amount</span>
                                         <span className="text-sm font-black">₹{priceBreakdown.grantTotal?.toLocaleString()}</span>
                                     </div>
+
+                                    {/* Pay Now */}
+                                    <div className="bg-blue-50/80 p-1.5 rounded-lg border border-blue-100 flex justify-between items-center mt-1">
+                                        <span className="text-xs font-black text-blue-600">Pay Now</span>
+                                        <span className="text-base font-black text-blue-700">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
+                                    </div>
+
+                                    {/* Pay at Park */}
+                                    <div className="bg-gray-50 p-1.5 rounded-lg border border-gray-100 flex justify-between items-center">
+                                        <span className="text-xs font-black text-gray-700">Pay at Park</span>
+                                        <span className="text-base font-black text-gray-900">₹{(priceBreakdown.grantTotal - priceBreakdown.tokenAmount).toLocaleString()}</span>
+                                    </div>
+
+                                    {/* You Saved - STYLISH */}
+                                    {priceBreakdown.totalSavings > 0 && (
+                                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-1.5 rounded-lg border-2 border-green-200 flex justify-between items-center shadow-sm">
+                                            <span className="text-xs font-black text-green-700 flex items-center gap-1">
+                                                <span className="text-base">🎉</span> You Saved
+                                            </span>
+                                            <span className="text-base font-black text-green-700">₹{priceBreakdown.totalSavings.toLocaleString()}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ) : (
@@ -1914,25 +1937,32 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                             </>
                         )}
 
-                        {/* Summary Section (Amount to Book) */}
-                        <div className="mt-1.5 pt-1.5 border-t border-gray-200 space-y-1.5">
+                        {/* Summary Section */}
+                        <div className="mt-1 pt-1 border-t border-gray-200 space-y-1">
                             <div className="flex justify-between items-baseline px-0.5">
-                                <span className="text-[9px] font-bold text-gray-500 uppercase">Total Amount</span>
-                                <span className="text-sm font-black text-gray-900">₹{priceBreakdown.subtotal.toLocaleString()}</span>
+                                <span className="text-base font-black text-gray-900">Total Amount</span>
+                                <span className="text-base font-black text-gray-900">₹{priceBreakdown.subtotal.toLocaleString()} <span className="text-[10px] font-normal text-gray-400">+GST</span></span>
                             </div>
 
                             <div className="bg-blue-50/80 p-1.5 rounded-xl border border-blue-100 flex justify-between items-center">
-                                <div className="flex flex-col">
-                                    <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest leading-none">Amount to Book</span>
-                                    <span className="text-[10px] font-bold text-blue-400">Secure stay</span>
-                                </div>
-                                <span className="text-base font-black text-blue-700">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
+                                <span className="text-base font-black text-blue-600">Reserve Now</span>
+                                <span className="text-lg font-black text-blue-700">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
                             </div>
 
-                            <div className="flex justify-between items-center px-1">
-                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">Pay at {isWaterpark ? 'Park' : 'Villa'}</span>
-                                <span className="text-xs font-black text-gray-700">₹{(priceBreakdown.subtotal - (priceBreakdown.tokenAmount || 0)).toLocaleString()}</span>
+                            <div className="bg-gray-50 p-1.5 rounded-xl border border-gray-100 flex justify-between items-center">
+                                <span className="text-base font-black text-gray-700">Pay Later</span>
+                                <span className="text-lg font-black text-gray-900">₹{(priceBreakdown.subtotal - (priceBreakdown.tokenAmount || 0)).toLocaleString()} <span className="text-[10px] font-normal text-gray-400">+GST</span></span>
                             </div>
+
+                            {/* You Saved - STYLISH */}
+                            {priceBreakdown.totalSavings > 0 && (
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-1.5 rounded-xl border-2 border-green-200 flex justify-between items-center shadow-sm">
+                                    <span className="text-base font-black text-green-700 flex items-center gap-1">
+                                        <span className="text-lg">🎉</span> You Saved
+                                    </span>
+                                    <span className="text-lg font-black text-green-700">₹{priceBreakdown.totalSavings.toLocaleString()}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -1943,8 +1973,8 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
                         onClick={handleReserve}
                         className="w-full bg-[#FF385C] hover:bg-[#E00B41] text-white py-3 rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
                     >
-                        <span>{(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : (priceBreakdown ? `Book Now (₹${priceBreakdown.tokenAmount?.toLocaleString()})` : 'Book Now')}</span>
-                        <FaArrowRight className="text-sm opacity-80 group-hover:translate-x-1 transition-transform" />
+                        <span>{(!dateRange.from || (!isWaterpark && !dateRange.to)) ? 'Check Availability' : (priceBreakdown ? `Reserve Now ₹${priceBreakdown.tokenAmount?.toLocaleString()}` : 'Reserve Now')}</span>
+                        <FaTicketAlt className="text-xs text-white/90 group-hover:rotate-12 transition-transform" />
                     </button>
                     {!priceBreakdown && (
                         <p className="text-[8px] text-gray-400 text-center font-bold uppercase tracking-widest mt-2">
@@ -1960,7 +1990,7 @@ const VillaBooking = ({ price, rating, dateRange, setDateRange, isDatePickerOpen
     );
 };
 
-const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDates, property, pricing, isWaterpark, guests, setGuests, maxCapacity = 20, priceBreakdown, defaultPrice, onReserve, mealSelection, setMealSelection }) => {
+const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDates, property, pricing, isWaterpark, guests, setGuests, maxCapacity = 20, priceBreakdown, defaultPrice, onReserve, mealSelection, setMealSelection, showAutoRates, setShowAutoRates }) => {
 
     // Helper to format price explanation text
     const totalGuests = (Number(guests?.adults) || 0) + (Number(guests?.children) || 0);
@@ -2091,7 +2121,7 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                             {
                                 !isWaterpark && (
                                     <div className="pb-4 px-2">
-                                        <h4 className="font-bold text-sm font-serif mb-2 text-gray-900 flex items-center gap-2"> Guests <span className="text-[10px] font-normal text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">Max {maxCapacity}</span></h4>
+                                        <h4 className="font-bold text-sm font-serif mb-2 text-gray-900 flex items-center gap-2"> Guests </h4>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="flex items-center justify-between p-2 border border-gray-100 rounded-lg shadow-sm bg-white">
                                                 <div>
@@ -2132,7 +2162,7 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                             {/* Adult Ticket Selector */}
                                             <div className="flex items-center justify-between p-2 border border-blue-100 bg-blue-50/30 rounded-lg shadow-sm">
                                                 <div>
-                                                    <p className="font-bold text-[10px] text-gray-900">Adults</p>
+                                                    <p className="font-bold text-[10px] text-gray-900">Adult (+8 yrs)</p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => setGuests({ ...guests, adults: Math.max(1, guests.adults - 1) })} className="w-5 h-5 flex items-center justify-center bg-white text-blue-600 rounded border border-blue-100"><FaMinus size={6} /></button>
@@ -2143,7 +2173,7 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                             {/* Child Ticket Selector */}
                                             <div className="flex items-center justify-between p-2 border border-orange-100 bg-orange-50/30 rounded-lg shadow-sm">
                                                 <div>
-                                                    <p className="font-bold text-[10px] text-gray-900">Child</p>
+                                                    <p className="font-bold text-[10px] text-gray-900">Child (3-8 yrs)</p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => setGuests({ ...guests, children: Math.max(0, guests.children - 1) })} className="w-5 h-5 flex items-center justify-center bg-white text-orange-600 rounded border border-orange-100"><FaMinus size={6} /></button>
@@ -2164,7 +2194,6 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                                         <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 flex justify-between items-center shadow-sm">
                                             <div>
                                                 <p className="font-bold text-xs text-gray-900">All-Inclusive Meal Pack</p>
-                                                <p className="text-[10px] text-gray-500 font-medium">approx ₹1,200</p>
                                             </div>
                                             <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-orange-200 shadow-sm">
                                                 <button onClick={() => setMealSelection && setMealSelection(Math.max(0, (mealSelection || 0) - 1))} className="w-6 h-6 flex items-center justify-center bg-orange-50 text-orange-600 rounded-md hover:bg-orange-100 transition"><FaMinus size={8} /></button>
@@ -2179,143 +2208,168 @@ const MobileDateSelector = ({ isOpen, onClose, dateRange, onDateSelect, bookedDa
                             {/* DETAILED PRICE BREAKDOWN - Always Visible when dates selected */}
                             {priceBreakdown && (
                                 <div className="mx-2 mb-6 p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-3">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200 pb-2 mb-2">Detailed Breakdown</p>
 
-                                    {/* Multi-Night Breakdown (Villa Only) */}
-                                    {!isWaterpark && priceBreakdown.nightDetails?.length > 1 && (
-                                        <div className="space-y-2 border-b border-gray-100 pb-3 mb-2">
-                                            <div className="text-[9px] uppercase font-black text-gray-400 mb-1">Nightly Rates</div>
-                                            {priceBreakdown.nightDetails.map((night, idx) => (
-                                                <div key={idx} className="bg-white border border-gray-50 p-2 rounded-lg shadow-sm">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-xs font-bold text-gray-800">{night.date}</span>
-                                                        <span className="text-sm font-black text-gray-900">₹{night.rate?.toLocaleString()}</span>
-                                                    </div>
-                                                    {night.dailyExtraTotal > 0 && (
-                                                        <div className="flex justify-between items-center mt-1 text-[9px] text-orange-600 border-t border-gray-100 pt-1">
-                                                            <span>+ Extra ({priceBreakdown.extraGuests} × ₹{night.extraRate?.toLocaleString()})</span>
-                                                            <span>₹{night.dailyExtraTotal?.toLocaleString()}</span>
-                                                        </div>
-                                                    )}
-                                                    {night.dailyFoodTotal > 0 && (
-                                                        <div className="flex justify-between items-center mt-1 text-[9px] text-blue-600 border-t border-gray-100 pt-1">
-                                                            <span>+ Meals ({mealSelection} × ₹{night.foodRate?.toLocaleString()})</span>
-                                                            <span>₹{night.dailyFoodTotal?.toLocaleString()}</span>
-                                                        </div>
-                                                    )}
+
+
+
+                                    {/* Line Items */}
+                                    {isWaterpark ? (
+                                        /* Waterpark Breakdown - NO HEADER */
+                                        <div className="space-y-2 mb-3">
+                                            <div className="flex justify-between text-[11px]">
+                                                <div className="flex flex-col">
+                                                    <span className="text-gray-900 font-bold">Adult ({guests.adults})</span>
+                                                    <span className="text-gray-400">₹{priceBreakdown.adultTicketRate?.toLocaleString()} × {guests.adults}</span>
                                                 </div>
-                                            ))}
+                                                <span className="font-bold text-gray-900">₹{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
+                                            </div>
+                                            {guests.children > 0 && (
+                                                <div className="flex justify-between text-[11px]">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-gray-900 font-bold">Child ({guests.children})</span>
+                                                        <span className="text-gray-400">₹{priceBreakdown.childTicketRate?.toLocaleString()} × {guests.children}</span>
+                                                    </div>
+                                                    <span className="font-bold text-gray-900">₹{priceBreakdown.totalChildTicket?.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {/* Villa Breakdown */}
+                                            {priceBreakdown.nightDetails?.length > 1 && (
+                                                <div className="mb-1 relative z-[50]" style={{ pointerEvents: 'auto' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setShowAutoRates(!showAutoRates);
+                                                        }}
+                                                        className="text-[9px] text-blue-600 font-bold underline mb-1 flex items-center gap-1 cursor-pointer hover:text-blue-800"
+                                                    >
+                                                        View Nightly Rates ({priceBreakdown.nightDetails.length} nights)
+                                                    </button>
+
+                                                </div>
+                                            )}
+
+                                            {/* Nightly Rates Popup Modal - MOBILE */}
+                                            {showAutoRates && priceBreakdown.nightDetails?.length > 1 && (
+                                                <>
+                                                    {/* Backdrop */}
+                                                    <div
+                                                        className="fixed inset-0 bg-black/50 z-[9998]"
+                                                        onClick={(e) => { e.stopPropagation(); setShowAutoRates(false); }}
+                                                    ></div>
+
+                                                    {/* Popup - Fixed and Centered */}
+                                                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-white rounded-xl shadow-2xl border-2 border-blue-500 z-[9999] max-h-[80vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+                                                        <div className="flex justify-between items-center p-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+                                                            <h4 className="text-sm font-bold text-gray-900">Nightly Breakdown</h4>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setShowAutoRates(false); }}
+                                                                className="p-1.5 hover:bg-gray-200 rounded-full transition"
+                                                            >
+                                                                <FaTimes size={14} className="text-gray-500" />
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="p-4 max-h-[60vh] overflow-y-auto space-y-2.5 nav-scroll">
+                                                            {priceBreakdown.nightDetails.map((night, idx) => (
+                                                                <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                                                    <div className="flex justify-between items-center mb-1.5">
+                                                                        <span className="text-xs font-bold text-gray-700">{night.date}</span>
+                                                                        <span className="text-sm font-black text-gray-900">₹{night.rate?.toLocaleString()}</span>
+                                                                    </div>
+                                                                    {night.extra > 0 && (
+                                                                        <div className="flex justify-between items-center text-[10px] text-orange-600 border-t border-gray-200 pt-1.5 mt-1.5">
+                                                                            <span>+ Extra Mattress</span>
+                                                                            <span className="font-bold">₹{night.extra?.toLocaleString()}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {night.food > 0 && (
+                                                                        <div className="flex justify-between items-center text-[10px] text-blue-600 border-t border-gray-200 pt-1.5 mt-1.5">
+                                                                            <span>+ Meals ({mealSelection})</span>
+                                                                            <span className="font-bold">₹{night.food?.toLocaleString()}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        <div className="p-4 bg-gradient-to-r from-gray-50 to-white border-t border-gray-200 flex justify-between items-center">
+                                                            <span className="text-xs font-bold text-gray-600">Subtotal (Excl. Tax)</span>
+                                                            <span className="text-lg font-black text-gray-900">₹{priceBreakdown.subtotal?.toLocaleString()}</span>
+                                                        </div>
+
+                                                        <div className="px-4 pb-3 text-center text-[10px] text-gray-500">
+                                                            Base rate varies by day of week and season
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            <div className="flex justify-between text-gray-600 px-0.5 text-[11px]">
+                                                <span>Villa Rental ({priceBreakdown.nights} Nights)</span>
+                                                <span>₹{priceBreakdown.totalVillaRate?.toLocaleString()}</span>
+                                            </div>
+                                            {priceBreakdown.totalExtra > 0 && (
+                                                <div className="flex justify-between text-gray-600 px-0.5 text-[10px]">
+                                                    <span>Extra Mattress ({priceBreakdown.nights} Nights)</span>
+                                                    <span>+₹{priceBreakdown.totalExtra?.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {priceBreakdown.totalFood > 0 && (
+                                                <div className="flex justify-between text-gray-600 px-0.5 text-[10px]">
+                                                    <span>Meals & Dining ({priceBreakdown.nights} Nights)</span>
+                                                    <span>+₹{priceBreakdown.totalFood?.toLocaleString()}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
-                                    {/* Line Items */}
-                                    <div className="space-y-2">
-                                        {isWaterpark ? (
-                                            <>
-                                                <div className="flex justify-between text-xs text-gray-600">
-                                                    <span>Adult Tickets ({guests.adults})</span>
-                                                    <span className="text-gray-900 font-bold">₹{priceBreakdown.totalAdultTicket?.toLocaleString()}</span>
-                                                </div>
-                                                {guests.children > 0 && (
-                                                    <div className="flex justify-between text-xs text-gray-600">
-                                                        <span>Child Tickets ({guests.children})</span>
-                                                        <span className="text-gray-900 font-bold">₹{priceBreakdown.totalChildTicket?.toLocaleString()}</span>
-                                                    </div>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <>
-                                                {/* Villa Breakdown */}
-                                                {/* Villa Breakdown */}
-                                                {priceBreakdown.nightDetails?.length > 1 && (
-                                                    <div className="mb-1 relative z-[50]" style={{ pointerEvents: 'auto' }}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setShowAutoRates(!showAutoRates);
-                                                            }}
-                                                            className="text-[9px] text-blue-600 font-bold underline mb-1 flex items-center gap-1 cursor-pointer hover:text-blue-800"
-                                                        >
-                                                            View Nightly Rates ({priceBreakdown.nightDetails.length} nights)
-                                                        </button>
+                                    {/* Payment Summary - MOBILE */}
+                                    <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                                        {/* Total Amount - All Properties */}
+                                        <div className="flex justify-between items-center px-2 py-2">
+                                            <span className="text-xs font-black text-gray-900">Total Amount</span>
+                                            <span className="text-base font-black text-gray-900">₹{(isWaterpark ? priceBreakdown.grantTotal : priceBreakdown.subtotal)?.toLocaleString()} {!isWaterpark && <span className="text-[10px] font-normal text-gray-400">+GST</span>}</span>
+                                        </div>
 
-                                                    </div>
-                                                )}
-                                                <div className="flex justify-between text-gray-600 px-0.5 text-[11px]">
-                                                    <span>Villa Rental ({priceBreakdown.nights} Nights)</span>
-                                                    <span>₹{priceBreakdown.totalVillaRate?.toLocaleString()}</span>
-                                                </div>
-                                                {priceBreakdown.totalExtra > 0 && (
-                                                    <div className="flex justify-between text-gray-600 px-0.5 text-[10px]">
-                                                        <span>Extra Mattress ({priceBreakdown.nights} Nights)</span>
-                                                        <span>+₹{priceBreakdown.totalExtra?.toLocaleString()}</span>
-                                                    </div>
-                                                )}
-                                                {priceBreakdown.totalFood > 0 && (
-                                                    <div className="flex justify-between text-gray-600 px-0.5 text-[10px]">
-                                                        <span>Meals & Dining ({priceBreakdown.nights} Nights)</span>
-                                                        <span>+₹{priceBreakdown.totalFood?.toLocaleString()}</span>
-                                                    </div>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-
-                                    {/* Payment Summary */}
-                                    <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
+                                        {/* Pay Now */}
                                         <div className="bg-blue-50/80 p-3 rounded-xl border border-blue-100 flex justify-between items-center">
-                                            <div className="flex flex-col">
-                                                <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Amount to Book</span>
-                                                <span className="text-[10px] font-bold text-blue-400">Secure your stay now</span>
-                                            </div>
+                                            <span className="text-xs font-black text-blue-600">{isWaterpark ? 'Pay Now' : 'Reserve Now'}</span>
                                             <span className="text-lg font-black text-blue-700">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
                                         </div>
 
-                                        <div className="flex justify-between items-center px-1">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Pay at {isWaterpark ? 'Park' : 'Villa'}</span>
-                                            <span className="text-xs font-black text-gray-700">₹{(priceBreakdown.subtotal - (priceBreakdown.tokenAmount || 0))?.toLocaleString()}</span>
+                                        {/* Pay at Park / Pay Later */}
+                                        <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 flex justify-between items-center">
+                                            <span className="text-xs font-black text-gray-700">{isWaterpark ? 'Pay at Park' : 'Pay Later'}</span>
+                                            <span className="text-lg font-black text-gray-900">₹{((isWaterpark ? priceBreakdown.grantTotal : priceBreakdown.subtotal) - (priceBreakdown.tokenAmount || 0))?.toLocaleString()} {!isWaterpark && <span className="text-[10px] font-normal text-gray-400">+GST</span>}</span>
                                         </div>
 
-                                        <div className="flex justify-between items-baseline px-1 pt-1 border-t border-gray-100/50">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase">Total Amount</span>
-                                            <span className="text-base font-black text-gray-900">₹{priceBreakdown.subtotal?.toLocaleString()}</span>
-                                        </div>
+                                        {/* You Saved - STYLISH */}
+                                        {priceBreakdown.totalSavings > 0 && (
+                                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-xl border-2 border-green-200 flex justify-between items-center shadow-sm">
+                                                <span className="text-xs font-black text-green-700 flex items-center gap-1">
+                                                    <span className="text-lg">🎉</span> You Saved
+                                                </span>
+                                                <span className="text-lg font-black text-green-700">₹{priceBreakdown.totalSavings?.toLocaleString()}</span>
+                                            </div>
+                                        )}
                                     </div>
-
-                                    {priceBreakdown.totalSavings > 0 && (
-                                        <div className="text-[10px] font-bold text-center text-green-600 bg-green-50 py-2 rounded-lg border border-green-100 mt-2">
-                                            🎉 You saved ₹{priceBreakdown.totalSavings?.toLocaleString()} on this booking!
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
                         </div>
 
-                        {/* Fixed Bottom Action Bar (Compact) */}
+                        {/* Fixed Bottom Action Bar - MOBILE ONLY, NO LEFT INFO FOR WATERPARK */}
                         <div className="px-4 py-3 border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom)] flex items-center justify-between gap-3 shadow-[0_-5px_20px_-10px_rgba(0,0,0,0.1)] flex-shrink-0">
-                            <div className="flex flex-col">
-                                {priceBreakdown ? (
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-gray-500 uppercase">Amount to Book</span>
-                                        <span className="text-lg font-black text-gray-900 leading-none">₹{priceBreakdown.tokenAmount?.toLocaleString()}</span>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Total</span>
-                                        <span className="text-xs font-bold text-gray-600">
-                                            {!dateRange.from ? 'Select Check-in' : ((!isWaterpark && !dateRange.to) ? 'Select Check-out' : 'Calculated at Booking')}
-                                        </span>
-                                    </>
-                                )}
-                            </div >
                             <button
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReserve(); }}
-                                className="flex-1 bg-gradient-to-r from-[#FF385C] to-[#E00B41] text-white py-4 rounded-xl font-black text-sm shadow-lg shadow-red-200 active:scale-95 transition cursor-pointer z-50 pointer-events-auto"
+                                className="w-full bg-gradient-to-r from-[#FF385C] to-[#E00B41] text-white py-4 rounded-xl font-black text-sm shadow-lg shadow-red-200 active:scale-95 transition cursor-pointer z-50 pointer-events-auto"
                             >
-                                {(!dateRange.from) ? 'Select Date' : (priceBreakdown ? `Book Now (₹${priceBreakdown.tokenAmount?.toLocaleString()})` : 'Check Availability')}
-                            </button >
+                                {(!dateRange.from) ? 'Select Date' : (priceBreakdown ? `Reserve Now ₹${priceBreakdown.tokenAmount?.toLocaleString()}` : 'Check Availability')}
+                            </button>
                         </div>
                     </motion.div>
                 </motion.div>
@@ -2353,7 +2407,6 @@ function MobileFooter({ price, unit, onReserve, buttonText, dateRange, onDateCli
                     </div>
                 ) : (
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase">Starts at</span>
                         <div className="flex items-baseline gap-1">
                             <span className="font-bold text-xl text-gray-900">₹{price?.toLocaleString()}</span>
                             <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tight ml-1">{unit}</span>
@@ -2365,7 +2418,7 @@ function MobileFooter({ price, unit, onReserve, buttonText, dateRange, onDateCli
                 onClick={onReserve}
                 className="bg-[#FF385C] hover:bg-[#d9324e] text-white px-5 py-3.5 rounded-xl font-black text-sm shadow-lg shadow-red-100 transition active:scale-95 disabled:opacity-50"
             >
-                {isBreakdown && price.tokenAmount ? `Book Now (₹${price.tokenAmount?.toLocaleString()})` : buttonText}
+                {isBreakdown && price.tokenAmount ? `Reserve Now (₹${price.tokenAmount?.toLocaleString()})` : buttonText}
             </button>
         </div>
     );

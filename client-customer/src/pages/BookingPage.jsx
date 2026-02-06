@@ -403,50 +403,50 @@ export default function BookingPage() {
                         </div>
 
                         {/* 2. CONTACT DETAILS */}
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                            <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100">
+                            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <FaUserFriends className="text-green-500" /> Contact Details
                             </h2>
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Full Name</label>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Full Name</label>
                                     <input
                                         type="text"
                                         value={form.CustomerName}
                                         onChange={e => setForm({ ...form, CustomerName: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
                                         placeholder="e.g. Rahul Sharma"
                                     />
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Phone Number</label>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Phone Number</label>
                                         <input
                                             type="tel"
                                             value={form.CustomerMobile}
                                             onChange={e => setForm({ ...form, CustomerMobile: e.target.value })}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
                                             placeholder="+91 98765 00000"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Email Address</label>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Email Address</label>
                                         <input
                                             type="email"
                                             value={form.CustomerEmail}
                                             onChange={e => setForm({ ...form, CustomerEmail: e.target.value })}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
                                             placeholder="rahul@example.com"
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Special Request (Optional)</label>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Special Request (Optional)</label>
                                     <textarea
                                         rows="2"
                                         value={form.SpecialRequest}
                                         onChange={e => setForm({ ...form, SpecialRequest: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 font-medium text-gray-900 focus:outline-none focus:border-black focus:bg-white transition resize-none"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-medium text-gray-900 focus:outline-none focus:border-black focus:bg-white transition resize-none"
                                         placeholder="Early check-in needed..."
                                     />
                                 </div>
@@ -454,12 +454,12 @@ export default function BookingPage() {
                         </div>
 
                         {/* 3. PAYMENT METHOD */}
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                            <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100">
+                            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <FaLock className="text-purple-500" /> Payment Method
                             </h2>
-                            <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-4">
-                                <div className="flex items-center justify-between mb-4">
+                            <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-3">
+                                <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                                             <img src="https://cdn.worldvectorlogo.com/logos/upi-logo.svg" alt="UPI" className="w-6" />
@@ -471,7 +471,7 @@ export default function BookingPage() {
                                     </div>
                                     <FaCheckCircle className="text-green-500" />
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] text-gray-400 bg-white p-3 rounded-xl border border-gray-100 mt-2">
+                                <div className="flex items-center gap-2 text-[10px] text-gray-400 bg-white p-2 rounded-xl border border-gray-100">
                                     <FaShieldAlt className="text-blue-400" />
                                     <span>Secure database encryption. We do not store card details.</span>
                                 </div>
@@ -579,7 +579,7 @@ export default function BookingPage() {
                             {/* Amount to Book Section */}
                             <div className="bg-blue-50/50 rounded-3xl p-6 border border-blue-100 mb-8">
                                 <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Amount to Book</span>
+                                    <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Pay Now</span>
                                 </div>
                                 <div className="text-4xl font-black text-gray-900 mb-1">₹{payNowAmount.toLocaleString()}</div>
                                 <div className="flex justify-between items-center">
@@ -588,7 +588,7 @@ export default function BookingPage() {
                                         {details.isWaterpark ? 'Registration Amount' : 'Booking Amount'}
                                     </div>
                                     <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">
-                                        Pay at {details.isWaterpark ? 'Park' : 'Villa'}: <span className="text-gray-900 font-black">₹{balanceAmount.toLocaleString()}</span>
+                                        {details.isWaterpark ? 'Pay at Park' : 'Pay Later'}: <span className="text-gray-900 font-black">₹{balanceAmount.toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>
@@ -621,7 +621,7 @@ export default function BookingPage() {
                                 disabled={bookingStatus === 'submitting'}
                                 className="w-full bg-[#FF385C] hover:bg-[#D9324E] text-white h-16 rounded-2xl font-black text-lg shadow-xl shadow-red-100 items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 flex mb-4 mt-8"
                             >
-                                {bookingStatus === 'submitting' ? 'Processing...' : `Pay ₹${payNowAmount.toLocaleString()} Now`}
+                                {bookingStatus === 'submitting' ? 'Processing...' : `Pay Now ₹${payNowAmount.toLocaleString()}`}
                             </button>
                         </div>
                     </div>
