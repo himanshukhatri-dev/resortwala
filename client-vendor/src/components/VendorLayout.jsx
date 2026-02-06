@@ -200,67 +200,6 @@ export default function VendorLayout({ children, title }) {
                 {/* Global AI Chat Assistant */}
                 <AIChatWidget />
             </div>
-<<<<<<< HEAD
         </TutorialProvider>
-=======
-
-            <style>{`
-                @media (max-width: 768px) {
-                    .content-area {
-                        margin-left: 0 !important;
-                        padding-bottom: 80px !important;
-                    }
-                    .page-content {
-                        padding: 15px !important;
-                    }
-                }
-                
-                @keyframes slide-down {
-                    from {
-                        opacity: 0;
-                        transform: translateY(-10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-                
-                .animate-slide-down {
-                    animation: slide-down 0.2s ease-out;
-                }
-            `}</style>
-
-            <ConfirmModal
-                isOpen={showLogoutModal}
-                onClose={() => setShowLogoutModal(false)}
-                onConfirm={handleLogout}
-                title="Confirm Logout"
-                message="Are you sure you want to log out?"
-                type="danger"
-                confirmText="Logout"
-                cancelText="Cancel"
-            />
-            <ConfirmModal
-                isOpen={showLogoutModal}
-                onClose={() => setShowLogoutModal(false)}
-                onConfirm={handleLogout}
-                title="Confirm Logout"
-                message="Are you sure you want to log out?"
-                type="danger"
-                confirmText="Logout"
-                cancelText="Cancel"
-            />
-
-            {/* Auto-Triggered Walkthrough based on current route */}
-            {/* <WalkthroughOverlay pageRoute={useLocation().pathname} /> */}
-
-            {/* Smart Triggers (Behavioral Rules) */}
-            {/* <SmartTriggerManager /> */}
-
-            {/* Global AI Chat Assistant */}
-            {/* <AIChatWidget /> */}
-        </div>
->>>>>>> master
     );
 }
