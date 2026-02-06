@@ -126,9 +126,13 @@ deploy_api() {
     # Create symbolic link for public storage
     php artisan storage:link --force || true
     
-    # Run migrations
-    print_status "Running database migrations..."
-    php artisan migrate --force
+    # Run migrations (skip if SKIP_MIGRATIONS is true)
+    if [ "$4" == "skip_migrate" ]; then
+        print_warning "Skipping database migrations as requested."
+    else
+        print_status "Running database migrations..."
+        php artisan migrate --force
+    fi
     
     # Clear Laravel cache
     print_status "Clearing Laravel cache..."
