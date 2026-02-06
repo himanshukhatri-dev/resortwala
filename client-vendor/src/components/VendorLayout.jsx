@@ -191,14 +191,14 @@ export default function VendorLayout({ children, title }) {
                     cancelText="Cancel"
                 />
 
-                {/* NEW Auto-Triggered Walkthrough Engine */}
-                <TutorialOverlay />
+                {/* NEW Auto-Triggered Walkthrough Engine - HIDDEN */}
+                {/* <TutorialOverlay /> */}
 
-                {/* Smart Triggers (Behavioral Rules) */}
-                <SmartTriggerManager />
+                {/* Smart Triggers (Behavioral Rules) - HIDDEN */}
+                {/* <SmartTriggerManager /> */}
 
-                {/* Global AI Chat Assistant */}
-                <AIChatWidget />
+                {/* Global AI Chat Assistant - HIDDEN */}
+                {/* <AIChatWidget /> */}
             </div>
         </TutorialProvider>
     );
