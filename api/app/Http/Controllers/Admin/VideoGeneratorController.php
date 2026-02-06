@@ -32,7 +32,7 @@ class VideoGeneratorController extends Controller
         // 1. Analyze Prompt via AI Context Service
         $prompt = $request->input('prompt');
         $mood = $request->input('mood', 'energetic');
-        
+
         $aiContext = $this->promptService->analyzePrompt($prompt, $mood);
         $script = $aiContext['script'];
         $visualTheme = $aiContext['visual_theme'];
@@ -51,7 +51,7 @@ class VideoGeneratorController extends Controller
         $job->property_id = null; // Generic
         $job->template_id = 'prompt_generated'; // Special template in Service
         $job->status = 'pending';
-        
+
         $options = [
             'title' => 'AI Generated Video', // Fallback title
             'prompt' => $prompt,
@@ -71,15 +71,15 @@ class VideoGeneratorController extends Controller
         try {
             $this->service->processJob($job);
             return response()->json([
-                'message' => 'Video Queued', 
+                'message' => 'Video Queued',
                 'job_id' => $job->id,
                 'script' => $script
             ]);
         } catch (\Exception $e) {
-             $job->status = 'failed';
-             $job->error_message = $e->getMessage();
-             $job->save();
-             return response()->json(['error' => $e->getMessage()], 500);
+            $job->status = 'failed';
+            $job->error_message = $e->getMessage();
+            $job->save();
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
     protected $service;
@@ -88,7 +88,7 @@ class VideoGeneratorController extends Controller
     protected $promptService;
 
     public function __construct(
-        VideoRenderingService $service, 
+        VideoRenderingService $service,
         \App\Services\TextToSpeechService $ttsService,
         \App\Services\AIScriptGeneratorService $scriptService,
         \App\Services\AIPromptContextService $promptService
@@ -124,13 +124,13 @@ class VideoGeneratorController extends Controller
         $job->property_id = $request->property_id;
         $job->template_id = $request->template_id;
         $job->status = 'pending';
-        
+
         $options = $request->options ?? [];
-        
+
         // Default Options
         if (empty($options['title'])) {
-             $prop = PropertyMaster::find($request->property_id);
-             $options['title'] = $prop ? $prop->Name : 'My Resort Video';
+            $prop = PropertyMaster::find($request->property_id);
+            $options['title'] = $prop ? $prop->Name : 'My Resort Video';
         }
 
         // --- NEW: Generate TTS Audio if script provided ---
@@ -148,16 +148,16 @@ class VideoGeneratorController extends Controller
 
         // Dispatch Job (Sync for now for debugging)
         // \App\Jobs\ProcessVideoRender::dispatch($job);
-        
+
         // For immediate feedback in dev:
         try {
             $this->service->processJob($job);
             return response()->json(['message' => 'Video Queued', 'job_id' => $job->id]);
         } catch (\Exception $e) {
-             $job->status = 'failed';
-             $job->error_message = $e->getMessage();
-             $job->save();
-             return response()->json(['error' => $e->getMessage()], 500);
+            $job->status = 'failed';
+            $job->error_message = $e->getMessage();
+            $job->save();
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -176,7 +176,7 @@ class VideoGeneratorController extends Controller
     public function retry($id)
     {
         $oldJob = VideoRenderJob::findOrFail($id);
-        
+
         $newJob = $oldJob->replicate();
         $newJob->status = 'pending';
         $newJob->error_message = null;
@@ -188,10 +188,10 @@ class VideoGeneratorController extends Controller
             $this->service->processJob($newJob);
             return response()->json(['status' => 'success', 'message' => 'Retrying Job', 'job_id' => $newJob->id]);
         } catch (\Exception $e) {
-             $newJob->status = 'failed';
-             $newJob->error_message = $e->getMessage();
-             $newJob->save();
-             return response()->json(['error' => $e->getMessage()], 500);
+            $newJob->status = 'failed';
+            $newJob->error_message = $e->getMessage();
+            $newJob->save();
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -221,20 +221,23 @@ class VideoGeneratorController extends Controller
     {
         $request->validate([
             'property_id' => 'required',
-            'vibe' => 'nullable|string', 
+            'vibe' => 'nullable|string',
             'topic' => 'nullable|string'
         ]);
 
         if ($request->property_id == 0) {
             // Prompt-based generation (No Property)
             $topic = $request->topic ?? 'Luxury Stay';
-            $script = $this->scriptService->generateFromPrompt($topic, $request->vibe ?? 'luxury');
+            $data = $this->scriptService->generateFromPromptData($topic, $request->vibe ?? 'luxury');
+            $scenes = $data['scenes'];
         } else {
             // Property-based generation
             $property = PropertyMaster::findOrFail($request->property_id);
-            $script = $this->scriptService->generateScript($property, $request->vibe ?? 'luxury');
+            $data = $this->scriptService->generateScriptData($property, $request->vibe ?? 'luxury');
+            $scenes = $data['scenes'];
         }
 
-        return response()->json(['script' => $script]);
+        $script = implode(" ", array_column($scenes, 'text'));
+        return response()->json(['script' => $script, 'scenes' => $scenes]);
     }
 }

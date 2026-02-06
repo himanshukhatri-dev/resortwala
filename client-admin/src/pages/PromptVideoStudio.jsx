@@ -13,6 +13,7 @@ const PromptVideoStudio = () => {
     const [voiceId, setVoiceId] = useState('atlas');
 
     const [generatedScript, setGeneratedScript] = useState('');
+    const [scenes, setScenes] = useState([]);
     const [jobId, setJobId] = useState(null);
     const [jobs, setJobs] = useState([]);
 
@@ -20,8 +21,12 @@ const PromptVideoStudio = () => {
     const voices = [
         { id: 'atlas', name: 'Atlas (Male)' },
         { id: 'aura', name: 'Aura (Female)' },
-        { id: 'echo', name: 'Echo (Male)' },
-        { id: 'shimmer', name: 'Shimmer (Female)' }
+        { id: 'arjun', name: 'Arjun (Indian Male)' },
+        { id: 'mira', name: 'Mira (Indian Female)' },
+        { id: 'dev', name: 'Dev (Hindi Male)' },
+        { id: 'zara', name: 'Zara (Hindi Female)' },
+        { id: 'manohar', name: 'Manohar (Marathi Male)' },
+        { id: 'aarohi', name: 'Aarohi (Marathi Female)' }
     ];
 
     const fetchJobs = async () => {
@@ -46,6 +51,7 @@ const PromptVideoStudio = () => {
         setMood(job.options?.music_mood || 'energetic');
         setAspectRatio(job.options?.aspect_ratio || '9:16');
         if (job.options?.script) setGeneratedScript(job.options.script);
+        if (job.options?.scenes) setScenes(job.options.scenes);
 
         // Restore Media (Important for retrying custom media jobs)
         if (job.options?.media_paths && Array.isArray(job.options.media_paths)) {
@@ -71,26 +77,28 @@ const PromptVideoStudio = () => {
     const handleSubmitPrompt = async () => {
         if (!prompt) return toast.error("Please enter a prompt!");
         setProcessing(true);
-        setStep(2); // Move to review step immediately (simulating analysis)
+        setStep(2);
 
-        // We could call a pre-analysis endpoint here, but we'll do it all in 'generate' for V1 efficiency
-        // OR we can generate script first.
         try {
-            // Let's analyze script first
             const res = await axios.post(`${API_BASE_URL}/admin/video-generator/generate-script`, {
-                property_id: 0, // Generic
-                topic: prompt, // Use prompt as topic
+                property_id: 0,
+                topic: prompt,
                 language: 'en'
             }, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
             });
             if (res.data.script) {
                 setGeneratedScript(res.data.script);
+                if (res.data.scenes) setScenes(res.data.scenes);
             }
         } catch (err) {
             console.error(err);
-            // Fallback
             setGeneratedScript("Experience the ultimate luxury. Book now on ResortWala.");
+            // Fallback Scenes
+            setScenes([
+                { text: "Experience the ultimate luxury.", duration: 4, visual: 'hero' },
+                { text: "Book now on ResortWala.", duration: 4, visual: 'logo' }
+            ]);
         }
         setProcessing(false);
     };
@@ -134,7 +142,9 @@ const PromptVideoStudio = () => {
                 mood,
                 aspect_ratio: aspectRatio,
                 voice_id: voiceId,
+                voice_id: voiceId,
                 script: generatedScript,
+                scenes: scenes,
                 media_paths: uploadedFiles.map(f => f.path)
             };
 
@@ -274,8 +284,35 @@ const PromptVideoStudio = () => {
                             </div>
 
                             <div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-purple-100">
-                                <span className="text-xs font-bold text-purple-500 uppercase">Generated Script</span>
-                                <p className="text-sm text-gray-600 mt-1 italic">"{generatedScript}"</p>
+                                <span className="text-xs font-bold text-class text-purple-500 uppercase flex justify-between">
+                                    Timeline Editor <span className="text-gray-400 normal-case overflow-hidden">Re-order & Edit Text</span>
+                                </span>
+                                <div className="mt-3 space-y-3">
+                                    {scenes.map((scene, idx) => (
+                                        <div key={idx} className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border hover:border-purple-300 transition">
+                                            <div className="bg-purple-100 text-purple-700 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold shrink-0">
+                                                {idx + 1}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between text-[10px] text-gray-400 uppercase font-bold mb-1">
+                                                    <span>{scene.type || 'Scene'}</span>
+                                                    <span>{scene.duration}s &bull; {scene.visual}</span>
+                                                </div>
+                                                <textarea
+                                                    value={scene.text}
+                                                    onChange={(e) => {
+                                                        const newScenes = [...scenes];
+                                                        newScenes[idx].text = e.target.value;
+                                                        setScenes(newScenes);
+                                                        setGeneratedScript(newScenes.map(s => s.text).join(" "));
+                                                    }}
+                                                    className="w-full text-sm bg-transparent border-0 p-0 focus:ring-0 text-gray-700 resize-none"
+                                                    rows={2}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                             <div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-blue-100">
@@ -290,7 +327,7 @@ const PromptVideoStudio = () => {
                                 {uploadedFiles.length > 0 ? (
                                     <div className="grid grid-cols-4 gap-2 mt-3">
                                         {uploadedFiles.map((f, i) => (
-                                            <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border group">
+                                            <div key={i} className={`relative rounded-lg overflow-hidden bg-gray-100 border group ${aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
                                                 {f.type === 'video' ? (
                                                     <video src={f.url} className="w-full h-full object-cover" muted />
                                                 ) : (

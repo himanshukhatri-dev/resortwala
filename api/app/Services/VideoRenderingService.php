@@ -36,20 +36,20 @@ class VideoRenderingService
             } else {
                 $ffmpegPath = trim(shell_exec('which ffmpeg'));
             }
-            
+
             if (empty($ffmpegPath)) {
                 // Simulation Mode
-                 Log::warning("FFmpeg not found. Falling back to simulation.");
-                 sleep(2);
-                 $outputFilename = 'video_' . $job->id . '_reel.mp4';
-                 file_put_contents($outputDir . '/' . $outputFilename, "DUMMY REEL");
-                 $publicPath = 'videos/' . $outputFilename;
+                Log::warning("FFmpeg not found. Falling back to simulation.");
+                sleep(2);
+                $outputFilename = 'video_' . $job->id . '_reel.mp4';
+                file_put_contents($outputDir . '/' . $outputFilename, "DUMMY REEL");
+                $publicPath = 'videos/' . $outputFilename;
             } else {
                 // Real Processing
                 // Prepare Options with Scenes if missing
                 // This ensures buildVideoCommand has data
                 $options = $job->options ?? [];
-                
+
                 if (empty($options['scenes'])) {
                     // Generate AI Script Data
                     $scriptService = app(\App\Services\AIScriptGeneratorService::class);
@@ -75,21 +75,23 @@ class VideoRenderingService
                 $publicPath = 'videos/' . $reelFilename;
 
                 if (($job->template_id ?? '') === 'tutorial') {
-                     // Tutorial Mode
-                     $tutorialId = $job->options['tutorial_id'] ?? null;
-                     $tutorial = \App\Models\Tutorial::find($tutorialId);
-                     if (!$tutorial) throw new \Exception("Tutorial ID not found");
+                    // Tutorial Mode
+                    $tutorialId = $job->options['tutorial_id'] ?? null;
+                    $tutorial = \App\Models\Tutorial::find($tutorialId);
+                    if (!$tutorial)
+                        throw new \Exception("Tutorial ID not found");
 
-                     $cmdReel = $this->buildTutorialCommand($tutorial, $reelPath);
+                    $cmdReel = $this->buildTutorialCommand($tutorial, $reelPath);
                 } else {
-                     // Standard Mode
-                     $cmdReel = $this->buildVideoCommand($job, $reelPath, '9:16');
+                    // Standard Mode
+                    $cmdReel = $this->buildVideoCommand($job, $reelPath, '9:16');
                 }
 
                 Log::info("Rendering Reel: " . $cmdReel);
                 exec($cmdReel . " 2>&1", $outputReel, $returnCodeReel);
-                
-                if ($returnCodeReel !== 0) throw new \Exception("Reel Gen failed: " . implode("\n", $outputReel));
+
+                if ($returnCodeReel !== 0)
+                    throw new \Exception("Reel Gen failed: " . implode("\n", $outputReel));
 
                 // Generate Thumbnail (Poster)
                 $thumbPath = str_replace('.mp4', '.jpg', $reelPath);
@@ -99,15 +101,16 @@ class VideoRenderingService
                 // 2. Generate POST (1:1) - Secondary (If Bundle Mode)
                 $postPublicPath = null;
                 if ($job->bundle_mode || ($job->options['bundle_mode'] ?? false)) {
-                     $postFilename = 'video_' . $job->id . '_post_' . time() . '.mp4';
-                     $postPath = $outputDir . '/' . $postFilename;
-                     $postPublicPath = 'videos/' . $postFilename;
+                    $postFilename = 'video_' . $job->id . '_post_' . time() . '.mp4';
+                    $postPath = $outputDir . '/' . $postFilename;
+                    $postPublicPath = 'videos/' . $postFilename;
 
-                     $cmdPost = $this->buildVideoCommand($job, $postPath, '1:1');
-                     Log::info("Rendering Post: " . $cmdPost);
-                     exec($cmdPost . " 2>&1", $outputPost, $returnCodePost);
-                     
-                     if ($returnCodePost !== 0) Log::error("Post Gen Failed: " . implode("\n", $outputPost));
+                    $cmdPost = $this->buildVideoCommand($job, $postPath, '1:1');
+                    Log::info("Rendering Post: " . $cmdPost);
+                    exec($cmdPost . " 2>&1", $outputPost, $returnCodePost);
+
+                    if ($returnCodePost !== 0)
+                        Log::error("Post Gen Failed: " . implode("\n", $outputPost));
                 }
             }
 
@@ -116,7 +119,7 @@ class VideoRenderingService
                 'status' => 'completed',
                 'output_path' => $publicPath
             ];
-            
+
             // Save Post Path in Options
             if (isset($postPublicPath)) {
                 $options = $job->options ?? [];
@@ -154,15 +157,15 @@ class VideoRenderingService
         $idx = 0;
         $prevStream = "";
         // Default cursor path if not found
-        $cursorPath = public_path('cursor.png'); 
+        $cursorPath = public_path('cursor.png');
         if (!file_exists($cursorPath)) {
-             // Use a fallback or generate a simple red arrow
-             $cursorPath = storage_path('app/public/cursor_default.png');
+            // Use a fallback or generate a simple red arrow
+            $cursorPath = storage_path('app/public/cursor_default.png');
         }
 
         foreach ($steps as $i => $step) {
             $streamName = "v{$i}";
-            
+
             // 1. Inputs: Screenshot (Background)
             $imagePath = $this->resolvePath($step->media_path ?? 'white_bg');
             $inputs .= "-loop 1 -t {$step->duration} -i \"{$imagePath}\" ";
@@ -184,9 +187,9 @@ class VideoRenderingService
             // A. Highlight Overlay (Dim Surroundings)
             if ($highlight) {
                 // Dimmer Logic: Draw 4 semi-transparent black boxes around the target area
-                $x = max(0, $highlight['x']); 
-                $y = max(0, $highlight['y']); 
-                $w = $highlight['w']; 
+                $x = max(0, $highlight['x']);
+                $y = max(0, $highlight['y']);
+                $w = $highlight['w'];
                 $h = $highlight['h'];
                 $dimColor = "black@0.5";
 
@@ -194,12 +197,12 @@ class VideoRenderingService
                 // Box 2: Left (0 to x, y to y+h)
                 // Box 3: Right (x+w to Width, y to y+h)
                 // Box 4: Bottom (Full Width, y+h to Height)
-                
+
                 $filterComplex .= "{$currentStream}" .
-                    "drawbox=x=0:y=0:w=iw:h={$y}:color={$dimColor}:t=fill," . 
-                    "drawbox=x=0:y={$y}:w={$x}:h={$h}:color={$dimColor}:t=fill," . 
-                    "drawbox=x=" . ($x+$w) . ":y={$y}:w=iw-".($x+$w).":h={$h}:color={$dimColor}:t=fill," . 
-                    "drawbox=x=0:y=" . ($y+$h) . ":w=iw:h=ih-".($y+$h).":color={$dimColor}:t=fill" .
+                    "drawbox=x=0:y=0:w=iw:h={$y}:color={$dimColor}:t=fill," .
+                    "drawbox=x=0:y={$y}:w={$x}:h={$h}:color={$dimColor}:t=fill," .
+                    "drawbox=x=" . ($x + $w) . ":y={$y}:w=iw-" . ($x + $w) . ":h={$h}:color={$dimColor}:t=fill," .
+                    "drawbox=x=0:y=" . ($y + $h) . ":w=iw:h=ih-" . ($y + $h) . ":color={$dimColor}:t=fill" .
                     "[{$streamName}Dim];";
                 $currentStream = "[{$streamName}Dim]";
             }
@@ -208,11 +211,11 @@ class VideoRenderingService
             if ($cursorData) {
                 // Scale cursor
                 $filterComplex .= "[{$cursorIdx}:v]scale=32:-1[{$streamName}Cur];";
-                
-                $startPos = $cursorData['start'] ?? [0,0];
-                $endPos = $cursorData['end'] ?? [100,100];
+
+                $startPos = $cursorData['start'] ?? [0, 0];
+                $endPos = $cursorData['end'] ?? [100, 100];
                 $action = $cursorData['action'] ?? null; // 'click'
-                
+
                 // Timing
                 $moveStartT = 0.5;
                 $moveDur = 1.0;
@@ -234,7 +237,7 @@ class VideoRenderingService
                     $clickT = $T_end;
                     $rad = "if(gt(t,{$clickT}),(t-{$clickT})*100,0)";
                     $alpha = "if(gt(t,{$clickT}),1-(t-{$clickT})*2,0)"; // Fade out
-                    
+
                     // Only draw if within time window
                     // drawbox/drawcircle only supports constant expressions in some versions, but 't' usually works for animations
                     // Using 'geq' filter or specialized draw might be complex. 
@@ -246,19 +249,19 @@ class VideoRenderingService
 
             // D. Concat Segments
             if ($i === 0) {
-                 $prevStream = "{$currentStream}";
+                $prevStream = "{$currentStream}";
             } else {
-                 $filterComplex .= "{$prevStream}{$currentStream}concat=n=2:v=1:a=0[vMix{$i}];";
-                 $prevStream = "[vMix{$i}]";
+                $filterComplex .= "{$prevStream}{$currentStream}concat=n=2:v=1:a=0[vMix{$i}];";
+                $prevStream = "[vMix{$i}]";
             }
         }
-        
+
         // Final Output Setup
         $filterComplex = rtrim($filterComplex, ';');
         // Add silent audio track
-        $inputs .= "-f lavfi -t 1 -i anullsrc "; 
+        $inputs .= "-f lavfi -t 1 -i anullsrc ";
         $aIdx = $idx;
-        
+
         $cmd = "ffmpeg {$inputs} -filter_complex \"{$filterComplex}\" -map \"{$prevStream}\" -map {$aIdx}:a -c:v libx264 -pix_fmt yuv420p \"{$outputPath}\"";
         return $cmd;
     }
@@ -275,13 +278,13 @@ class VideoRenderingService
         // If 'scenes' exist in options (from Prompt Studio), use them.
         // Else, generate them via AIScriptGenerator (Legacy fallback or Auto-mode)
         $scenes = $job->options['scenes'] ?? [];
-        
+
         if (empty($scenes)) {
-             // Fallback: Generate generic scenes if missing
-             $scriptService = app(\App\Services\AIScriptGeneratorService::class);
-             $prompt = $job->options['prompt'] ?? 'Luxury Stay';
-             $dat = $scriptService->generateFromPromptData($prompt);
-             $scenes = $dat['scenes'];
+            // Fallback: Generate generic scenes if missing
+            $scriptService = app(\App\Services\AIScriptGeneratorService::class);
+            $prompt = $job->options['prompt'] ?? 'Luxury Stay';
+            $dat = $scriptService->generateFromPromptData($prompt);
+            $scenes = $dat['scenes'];
         }
 
         // 2. Resolve Visuals per Scene
@@ -291,7 +294,7 @@ class VideoRenderingService
         $mediaPaths = $job->options['media_paths'] ?? [];
         $prompt = $job->options['prompt'] ?? '';
         $availableImages = $this->resolveImages($mediaIds, $mediaPaths, $job->options['visual_theme'] ?? 'luxury', $prompt);
-        
+
         // Distribute images to scenes
         $imgIndex = 0;
         foreach ($scenes as &$scene) {
@@ -318,16 +321,16 @@ class VideoRenderingService
         foreach ($scenes as $i => $scene) {
             $path = $this->resolvePath($scene['image_path']);
             // Loop 1 frame for duration + small transition buffer
-            $dur = $scene['duration'] + 1.0; 
-            
+            $dur = $scene['duration'] + 1.0;
+
             $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
             $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp']);
 
             if ($isImage) {
-                 $inputs .= "-loop 1 -t {$dur} -i \"{$path}\" ";
+                $inputs .= "-loop 1 -t {$dur} -i \"{$path}\" ";
             } else {
-                 // Video: Stream loop to ensure it covers duration
-                 $inputs .= "-stream_loop -1 -t {$dur} -i \"{$path}\" ";
+                // Video: Stream loop to ensure it covers duration
+                $inputs .= "-stream_loop -1 -t {$dur} -i \"{$path}\" ";
             }
             $inputMap[$i] = $idx;
             $idx++;
@@ -352,34 +355,39 @@ class VideoRenderingService
 
         foreach ($scenes as $i => $scene) {
             $streamName = "v{$i}";
-            
+
             // Step A: Process Image (Scale -> Zoom/KenBurns)
             // Note: VisualEffectsService needed here. I'll incline basic logic or assume method existence.
             // Using inline implementation for reliability:
-            
+
             // Randomize direction
             $zoomExpr = ($i % 2 == 0) ? "min(zoom+0.0015,1.5)" : "1.5-0.0015*on";
             $zFrames = intval(($scene['duration'] + 1) * 30);
-            
-            $filterComplex .= "[{$i}:v]scale={$width}:{$height}:force_original_aspect_ratio=increase,crop={$width}:{$height}," .
-                              "setsar=1," . 
-                              $trackConfig['filters'] . "," . // Color Grade
-                              "zoompan=z='{$zoomExpr}':d={$zFrames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={$width}x{$height}:fps=30[{$streamName}Raw];";
+
+            $filterComplex .= "[{$i}:v]split[vBgRaw{$i}][vFgRaw{$i}];" .
+                // Background: Scale to Fill + Blur
+                "[vBgRaw{$i}]scale={$width}:{$height}:force_original_aspect_ratio=increase,crop={$width}:{$height},boxblur=20:5[vBg{$i}];" .
+                // Foreground: Scale to Fit
+                "[vFgRaw{$i}]scale={$width}:{$height}:force_original_aspect_ratio=decrease[vFg{$i}];" .
+                // Overlay Foreground on Background
+                "[vBg{$i}][vFg{$i}]overlay=(W-w)/2:(H-h)/2:shortest=1,setsar=1," .
+                $trackConfig['filters'] . "," . // Color Grade
+                "zoompan=z='{$zoomExpr}':d={$zFrames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={$width}x{$height}:fps=30[{$streamName}Raw];";
 
             // Step B: Typography (DrawText)
             // Add Scene Text (Hook / Feature)
             $text = str_replace(["'", ":"], ["’", "\\:"], $scene['text']);
             $fontFile = public_path('fonts/Montserrat-Bold.ttf'); // Ensure this exists or use default
             $fontCmd = file_exists($fontFile) ? "fontfile='{$fontFile}':" : "";
-            
+
             // Animation: Fade in text at 0.5s
             // Complex text styling
             $alpha = "min(1, (t-0.5)/0.5)"; // Fade in over 0.5s 
             // DrawText with box
             $filterComplex .= "[{$streamName}Raw]drawtext={$fontCmd}text='{$text}':fontcolor=white:fontsize=45:" .
-                              "box=1:boxcolor=black@0.5:boxborderw=20:" .
-                              "x=(w-text_w)/2:y=(h-text_h)-150:" . // Bottom center
-                              "alpha='{$alpha}'[{$streamName}Txt];";
+                "box=1:boxcolor=black@0.5:boxborderw=20:" .
+                "x=(w-text_w)/2:y=(h-text_h)-150:" . // Bottom center
+                "alpha='{$alpha}'[{$streamName}Txt];";
 
             // Step C: Transitions
             if ($i === 0) {
@@ -390,21 +398,21 @@ class VideoRenderingService
                 $outStream = "vMix{$i}";
                 $trans = 'fade';
                 $offset = $cumDuration - 0.5; // Overlap by 0.5s
-                
+
                 $filterComplex .= "{$prevStream}[{$streamName}Txt]xfade=transition={$trans}:duration=1:offset={$offset}[{$outStream}];";
-                
+
                 $prevStream = "[{$outStream}]";
                 $cumDuration += ($scene['duration'] - 0.5); // Adjust for overlap
             }
         }
-        
+
         // --- NEW: CTA End Card Scene (Mandatory) ---
         $endCardDuration = 4.0;
         $title = $job->options['title'] ?? 'Luxury Stay';
         $location = $job->options['location'] ?? 'ResortWala.com'; // Fallback
-        
+
         // Escape text
-        $eTitle = str_replace(["'", ":"], ["’", "\\:"], $title); 
+        $eTitle = str_replace(["'", ":"], ["’", "\\:"], $title);
         $eLocation = str_replace(["'", ":"], ["’", "\\:"], $location);
 
         // Create End Card Background (Re-use last image index)
@@ -412,34 +420,35 @@ class VideoRenderingService
         // BUT current build loop iterates $scenes from 0.
         // Use first image as background if last not avail? Last scene index is count($scenes)-1.
         $lastImgIdx = count($scenes) - 1;
-        if ($lastImgIdx < 0) $lastImgIdx = 0;
+        if ($lastImgIdx < 0)
+            $lastImgIdx = 0;
 
         // Filter Chain for End Card:
         // 1. Scale/Crop/Boxblur
         // 2. Pad to duration
         // 3. Draw Text
-        
+
         $filterComplex .= "[{$lastImgIdx}:v]scale={$width}:{$height}:force_original_aspect_ratio=increase,crop={$width}:{$height}," .
-                          "boxblur=20:5,setsar=1,tpad=stop_mode=clone:stop_duration={$endCardDuration}," .
-                          "drawbox=x=0:y=0:w=iw:h=ih:color=black@0.6:t=fill[vEndBase];";
-        
+            "boxblur=20:5,setsar=1,tpad=stop_mode=clone:stop_duration={$endCardDuration}," .
+            "drawbox=x=0:y=0:w=iw:h=ih:color=black@0.6:t=fill[vEndBase];";
+
         $filterComplex .= "[vEndBase]drawtext=text='{$eTitle}':fontcolor=white:fontsize=60:x=(w-text_w)/2:y=(h-text_h)/2-50:" .
-                          "shadowcolor=black:shadowx=2:shadowy=2," .
-                          "drawtext=text='Book at {$eLocation}':fontcolor=yellow:fontsize=45:x=(w-text_w)/2:y=h-150[vEndCard];";
-                          
+            "shadowcolor=black:shadowx=2:shadowy=2," .
+            "drawtext=text='Book at {$eLocation}':fontcolor=yellow:fontsize=45:x=(w-text_w)/2:y=h-150[vEndCard];";
+
         // Concat Main Video + End Card
         $finalVideo = "[vContent]";
         $filterComplex .= "{$prevStream}[vEndCard]concat=n=2:v=1:a=0{$finalVideo};";
-        
+
         $totalVideoDuration = $cumDuration + $endCardDuration;
 
         // 6. Audio Mixing
         // Music Logic (Trim & Fade)
         $fadeOutStart = $totalVideoDuration - 2;
         $filterComplex .= "[{$musicIdx}:a]atrim=duration={$totalVideoDuration},afade=t=in:st=0:d=1,afade=t=out:st={$fadeOutStart}:d=2[aMusic];";
-        
+
         $finalAudio = "[aFinal]";
-        
+
         if ($hasVoice) {
             $filterComplex .= "[{$voiceIdx}:a]volume=1.5[aVoice];";
             $filterComplex .= "[aVoice][aMusic]amix=inputs=2:duration=longest[aMix];";
@@ -458,66 +467,75 @@ class VideoRenderingService
             $filterComplex .= "[{$logoIdx}:v]scale=150:-2[vLogo];{$finalVideo}[vLogo]overlay=x=W-w-20:y=20[vMarked];";
             $finalVideo = "[vMarked]";
         } else {
-             // Just strip brackets for map? No, $finalVideo is already [vContent].
+            // Just strip brackets for map? No, $finalVideo is already [vContent].
         }
-        
+
         // Clean up filter string
         $filterComplex = rtrim($filterComplex, ';');
 
         // Compile
         // map $finalVideo
         $cmd = "ffmpeg {$inputs} -filter_complex \"{$filterComplex}\" -map \"{$finalVideo}\" -map \"{$finalAudio}\" -c:v libx264 -pix_fmt yuv420p -r 30 -t {$totalVideoDuration} \"{$outputPath}\"";
-        
+
         return $cmd;
     }
 
-    private function resolveImages($ids, $paths, $theme, $prompt = '') {
-         $images = [];
-         if (!empty($ids)) {
-             $data = \App\Models\PropertyImage::whereIn('id', $ids)->get(['image_path']);
-             foreach($data as $img) $images[] = $img->image_path;
-         } elseif (!empty($paths)) {
-             $images = $paths;
-         }
-         
-         if (empty($images)) {
-             // Try Stock Asset Service
-             $keyword = $theme; // Default to theme
-             if (!empty($prompt)) {
-                 // Simple keyword extraction: remove Stop words, take longest word > 4 chars, or just use first 2 words
-                 $words = explode(' ', preg_replace('/[^a-zA-Z0-9 ]/', '', $prompt));
-                 $useful = array_filter($words, fn($w) => strlen($w) > 4 && !in_array(strtolower($w), ['video', 'create', 'about', 'would']));
-                 if (!empty($useful)) $keyword = implode(' ', array_slice($useful, 0, 2));
-             }
-             
-             try {
-                 $stockService = app(\App\Services\StockAssetService::class);
-                 $stockImages = $stockService->getVisuals($keyword, 6, 'portrait');
-                 if (!empty($stockImages)) return $stockImages;
-             } catch (\Throwable $e) {
-                 \Log::error("Stock Service Failed: " . $e->getMessage());
-             }
+    private function resolveImages($ids, $paths, $theme, $prompt = '')
+    {
+        $images = [];
+        if (!empty($ids)) {
+            $data = \App\Models\PropertyImage::whereIn('id', $ids)->get(['image_path']);
+            foreach ($data as $img)
+                $images[] = $img->image_path;
+        } elseif (!empty($paths)) {
+            $images = $paths;
+        }
 
-             // Fallback
-             return $this->generateDynamicBackgrounds($theme, 6);
-         }
-         return $images;
+        if (empty($images)) {
+            // Try Stock Asset Service
+            $keyword = $theme; // Default to theme
+            if (!empty($prompt)) {
+                // Simple keyword extraction: remove Stop words, take longest word > 4 chars, or just use first 2 words
+                $words = explode(' ', preg_replace('/[^a-zA-Z0-9 ]/', '', $prompt));
+                $useful = array_filter($words, fn($w) => strlen($w) > 4 && !in_array(strtolower($w), ['video', 'create', 'about', 'would']));
+                if (!empty($useful))
+                    $keyword = implode(' ', array_slice($useful, 0, 2));
+            }
+
+            try {
+                $stockService = app(\App\Services\StockAssetService::class);
+                $stockImages = $stockService->getVisuals($keyword, 6, 'portrait');
+                if (!empty($stockImages))
+                    return $stockImages;
+            } catch (\Throwable $e) {
+                \Log::error("Stock Service Failed: " . $e->getMessage());
+            }
+
+            // Fallback
+            return $this->generateDynamicBackgrounds($theme, 6);
+        }
+        return $images;
     }
 
-    private function resolvePath($path) {
-        if (str_starts_with($path, 'http')) return $path;
-        if (file_exists($path)) return $path; 
-        if (str_starts_with($path, '/') || preg_match('/^[a-zA-Z]:\\\\/', $path)) return $path;
+    private function resolvePath($path)
+    {
+        if (str_starts_with($path, 'http'))
+            return $path;
+        if (file_exists($path))
+            return $path;
+        if (str_starts_with($path, '/') || preg_match('/^[a-zA-Z]:\\\\/', $path))
+            return $path;
         // Check direct public path first (for uploads/studio/...)
         $directPath = storage_path('app/public/' . $path);
-        if (file_exists($directPath)) return $directPath;
+        if (file_exists($directPath))
+            return $directPath;
 
         // Fallback to legacy properties/ folder
         return storage_path('app/public/' . (str_starts_with($path, 'properties/') ? $path : 'properties/' . $path));
     }
-    
+
     // ... keep getAudioDuration and generateDynamicBackgrounds inputs ...
-    
+
     private function getAudioDuration($path)
     {
         try {
@@ -525,18 +543,20 @@ class VideoRenderingService
             $output = shell_exec($cmd);
             if (preg_match('/Duration: ((\d+):(\d+):(\d+)\.\d+)/', $output, $matches)) {
                 $parts = explode(':', $matches[1]);
-                return floatval($parts[0]*3600 + $parts[1]*60 + $parts[2]);
+                return floatval($parts[0] * 3600 + $parts[1] * 60 + $parts[2]);
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
         return 0;
     }
 
     private function generateDynamicBackgrounds($theme, $count)
     {
         $dir = storage_path('app/public/temp_bg');
-        if (!file_exists($dir)) mkdir($dir, 0755, true);
+        if (!file_exists($dir))
+            mkdir($dir, 0755, true);
         $palettes = [
-            'luxury' => ['black', 'darkblue', '#2c5364'], 
+            'luxury' => ['black', 'darkblue', '#2c5364'],
             'party' => ['purple', 'magenta', '#fc466b'],
             'nature' => ['forestgreen', 'lime', '#a8ff78'],
             'minimal' => ['white', 'lightgray', '#f7f8f8'],
@@ -547,7 +567,8 @@ class VideoRenderingService
             $path = $dir . "/bg_{$theme}_{$i}_" . uniqid() . ".jpg";
             $c1 = $colors[$i % count($colors)];
             exec("ffmpeg -y -f lavfi -i \"color=c={$c1}:s=720x1280\" -frames:v 1 " . escapeshellarg($path) . " 2>&1");
-            if (file_exists($path)) $paths[] = $path;
+            if (file_exists($path))
+                $paths[] = $path;
         }
         return empty($paths) ? ['resortwala-logo.png'] : $paths;
     }
