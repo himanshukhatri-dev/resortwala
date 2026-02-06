@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaStar, FaHeart, FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaWifi, FaSwimmingPool, FaParking, FaSnowflake, FaBed, FaBath, FaUserFriends, FaExchangeAlt, FaShieldAlt, FaCheck } from 'react-icons/fa';
+import { FaStar, FaHeart, FaRegHeart, FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaWifi, FaSwimmingPool, FaParking, FaSnowflake, FaBed, FaBath, FaUserFriends, FaExchangeAlt, FaShieldAlt, FaCheck } from 'react-icons/fa';
 import { SPECIAL_EVENTS } from '../../config/special_events';
 
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -11,7 +11,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { getPricing } from '../../utils/pricing';
 
-export default function PropertyCard({ property, searchParams, cardType = 'horizontal' }) {
+export default function PropertyCard({ property, searchParams, cardType = 'horizontal', variant }) {
+    // Handle prop alias
+    const finalCardType = variant || cardType;
+
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const {
         id = property?.PropertyId || property?.id,
@@ -101,10 +104,10 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
     return (
         <div
             onClick={handleCardClick}
-            className={`group flex flex-col ${cardType === 'horizontal' ? 'xl:flex-row' : ''} gap-5 bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 p-3 cursor-pointer relative hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 h-full`}
+            className={`group flex flex-col ${finalCardType === 'horizontal' ? 'xl:flex-row' : ''} gap-5 bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 p-3 cursor-pointer relative hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 h-full`}
         >
             {/* IMAGE SLIDER (Left Side) */}
-            <div className={`relative w-full ${cardType === 'horizontal' ? 'xl:w-[320px] h-[276px] xl:h-[300px]' : 'h-[250px]'} flex-shrink-0 rounded-[1.2rem] overflow-hidden bg-gray-100`}>
+            <div className={`relative w-full ${finalCardType === 'horizontal' ? 'xl:w-[320px] h-[276px] xl:h-[300px]' : 'h-[250px]'} flex-shrink-0 rounded-[1.2rem] overflow-hidden bg-gray-100`}>
                 <AnimatePresence mode="wait">
                     <motion.img
                         key={currentImageIndex}
@@ -136,7 +139,7 @@ export default function PropertyCard({ property, searchParams, cardType = 'horiz
                     onClick={handleWishlist}
                     className={`absolute top-4 right-4 z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all backdrop-blur-md shadow-sm active:scale-90 ${active ? 'bg-red-500 text-white' : 'bg-white/70 text-gray-700 hover:bg-white hover:text-red-500'}`}
                 >
-                    <FaHeart className={active ? "fill-current" : "text-lg"} />
+                    {active ? <FaHeart className="fill-current" /> : <FaRegHeart className="text-lg" />}
                 </div>
 
                 {/* SLIDER CONTROLS - Larger touch areas */}

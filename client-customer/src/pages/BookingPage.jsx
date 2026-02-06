@@ -109,16 +109,28 @@ export default function BookingPage() {
 
         const EXTRA_GUEST_CHARGE = safeFloat(obPricing?.extraGuestCharge, 1000);
         const GST_PERCENTAGE = safeFloat(property?.gst_percentage, 18);
+        const FOOD_CHARGE = safeFloat(ob.foodRates?.perPerson || ob.foodRates?.veg, 1000);
 
         let totalVillaRate = 0;
+        let totalExtra = 0;
+        let totalFood = 0;
         let nightDetails = [];
+
+        // Meal Rates
+        const mealSelection = locationState.mealSelection || 0;
+        const VEG_RATE = safeFloat(ob.foodRates?.veg || FOOD_CHARGE, 1000);
+        const NONVEG_RATE = safeFloat(ob.foodRates?.nonVeg || ob.foodRates?.nonveg || FOOD_CHARGE, 1200);
+        const JAIN_RATE = safeFloat(ob.foodRates?.jain || VEG_RATE, 1000);
+        const MAX_MEAL_RATE = Math.max(VEG_RATE, NONVEG_RATE, JAIN_RATE);
+
+        const baseLimit = parseInt(property?.Occupancy || ob.pricing?.extraGuestLimit || 12);
 
         for (let i = 0; i < nights; i++) {
             const d = new Date(dateRange.from);
             d.setDate(d.getDate() + i);
             const w = d.getDay();
 
-            // Check for Holiday Override (Same as PropertyDetails)
+            // Check for Holiday Override
             const holiday = property.holidays?.find(h => {
                 const dStr = format(d, 'yyyy-MM-dd');
                 const hStart = h.from_date ? h.from_date.substring(0, 10) : '';
@@ -126,15 +138,15 @@ export default function BookingPage() {
                 return dStr >= hStart && dStr <= hEnd;
             });
 
+            // 1. Base Rate
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const dayKey = dayNames[w];
+            const dayPricing = adminPricing?.[dayKey];
+
             let rate = 0;
             if (holiday) {
                 rate = parseFloat(holiday.base_price);
             } else {
-                // 7-Day Pricing Matrix
-                const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                const dayKey = dayNames[w];
-                const dayPricing = adminPricing?.[dayKey];
-
                 if (dayPricing?.villa?.final) {
                     rate = parseFloat(dayPricing.villa.final);
                 } else {
@@ -143,10 +155,39 @@ export default function BookingPage() {
                     else rate = parseFloat(PRICE_WEEKDAY);
                 }
             }
-
             if (isNaN(rate)) rate = 0;
             totalVillaRate += rate;
-            nightDetails.push({ date: format(d, 'MMM dd'), rate });
+
+            // 2. Extra Guest (Day-wise)
+            let dailyExtraCharge = EXTRA_GUEST_CHARGE;
+            if (dayPricing?.extra_person?.final) {
+                dailyExtraCharge = parseFloat(dayPricing.extra_person.final);
+            }
+            const currentTotalGuests = (guests.adults || 0) + (guests.children || 0);
+            const extraCount = Math.max(0, currentTotalGuests - baseLimit);
+            const dailyExtraTotal = extraCount * dailyExtraCharge;
+            totalExtra += dailyExtraTotal;
+
+            // 3. Food (Max of Veg/NonVeg/Jain vs Daily DB Rates)
+            let dailyVeg = VEG_RATE;
+            let dailyJain = JAIN_RATE;
+
+            if (dayPricing?.meal_person?.final) {
+                dailyVeg = parseFloat(dayPricing.meal_person.final);
+            }
+            if (dayPricing?.jain_meal_person?.final) {
+                dailyJain = parseFloat(dayPricing.jain_meal_person.final);
+            }
+            const dailyMaxMeal = Math.max(dailyVeg, NONVEG_RATE, dailyJain);
+            const dailyFoodTotal = mealSelection * dailyMaxMeal;
+            totalFood += dailyFoodTotal;
+
+            nightDetails.push({
+                date: format(d, 'MMM dd'),
+                rate,
+                extra: dailyExtraTotal,
+                food: dailyFoodTotal
+            });
         }
 
         if (isWaterpark) {
@@ -198,17 +239,12 @@ export default function BookingPage() {
             };
         }
 
-        const baseLimit = parseInt(property?.Occupancy || ob.pricing?.extraGuestLimit || 12);
-        const extraGuests = Math.max(0, guests.adults - baseLimit);
-        const totalExtra = extraGuests * EXTRA_GUEST_CHARGE * nights;
+        // Legacy Calculation Removed - Now Calculated in Loop
+        // const extraGuests = Math.max(0, guests.adults - baseLimit);
+        // const totalExtra = extraGuests * EXTRA_GUEST_CHARGE * nights; --> Replaced by totalExtra
 
-        // Food
-        const mealSelection = locationState.mealSelection || 0;
-        const VEG_RATE = safeFloat(ob.foodRates?.veg, 1000);
-        const NONVEG_RATE = safeFloat(ob.foodRates?.nonVeg || ob.foodRates?.nonveg, 1200);
-        const JAIN_RATE = safeFloat(ob.foodRates?.jain, VEG_RATE);
-        const MAX_MEAL_RATE = Math.max(VEG_RATE, NONVEG_RATE, JAIN_RATE);
-        const totalFood = (mealSelection * MAX_MEAL_RATE) * nights;
+        // const mealSelection = locationState.mealSelection || 0;
+        // const VEG_RATE = ... --> Replaced by totalFood logic in loop
 
         const taxable = totalVillaRate + totalExtra + totalFood;
         const gst = (taxable * GST_PERCENTAGE) / 100;
@@ -295,7 +331,7 @@ export default function BookingPage() {
 
     if (!property || !details) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
-    const buildBackUrl = () => {
+    const getBackUrl = () => {
         const params = new URLSearchParams();
         if (dateRange.from) params.set('start', format(dateRange.from, 'yyyy-MM-dd'));
         if (dateRange.to) params.set('end', format(dateRange.to, 'yyyy-MM-dd'));
@@ -305,13 +341,25 @@ export default function BookingPage() {
         return `/property/${slug}?${params.toString()}`;
     };
 
+    const handleBackToChange = () => {
+        navigate(getBackUrl(), {
+            state: {
+                ...locationState,
+                guests,
+                dateRange,
+                mealSelection: locationState.mealSelection,
+                openDatePicker: true
+            }
+        });
+    };
+
     return (
         <div className="bg-gray-50 min-h-screen pb-32 pt-28 font-outfit">
             <div className="container mx-auto px-4 max-w-6xl">
 
                 {/* Header with Back */}
                 <div className="mb-8 flex items-center gap-4">
-                    <button onClick={() => navigate(buildBackUrl())} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center hover:bg-gray-100 transition">
+                    <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center hover:bg-gray-100 transition">
                         <FaArrowLeft className="text-gray-600" />
                     </button>
                     <h1 className="text-2xl font-bold text-gray-900">Confirm and Pay</h1>
@@ -330,66 +378,75 @@ export default function BookingPage() {
                             <div className="space-y-4">
                                 <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50 flex justify-between items-center">
                                     <div>
-                                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Dates</div>
-                                        <div className="font-bold text-gray-900">{format(dateRange.from, 'dd MMM yyyy')} – {format(dateRange.to, 'dd MMM yyyy')}</div>
+                                        <div className="font-bold text-gray-900">
+                                            {format(dateRange.from, 'dd MMM yyyy')}
+                                            {!details.isWaterpark && dateRange.to && ` - ${format(dateRange.to, 'dd MMM yyyy')}`}
+                                        </div>
                                     </div>
-                                    <button onClick={() => navigate(buildBackUrl())} className="text-xs font-bold text-blue-600 hover:underline">Change Date</button>
+                                    <button onClick={handleBackToChange} className="text-xs font-bold text-blue-600 hover:underline">Change Date</button>
                                 </div>
+
+                                {/* Mobile-friendly context for changes */}
+                                <div className="lg:hidden bg-blue-50/50 p-2.5 rounded-xl border border-blue-100 flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-blue-400 animate-pulse"></div>
+                                    <p className="text-[10px] text-blue-700 font-bold leading-tight">Price and availability may change if you select different dates.</p>
+                                </div>
+
                                 <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50 flex justify-between items-center">
                                     <div>
                                         <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Guests</div>
-                                        <div className="font-bold text-gray-900">{guests.adults} Adults, {guests.children} Children</div>
+                                        <div className="font-bold text-gray-900">{guests.adults} Adult, {guests.children} Child</div>
                                     </div>
-                                    <button onClick={() => navigate(buildBackUrl())} className="text-xs font-bold text-blue-600 hover:underline">Change Guests</button>
+                                    <button onClick={handleBackToChange} className="text-xs font-bold text-blue-600 hover:underline">Change Guests</button>
                                 </div>
                             </div>
                         </div>
 
                         {/* 2. CONTACT DETAILS */}
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                            <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100">
+                            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <FaUserFriends className="text-green-500" /> Contact Details
                             </h2>
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Full Name</label>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Full Name</label>
                                     <input
                                         type="text"
                                         value={form.CustomerName}
                                         onChange={e => setForm({ ...form, CustomerName: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
                                         placeholder="e.g. Rahul Sharma"
                                     />
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Phone Number</label>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Phone Number</label>
                                         <input
                                             type="tel"
                                             value={form.CustomerMobile}
                                             onChange={e => setForm({ ...form, CustomerMobile: e.target.value })}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
                                             placeholder="+91 98765 00000"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Email Address</label>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Email Address</label>
                                         <input
                                             type="email"
                                             value={form.CustomerEmail}
                                             onChange={e => setForm({ ...form, CustomerEmail: e.target.value })}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 focus:outline-none focus:border-black focus:bg-white transition"
                                             placeholder="rahul@example.com"
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Special Request (Optional)</label>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">Special Request (Optional)</label>
                                     <textarea
                                         rows="2"
                                         value={form.SpecialRequest}
                                         onChange={e => setForm({ ...form, SpecialRequest: e.target.value })}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 font-medium text-gray-900 focus:outline-none focus:border-black focus:bg-white transition resize-none"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-medium text-gray-900 focus:outline-none focus:border-black focus:bg-white transition resize-none"
                                         placeholder="Early check-in needed..."
                                     />
                                 </div>
@@ -397,12 +454,12 @@ export default function BookingPage() {
                         </div>
 
                         {/* 3. PAYMENT METHOD */}
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                            <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100">
+                            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <FaLock className="text-purple-500" /> Payment Method
                             </h2>
-                            <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-4">
-                                <div className="flex items-center justify-between mb-4">
+                            <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-3">
+                                <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                                             <img src="https://cdn.worldvectorlogo.com/logos/upi-logo.svg" alt="UPI" className="w-6" />
@@ -414,7 +471,7 @@ export default function BookingPage() {
                                     </div>
                                     <FaCheckCircle className="text-green-500" />
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] text-gray-400 bg-white p-3 rounded-xl border border-gray-100 mt-2">
+                                <div className="flex items-center gap-2 text-[10px] text-gray-400 bg-white p-2 rounded-xl border border-gray-100">
                                     <FaShieldAlt className="text-blue-400" />
                                     <span>Secure database encryption. We do not store card details.</span>
                                 </div>
@@ -461,10 +518,10 @@ export default function BookingPage() {
 
                                 {details.isWaterpark ? (
                                     <div className="space-y-3">
-                                        <div className="text-[10px] uppercase font-bold text-gray-400 border-b border-gray-50 pb-1">Entry Fees & Tickets</div>
+                                        <div className="text-[10px] uppercase font-bold text-gray-400 border-b border-gray-50 pb-1">Booking Summary</div>
                                         <div className="flex justify-between items-center text-gray-600 text-[13px]">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-gray-900">Adult Tickets ({guests.adults})</span>
+                                                <span className="font-bold text-gray-900">Adult ({guests.adults})</span>
                                                 <div className="flex items-center gap-1.5">
                                                     {details.adultMarketRate > details.adultTicketRate && (
                                                         <span className="text-[10px] text-gray-400 line-through">₹{details.adultMarketRate?.toLocaleString()}</span>
@@ -477,7 +534,7 @@ export default function BookingPage() {
                                         {guests.children > 0 && (
                                             <div className="flex justify-between items-center text-gray-600 text-[13px]">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-gray-900">Child Tickets ({guests.children})</span>
+                                                    <span className="font-bold text-gray-900">Child ({guests.children})</span>
                                                     <div className="flex items-center gap-1.5">
                                                         {details.childMarketRate > details.childTicketRate && (
                                                             <span className="text-[10px] text-gray-400 line-through">₹{details.childMarketRate?.toLocaleString()}</span>
@@ -511,43 +568,34 @@ export default function BookingPage() {
                                         )}
                                     </>
                                 )}
-                                <div className="flex justify-between items-start text-gray-900 pt-3 border-t border-gray-100">
-                                    <div className="flex flex-col">
-                                        <span className="text-base font-black uppercase tracking-tight">Total Amount</span>
-                                        {!details.isWaterpark && <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">+ GST APPLICABLE</span>}
-                                    </div>
-                                    <span className="text-3xl font-black">₹{finalTotal.toLocaleString()}</span>
+                                <div className="flex justify-between items-center text-gray-900 pt-4 border-t border-gray-100 mt-4">
+                                    <span className="text-base font-black uppercase tracking-tight">Total Amount</span>
+                                    <span className="text-2xl font-black">₹{finalTotal.toLocaleString()} {!details.isWaterpark && <span className="text-xs text-gray-400 font-bold">+ GST</span>}</span>
                                 </div>
-                                {!details.isWaterpark && (
-                                    <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 uppercase">
-                                        <FaReceipt className="text-green-500" />
-                                        <span>+ GST Applicable</span>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="h-px bg-gray-100 my-6"></div>
 
-                            {/* Pay Now Section (Production Style) */}
+                            {/* Amount to Book Section */}
                             <div className="bg-blue-50/50 rounded-3xl p-6 border border-blue-100 mb-8">
                                 <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Pay Now to Book</span>
+                                    <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Pay Now</span>
                                 </div>
                                 <div className="text-4xl font-black text-gray-900 mb-1">₹{payNowAmount.toLocaleString()}</div>
                                 <div className="flex justify-between items-center">
                                     <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
                                         <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                                        {details.isWaterpark ? 'Registration Token' : '10% Token Amount'}
+                                        {details.isWaterpark ? 'Registration Amount' : 'Booking Amount'}
                                     </div>
                                     <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">
-                                        Pay at {details.isWaterpark ? 'Park' : 'Villa'}: <span className="text-gray-900 font-black">₹{balanceAmount.toLocaleString()}</span>
+                                        {details.isWaterpark ? 'Pay at Park' : 'Pay Later'}: <span className="text-gray-900 font-black">₹{balanceAmount.toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Coupon Input */}
                             <div className="mb-6">
-                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">COUPON CODE</div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">COUPON CODE (IF ANY)</div>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
@@ -571,11 +619,10 @@ export default function BookingPage() {
                             <button
                                 onClick={handleSubmit}
                                 disabled={bookingStatus === 'submitting'}
-                                className="w-full bg-[#FF385C] hover:bg-[#D9324E] text-white h-16 rounded-2xl font-black text-lg shadow-xl shadow-red-100 items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 flex mb-4"
+                                className="w-full bg-[#FF385C] hover:bg-[#D9324E] text-white h-16 rounded-2xl font-black text-lg shadow-xl shadow-red-100 items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 flex mb-4 mt-8"
                             >
-                                {bookingStatus === 'submitting' ? 'Processing...' : 'Proceed to Pay'}
+                                {bookingStatus === 'submitting' ? 'Processing...' : `Pay Now ₹${payNowAmount.toLocaleString()}`}
                             </button>
-
                         </div>
                     </div>
                 </div>
@@ -584,7 +631,12 @@ export default function BookingPage() {
                 <div className="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-100 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] lg:hidden z-50">
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Pay Now (Token)</span>
+                            <button
+                                onClick={handleBackToChange}
+                                className="text-[10px] font-bold text-blue-600 uppercase tracking-wider text-left hover:underline mb-1 flex items-center gap-1"
+                            >
+                                Edit Details
+                            </button>
                             <span className="text-2xl font-black text-gray-900">₹{payNowAmount.toLocaleString()}</span>
                             <span className="text-[8px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">
                                 Total: ₹{finalTotal.toLocaleString()} {details.isWaterpark ? '' : '+ GST'}
@@ -596,12 +648,11 @@ export default function BookingPage() {
                             className="bg-[#FF385C] hover:bg-[#d9324e] text-white h-14 px-8 rounded-2xl font-black text-base shadow-xl shadow-red-200 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2"
                         >
                             {bookingStatus === 'submitting' ? 'Processing...' : (
-                                <><span>Proceed to Pay</span> <FaArrowLeft className="rotate-180 text-sm" /></>
+                                <><span>Pay Now</span> <FaArrowLeft className="rotate-180 text-sm" /></>
                             )}
                         </button>
                     </div>
                 </div>
-
             </div>
         </div>
     );
