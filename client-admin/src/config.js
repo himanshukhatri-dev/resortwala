@@ -15,6 +15,10 @@ const getApiBaseUrl = () => {
         if (window.location.port === '5173' || window.location.port === '5174' || window.location.port === '5175' || window.location.port === '5176') {
             return `${window.location.protocol}//${hostname}:8085/api`;
         }
+<<<<<<< HEAD
+=======
+        return '/api';
+>>>>>>> master
     }
 
     // Production / Beta / Staging (where API is on same domain under /api)
