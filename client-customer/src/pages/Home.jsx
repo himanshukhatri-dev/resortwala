@@ -18,6 +18,7 @@ import SEO from '../components/SEO';
 import LocationRichContent from '../components/location/LocationRichContent';
 import { PropertyCardSkeleton } from '../components/ui/Skeleton';
 import { getPricing } from '../utils/pricing';
+import { getDiscoveryPrefs, updateFromFilters } from '../utils/discovery';
 import toast from 'react-hot-toast';
 
 const CATEGORIES = [
@@ -264,6 +265,12 @@ export default function Home() {
                 params.append('dev_mode', 'true');
             }
 
+            // SMART DISCOVERY PREFERENCES (Weighted Ranking)
+            const prefs = getDiscoveryPrefs();
+            if (Object.keys(prefs).length > 0) {
+                params.append('preferences', JSON.stringify(prefs));
+            }
+
             // FILTERS: Map filters to API params
             console.log('Home: Building API Params from Filters:', filters);
             const loc = filters.location.trim();
@@ -353,6 +360,8 @@ export default function Home() {
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             fetchProperties(false);
+            // Track preferences if filters are meaningful
+            updateFromFilters(filters);
         }, 500);
         return () => clearTimeout(timeoutId);
     }, [

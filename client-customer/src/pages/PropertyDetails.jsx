@@ -25,6 +25,7 @@ import RoomCard from '../components/RoomCard';
 import SEO from '../components/SEO';
 import WaterParkBookingPanel from '../components/ui/WaterParkBookingPanel';
 import { getPricing } from '../utils/pricing';
+import { updateFromProperty } from '../utils/discovery';
 
 const PROPERTY_RULES = [
     "Primary guest must be 18+",
@@ -312,6 +313,8 @@ export default function PropertyDetails() {
                 category: property.PropertyType,
                 location: property.City
             });
+            // Smart Discovery Preference Tracking
+            updateFromProperty(property);
         }
     }, [property]);
 

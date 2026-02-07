@@ -57,7 +57,15 @@ class PropertyMasterController extends Controller
                 $query->orderByRaw('CASE WHEN distance_km IS NULL THEN 1 ELSE 0 END, distance_km ASC');
             } else {
                 // Default Sorting
-                if ($request->has('sort')) {
+                if (!$request->has('sort') && !$request->has('location') && !$request->has('lat')) {
+                    // Apply Smart Default Sorting
+                    $prefs = $request->input('preferences', []);
+                    if (is_string($prefs)) {
+                        $prefs = json_decode($prefs, true) ?? [];
+                    }
+                    $sortingService = app(\App\Services\SmartSortingService::class);
+                    $query = $sortingService->applySmartSorting($query, $prefs);
+                } elseif ($request->has('sort')) {
                     switch ($request->input('sort')) {
                         case 'price_low':
                             $query->orderBy('Price', 'asc');
