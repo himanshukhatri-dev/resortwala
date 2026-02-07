@@ -126,9 +126,13 @@ deploy_api() {
     # Create symbolic link for public storage
     php artisan storage:link --force || true
     
-    # Run migrations
-    print_status "Running database migrations..."
-    php artisan migrate --force
+    # Run migrations (skip if SKIP_MIGRATIONS is true)
+    if [ "$4" == "skip_migrate" ]; then
+        print_warning "Skipping database migrations as requested."
+    else
+        print_status "Running database migrations..."
+        php artisan migrate --force
+    fi
     
     # Clear Laravel cache
     print_status "Clearing Laravel cache..."
@@ -145,6 +149,7 @@ deploy() {
     local ENVIRONMENT=$1
     local BRANCH=$2
     local COMPONENT=$3
+    local SKIP_MIGRATE=$4
     
     print_status "========================================="
     print_status "ResortWala Optimized Deployment"
@@ -183,7 +188,7 @@ deploy() {
         fi
         
         if [[ "$COMPONENT" == "api" || "$COMPONENT" == "all" ]]; then
-            deploy_api "$CACHE_DIR/api" "$BETA_API_PATH" "Beta"
+            deploy_api "$CACHE_DIR/api" "$BETA_API_PATH" "Beta" "$SKIP_MIGRATE"
         fi
         
     elif [ "$ENVIRONMENT" == "production" ]; then
@@ -203,7 +208,7 @@ deploy() {
         fi
         
         if [[ "$COMPONENT" == "api" || "$COMPONENT" == "all" ]]; then
-            deploy_api "$CACHE_DIR/api" "$PROD_API_PATH" "Prod"
+            deploy_api "$CACHE_DIR/api" "$PROD_API_PATH" "Prod" "$SKIP_MIGRATE"
         fi
     fi
     
@@ -217,9 +222,9 @@ deploy() {
 }
 
 # Parse command line arguments
-if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <environment> <branch> <component>"
+if [ "$#" -lt 3 ]; then
+    echo "Usage: $0 <environment> <branch> <component> [skip_migrate]"
     exit 1
 fi
 
-deploy "$1" "$2" "$3"
+deploy "$1" "$2" "$3" "$4"

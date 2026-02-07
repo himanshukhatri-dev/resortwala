@@ -11,7 +11,7 @@ export default defineConfig({
     allowedHosts: ['local.resortwala.com'],
     proxy: {
       '/api': {
-        target: 'http://localhost:8085',
+        target: 'http://gateway',
         changeOrigin: true,
         secure: false,
       },

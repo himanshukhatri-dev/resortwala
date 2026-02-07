@@ -39,11 +39,40 @@ Run this once to configure Docker, environment files, and database:
 ```
 
 ### 2. Daily Development
-Run this to start all servers (Database, API, and three Frontends):
+
+#### Option A: PowerShell (Recommended)
+Run this to start all servers (Database, API, frontends, and SSH tunnel):
 ```powershell
 .\start_local.ps1
 ```
-This script will open a separate terminal for each service.
+
+#### Option B: Git Bash
+Run this script to start everything in a single shell:
+```bash
+./start_local.sh
+```
+
+This will automatically open the SSH tunnel to the staging database and start the containers.
+
+---
+
+## Unified Docker Setup
+
+We use a unified `docker-compose.unified.yml` which routes all traffic through a single Nginx Gateway.
+
+- **Gateway URL**: `http://local.resortwala.com`
+- **API**: `http://local.resortwala.com/api`
+- **Customer Panel**: `http://local.resortwala.com/`
+- **Vendor Panel**: `http://local.resortwala.com/vendor`
+- **Admin Panel**: `http://local.resortwala.com/admin`
+
+> [!IMPORTANT]
+> The API connects to the staging database via an SSH tunnel on **port 3307**.
+> Ensure your `api/.env` has:
+> ```env
+> DB_HOST=host.docker.internal
+> DB_PORT=3307
+> ```
 
 ---
 
