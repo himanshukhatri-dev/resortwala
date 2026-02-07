@@ -6,13 +6,13 @@ import AccountPending from './AccountPending';
 import NotificationBell from './NotificationBell';
 import ConfirmModal from './ConfirmModal';
 import axios from 'axios';
-import AIChatWidget from '../modules/LearnGrow/components/AIChatWidget';
-import SmartTriggerManager from '../modules/LearnGrow/components/SmartTriggerManager';
+// import AIChatWidget from '../modules/LearnGrow/components/AIChatWidget';
+// import SmartTriggerManager from '../modules/LearnGrow/components/SmartTriggerManager';
 import { useLocation } from 'react-router-dom';
 
 // New Automated Tutorial System
 import { TutorialProvider } from './Tutorial/TutorialContext';
-import TutorialOverlay from './Tutorial/TutorialOverlay';
+// import TutorialOverlay from './Tutorial/TutorialOverlay';
 
 export default function VendorLayout({ children, title }) {
     const navigate = useNavigate();
@@ -191,13 +191,9 @@ export default function VendorLayout({ children, title }) {
                     cancelText="Cancel"
                 />
 
-                {/* NEW Auto-Triggered Walkthrough Engine - HIDDEN */}
+                {/* HIDDEN IN PRODUCTION */}
                 {/* <TutorialOverlay /> */}
-
-                {/* Smart Triggers (Behavioral Rules) - HIDDEN */}
                 {/* <SmartTriggerManager /> */}
-
-                {/* Global AI Chat Assistant - HIDDEN */}
                 {/* <AIChatWidget /> */}
             </div>
         </TutorialProvider>

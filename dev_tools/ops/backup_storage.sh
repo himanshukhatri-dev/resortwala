@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-SOURCE_DIR="/var/www/html/resortwala.com/api/storage/app/public"
+SOURCE_DIR="/var/www/html/api.resortwala.com/storage/app/public"
 BACKUP_DIR="/var/backups/resortwala/storage"
 DATE=$(date +%Y-%m-%d)
 FILENAME="storage_backup_${DATE}.tar.gz"

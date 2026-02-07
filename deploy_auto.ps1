@@ -35,7 +35,10 @@ param (
     [string]$Component,
     
     [string]$ServerIP = "77.37.47.243",
-    [string]$User = "root"
+    [string]$User = "root",
+    
+    [Parameter(Mandatory = $false)]
+    [switch]$SkipMigrate
 )
 
 # Interactive prompts if parameters not provided
@@ -176,7 +179,8 @@ Write-Host "This may take several minutes..." -ForegroundColor Gray
 Write-Host ""
 
 # Fix line endings (CRLF -> LF) and then execute
-ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "sed -i 's/\r$//' /tmp/deploy_from_git.sh && /bin/bash /tmp/deploy_from_git.sh $Environment $Branch $Component"
+$skipArg = if ($SkipMigrate) { "skip_migrate" } else { "" }
+ssh -o StrictHostKeyChecking=no "${User}@${ServerIP}" "sed -i 's/\r$//' /tmp/deploy_from_git.sh && /bin/bash /tmp/deploy_from_git.sh $Environment $Branch $Component $skipArg"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Deployment failed!"
