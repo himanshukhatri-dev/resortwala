@@ -39,6 +39,7 @@ import Connectors from './pages/Connectors';
 import Notifications from './pages/Notifications';
 import NotificationCenter from './pages/NotificationCenter/NotificationCenter';
 import LeadCrawler from './pages/intelligence/LeadCrawler';
+import SEOIntelligence from './pages/intelligence/SEOIntelligence';
 import ComingSoon from './pages/ComingSoon';
 import ChatbotManager from './pages/ChatbotManager';
 import AIVideoGenerator from './pages/AIVideoGenerator';
@@ -103,8 +104,9 @@ function App() {
 
               <Route path="/holidays" element={<HolidayApprovals />} />
 
-              <Route path="/intelligence" element={<Intelligence />} />
-              <Route path="/intelligence/leads" element={<LeadCrawler />} />
+              <Route path="intelligence" element={<Intelligence />} />
+              <Route path="intelligence/leads" element={<LeadCrawler />} />
+              <Route path="intelligence/seo" element={<SEOIntelligence />} />
               <Route path="/connectors" element={<Connectors />} />
               <Route path="/connectors/reports" element={<ConnectorReports />} />
               <Route path="/vendor-presentation" element={<VendorPresentation />} />
@@ -136,8 +138,7 @@ function App() {
               <Route path="/shared-inbox" element={<SharedInbox />} />
               <Route path="/settings/email" element={<EmailSettings />} />
 
-              <Route path="/connectors" element={<Connectors />} /> {/* New Route */}
-              <Route path="/reconciliation" element={<Reconciliation />} /> {/* New Route */}
+              <Route path="/reconciliation" element={<Reconciliation />} />
               <Route path="/communications" element={<Communications />} />
 
               {/* Blog & Content Management */}

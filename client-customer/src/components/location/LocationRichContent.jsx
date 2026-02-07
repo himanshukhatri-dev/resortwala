@@ -3,16 +3,27 @@ import { motion } from 'framer-motion';
 import { FaChevronDown, FaChevronUp, FaMapMarkerAlt, FaQuestionCircle } from 'react-icons/fa';
 import { Disclosure } from '@headlessui/react';
 
-const LocationRichContent = ({ locationKey }) => {
+const LocationRichContent = ({ locationKey, dynamicContent = null }) => {
     // Dynamic import to avoid hydration mismatches if data is missing
     const [content, setContent] = React.useState(null);
 
     React.useEffect(() => {
-        import('../../data/locationData').then(module => {
-            const data = module.LOCATION_CONTENT[locationKey?.toLowerCase()];
-            if (data) setContent(data);
-        });
-    }, [locationKey]);
+        if (dynamicContent) {
+            setContent({
+                aboutTitle: dynamicContent.h1,
+                aboutContent: dynamicContent.about,
+                faqs: dynamicContent.faqs?.map(f => ({
+                    question: f.q || f.question,
+                    answer: f.a || f.answer
+                }))
+            });
+        } else {
+            import('../../data/locationData').then(module => {
+                const data = module.LOCATION_CONTENT[locationKey?.toLowerCase()];
+                if (data) setContent(data);
+            });
+        }
+    }, [locationKey, dynamicContent]);
 
     if (!content) return null;
 

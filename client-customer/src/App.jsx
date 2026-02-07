@@ -69,6 +69,7 @@ const BookingFailed = lazy(() => import('./pages/BookingFailed'));
 const BookingPending = lazy(() => import('./pages/BookingPending'));
 const Maintenance = lazy(() => import('./pages/Maintenance'));
 const ComingSoon = lazy(() => import('./pages/ComingSoon'));
+const CategoryLanding = lazy(() => import('./pages/CategoryLanding'));
 const BlogList = lazy(() => import('./pages/BlogList'));
 const BlogPost = lazy(() => import('./pages/BlogPost'));
 
@@ -104,7 +105,10 @@ function App() {
                           <Route path="/property/:slug" element={<PropertyDetails />} />
                           <Route path="/book/:slug" element={<BookingPage />} />
                           <Route path="/checkout/:slug" element={<BookingPage />} />
-                          <Route path="/locations/:city" element={<Home />} />
+                          <Route path="locations/:city" element={<Home />} />
+                          <Route path="waterparks-near/:city" element={<CategoryLanding type="waterpark" />} />
+                          <Route path="villas-near/:city" element={<CategoryLanding type="villas" />} />
+                          <Route path="resorts-in/:city" element={<CategoryLanding type="resort" />} />
                           <Route path="/bookings" element={<UserBookings />} />
                           <Route path="/bookings/:id" element={<BookingDetails />} />
                           <Route path="/booking/success" element={<BookingSuccess />} />

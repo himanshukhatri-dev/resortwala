@@ -26,7 +26,7 @@ const CATEGORIES = [
     { id: 'waterpark', label: 'Water Park', icon: <FaSwimmingPool /> },
 ];
 
-export default function Home() {
+export default function Home({ landingMode = false, landingSeo = null }) {
     // const { activeCategory, setActiveCategory } = useSearch(); // Removed, handled below in sync section
     const { compareList, openCompareModal, isCompareModalOpen, closeCompareModal } = useCompare();
 
@@ -487,7 +487,11 @@ export default function Home() {
                 </div>
 
                 <div className="relative z-50 max-w-5xl w-full flex flex-col items-center animate-fade-up px-4">
-                    {SPECIAL_EVENTS.VALENTINES_MONTH.enabled ? (
+                    {landingSeo && landingSeo.h1 ? (
+                        <h1 className="text-4xl md:text-5xl lg:text-7xl font-extrabold text-white mb-2 md:mb-6 drop-shadow-2xl font-display tracking-tight leading-tight text-center">
+                            {landingSeo.h1}
+                        </h1>
+                    ) : SPECIAL_EVENTS.VALENTINES_MONTH.enabled ? (
                         <>
                             <motion.span
                                 initial={{ opacity: 0, y: 10 }}
@@ -696,8 +700,11 @@ export default function Home() {
 
 
                 {/* Local SEO Content - Only shows if city/location is selected */}
-                {(filters.location || city) && (
-                    <LocationRichContent locationKey={filters.location || city} />
+                {(filters.location || city || landingMode) && (
+                    <LocationRichContent
+                        locationKey={filters.location || city}
+                        dynamicContent={landingSeo}
+                    />
                 )}
 
                 <FilterModal

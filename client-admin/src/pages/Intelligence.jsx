@@ -45,6 +45,7 @@ import BackupManager from './intelligence/BackupManager';
 import ImpactLogs from './intelligence/ImpactLogs';
 import GrowthVisualizer from './intelligence/GrowthVisualizer';
 import DeveloperConsole from './intelligence/DeveloperConsole';
+import SEOIntelligence from './intelligence/SEOIntelligence';
 
 export default function Intelligence() {
     const [activeTab, setActiveTab] = useState('schema');
@@ -56,6 +57,7 @@ export default function Intelligence() {
         { id: 'process', label: 'Business Process', icon: FaCogs, component: BusinessProcessVisualizer },
         { id: 'data', label: 'Live Editor', icon: FaTable, component: LiveDataManager },
         { id: 'growth', label: 'Growth & Conversion', icon: FaChartLine, component: GrowthVisualizer },
+        { id: 'seo', label: 'SEO & Landing Pages', icon: FaSearch, component: SEOIntelligence },
         { id: 'backups', label: 'System Backup', icon: FaHistory, component: BackupManager },
         { id: 'logs', label: 'User Analytics', icon: FaNetworkWired, component: () => <div className="p-10 text-center"><p className="mb-4">Live User Interaction Logs have been moved to the primary Technical menu.</p><button onClick={() => window.location.href = '/admin/analytics'} className="px-6 py-2 bg-blue-600 text-white rounded-lg">Go to System Logs</button></div> },
     ];

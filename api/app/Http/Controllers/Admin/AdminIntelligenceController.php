@@ -3,12 +3,24 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Traits\SEOManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class AdminIntelligenceController extends Controller
 {
+    use SEOManager;
+
+    public function seo(Request $request)
+    {
+        $slug = $request->query('slug');
+        $pageType = $request->query('page_type');
+
+        $meta = $this->getSEOMetadata($slug, $pageType);
+
+        return response()->json($meta);
+    }
     /**
      * Get Database Schema for Visualization
      */

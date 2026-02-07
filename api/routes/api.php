@@ -277,12 +277,13 @@ Route::post('/payment/simulate', [\App\Http\Controllers\PaymentSimulationControl
 
 
 // Admin Intelligence
-Route::prefix('admin/intelligence')->middleware(['auth:sanctum', 'verified'])->group(function () {
+Route::prefix('admin/intelligence')->middleware(['auth:sanctum'])->group(function () {
     Route::get('/logs', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getLogs']);
     Route::get('/schema', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getSchema']);
     Route::get('/data/{table}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'getTableData']);
     Route::put('/data/{table}/{id}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'updateTableData']);
     Route::delete('/data/{table}/{id}', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'deleteTableData']);
+    Route::get('/seo', [App\Http\Controllers\Admin\AdminIntelligenceController::class, 'seo']);
 
     // 🧾 Accounts Center
     Route::prefix('accounts')->group(function () {
