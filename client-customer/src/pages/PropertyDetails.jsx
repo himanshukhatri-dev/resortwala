@@ -568,8 +568,8 @@ export default function PropertyDetails() {
     const PRICE_WEEKDAY = property ? (property.display_price || getPrice(adminPricing?.mon_thu) || parseFloat(property.price_mon_thu) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0) : 0;
     const PRICE_FRISUN = property ? (property.display_price || getPrice(adminPricing?.fri_sun) || parseFloat(property.price_fri_sun) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0) : 0;
     const PRICE_SATURDAY = property ? (property.display_price || getPrice(adminPricing?.sat) || parseFloat(property.price_sat) || parseFloat(property.ResortWalaRate) || parseFloat(property.Price) || 0) : 0;
-    const EXTRA_GUEST_CHARGE = safeFloat(property?.extra_guest_charge ?? onboardingPricing?.extraGuestCharge ?? onboardingPricing?.extraMattressCharge ?? property?.ExtraGuestCharge, 1000);
-    const FOOD_CHARGE = safeFloat(ob.foodRates?.perPerson ?? ob.foodRates?.veg, 1000);
+    const EXTRA_GUEST_CHARGE = safeFloat(property?.extra_guest_charge ?? onboardingPricing?.extraGuestCharge ?? onboardingPricing?.extraMattressCharge ?? property?.ExtraGuestCharge, 0);
+    const FOOD_CHARGE = safeFloat(ob.foodRates?.perPerson ?? ob.foodRates?.veg, 0);
     const GST_PERCENTAGE = safeFloat(property?.gst_percentage, 18);
     const pricing = property ? getPricing(property) : null;
 
@@ -600,9 +600,9 @@ export default function PropertyDetails() {
         let totalFood = 0;
 
         // Base Meal Rates
-        const VEG_RATE = safeFloat(ob.foodRates?.veg ?? FOOD_CHARGE, 1000);
-        const NONVEG_RATE = safeFloat(ob.foodRates?.nonVeg ?? ob.foodRates?.nonveg ?? FOOD_CHARGE, 1200);
-        const JAIN_RATE = safeFloat(ob.foodRates?.jain ?? VEG_RATE, 1000);
+        const VEG_RATE = safeFloat(ob.foodRates?.veg ?? FOOD_CHARGE, 0);
+        const NONVEG_RATE = safeFloat(ob.foodRates?.nonVeg ?? ob.foodRates?.nonveg ?? FOOD_CHARGE, 0);
+        const JAIN_RATE = safeFloat(ob.foodRates?.jain ?? VEG_RATE, 0);
         const MAX_MEAL_RATE = Math.max(VEG_RATE, NONVEG_RATE, JAIN_RATE);
 
         for (let i = 0; i < nights; i++) {
