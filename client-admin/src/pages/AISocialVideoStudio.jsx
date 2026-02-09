@@ -6,11 +6,13 @@ import {
     FaLayerGroup, FaPalette, FaInstagram, FaCloudUploadAlt
 } from 'react-icons/fa';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { useModal } from '../context/ModalContext';
 
 export default function AISocialVideoStudio() {
+    console.log('🎬 AISocialVideoStudio component rendered');
     const { token } = useAuth();
     const { showSuccess, showError } = useModal();
 
@@ -22,6 +24,22 @@ export default function AISocialVideoStudio() {
     const [properties, setProperties] = useState([]);
     const [selectedProperty, setSelectedProperty] = useState(null);
     const [mediaFiles, setMediaFiles] = useState([]);
+
+    // Debug: Log mediaFiles whenever it changes
+    useEffect(() => {
+        console.log('📦 mediaFiles state updated:', mediaFiles);
+        console.log('📦 Number of media items:', mediaFiles.length);
+        mediaFiles.forEach((item, idx) => {
+            console.log(`📦 Media[${idx}]:`, {
+                id: item.id,
+                url: item.url,
+                type: item.type,
+                selected: item.selected,
+                urlType: typeof item.url,
+                urlLength: item.url?.length
+            });
+        });
+    }, [mediaFiles]);
 
     // Job State
     const [jobId, setJobId] = useState(null);
@@ -42,6 +60,12 @@ export default function AISocialVideoStudio() {
     const [voiceId, setVoiceId] = useState('atlas'); // Default to Atlas
     const [voices, setVoices] = useState([]);
     const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+
+    // Debug: Component mount
+    useEffect(() => {
+        console.log('🚀 AISocialVideoStudio component MOUNTED');
+        return () => console.log('💀 AISocialVideoStudio component UNMOUNTED');
+    }, []);
 
     // Fetch Properties and Jobs on Mount
     useEffect(() => {
@@ -185,14 +209,39 @@ export default function AISocialVideoStudio() {
         setLoading(true);
         try {
             const res = await axios.get(`${API_BASE_URL}/properties/${propId}/images`);
-            const mapped = res.data.map(img => ({
-                id: img.id,
-                url: img.image_url,
-                selected: preSelectedIds ? preSelectedIds.includes(img.id) : true
-            }));
+            console.log("=== Property Images API Response ===");
+            console.log("Raw API Data:", res.data);
+            console.log("Number of images:", res.data.length);
+
+            const mapped = res.data
+                .map((img, index) => {
+                    const imgUrl = img.url || img.image_url || img.image_path || img.path;
+                    console.log(`Image ${index}:`, {
+                        id: img.id,
+                        rawUrl: imgUrl,
+                        type: img.type,
+                        allFields: img
+                    });
+
+                    return {
+                        id: img.id,
+                        url: imgUrl,
+                        type: img.type || (imgUrl?.match(/\.(mp4|webm|mov)$/) ? 'video' : 'image'),
+                        selected: preSelectedIds ? preSelectedIds.includes(img.id) : true
+                    };
+                })
+                .filter(item => {
+                    const hasUrl = !!item.url && item.url.trim() !== '';
+                    console.log(`Filtering image ${item.id}: hasUrl=${hasUrl}, url="${item.url}"`);
+                    return hasUrl;
+                });
+
+            console.log("Final mapped media files:", mapped);
+            console.log("Number of valid images after filtering:", mapped.length);
             setMediaFiles(mapped);
             setStep(2);
         } catch (err) {
+            console.error("Error loading property images:", err);
             showError("Failed to load images");
         } finally {
             setLoading(false);
@@ -205,12 +254,47 @@ export default function AISocialVideoStudio() {
 
     // Helper to fix image URLs if they are relative
     const getImageUrl = (url) => {
-        if (!url) return '';
-        if (url.startsWith('http')) return url;
-        // Check if starts with /storage
-        if (url.startsWith('/storage')) return `${API_BASE_URL.replace('/api', '')}${url}`;
-        // Check if just filename
-        return `${API_BASE_URL.replace('/api', '')}/storage/${url}`;
+        console.log('getImageUrl called with:', url, 'Type:', typeof url);
+
+        // Return null for falsy values or empty strings
+        if (!url || (typeof url === 'string' && url.trim() === '')) {
+            console.log('getImageUrl returning null for invalid URL');
+            return null;
+        }
+
+        // Already a full URL
+        if (url.startsWith('http')) {
+            console.log('getImageUrl returning full URL:', url);
+            return url;
+        }
+
+        // Starts with /storage
+        if (url.startsWith('/storage')) {
+            const fullUrl = `${API_BASE_URL.replace('/api', '')}${url}`;
+            console.log('getImageUrl constructed storage URL:', fullUrl);
+            return fullUrl;
+        }
+
+        // Just a filename - prepend storage path
+        const fullUrl = `${API_BASE_URL.replace('/api', '')}/storage/${url}`;
+        console.log('getImageUrl constructed filename URL:', fullUrl);
+        return fullUrl;
+    };
+
+    // Helper function to calculate script duration and video length
+    const calculateScriptDuration = (text) => {
+        if (!text || text.trim() === '') return { chars: 0, words: 0, ttsDuration: 0, videoDuration: 0 };
+
+        const chars = text.length;
+        const words = text.trim().split(/\s+/).length;
+        // Average speaking rate: 150 words per minute = 2.5 words per second
+        const ttsDuration = Math.ceil(words / 2.5);
+        // Video duration = TTS duration + (number of selected images * seconds per image)
+        const selectedCount = mediaFiles.filter(m => m.selected).length;
+        const imageDuration = selectedCount * 3; // Assuming 3 seconds per image
+        const videoDuration = Math.max(ttsDuration, imageDuration);
+
+        return { chars, words, ttsDuration, videoDuration };
     };
 
     const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -233,9 +317,13 @@ export default function AISocialVideoStudio() {
                         Authorization: `Bearer ${localStorage.getItem('admin_token')}`
                     }
                 });
+                console.log('📤 Uploaded file response:', res.data);
+                const uploadedUrl = res.data.url || res.data.path;
+                console.log('📤 Using URL for uploaded file:', uploadedUrl);
+
                 newUploads.push({
                     id: 'custom-' + Date.now() + Math.random(),
-                    url: res.data.url, // URL for preview
+                    url: uploadedUrl, // URL for preview
                     path: res.data.path, // Path for backend
                     type: res.data.type,
                     selected: true,
@@ -329,7 +417,7 @@ export default function AISocialVideoStudio() {
                         <FaInstagram size={24} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">AI Social Video Studio</h1>
+                        <h1 className="text-2xl font-bold text-gray-900">AI Social Video Studio (v2.3)</h1>
                         <p className="text-gray-500 text-sm">Generate viral Instagram Reels & Posts instantly.</p>
                     </div>
                 </div>
@@ -397,32 +485,46 @@ export default function AISocialVideoStudio() {
                             <p className="text-xs text-gray-400 mb-2 italic">Drag images to reorder sequence. Click to toggle selection.</p>
 
                             <Reorder.Group axis="y" values={mediaFiles} onReorder={setMediaFiles} className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                {mediaFiles.map((item) => (
-                                    <Reorder.Item key={item.id} value={item} className="relative">
-                                        <div
-                                            onClick={() => toggleMedia(item.id)}
-                                            className={`relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all group ${item.selected ? 'border-pink-500 ring-2 ring-pink-100 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'}`}
-                                        >
-                                            <SafeZoneOverlay />
-                                            {item.type === 'video' ? (
-                                                <video src={getImageUrl(item.url)} className="w-full h-full object-cover" muted />
-                                            ) : (
-                                                <img src={getImageUrl(item.url)} alt="media" className="w-full h-full object-cover" />
-                                            )}
+                                {mediaFiles.map((item, mapIndex) => {
+                                    console.log(`🖼️ Rendering media item ${mapIndex}:`, item);
+                                    const imageUrl = getImageUrl(item.url);
+                                    console.log(`🖼️ Computed imageUrl for item ${mapIndex}:`, imageUrl);
 
-                                            {item.selected && (
-                                                <div className="absolute top-2 right-2 bg-pink-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs shadow-md">
-                                                    <FaCheck />
-                                                </div>
-                                            )}
-                                            {item.isCustom && (
-                                                <div className="absolute bottom-2 right-2 bg-blue-500 text-white text-[10px] px-1 rounded shadow-md">
-                                                    Custom
-                                                </div>
-                                            )}
-                                        </div>
-                                    </Reorder.Item>
-                                ))}
+                                    return (
+                                        <Reorder.Item key={item.id} value={item} className="relative">
+                                            <div
+                                                onClick={() => toggleMedia(item.id)}
+                                                className={`relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all group ${item.selected ? 'border-pink-500 ring-2 ring-pink-100 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                            >
+                                                <SafeZoneOverlay />
+                                                {item.type === 'video' ? (
+                                                    imageUrl ? (
+                                                        <video src={imageUrl} className="w-full h-full object-cover" muted />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">No Video</div>
+                                                    )
+                                                ) : (
+                                                    imageUrl ? (
+                                                        <img src={imageUrl} alt="media" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">No Image</div>
+                                                    )
+                                                )}
+
+                                                {item.selected && (
+                                                    <div className="absolute top-2 right-2 bg-pink-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs shadow-md">
+                                                        <FaCheck />
+                                                    </div>
+                                                )}
+                                                {item.isCustom && (
+                                                    <div className="absolute bottom-2 right-2 bg-blue-500 text-white text-[10px] px-1 rounded shadow-md">
+                                                        Custom
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Reorder.Item>
+                                    );
+                                })}
                             </Reorder.Group>
                             <Reorder.Group axis="x" values={mediaFiles} onReorder={setMediaFiles} className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar">
                                 {mediaFiles.map((media) => (
@@ -431,7 +533,9 @@ export default function AISocialVideoStudio() {
                                             onClick={() => toggleMedia(media.id)}
                                             className={`relative w-full h-full rounded-lg overflow-hidden cursor-pointer transition-all ${media.selected ? 'ring-2 ring-pink-500 scale-100' : 'opacity-50 grayscale scale-95'}`}
                                         >
-                                            <img src={getImageUrl(media.url)} className="w-full h-full object-cover select-none" alt="" draggable={false} />
+                                            {getImageUrl(media.url) && (
+                                                <img src={getImageUrl(media.url)} className="w-full h-full object-cover select-none" alt="" draggable={false} />
+                                            )}
                                             {media.selected && (
                                                 <div className="absolute top-1 right-1 bg-pink-500 text-white rounded-full p-1 shadow">
                                                     <FaCheck size={8} />
@@ -503,6 +607,36 @@ export default function AISocialVideoStudio() {
                                                 value={script}
                                                 onChange={(e) => setScript(e.target.value)}
                                             />
+
+                                            {/* Script Duration Calculator */}
+                                            {script && (() => {
+                                                const { chars, words, ttsDuration, videoDuration } = calculateScriptDuration(script);
+                                                return (
+                                                    <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                                            <div>
+                                                                <span className="text-gray-500">Characters:</span>
+                                                                <span className="ml-2 font-bold text-gray-700">{chars}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-gray-500">Words:</span>
+                                                                <span className="ml-2 font-bold text-gray-700">{words}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-gray-500">TTS Duration:</span>
+                                                                <span className="ml-2 font-bold text-blue-600">~{ttsDuration}s</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-gray-500">Video Length:</span>
+                                                                <span className="ml-2 font-bold text-green-600">~{videoDuration}s</span>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-2 italic">
+                                                            💡 Video length = max(TTS duration, {mediaFiles.filter(m => m.selected).length} images × 3s)
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })()}
 
                                             <div>
                                                 <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Voice</label>

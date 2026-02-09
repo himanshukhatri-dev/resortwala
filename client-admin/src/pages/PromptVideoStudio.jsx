@@ -16,6 +16,7 @@ const PromptVideoStudio = () => {
 
     const [generatedScript, setGeneratedScript] = useState('');
     const [scenes, setScenes] = useState([]);
+    const [uploadedFiles, setUploadedFiles] = useState([]);
     const [jobId, setJobId] = useState(null);
     const [jobs, setJobs] = useState([]);
 
@@ -105,7 +106,6 @@ const PromptVideoStudio = () => {
         setProcessing(false);
     };
 
-    const [uploadedFiles, setUploadedFiles] = useState([]);
 
     const handleUpload = async (e) => {
         const files = Array.from(e.target.files);
@@ -376,7 +376,7 @@ const PromptVideoStudio = () => {
                             </div>
 
                             <div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-purple-100">
-                                <span className="text-xs font-bold text-class text-purple-500 uppercase flex justify-between">
+                                <span className="text-xs font-bold text-purple-500 uppercase flex justify-between">
                                     Timeline Editor <span className="text-gray-400 normal-case overflow-hidden">Re-order & Edit Text</span>
                                 </span>
                                 <div className="mt-3 space-y-3">
