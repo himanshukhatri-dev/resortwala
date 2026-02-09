@@ -136,12 +136,17 @@ export default function AISocialVideoStudio() {
     };
 
     const SafeZoneOverlay = () => {
-        if (!showSafeZones || previewPlatform === 'none') return null;
+        if (!showSafeZones) return null;
 
         return (
-            <div className="absolute inset-0 pointer-events-none z-10 border-red-500/20">
+            <div className="absolute inset-0 pointer-events-none z-10 border-2 border-red-500/30 rounded-lg">
+                <div className="absolute top-2 left-2 bg-red-500/80 text-white text-[8px] px-1 rounded">Safe Zone</div>
+
+                {/* Default/Instagram Safe Zone Guide */}
+                <div className="absolute inset-[10%] border border-dashed border-red-500/50 rounded-md"></div>
+
                 {/* Platform Specific UIs */}
-                {previewPlatform === 'instagram' && (
+                {(previewPlatform === 'instagram' || previewPlatform === 'none') && (
                     <>
                         {/* Bottom Info Bar */}
                         <div className="absolute bottom-0 left-0 right-0 h-[25%] bg-gradient-to-t from-black/40 to-transparent" />
@@ -363,7 +368,25 @@ export default function AISocialVideoStudio() {
         const selectedIds = mediaFiles.filter(m => m.selected).map(m => m.id);
 
         try {
-            const res = await axios.post(`${API_BASE_URL}/admin/video-generator/render`, {
+            // Calculate Duration per Scene
+            let perSceneDuration = 3; // Default 3s
+            if (useVoiceover && script) {
+                const { ttsDuration } = calculateScriptDuration(script);
+                const imageCount = selectedIds.length || 1;
+                // Distribute TTS length across images, but ensure at least 2.5s per image
+                // If TTS is shorter than images*2.5, video will be longer (images*2.5).
+                // If TTS is longer, extend images to fit.
+                perSceneDuration = Math.max(2.5, ttsDuration / imageCount);
+            }
+
+            // Construct Scenes to control duration
+            const generatedScenes = selectedIds.map((id, idx) => ({
+                text: idx === 0 ? selectedProperty.Name : (idx === 1 ? selectedProperty.Location : ""), // Simple text for first 2 slides
+                duration: perSceneDuration,
+                visual_cue: mood, // Metadata
+            }));
+
+            const payload = {
                 property_id: selectedProperty.PropertyId,
                 template_id: mood,
                 bundle_mode: true, // NEW FLAG for Dual Output
@@ -374,9 +397,16 @@ export default function AISocialVideoStudio() {
                     media_paths: mediaFiles.filter(m => m.selected && m.isCustom).map(m => m.path), // Custom paths
                     mood: mood,
                     script: useVoiceover ? script : null,
-                    voice_id: useVoiceover ? voiceId : null
+                    voice_id: useVoiceover ? voiceId : null,
+                    scenes: generatedScenes // <--- EXPLICIT SCENES TO FIX DURATION
                 }
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            };
+
+            console.log("🚀 Generating Video with Payload:", JSON.stringify(payload, null, 2));
+
+            const res = await axios.post(`${API_BASE_URL}/admin/video-generator/render`, payload, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
             setJobId(res.data.job_id);
             fetchJobs(); // Refresh list
@@ -417,7 +447,7 @@ export default function AISocialVideoStudio() {
                         <FaInstagram size={24} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">AI Social Video Studio (v2.3)</h1>
+                        <h1 className="text-2xl font-bold text-gray-900">AI Social Video Studio (v2.4)</h1>
                         <p className="text-gray-500 text-sm">Generate viral Instagram Reels & Posts instantly.</p>
                     </div>
                 </div>

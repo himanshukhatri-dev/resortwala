@@ -49,7 +49,11 @@ class TextToSpeechService
         $safePath = escapeshellarg($outputPath);
 
         // Try direct command first, then python module fallback
-        $cmd = "edge-tts --voice \"{$config['key']}\" --text {$safeText} --write-media {$safePath}";
+        // USE ABSOLUTE PATHS found in container
+        $edgeTtsPath = '/usr/local/bin/edge-tts';
+        $pythonPath = '/usr/bin/python3';
+
+        $cmd = "{$edgeTtsPath} --voice \"{$config['key']}\" --text {$safeText} --write-media {$safePath}";
 
         try {
             $output = [];
@@ -62,17 +66,12 @@ class TextToSpeechService
             if ($returnCode !== 0 || !file_exists($outputPath)) {
                 // Fallback: Python Module
                 Log::warning("EdgeTTS CLI failed, trying python module...");
-                $cmdAttempt2 = "python -m edge_tts --voice \"{$config['key']}\" --text {$safeText} --write-media {$safePath}";
+                // Use python3 explicitly with absolute path
+                $cmdAttempt2 = "{$pythonPath} -m edge_tts --voice \"{$config['key']}\" --text {$safeText} --write-media {$safePath}";
                 exec($cmdAttempt2 . " 2>&1", $output, $returnCode);
 
                 if ($returnCode !== 0) {
-                    // Last Resort: python3
-                    $cmdAttempt3 = "python3 -m edge_tts --voice \"{$config['key']}\" --text {$safeText} --write-media {$safePath}";
-                    exec($cmdAttempt3 . " 2>&1", $output, $returnCode);
-
-                    if ($returnCode !== 0) {
-                        throw new \Exception("EdgeTTS failed: " . implode("\n", $output));
-                    }
+                    throw new \Exception("EdgeTTS failed: " . implode("\n", $output));
                 }
             }
 

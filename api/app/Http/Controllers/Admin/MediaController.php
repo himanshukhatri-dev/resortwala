@@ -74,25 +74,25 @@ class MediaController extends Controller
             $protectedIds = ImageBackupVersion::pluck('image_id')->toArray();
             $images = PropertyImage::whereNotIn('id', $protectedIds)->limit($limit)->pluck('id')->toArray();
         }
-        
+
         if (empty($images)) {
-             return response()->json(['message' => 'No images eligible for processing.', 'count' => 0]);
+            return response()->json(['message' => 'No images eligible for processing.', 'count' => 0]);
         }
 
         $batchId = 'manual-' . now()->format('Ymd-His') . '-' . Str::random(6);
-        
+
         // Dispatch Job
         if ($sync) {
             ProcessWatermarkBatch::dispatchSync($images, $batchId, $request->user()->id ?? 'admin');
             return response()->json([
-                'message' => "Successfully Processed " . count($images) . " images.", 
+                'message' => "Successfully Processed " . count($images) . " images.",
                 'batch_id' => $batchId,
                 'count' => count($images)
             ]);
         } else {
             ProcessWatermarkBatch::dispatch($images, $batchId, $request->user()->id ?? 'admin');
             return response()->json([
-                'message' => 'Watermark Batch Queued', 
+                'message' => 'Watermark Batch Queued',
                 'batch_id' => $batchId,
                 'count' => count($images)
             ]);
@@ -108,49 +108,49 @@ class MediaController extends Controller
             // Check FFmpeg
             $ffmpeg = trim(shell_exec('which ffmpeg'));
             $log['ffmpeg_path'] = $ffmpeg ?: 'NOT FOUND via which';
-            
+
             // 1. Get Image (Try last 10 to avoid broken records)
             $images = PropertyImage::latest()->take(10)->get();
             $image = null;
             $validPath = null;
             $log['paths_checked'] = [];
 
-                foreach ($images as $img) {
-                     $path = $img->image_path;
-                     // Handle 'properties/' prefix logic (Common in this app)
-                     $subdirPath = str_starts_with($path, 'properties/') ? $path : 'properties/' . $path;
-                     
-                     $candidates = [
-                        $path,       // 6/foo.jpg
-                        $subdirPath, // properties/6/foo.jpg
-                     ];
-                     
-                     foreach ($candidates as $c) {
-                        // Check storage/app/public (Primary)
-                        $p = storage_path('app/public/' . $c); 
-                        if (file_exists($p)) {
-                             $image = $img;
-                             $validPath = $p;
-                             $log['paths_checked'][$img->id] = 'FOUND in Storage: ' . $p;
-                             break 2;
-                        }
-                        
-                        // Check public/ (Legacy/Symlink)
-                        $pPub = public_path($c); 
-                         if (file_exists($pPub)) {
-                             $image = $img;
-                             $validPath = $pPub;
-                             $log['paths_checked'][$img->id] = 'FOUND in Public: ' . $pPub;
-                             break 2;
-                        }
-                     }
-                    $log['paths_checked'][$img->id] = 'NOT FOUND';
+            foreach ($images as $img) {
+                $path = $img->image_path;
+                // Handle 'properties/' prefix logic (Common in this app)
+                $subdirPath = str_starts_with($path, 'properties/') ? $path : 'properties/' . $path;
+
+                $candidates = [
+                    $path,       // 6/foo.jpg
+                    $subdirPath, // properties/6/foo.jpg
+                ];
+
+                foreach ($candidates as $c) {
+                    // Check storage/app/public (Primary)
+                    $p = storage_path('app/public/' . $c);
+                    if (file_exists($p)) {
+                        $image = $img;
+                        $validPath = $p;
+                        $log['paths_checked'][$img->id] = 'FOUND in Storage: ' . $p;
+                        break 2;
+                    }
+
+                    // Check public/ (Legacy/Symlink)
+                    $pPub = public_path($c);
+                    if (file_exists($pPub)) {
+                        $image = $img;
+                        $validPath = $pPub;
+                        $log['paths_checked'][$img->id] = 'FOUND in Public: ' . $pPub;
+                        break 2;
+                    }
                 }
+                $log['paths_checked'][$img->id] = 'NOT FOUND';
+            }
 
             if (!$image || !$validPath) {
-                 return response()->json(['error' => 'No valid property images found on disk (Checked 10)', 'log' => $log]);
+                return response()->json(['error' => 'No valid property images found on disk (Checked 10)', 'log' => $log]);
             }
-            
+
             $log['image_id'] = $image->id;
             $log['image_db_path'] = $image->image_path;
             $log['resolved_path'] = $validPath;
@@ -158,25 +158,26 @@ class MediaController extends Controller
             // 2. Check Logo
             $logoPath = public_path('resortwala-logo.png');
             $log['logo_path'] = $logoPath;
-            if (!file_exists($logoPath)) throw new \Exception("Logo missing at $logoPath");
+            if (!file_exists($logoPath))
+                throw new \Exception("Logo missing at $logoPath");
 
             // 3. Run FFmpeg
             $tempOutput = sys_get_temp_dir() . '/' . uniqid('debug_wm_') . '.jpg';
             $safeInput = escapeshellarg($validPath);
             $safeLogo = escapeshellarg($logoPath);
             $safeOutput = escapeshellarg($tempOutput);
-            
+
             // Simple command
             $cmd = "ffmpeg -y -i {$safeInput} -i {$safeLogo} -filter_complex \"[1:v]scale=iw*0.25:-1[wm];[0:v][wm]overlay=W-w-20:H-h-20\" -q:v 2 {$safeOutput} 2>&1";
             $log['cmd'] = $cmd;
-            
+
             $output = shell_exec($cmd);
             $log['ffmpeg_output'] = substr($output, 0, 1000);
-            
+
             if (!file_exists($tempOutput) || filesize($tempOutput) < 100) {
-                 throw new \Exception("FFmpeg failed to generate file.");
+                throw new \Exception("FFmpeg failed to generate file.");
             }
-            
+
             $log['success'] = true;
             $log['temp_file_size'] = filesize($tempOutput);
             @unlink($tempOutput);
@@ -196,7 +197,7 @@ class MediaController extends Controller
     {
         $total = PropertyImage::count();
         $uniqueBackedUp = ImageBackupVersion::distinct('image_id')->count('image_id');
-        
+
         return response()->json([
             'total_images' => $total,
             'protected_images' => $uniqueBackedUp,
@@ -211,42 +212,47 @@ class MediaController extends Controller
     {
         $voice = $request->input('voice', 'atlas');
         $text = $request->input('text', 'Hello world, this is a test audio generation.');
-        
+
         $log = [];
         $log['voice_input'] = $voice;
-        
+
         // Manual Command Construction (Replicating TextToSpeechService)
         // Hardcoded mapped key for test
-        $key = 'en-US-GuyNeural'; 
-        if ($voice === 'aura') $key = 'en-US-AriaNeural';
-        
+        $key = 'en-US-GuyNeural';
+        if ($voice === 'aura')
+            $key = 'en-US-AriaNeural';
+
         try {
-            // Check edge-tts
-            $check = shell_exec('edge-tts --version 2>&1');
-            $log['edge_tts_version'] = $check ?: 'Not found in PATH';
+            // Check edge-tts (Absolute Path)
+            $edgeTtsPath = '/usr/local/bin/edge-tts';
+            $pythonPath = '/usr/bin/python3';
+
+            $check = shell_exec("{$edgeTtsPath} --version 2>&1");
+            $log['edge_tts_version'] = $check ?: 'Not found via absolute path';
 
             // Check python edge-tts
-            $checkPy = shell_exec('python3 -m edge_tts --version 2>&1');
-            $log['python_module_version'] = $checkPy ?: 'Module not found';
+            $checkPy = shell_exec("{$pythonPath} -m edge_tts --version 2>&1");
+            $log['python_module_version'] = $checkPy ?: 'Module not found via python3';
 
             $filename = 'debug_tts_' . time() . '.mp3';
             $outputPath = storage_path('app/public/audio/' . $filename);
-            
-            if (!file_exists(dirname($outputPath))) mkdir(dirname($outputPath), 0755, true);
+
+            if (!file_exists(dirname($outputPath)))
+                mkdir(dirname($outputPath), 0755, true);
 
             $safeText = escapeshellarg($text);
             $safePath = escapeshellarg($outputPath);
-            
-            $cmd = "edge-tts --voice {$key} --text {$safeText} --write-media {$safePath}";
+
+            $cmd = "{$edgeTtsPath} --voice {$key} --text {$safeText} --write-media {$safePath}";
             $log['cmd'] = $cmd;
-            
+
             $output = [];
             $returnCode = 0;
             exec($cmd . " 2>&1", $output, $returnCode);
-            
+
             $log['output'] = $output;
             $log['return_code'] = $returnCode;
-            
+
             if ($returnCode === 0 && file_exists($outputPath)) {
                 $log['success'] = true;
                 $log['url'] = url('storage/audio/' . $filename);
@@ -254,12 +260,12 @@ class MediaController extends Controller
             } else {
                 $log['success'] = false;
                 // Try Python module
-                $cmd2 = "python3 -m edge_tts --voice {$key} --text {$safeText} --write-media {$safePath}";
+                $cmd2 = "{$pythonPath} -m edge_tts --voice {$key} --text {$safeText} --write-media {$safePath}";
                 $log['cmd_fallback'] = $cmd2;
                 exec($cmd2 . " 2>&1", $output2, $returnCode2);
                 $log['output_fallback'] = $output2;
                 $log['return_code_fallback'] = $returnCode2;
-                
+
                 if ($returnCode2 === 0 && file_exists($outputPath)) {
                     $log['success'] = true;
                     $log['method'] = 'fallback_python3';
@@ -279,18 +285,18 @@ class MediaController extends Controller
     {
         $image = PropertyImage::findOrFail($id);
         $backup = ImageBackupVersion::where('image_id', $id)
-                    ->where('status', 'verified')
-                    ->latest()
-                    ->first();
+            ->where('status', 'verified')
+            ->latest()
+            ->first();
 
         // 1. Current (Live) URL
         $path = $image->image_path;
         if (!Str::startsWith($path, 'properties/')) {
             $path = 'properties/' . $path;
         }
-        
-        $liveUrl = url('storage/' . $path) . '?t=' . time(); 
-        
+
+        $liveUrl = url('storage/' . $path) . '?t=' . time();
+
         // 2. Backup (Old) URL
         $backupUrl = null;
         if ($backup) {
@@ -318,11 +324,11 @@ class MediaController extends Controller
         $backups = ImageBackupVersion::all();
         $count = 0;
         foreach ($backups as $backup) {
-             if (Storage::disk('public')->exists($backup->backup_path)) {
-                 Storage::disk('public')->delete($backup->backup_path);
-             }
-             $backup->delete();
-             $count++;
+            if (Storage::disk('public')->exists($backup->backup_path)) {
+                Storage::disk('public')->delete($backup->backup_path);
+            }
+            $backup->delete();
+            $count++;
         }
         return response()->json(['message' => "Purged {$count} history records."]);
     }
@@ -345,7 +351,7 @@ class MediaController extends Controller
             try {
                 // Restore Logic Reuse
                 $this->backupService->restoreBackup($id);
-                
+
                 // Cleanup
                 $backup = ImageBackupVersion::find($id);
                 if ($backup) {
@@ -361,7 +367,7 @@ class MediaController extends Controller
         }
 
         return response()->json([
-            'message' => "Restored {$successCount} images.", 
+            'message' => "Restored {$successCount} images.",
             'errors' => $errors,
             'success_count' => $successCount
         ]);
@@ -369,7 +375,7 @@ class MediaController extends Controller
     /**
      * Generic Media Upload (for Video Studio etc)
      */
-    public function uploadMedia(Request $request) 
+    public function uploadMedia(Request $request)
     {
         $request->validate([
             'file' => 'required|file|mimes:jpg,jpeg,png,mp4,mov,avi|max:51200' // 50MB max
@@ -377,7 +383,7 @@ class MediaController extends Controller
 
         $file = $request->file('file');
         $path = $file->store('uploads/studio', 'public');
-        
+
         return response()->json([
             'path' => $path,
             'url' => url('storage/' . $path),
