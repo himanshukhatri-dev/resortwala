@@ -21,7 +21,15 @@ class TextToSpeechService
         'luna' => ['key' => 'en-US-MichelleNeural', 'gender' => 'female'],
         'zara' => ['key' => 'hi-IN-SwaraNeural', 'gender' => 'female'], // Hindi
         'aarohi' => ['key' => 'mr-IN-AarohiNeural', 'gender' => 'female'], // Marathi
-        'manohar' => ['key' => 'mr-IN-ManoharNeural', 'gender' => 'male'] // Marathi
+        'manohar' => ['key' => 'mr-IN-ManoharNeural', 'gender' => 'male'], // Marathi
+
+        // New Hindi Voices
+        'madhur' => ['key' => 'hi-IN-MadhurNeural', 'gender' => 'male'],
+        'swara' => ['key' => 'hi-IN-SwaraNeural', 'gender' => 'female'],
+
+        // Indian English (Non-Bot feel)
+        'prabhat' => ['key' => 'en-IN-PrabhatNeural', 'gender' => 'male'],
+        'neerja' => ['key' => 'en-IN-NeerjaNeural', 'gender' => 'female']
     ];
 
     public function generateAudio(string $text, string $voiceId, string $language = 'en', ?string $expectedGender = null)

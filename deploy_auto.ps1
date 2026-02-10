@@ -209,9 +209,6 @@ else {
     Write-Host "  API:      https://resortwala.com/api/properties" -ForegroundColor White
 }
 
-Write-Host ""
-Write-Host "Deployment log saved on server at: /tmp/deploy_from_git.sh" -ForegroundColor Gray
-}
 
 Write-Host ""
 Write-Host "Deployment log saved on server at: /tmp/deploy_from_git.sh" -ForegroundColor Gray

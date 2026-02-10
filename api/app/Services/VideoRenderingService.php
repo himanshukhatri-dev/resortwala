@@ -307,6 +307,14 @@ class VideoRenderingService
         // 3. Audio Setup (Music + TTS)
         $templateId = $job->template_id ?? 'luxury';
         $trackConfig = $this->musicService->getTrackForTemplate($templateId);
+
+        // Custom Music Override
+        if (($job->options['music_source'] ?? '') === 'custom' && !empty($job->options['music_path'])) {
+            $customPath = $this->resolvePath($job->options['music_path']);
+            if (file_exists($customPath)) {
+                $trackConfig['path'] = $customPath;
+            }
+        }
         $voicePath = $job->options['audio_source'] ?? null;
         $fullVoicePath = $voicePath ? storage_path('app/public/' . $voicePath) : null;
         $hasVoice = ($fullVoicePath && file_exists($fullVoicePath));
@@ -348,6 +356,12 @@ class VideoRenderingService
             $idx++;
         }
 
+        // Handle Music Volume
+        $musicVolume = floatval($job->options['music_volume'] ?? 0.1); // Default to 10% volume (background)
+        // If user wants more control, we can expose this. 
+        // Previously hardcoded to 1.5 for voice. Relative mixing.
+        $voiceVolume = 1.5;
+
         // 5. Visual Processing (Effects Service)
         $fx = app(\App\Services\Video\VisualEffectsService::class);
         $prevStream = "";
@@ -374,7 +388,8 @@ class VideoRenderingService
                 $trackConfig['filters'] . "," . // Color Grade
                 "zoompan=z='{$zoomExpr}':d={$zFrames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={$width}x{$height}:fps=30[{$streamName}Raw];";
 
-            // Step B: Typography (DrawText)
+            // Step B: Typography (DrawText) - REMOVED AS REQUESTED
+            /*
             // Add Scene Text (Hook / Feature)
             $text = str_replace(["'", ":"], ["’", "\\:"], $scene['text']);
             $fontFile = public_path('fonts/Montserrat-Bold.ttf'); // Ensure this exists or use default
@@ -388,6 +403,9 @@ class VideoRenderingService
                 "box=1:boxcolor=black@0.5:boxborderw=20:" .
                 "x=(w-text_w)/2:y=(h-text_h)-150:" . // Bottom center
                 "alpha='{$alpha}'[{$streamName}Txt];";
+            */
+            // Skip text overlay, just output Raw as Txt stream name for compatibility
+            $filterComplex .= "[{$streamName}Raw]null[{$streamName}Txt];";
 
             // Step C: Transitions
             if ($i === 0) {
@@ -450,11 +468,14 @@ class VideoRenderingService
         $finalAudio = "[aFinal]";
 
         if ($hasVoice) {
-            $filterComplex .= "[{$voiceIdx}:a]volume=1.5[aVoice];";
-            $filterComplex .= "[aVoice][aMusic]amix=inputs=2:duration=longest[aMix];";
+            $filterComplex .= "[{$voiceIdx}:a]volume={$voiceVolume}[aVoice];";
+            $filterComplex .= "[{$musicIdx}:a]volume={$musicVolume}[aMusicVol];";
+            // Mix Voice + Music
+            $filterComplex .= "[aVoice][aMusicVol]amix=inputs=2:duration=longest[aMix];";
             $finalAudio = "[aMix]";
         } else {
-            $finalAudio = "[aMusic]";
+            $filterComplex .= "[{$musicIdx}:a]volume={$musicVolume}[aMusicVol];";
+            $finalAudio = "[aMusicVol]";
         }
 
         // 7. Watermark & Branding (Top Right)
@@ -483,12 +504,19 @@ class VideoRenderingService
     private function resolveImages($ids, $paths, $theme, $prompt = '')
     {
         $images = [];
+
+        // Merge Both Sources
         if (!empty($ids)) {
             $data = \App\Models\PropertyImage::whereIn('id', $ids)->get(['image_path']);
             foreach ($data as $img)
                 $images[] = $img->image_path;
-        } elseif (!empty($paths)) {
-            $images = $paths;
+        }
+
+        if (!empty($paths)) {
+            // Add custom paths
+            foreach ($paths as $p) {
+                $images[] = $p;
+            }
         }
 
         if (empty($images)) {
