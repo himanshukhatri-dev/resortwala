@@ -46,30 +46,46 @@ class VideoRenderingService
                 $publicPath = 'videos/' . $outputFilename;
             } else {
                 // Real Processing
-                // Prepare Options with Scenes if missing
-                // This ensures buildVideoCommand has data
                 $options = $job->options ?? [];
 
+                // 1. Background Scene/Script Generation (if missing)
                 if (empty($options['scenes'])) {
-                    // Generate AI Script Data
                     $scriptService = app(\App\Services\AIScriptGeneratorService::class);
-                    // Use Prompt or Property?
-                    // Basic heuristic: if media_ids exist, likely property contextual.
-                    if (!empty($options['media_ids'])) {
-                        // TODO: Load Property? For now, just generate generic luxury
-                        // Or rely on fallback inside buildVideoCommand.
-                        // Ideally we should do it here to save it.
-                    } else {
+                    if (!empty($options['prompt'])) {
                         // Prompt Mode
-                        $prompt = $options['prompt'] ?? 'Luxury Stay';
-                        $dat = $scriptService->generateFromPromptData($prompt);
+                        $prompt = $options['prompt'];
+                        $mood = $options['mood'] ?? 'energetic';
+                        $dat = $scriptService->generateFromPromptData($prompt, $mood);
                         $options['scenes'] = $dat['scenes'];
-                        // Save back to job so we can debug scenes later
+                        $options['script'] = implode(" ", array_column($dat['scenes'], 'text'));
+                    } elseif (!empty($job->property_id)) {
+                        // Property Mode
+                        $property = \App\Models\PropertyMaster::find($job->property_id);
+                        if ($property) {
+                            $vibe = $options['vibe'] ?? 'luxury';
+                            $dat = $scriptService->generateScriptData($property, $vibe);
+                            $options['scenes'] = $dat['scenes'];
+                            $options['script'] = implode(" ", array_column($dat['scenes'], 'text'));
+                        }
+                    }
+                    // Save progress back to job
+                    $job->update(['options' => $options]);
+                }
+
+                // 2. Background TTS Generation (if missing)
+                if (empty($options['audio_source']) && !empty($options['script']) && !empty($options['voice_id'])) {
+                    $ttsService = app(\App\Services\TextToSpeechService::class);
+                    try {
+                        $audioPath = $ttsService->generateAudio($options['script'], $options['voice_id']);
+                        $options['audio_source'] = $audioPath;
                         $job->update(['options' => $options]);
+                    } catch (\Exception $e) {
+                        Log::error("Background TTS Failed: " . $e->getMessage());
+                        // Fallback: Continue without voice, use music only
                     }
                 }
 
-                // 1. Generate REEL (9:16) - Primary
+                // 3. Generate REEL (9:16) - Primary
                 $reelFilename = 'video_' . $job->id . '_reel_' . time() . '.mp4';
                 $reelPath = $outputDir . '/' . $reelFilename;
                 $publicPath = 'videos/' . $reelFilename;
