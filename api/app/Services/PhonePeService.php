@@ -148,12 +148,39 @@ class PhonePeService
                         'transaction_id' => $transactionId
                     ];
                 }
+
+                Log::error("PhonePe Initiation Failed", [
+                    'host' => $host,
+                    'status' => $response->status(),
+                    'response' => $data,
+                    'payload_summary' => [
+                        'mid' => $this->merchantId,
+                        'txId' => $transactionId,
+                        'amount' => $amountPaise
+                    ]
+                ]);
+
+                $lastError = [
+                    'status' => $response->status(),
+                    'response' => $data,
+                    'host' => $host
+                ];
             } catch (\Exception $e) {
-                Log::warning("PhonePe Manual Resilient Host Failed: $host");
+                Log::error("PhonePe Exception", [
+                    'host' => $host,
+                    'error' => $e->getMessage()
+                ]);
+                $lastError = ['error' => $e->getMessage(), 'host' => $host];
             }
         }
 
-        return ['success' => false, 'message' => 'Payment Gateway Error. Please try later.'];
+        return [
+            'success' => false,
+            'message' => 'Payment Gateway Error. Please try later.',
+            'code' => 'GATEWAY_ERROR',
+            'debug' => $lastError ?? [],
+            'detail' => $lastError['response'] ?? []
+        ];
     }
 
     public function processCallback($encodedResponse, $checksumHeader)
