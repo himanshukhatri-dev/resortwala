@@ -469,12 +469,12 @@ class VideoRenderingService
 
         if ($hasVoice) {
             $filterComplex .= "[{$voiceIdx}:a]volume={$voiceVolume}[aVoice];";
-            $filterComplex .= "[{$musicIdx}:a]volume={$musicVolume}[aMusicVol];";
+            $filterComplex .= "[aMusic]volume={$musicVolume}[aMusicVol];";
             // Mix Voice + Music
             $filterComplex .= "[aVoice][aMusicVol]amix=inputs=2:duration=longest[aMix];";
             $finalAudio = "[aMix]";
         } else {
-            $filterComplex .= "[{$musicIdx}:a]volume={$musicVolume}[aMusicVol];";
+            $filterComplex .= "[aMusic]volume={$musicVolume}[aMusicVol];";
             $finalAudio = "[aMusicVol]";
         }
 
