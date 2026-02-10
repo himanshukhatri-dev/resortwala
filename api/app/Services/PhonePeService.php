@@ -50,12 +50,19 @@ class PhonePeService
             return ['success' => false, 'message' => 'PhonePe Config Missing'];
         }
 
-        // Try Official SDK first if available
-        if (class_exists('\PhonePe\payments\v2\standardCheckout\StandardCheckoutClient')) {
+        // Try Official SDK first if available AND credentials exist
+        $hasSdk = class_exists('\PhonePe\payments\v2\standardCheckout\StandardCheckoutClient');
+        $hasCredentials = !empty($this->clientId) && !empty($this->clientSecret);
+
+        if ($hasSdk && $hasCredentials) {
             try {
                 return $this->initiateWithSdk($booking, $callbackUrl);
             } catch (\Exception $e) {
                 Log::error("PhonePe SDK Failure, falling back to resilient mode", ['error' => $e->getMessage()]);
+            }
+        } else {
+            if ($hasSdk) {
+                Log::info("PhonePe SDK found but Client ID/Secret missing. Using Resilient Manual Mode.");
             }
         }
 
@@ -138,7 +145,7 @@ class PhonePeService
                     'X-VERIFY' => $checksum,
                     'X-MERCHANT-ID' => $this->merchantId,
                     'X-CLIENT-VERSION' => '1'
-                ])->timeout(10)->post($host . $endpoint, ['request' => $payloadBase64]);
+                ])->timeout(15)->post($host . $endpoint, ['request' => $payloadBase64]);
 
                 $data = $response->json();
                 if ($response->successful() && ($data['success'] ?? false)) {

@@ -324,7 +324,8 @@ export default function BookingPage() {
             }
         } catch (e) {
             console.error(e);
-            alert("Booking failed. Please try again.");
+            const errorMsg = e.response?.data?.message || "Booking failed. Please try again.";
+            alert(errorMsg);
             setBookingStatus('idle');
         }
     };
