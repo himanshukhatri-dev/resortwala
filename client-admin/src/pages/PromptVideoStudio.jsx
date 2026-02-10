@@ -18,6 +18,7 @@ const PromptVideoStudio = () => {
     const [scenes, setScenes] = useState([]);
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const [jobId, setJobId] = useState(null);
+    const [jobStatus, setJobStatus] = useState('idle');
     const [jobs, setJobs] = useState([]);
 
     // Mock Voices (Should fetch from API ideally)
@@ -155,14 +156,39 @@ const PromptVideoStudio = () => {
 
             if (res.data.job_id) {
                 setJobId(res.data.job_id);
+                setJobStatus('pending');
                 setStep(3);
-                toast.success("Magic in progress! Video is rendering.");
+                pollJob(res.data.job_id);
+                toast.success("Magic in progress! Video is queued for rendering.");
             }
         } catch (err) {
             toast.error("Generation Failed: " + (err.response?.data?.error || err.message));
         } finally {
             setProcessing(false);
         }
+    };
+
+    const pollJob = (id) => {
+        const token = localStorage.getItem('admin_token');
+        const interval = setInterval(async () => {
+            try {
+                const res = await axios.get(`${API_BASE_URL}/admin/video-generator/jobs/${id}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const status = res.data.status;
+                setJobStatus(status);
+
+                if (status === 'completed') {
+                    clearInterval(interval);
+                    toast.success("Video Rendering Completed!");
+                } else if (status === 'failed') {
+                    clearInterval(interval);
+                    toast.error("Rendering Failed: " + (res.data.error_message || "Unknown error"));
+                }
+            } catch (err) {
+                console.error("Polling error:", err);
+            }
+        }, 4000);
     };
 
     const handleRetry = async (job) => {
@@ -442,17 +468,37 @@ const PromptVideoStudio = () => {
                     )}
 
                     {step === 3 && (
-                        <div className="text-center w-full">
-                            {jobId ? (
-                                <div className="bg-green-50 text-green-700 p-6 rounded-xl border border-green-200">
-                                    <FaPlayCircle className="text-5xl mx-auto mb-4 text-green-500" />
-                                    <h3 className="font-bold text-xl">Rendering Started!</h3>
-                                    <p className="mt-2 text-sm">Job ID: #{jobId}</p>
-                                    <p className="text-xs mt-4">Check "Job History" below for status.</p>
-                                    <button onClick={() => setStep(1)} className="mt-6 text-green-800 underline font-bold">Create Another</button>
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 text-center max-w-lg mx-auto w-full">
+                            {jobStatus !== 'completed' ? (
+                                <div className="space-y-6">
+                                    <div className="w-16 h-16 bg-pink-50 text-pink-500 rounded-full flex items-center justify-center mx-auto animate-spin">
+                                        <FaPlayCircle size={32} />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-900">
+                                        {jobStatus === 'pending' ? 'Video in Queue' : 'Rendering Your Video...'}
+                                    </h3>
+                                    <p className="text-sm text-gray-500">
+                                        Our AI engine is busy weaving your story together. This usually takes 2-3 minutes.
+                                    </p>
+                                    <div className="bg-gray-50 p-4 rounded-xl flex items-center justify-between text-xs font-bold text-gray-400">
+                                        <span>JOB ID: #{jobId}</span>
+                                        <span className="text-pink-600 uppercase tracking-widest">{jobStatus}</span>
+                                    </div>
                                 </div>
                             ) : (
-                                <div className="animate-pulse">Creating...</div>
+                                <div className="space-y-6">
+                                    <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                                        <FaCheckCircle size={40} />
+                                    </div>
+                                    <h3 className="text-2xl font-black text-gray-900">Your Video is Ready!</h3>
+                                    <p className="text-gray-500">The scene is set and the render is complete. You can find it in the history below.</p>
+                                    <button
+                                        onClick={() => setStep(1)}
+                                        className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition-all shadow-lg"
+                                    >
+                                        Create Another
+                                    </button>
+                                </div>
                             )}
                         </div>
                     )}

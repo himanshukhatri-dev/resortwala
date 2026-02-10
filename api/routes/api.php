@@ -31,13 +31,42 @@ Route::get('/admin/system-info', [\App\Http\Controllers\AdminController::class, 
 
 // TEMPORARY: PhonePe Enterprise API Test Route (Enhanced Debug)
 Route::get('/phonepe-test', function () {
+    $canReachSandbox = false;
+    $sandboxError = null;
+    try {
+        $response = Http::timeout(5)->get('https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay');
+        $canReachSandbox = true;
+    } catch (\Exception $e) {
+        $sandboxError = $e->getMessage();
+    }
+
+    $canReachProd = false;
+    $prodError = null;
+    try {
+        $response = Http::timeout(5)->get('https://api.phonepe.com/apis/hermes/pg/v1/pay');
+        $canReachProd = true;
+    } catch (\Exception $e) {
+        $prodError = $e->getMessage();
+    }
+
     return response()->json([
         'config_mid' => config('phonepe.merchant_id'),
         'env_mid' => env('PHONEPE_MERCHANT_ID'),
-        'bootstrap_path' => base_path(),
-        'env_path' => app()->environmentFilePath(),
         'app_env' => app()->environment(),
-        'is_cached' => app()->configurationIsCached(),
+        'connectivity_test' => [
+            'sandbox' => [
+                'reachable' => $canReachSandbox,
+                'error' => $sandboxError
+            ],
+            'production' => [
+                'reachable' => $canReachProd,
+                'error' => $prodError
+            ]
+        ],
+        'dns_lookup' => [
+            'sandbox' => gethostbyname('api-preprod.phonepe.com'),
+            'production' => gethostbyname('api.phonepe.com')
+        ]
     ]);
 });
 

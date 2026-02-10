@@ -273,19 +273,22 @@ export default function AISocialVideoStudio() {
                 const res = await axios.get(`${API_BASE_URL}/admin/video-generator/jobs/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                setJobStatus(res.data.status);
-                if (res.data.status === 'completed') {
+                const status = res.data.status;
+                setJobStatus(status);
+
+                if (status === 'completed') {
                     clearInterval(interval);
                     setProject(res.data);
                     showSuccess("Video Bundle Generated!");
-                } else if (res.data.status === 'failed') {
+                } else if (status === 'failed') {
                     clearInterval(interval);
-                    showError(res.data.error || 'Generation Failed');
+                    showError(res.data.error_message || 'Generation Failed');
                 }
             } catch (err) {
-                clearInterval(interval);
+                // Don't clear interval immediately on network blip, but log it
+                console.error("Polling error:", err);
             }
-        }, 3000);
+        }, 4000);
     };
 
     return (
@@ -555,8 +558,17 @@ export default function AISocialVideoStudio() {
                             {jobStatus !== 'completed' ? (
                                 <div className="py-10">
                                     <FaSpinner className="text-4xl text-pink-500 animate-spin mx-auto mb-4" />
-                                    <h3 className="font-bold text-lg">Creating Magic...</h3>
-                                    {jobStatus === 'failed' && <div className="text-red-500 mt-4 text-xs font-bold">Failed. <button onClick={() => setStep(3)} className="underline">Retry</button></div>}
+                                    <h3 className="font-bold text-lg">
+                                        {jobStatus === 'pending' ? 'In Queue...' : 'Rendering Video...'}
+                                    </h3>
+                                    <p className="text-xs text-gray-400 mt-2">
+                                        This might take a few minutes. You can check the history below later.
+                                    </p>
+                                    {jobStatus === 'failed' && (
+                                        <div className="text-red-500 mt-4 text-xs font-bold">
+                                            Failed. <button onClick={() => setStep(3)} className="underline">Retry</button>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="space-y-4">

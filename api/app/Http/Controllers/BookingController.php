@@ -80,7 +80,7 @@ class BookingController extends Controller
                 'PropertyId' => 'required|exists:property_masters,PropertyId',
                 'CustomerName' => 'required|string|max:255',
                 'CustomerMobile' => 'required|string|max:15',
-                'CustomerEmail' => 'nullable|email',
+                'CustomerEmail' => 'nullable|string|email|max:255',
                 'CheckInDate' => 'required|date',
                 'CheckOutDate' => 'required|date|after_or_equal:CheckInDate',
                 'Guests' => 'required|integer|min:1',
@@ -91,7 +91,7 @@ class BookingController extends Controller
                 'base_amount' => 'nullable|numeric',
                 'TotalAmount' => 'required|numeric',
                 'paid_amount' => 'nullable|numeric', // Booking Token Amount
-                'payment_method' => 'required|string|in:hotel,card,upi',
+                'payment_method' => 'required|string|in:hotel,card,upi,online,phonepe',
                 'SpecialRequest' => 'nullable|string',
                 'booking_source' => 'nullable|string|in:customer_app,public_calendar,vendor_manual,admin_manual,web_direct'
             ]);
@@ -100,7 +100,10 @@ class BookingController extends Controller
                 'errors' => $e->errors(),
                 'payload' => $request->all()
             ]);
-            throw $e;
+            return response()->json([
+                'message' => 'Validation Failed',
+                'errors' => $e->errors()
+            ], 422);
         }
 
         // Default booking source to customer_app if not provided
@@ -193,17 +196,24 @@ class BookingController extends Controller
                         'booking' => $booking,
                         'payment_required' => true,
                         'redirect_url' => $paymentResult['redirect_url']
-                    ], 201);
+                    ], 210); // Using 210 to uniquely identify "Redirect to Payment" in frontend if needed
                 } else {
                     // Payment Init Failed -> Rollback Booking
                     DB::rollBack();
-                    Log::error("Payment Init Failed, Rolled Back Booking", ['error' => $paymentResult]);
+                    Log::error("Payment Init Failed, Rolled Back Booking", [
+                        'error_message' => $paymentResult['message'] ?? 'Unknown',
+                        'error_code' => $paymentResult['code'] ?? 'GATEWAY_ERROR',
+                        'mid_used' => config('phonepe.merchant_id'),
+                        'env_used' => config('phonepe.env'),
+                        'debug' => $paymentResult['debug'] ?? []
+                    ]);
 
                     return response()->json([
-                        'message' => 'Payment Gateway Error: ' . ($paymentResult['message'] ?? 'Unknown'),
+                        'success' => false,
+                        'message' => 'Payment Gateway Error: ' . ($paymentResult['message'] ?? 'Unable to connect to PhonePe'),
                         'error_code' => $paymentResult['code'] ?? 'GATEWAY_ERROR',
-                        'debug_details' => $paymentResult['debug'] ?? [],
-                        'gateway_response' => $paymentResult['detail'] ?? []
+                        'debug' => $paymentResult['debug'] ?? [],
+                        'detail' => $paymentResult['detail'] ?? []
                     ], 422); // Unprocessable Entity
                 }
             }
