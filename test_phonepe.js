@@ -4,7 +4,7 @@ const path = require('path');
 const axios = require('axios'); // Ensure axios is installed or use native
 
 // 1. Load Configuration
-const envPath = path.resolve(__dirname, 'prod.env');
+const envPath = path.resolve(__dirname, 'beta.env');
 console.log('Loading config from:', envPath);
 
 const env = {};
@@ -31,7 +31,7 @@ const TARGET_URL = 'https://beta.resortwala.com/api/payment/callback'; // Defaul
 // const TARGET_URL = 'http://localhost:8000/api/payment/callback'; // Local
 
 if (!SALT_KEY || !SALT_INDEX) {
-    console.error("Error: PHONEPE_SALT_KEY or PHONEPE_SALT_INDEX missing in prod.env");
+    console.error("Error: PHONEPE_SALT_KEY or PHONEPE_SALT_INDEX missing in beta.env");
     process.exit(1);
 }
 

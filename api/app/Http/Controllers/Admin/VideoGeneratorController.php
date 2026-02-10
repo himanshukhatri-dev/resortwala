@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\VideoRenderJob;
 use App\Models\PropertyMaster;
 use App\Services\VideoRenderingService;
+use App\Jobs\ProcessVideoRender;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 
@@ -69,7 +70,7 @@ class VideoGeneratorController extends Controller
 
         // Dispatch
         try {
-            $this->service->processJob($job);
+            ProcessVideoRender::dispatch($job);
             return response()->json([
                 'message' => 'Video Queued',
                 'job_id' => $job->id,
@@ -150,8 +151,9 @@ class VideoGeneratorController extends Controller
         // \App\Jobs\ProcessVideoRender::dispatch($job);
 
         // For immediate feedback in dev:
+        // Dispatch Job
         try {
-            $this->service->processJob($job);
+            ProcessVideoRender::dispatch($job);
             return response()->json(['message' => 'Video Queued', 'job_id' => $job->id]);
         } catch (\Exception $e) {
             $job->status = 'failed';
@@ -185,7 +187,7 @@ class VideoGeneratorController extends Controller
         $newJob->save();
 
         try {
-            $this->service->processJob($newJob);
+            ProcessVideoRender::dispatch($newJob);
             return response()->json(['status' => 'success', 'message' => 'Retrying Job', 'job_id' => $newJob->id]);
         } catch (\Exception $e) {
             $newJob->status = 'failed';

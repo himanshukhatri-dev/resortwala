@@ -300,7 +300,7 @@ export default function BookingPage() {
             CustomerMobile: form.CustomerMobile,
             CustomerEmail: form.CustomerEmail,
             CheckInDate: format(dateRange.from, 'yyyy-MM-dd'),
-            CheckOutDate: format(dateRange.to, 'yyyy-MM-dd'),
+            CheckOutDate: format(dateRange.to || dateRange.from, 'yyyy-MM-dd'),
             Guests: guestCount,
             TotalAmount: finalTotal,
             paid_amount: payNowAmount,

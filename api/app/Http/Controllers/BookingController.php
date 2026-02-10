@@ -96,7 +96,10 @@ class BookingController extends Controller
                 'booking_source' => 'nullable|string|in:customer_app,public_calendar,vendor_manual,admin_manual,web_direct'
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error("Booking Validation Failed", ['errors' => $e->errors()]);
+            Log::error("Booking Validation Failed", [
+                'errors' => $e->errors(),
+                'payload' => $request->all()
+            ]);
             throw $e;
         }
 
@@ -121,8 +124,19 @@ class BookingController extends Controller
                 $validated['Guests']
             )
         ) {
+            Log::warning("Booking Availability Check Failed", [
+                'property_id' => $validated['PropertyId'],
+                'checkin' => $validated['CheckInDate'],
+                'checkout' => $validated['CheckOutDate'],
+                'guests' => $validated['Guests']
+            ]);
             return response()->json([
-                'message' => 'Property or selected dates are no longer available'
+                'message' => 'Property or selected dates are no longer available',
+                'details' => [
+                    'property_id' => $validated['PropertyId'],
+                    'checkin' => $validated['CheckInDate'],
+                    'checkout' => $validated['CheckOutDate']
+                ]
             ], 422);
         }
 

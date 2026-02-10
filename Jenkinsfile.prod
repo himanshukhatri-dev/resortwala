@@ -111,8 +111,8 @@ pipeline {
                                 rm -rf storage
                                 ln -sfn ${SHARED_STORAGE} storage
                                 # Copy .env from current or shared
-                                if [ -f /var/www/html/shared/prod.env ]; then
-                                    cp /var/www/html/shared/prod.env .env
+                                if [ -f /var/www/html/shared/production.env ]; then
+                                    cp /var/www/html/shared/production.env .env
                                 else
                                     cp ${PROD_DIR}/api/.env .env || true
                                 fi

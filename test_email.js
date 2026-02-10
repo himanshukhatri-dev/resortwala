@@ -2,7 +2,7 @@ const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
 
-const envPath = path.resolve(__dirname, 'prod.env');
+const envPath = path.resolve(__dirname, 'beta.env');
 console.log('Reading .env from:', envPath);
 const envContent = fs.readFileSync(envPath, 'utf8');
 

@@ -1,7 +1,7 @@
 <?php
 
-$merchantId = "M223R7WEM0IRX";
-$saltKey = "156711f6-bdb7-4734-b490-f53d25b69d69";
+$merchantId = "PGTESTPAYUAT86";
+$saltKey = "96434309-7796-489d-8924-ab56988a6076";
 $saltIndex = 1;
 
 error_reporting(E_ALL);
