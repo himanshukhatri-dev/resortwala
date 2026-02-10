@@ -30,42 +30,15 @@ class VideoGeneratorController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // 1. Analyze Prompt via AI Context Service
-        $prompt = $request->input('prompt');
-        $mood = $request->input('mood', 'energetic');
-
-        $aiContext = $this->promptService->analyzePrompt($prompt, $mood);
-        $script = $aiContext['script'];
-        $visualTheme = $aiContext['visual_theme'];
-
-        // 2. Generate Audio (TTS)
-        $voiceId = $request->input('voice_id', 'atlas');
-        $audioPath = null;
-        try {
-            $audioPath = $this->ttsService->generateAudio($script, $voiceId);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'TTS Failed: ' . $e->getMessage()], 500);
-        }
-
-        // 3. Create Job
+        // 2. Dispatch
         $job = new VideoRenderJob();
-        $job->property_id = null; // Generic
-        $job->template_id = 'prompt_generated'; // Special template in Service
         $job->status = 'pending';
-
-        $options = [
-            'title' => 'AI Generated Video', // Fallback title
-            'prompt' => $prompt,
-            'script' => $script,
-            'audio_source' => $audioPath,
-            'visual_theme' => $visualTheme,
-            'music_mood' => $aiContext['music_mood'],
-            'aspect_ratio' => $request->input('aspect_ratio', '9:16'),
-            'media_paths' => $request->input('media_paths', []),
-            'branding' => true
+        $job->options = [
+            'prompt' => $request->input('prompt'),
+            'mood' => $request->input('mood', 'energetic'),
+            'voice_id' => $request->input('voice_id', 'atlas'),
+            'aspect_ratio' => '9:16'
         ];
-
-        $job->options = $options;
         $job->save();
 
         // Dispatch
@@ -73,8 +46,7 @@ class VideoGeneratorController extends Controller
             ProcessVideoRender::dispatch($job);
             return response()->json([
                 'message' => 'Video Queued',
-                'job_id' => $job->id,
-                'script' => $script
+                'job_id' => $job->id
             ]);
         } catch (\Exception $e) {
             $job->status = 'failed';
@@ -133,16 +105,8 @@ class VideoGeneratorController extends Controller
             $prop = PropertyMaster::find($request->property_id);
             $options['title'] = $prop ? $prop->Name : 'My Resort Video';
         }
-
-        // --- NEW: Generate TTS Audio if script provided ---
-        if (!empty($options['script']) && !empty($options['voice_id'])) {
-            try {
-                $audioPath = $this->ttsService->generateAudio($options['script'], $options['voice_id']);
-                $options['audio_source'] = $audioPath;
-            } catch (\Exception $e) {
-                return response()->json(['error' => 'TTS Generation Failed: ' . $e->getMessage()], 422);
-            }
-        }
+        $options['aspect_ratio'] = '9:16';
+        $options['voice_id'] = $options['voice_id'] ?? 'atlas';
 
         $job->options = $options;
         $job->save();
