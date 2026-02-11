@@ -119,12 +119,15 @@ export default function Header({ onOpenSearch, onSearch, properties, categories,
                                         <Link to="/bookings" onClick={() => setMenuOpen(false)} className="block px-5 py-3.5 hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors">My Stays & Bookings</Link>
                                         <Link to="/wishlist" onClick={() => setMenuOpen(false)} className="block px-5 py-3.5 hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors">My Wishlist</Link>
                                         <div className="border-t border-gray-50 my-1"></div>
+                                        <a href="/vendor/" onClick={() => setMenuOpen(false)} className="block px-5 py-3.5 hover:bg-teal-50 text-sm font-bold text-teal-600 transition-colors">Host your property</a>
                                         <button onClick={() => { logout(); setMenuOpen(false); }} className="block w-full text-left px-5 py-3.5 hover:bg-gray-50 text-sm text-red-500 font-bold">Log out</button>
                                     </>
                                 ) : (
                                     <>
                                         <Link to="/login" onClick={() => setMenuOpen(false)} className="block px-5 py-4 hover:bg-gray-50 text-sm font-black text-gray-900 uppercase tracking-widest">Login</Link>
                                         <Link to="/signup" onClick={() => setMenuOpen(false)} className="block px-5 py-3 hover:bg-gray-50 text-sm font-medium text-gray-600">Signup</Link>
+                                        <div className="border-t border-gray-50 my-1"></div>
+                                        <a href="/vendor/" onClick={() => setMenuOpen(false)} className="block px-5 py-3.5 hover:bg-teal-50 text-sm font-bold text-teal-600 transition-colors">Host your property</a>
                                     </>
                                 )}
                             </motion.div>
