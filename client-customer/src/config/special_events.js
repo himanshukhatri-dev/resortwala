@@ -14,7 +14,7 @@ export const SPECIAL_EVENTS = {
     },
     // Valentine's Month Celebration
     VALENTINES_MONTH: {
-        enabled: true,
+        enabled: false,
         heroTitle: "Love is in the air ❤️",
         heroSubtitle: "Plan the perfect getaway this Valentine's Month",
         heroHeroText: "Handpicked villas, resorts & romantic escapes near you",

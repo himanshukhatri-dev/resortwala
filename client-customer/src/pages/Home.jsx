@@ -3,7 +3,6 @@ import { useLocation, useSearchParams, useParams, useNavigate } from 'react-rout
 import { API_BASE_URL } from '../config';
 import { SPECIAL_EVENTS } from '../config/special_events';
 import SparkleEffect from '../components/special/SparkleEffect';
-import ValentineHearts from '../components/special/ValentineHearts';
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/ui/FilterBar';
 import FilterModal from '../components/features/FilterModal';
@@ -456,7 +455,6 @@ export default function Home() {
     return (
         <div className="pb-20" >
             {SPECIAL_EVENTS.REPUBLIC_DAY_LAUNCH.showSparkles && <SparkleEffect />}
-            {SPECIAL_EVENTS.VALENTINES_MONTH.enabled && SPECIAL_EVENTS.VALENTINES_MONTH.showHearts && <ValentineHearts />}
             <SEO
                 title={city ? `Luxury Villas & Stays in ${city.charAt(0).toUpperCase() + city.slice(1)} | ResortWala` : "Book Luxury Villas & Stays | ResortWala"}
                 description={city ? `Find and book the best luxury villas, resorts, and vacation stays in ${city}. Verified properties with the best rates and instant booking.` : "Discover the best luxury villas, resorts, and waterparks in Lonavala and beyond. Verified stays, best prices, and instant booking."}
