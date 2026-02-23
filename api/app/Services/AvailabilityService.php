@@ -58,11 +58,17 @@ class AvailabilityService
 
         // Villa Logic: Exclusive Booking
         $query = Booking::where('PropertyId', $propertyId)
-            ->whereIn('Status', ['Confirmed', 'locked', 'booked', 'Pending', 'confirmed', 'Locked', 'Booked', 'pending', 'locked_by_admin'])
+            ->whereIn('Status', [
+                \App\Enums\BookingStatus::INITIATED,
+                \App\Enums\BookingStatus::BOOKED,
+                \App\Enums\BookingStatus::CONFIRMED,
+                'locked',
+                'Locked'
+            ])
             ->where(function ($q) {
-                // Ignore expired pending bookings
-                $q->whereNotIn('Status', ['Pending', 'pending'])
-                    ->orWhere('created_at', '>', now()->subHours(24));
+                // INITIATED bookings only block if recent (30 min payment window)
+                $q->where('Status', '!=', \App\Enums\BookingStatus::INITIATED)
+                    ->orWhere('created_at', '>', now()->subMinutes(30));
             })
             ->where('CheckInDate', '<=', $endDate->toDateString())
             ->where('CheckOutDate', '>=', $startDate->toDateString());
@@ -131,10 +137,16 @@ class AvailabilityService
 
         // Villa overlap check
         return !Booking::where('PropertyId', $propertyId)
-            ->whereIn('Status', ['Confirmed', 'locked', 'booked', 'Pending', 'confirmed', 'Locked', 'Booked', 'pending', 'locked_by_admin'])
+            ->whereIn('Status', [
+                \App\Enums\BookingStatus::INITIATED,
+                \App\Enums\BookingStatus::BOOKED,
+                \App\Enums\BookingStatus::CONFIRMED,
+                'locked',
+                'Locked'
+            ])
             ->where(function ($q) {
-                $q->whereNotIn('Status', ['Pending', 'pending'])
-                    ->orWhere('created_at', '>', now()->subHours(24));
+                $q->where('Status', '!=', \App\Enums\BookingStatus::INITIATED)
+                    ->orWhere('created_at', '>', now()->subMinutes(30));
             })
             ->where(function ($q) use ($startDate, $endDate) {
                 $q->where('CheckInDate', '<', $endDate)

@@ -21,143 +21,87 @@ class PaymentController extends Controller
 
     public function callback(Request $request)
     {
+        $stateService = app(\App\Services\BookingStateService::class);
+
         try {
             Log::info("Payment Callback Hit", [
                 'method' => $request->method(),
                 'url' => $request->fullUrl(),
-                'headers' => $request->header(),
                 'all' => $request->all(),
-                'content' => substr($request->getContent(), 0, 500)
             ]);
 
-            // 1. Basic Validation
-            $base64Response = $request->input('response');
-
-            // Fallback: Check for Form POST (Redirect Mode)
-            if (!$base64Response && $request->has('code') && $request->has('merchantId')) {
-                // This is a browser redirect (Form POST)
+            // 1. Handle Browser Redirect (Form POST) - Crucial for Local/Beta without S2S
+            if (!$request->has('response') && $request->has('code') && $request->has('merchantId')) {
                 $status = $request->input('code');
-                $merchantTxnId = $request->input('merchantTransactionId') ?? $request->input('transactionId'); // PhonePe sends transactionId in form sometimes
+                $merchantTxnId = $request->input('merchantTransactionId') ?? $request->input('transactionId');
 
-                // Extract Booking ID (Format: TXN_{BookingId}_{Time})
                 $bookingId = null;
                 if ($merchantTxnId) {
                     $parts = explode('_', $merchantTxnId);
-                    // TXN, ID, Time
-                    if (count($parts) >= 2) {
+                    if (count($parts) >= 2)
                         $bookingId = $parts[1];
+                }
+
+                if ($bookingId) {
+                    $booking = Booking::find($bookingId);
+                    if ($booking) {
+                        if ($status === 'PAYMENT_SUCCESS') {
+                            $stateService->markAsPayed($booking, $merchantTxnId);
+                            return redirect()->to("{$this->frontEndUrl}/booking/success?id={$bookingId}");
+                        } elseif ($status === 'PAYMENT_PENDING') {
+                            return redirect()->to("{$this->frontEndUrl}/booking/pending?id={$bookingId}");
+                        } else {
+                            $booking->update(['payment_status' => 'failed', 'Status' => \App\Enums\BookingStatus::CANCELLED]);
+                            return redirect()->to("{$this->frontEndUrl}/booking/failed?id={$bookingId}");
+                        }
                     }
                 }
-
-                Log::info("Handling PhonePe Redirect-POST for Booking #$bookingId Status: $status");
-
-                // Redirect immediately based on status code
-                if ($status === 'PAYMENT_SUCCESS') {
-                    return redirect()->to("{$this->frontEndUrl}/booking/success?id=" . ($bookingId ?? ''));
-                } elseif ($status === 'PAYMENT_PENDING') {
-                    return redirect()->to("{$this->frontEndUrl}/booking/pending?id=" . ($bookingId ?? ''));
-                } else {
-                    return redirect()->to("{$this->frontEndUrl}/booking/failed?id=" . ($bookingId ?? ''));
-                }
             }
 
-            // Fallback: Manual JSON Decode (for S2S JSON)
+            // 2. Handle S2S Callback (Base64 Response)
+            $base64Response = $request->input('response');
             if (!$base64Response) {
-                $rawContent = $request->getContent();
-                $json = json_decode($rawContent, true);
-                if (isset($json['response'])) {
-                    $base64Response = $json['response'];
-                }
+                // Check if it's in the raw JSON body
+                $json = $request->json()->all();
+                $base64Response = $json['response'] ?? null;
             }
 
             if (!$base64Response) {
-                Log::error("Callback missing 'response' param", $request->all());
-                return response()->json([
-                    'error' => 'Invalid Callback',
-                    'method' => $request->method(),
-                    'keys' => array_keys($request->all()),
-                    'has_code' => $request->has('code'),
-                    'has_merchant_id' => $request->has('merchantId') || $request->has('transactionId'),
-                    'debug_raw' => substr($request->getContent(), 0, 200)
-                ], 400);
+                return response()->json(['error' => 'Invalid Callback'], 400);
             }
 
             $xVerify = $request->header('X-VERIFY') ?? $request->header('X-Verify');
-            // $base64Response is already set above
-
-
-            // 2. Delegate Processing to Service
             $result = $this->phonePeService->processCallback($base64Response, $xVerify);
 
             if (!$result['success']) {
-                Log::critical("PhonePe Callback Failed", [
-                    'ip' => $request->ip(),
-                    'error' => $result['error']
-                ]);
                 return response()->json(['error' => $result['error']], 403);
             }
 
-            // 3. Handle Business Logic
-            $bookingId = $result['booking_id'];
-            $state = $result['status'];
-            $transactionId = $result['transaction_id'];
-            $merchantTxnId = $result['merchant_txn_id'];
+            $bookingId = $result['booking_id'] ?? null;
+            if (!$bookingId && isset($result['transaction_id'])) {
+                $parts = explode('_', $result['transaction_id']);
+                if (count($parts) >= 2)
+                    $bookingId = $parts[1];
+            }
 
             if ($bookingId) {
-                $booking = Booking::with('property')->find($bookingId);
-
+                $booking = Booking::find($bookingId);
                 if ($booking) {
-                    Log::info("Processing Payment for Booking #$bookingId - Status: $state");
-
+                    $state = $result['status'] ?? 'FAILED';
                     if ($state === 'PAYMENT_SUCCESS') {
-                        if ($booking->payment_status !== 'paid') {
-                            $booking->payment_status = 'paid';
-                            $booking->Status = 'Booked';
-                            $booking->transaction_id = $transactionId ?? $merchantTxnId;
-                            $booking->save();
-
-                            // Record Commission
-                            try {
-                                app(\App\Services\CommissionService::class)->calculateAndRecord($booking);
-                            } catch (\Exception $e) {
-                                Log::error("Failed to record commission: " . $e->getMessage());
-                            }
-
-                            // Send Confirmation Email (Async)
-                            try {
-                                $notif = app(\App\Services\NotificationService::class);
-                                $notif->sendBookingConfirmation($booking);
-                            } catch (\Exception $e) {
-                                Log::error("Failed to send booking confirmation: " . $e->getMessage());
-                            }
-                        }
+                        $stateService->markAsPayed($booking, $result['transaction_id']);
                     } elseif ($state === 'PAYMENT_PENDING') {
-                        $booking->payment_status = 'pending';
-                        // Keep status as Pending
-                        $booking->save();
+                        $booking->update(['payment_status' => 'pending']);
                     } else {
-                        $booking->payment_status = 'failed';
-                        $booking->Status = 'Cancelled';
-                        $booking->save();
+                        $booking->update(['payment_status' => 'failed', 'Status' => \App\Enums\BookingStatus::CANCELLED]);
                     }
-                } else {
-                    Log::error("Booking Not Found for ID: $bookingId (Txn: $merchantTxnId)");
                 }
-            } else {
-                Log::error("Callback missing Booking ID in merchantTransactionId");
             }
 
-            // 4. Redirect User
-            if ($state === 'PAYMENT_SUCCESS') {
-                return redirect()->to("{$this->frontEndUrl}/booking/success?id=" . ($bookingId ?? ''));
-            } elseif ($state === 'PAYMENT_PENDING') {
-                return redirect()->to("{$this->frontEndUrl}/booking/pending?id=" . ($bookingId ?? ''));
-            } else {
-                return redirect()->to("{$this->frontEndUrl}/booking/failed?id=" . ($bookingId ?? ''));
-            }
+            return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
-            Log::error("Payment Callback Handled Exception", ['e' => $e->getMessage()]);
+            Log::error("Payment Callback Exception", ['e' => $e->getMessage()]);
             return response()->json(['error' => 'Internal Server Error'], 500);
         }
     }

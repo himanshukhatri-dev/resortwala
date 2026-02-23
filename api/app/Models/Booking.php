@@ -5,13 +5,36 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 use App\Traits\Auditable;
+use App\Enums\BookingStatus;
 
 class Booking extends Model
 {
     use Auditable;
     protected $table = 'bookings';
     protected $primaryKey = 'BookingId';
-    
+
+    // Helper methods for status checks
+    public function isInitiated()
+    {
+        return $this->Status === BookingStatus::INITIATED;
+    }
+    public function isBooked()
+    {
+        return $this->Status === BookingStatus::BOOKED;
+    }
+    public function isConfirmed()
+    {
+        return $this->Status === BookingStatus::CONFIRMED;
+    }
+    public function isRejected()
+    {
+        return $this->Status === BookingStatus::REJECTED;
+    }
+    public function isCancelled()
+    {
+        return $this->Status === BookingStatus::CANCELLED;
+    }
+
     protected $fillable = [
         'PropertyId',
         'CustomerName',
@@ -37,5 +60,10 @@ class Booking extends Model
     public function property()
     {
         return $this->belongsTo(PropertyMaster::class, 'PropertyId', 'PropertyId');
+    }
+
+    public function logs()
+    {
+        return $this->hasMany(BookingLog::class, 'booking_id', 'BookingId')->orderBy('created_at', 'desc');
     }
 }

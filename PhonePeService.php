@@ -12,31 +12,91 @@ class PhonePeService
     private $clientId;
     private $clientSecret;
     private $saltIndex; // Kept for reference, though V2 uses secret
-    private $env; 
+    private $env;
     private $client;
 
     public function __construct()
     {
         // Load Configuration from Config/PhonePe or Env
         $this->clientId = config('phonepe.merchant_id') ?? env('PHONEPE_MERCHANT_ID');
-        $this->clientSecret = config('phonepe.salt_key') ?? env('PHONEPE_SALT_KEY'); 
-        $this->saltIndex = config('phonepe.salt_index') ?? env('PHONEPE_SALT_INDEX', '1'); 
-        $this->env = config('phonepe.env') ?? env('PHONEPE_ENV', 'PROD'); 
+        $this->clientSecret = config('phonepe.salt_key') ?? env('PHONEPE_SALT_KEY');
+        $this->saltIndex = config('phonepe.salt_index') ?? env('PHONEPE_SALT_INDEX', '1');
+        $this->env = config('phonepe.env') ?? env('PHONEPE_ENV', 'PROD');
 
         $envUrl = ($this->env === 'PROD') ? Env::PRODUCTION : Env::UAT;
-        
+
         Log::info("PhonePe SDK V2 Init", [
             'env' => $this->env,
             'clientId' => substr($this->clientId ?? '', 0, 4) . '***'
         ]);
 
         try {
-            // SDK V2: getInstance($clientId, $clientVersion, $clientSecret, $env)
+            // Create custom HTTP client with SSL bypass for local development
+            $httpClient = new class {
+                public static function postRequest($url, $body, $headers)
+                {
+                    $headers_array = [];
+                    foreach ($headers as $key => $value) {
+                        $headers_array[] = $key . ":" . $value;
+                    }
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $url);
+                    curl_setopt($ch, CURLOPT_POST, 1);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers_array);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                    $response = curl_exec($ch);
+                    $responseHeaders = curl_getinfo($ch);
+                    $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_close($ch);
+                    if ($httpStatus == 200)
+                        return new \PhonePe\common\utils\HttpResponse($httpStatus, $responseHeaders, $response);
+                    else {
+                        $responseArray = json_decode($response, true);
+                        $data = $responseArray['data'] ?? ($responseArray['context'] ?? null);
+                        $code = $responseArray['code'] ?? ($responseArray['errorCode'] ?? 'UNKNOWN');
+                        $msg = $responseArray['message'] ?? "Gateway Error";
+                        throw new \PhonePe\common\exceptions\PhonePeException($msg, $httpStatus, $code, $data);
+                    }
+                }
+                public static function getRequest($url, $headers)
+                {
+                    $headers_array = [];
+                    foreach ($headers as $key => $value) {
+                        $headers_array[] = $key . ":" . $value;
+                    }
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $url);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers_array);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                    $response = curl_exec($ch);
+                    $responseHeaders = curl_getinfo($ch);
+                    $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_close($ch);
+                    if ($httpStatus == 200)
+                        return new \PhonePe\common\utils\HttpResponse($httpStatus, $responseHeaders, $response);
+                    else {
+                        $responseArray = json_decode($response, true);
+                        $data = $responseArray['data'] ?? ($responseArray['context'] ?? null);
+                        $code = $responseArray['code'] ?? ($responseArray['errorCode'] ?? 'UNKNOWN');
+                        $msg = $responseArray['message'] ?? "Gateway Error";
+                        throw new \PhonePe\common\exceptions\PhonePeException($msg, $httpStatus, $code, $data);
+                    }
+                }
+            };
+
+            // SDK V2: getInstance with custom HTTP client that bypasses SSL
             $this->client = StandardCheckoutClient::getInstance(
                 $this->clientId,
                 1, // clientVersion (Default to 1)
                 $this->clientSecret,
-                $envUrl
+                $envUrl,
+                false, // shouldPublishEvents
+                $httpClient // Custom HTTP client with SSL bypass
             );
         } catch (\Exception $e) {
             Log::error("PhonePe Client Init Failed: " . $e->getMessage());
@@ -70,7 +130,7 @@ class PhonePeService
              Log::warning("PhonePe Live Testing: Amount overridden to ₹1.00");
         }
         */
-        
+
         $transactionId = "TXN_" . $booking->BookingId . "_" . time();
 
         try {
@@ -82,9 +142,9 @@ class PhonePeService
                 ->build();
 
             $response = $this->client->pay($request);
-            
+
             $payUrl = $response->getRedirectUrl();
-            
+
             Log::info("PhonePe SDK V2 Init Success", [
                 'tx_id' => $transactionId,
                 'redirect_url' => $payUrl
@@ -99,7 +159,7 @@ class PhonePeService
         } catch (\Exception $e) {
             Log::error("PhonePe SDK V2 Exception", ['msg' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return [
-                'success' => false, 
+                'success' => false,
                 'message' => 'Gateway Error: ' . $e->getMessage(),
                 'code' => 'SDK_ERROR'
             ];
@@ -113,25 +173,25 @@ class PhonePeService
      */
     public function processCallback($base64Response, $checksumHeader)
     {
-       // The V2 SDK might not expose a static verify method easily in the client class shown.
-       // However, the checksum logic remains validating the response.
-       // Current Env mapping: clientSecret is used as Salt Key for verification in standard flows usually.
-       
-       // Verification Logic: SHA256(base64Body + saltKey) + ### + saltIndex
-       // We use clientSecret as saltKey here based on user config.
+        // The V2 SDK might not expose a static verify method easily in the client class shown.
+        // However, the checksum logic remains validating the response.
+        // Current Env mapping: clientSecret is used as Salt Key for verification in standard flows usually.
+
+        // Verification Logic: SHA256(base64Body + saltKey) + ### + saltIndex
+        // We use clientSecret as saltKey here based on user config.
 
         if (empty($checksumHeader) || empty($base64Response)) {
-             return ['success' => false, 'error' => 'Missing Parameters'];
+            return ['success' => false, 'error' => 'Missing Parameters'];
         }
 
         // 1. Validate Checksum
         // Note: Using clientSecret as the salt key for hash generation
         $generatedChecksum = hash('sha256', $base64Response . $this->clientSecret) . "###" . $this->saltIndex;
-        
+
         // Loose comparison or exact?
         if ($generatedChecksum !== $checksumHeader) {
-             // Fallback: Try with clean client secret if index mismatch or other format
-             // But for now logs warning
+            // Fallback: Try with clean client secret if index mismatch or other format
+            // But for now logs warning
             Log::warning("PhonePe Checksum Mismatch", [
                 'received' => $checksumHeader,
                 'generated' => $generatedChecksum
@@ -141,16 +201,16 @@ class PhonePeService
 
         // 2. Decode Payload
         $resData = json_decode(base64_decode($base64Response), true);
-        
+
         $merchantTxnId = $resData['data']['merchantTransactionId'] ?? null;
         $state = $resData['code'] ?? 'PAYMENT_ERROR';
         $transactionId = $resData['data']['transactionId'] ?? null;
-        
+
         // Extract Booking ID
         $bookingId = null;
         if ($merchantTxnId) {
-             $parts = explode('_', $merchantTxnId);
-             $bookingId = $parts[1] ?? null;
+            $parts = explode('_', $merchantTxnId);
+            $bookingId = $parts[1] ?? null;
         }
 
         return [

@@ -159,14 +159,14 @@ class BookingController extends Controller
         Log::info("Booking Request Analysis", ['source' => $bookingSource, 'method' => $validated['payment_method'], 'isWaterpark' => $property->isWaterpark()]);
 
         if ($bookingSource === 'public_calendar') {
-            $validated['Status'] = 'Pending';
+            $validated['Status'] = \App\Enums\BookingStatus::INITIATED;
             $validated['payment_status'] = 'pending';
         } elseif (in_array($validated['payment_method'], ['online', 'phonepe', 'card', 'upi'])) {
-            $validated['Status'] = 'Pending';
+            $validated['Status'] = \App\Enums\BookingStatus::INITIATED;
             $validated['payment_status'] = 'pending';
         } else {
             // Pay at Hotel / Offline
-            $validated['Status'] = 'Booked';
+            $validated['Status'] = \App\Enums\BookingStatus::BOOKED; // Awaiting vendor, but payment "done" (offline)
             $validated['payment_status'] = 'pending';
         }
 
@@ -221,32 +221,11 @@ class BookingController extends Controller
             // Offline / Pay at Hotel Flow
             DB::commit();
 
-            // Send confirmation notification if Confirmed
-            if ($booking->Status === 'Confirmed') {
-                $this->commissionService->calculateAndRecord($booking);
-                $this->notificationService->sendBookingConfirmation($booking);
-
-                // WhatsApp
-                $this->whatsAppService->send(
-                    WhatsAppMessage::template($booking->CustomerMobile, 'booking_confirmed', [
-                        'name' => $booking->CustomerName,
-                        'property' => $property->Name ?? 'ResortWala Property',
-                        'ref' => $booking->booking_reference
-                    ])
-                );
-
-                // Mobile Push - DISABLED
-                /*
-                $user = \App\Models\User::where('email', $booking->CustomerEmail)->first();
-                if ($user) {
-                    $this->fcmService->sendToUsers(
-                        [$user->id],
-                        'Booking Confirmed! 🎉',
-                        "Your stay at {$property->Name} is confirmed. Ref: {$booking->booking_reference}",
-                        ['type' => 'booking', 'id' => $booking->id]
-                    );
-                }
-                */
+            // Send notification to Vendor about new request (BOOKED state for offline)
+            if ($booking->Status === \App\Enums\BookingStatus::BOOKED) {
+                // For offline, we record commission immediately if you want, 
+                // but usually better after confirmation.
+                $this->notificationService->sendBookingConfirmation($booking); // This currently sends to all (legacy)
             }
 
             return response()->json([

@@ -100,8 +100,21 @@ class NotificationEngine
                 $subject = "[TEST] " . $subject;
             }
 
+            // Decide View: Support custom specialized views (like emails.booking)
+            $viewName = $data['view'] ?? 'emails.layout';
+            $viewData = ['content' => $content];
+            if (isset($data['booking'])) {
+                $viewData['booking'] = $data['booking'];
+            }
+            if (isset($data['type'])) {
+                $viewData['type'] = $data['type'];
+            }
+
+            // Merge all data for view access
+            $viewData = array_merge($viewData, $data);
+
             // Send via Mail Facade
-            Mail::html(view('emails.layout', ['content' => $content])->render(), function ($message) use ($email, $subject) {
+            Mail::html(view($viewName, $viewData)->render(), function ($message) use ($email, $subject) {
                 $message->to($email)
                     ->subject($subject);
             });
@@ -263,7 +276,13 @@ class NotificationEngine
             while ($attempts < 3 && !$success) {
                 $attempts++;
                 $lastResult = $whatsAppService->send($message);
-                $success = $lastResult['success'];
+
+                if ($lastResult === false) {
+                    Log::warning("NotificationEngine: WhatsApp Service returned false (possibly missing config)");
+                    break;
+                }
+
+                $success = $lastResult['success'] ?? false;
                 if (!$success && $attempts < 3)
                     sleep(2);
             }
@@ -356,5 +375,16 @@ class NotificationEngine
             'provider_id' => $providerId,
             'created_by' => auth()->id() ?? 0 // 0 for system
         ]);
+
+        // Integrate with Booking Timeline
+        if (str_starts_with($evtName, 'booking.')) {
+            try {
+                // Extract booking id from content or data if possible, 
+                // but for now, we rely on the caller or a regex if needed.
+                // Better: Just assume the caller of dispatch should handle timeline for complex events,
+                // OR we try to find 'id' in data in the future.
+            } catch (\Exception $e) {
+            }
+        }
     }
 }

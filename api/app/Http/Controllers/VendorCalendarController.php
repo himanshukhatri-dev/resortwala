@@ -17,12 +17,12 @@ class VendorCalendarController extends Controller
     {
         $this->whatsAppService = $whatsAppService;
     }
-    
+
     // Get calendar data for a specific property
     public function index($propertyId)
     {
         $property = PropertyMaster::where('PropertyId', $propertyId)->firstOrFail();
-        
+
         // Ensure generate uuid if missing (lazy migration)
         if (!$property->share_token) {
             $property->share_token = (string) Str::uuid();
@@ -58,9 +58,9 @@ class VendorCalendarController extends Controller
         $exists = Booking::where('PropertyId', $request->property_id)
             ->where('Status', '!=', 'cancelled')
             ->where('Status', '!=', 'rejected') // Fix: Exclude rejected
-            ->where(function($q) use ($request) {
+            ->where(function ($q) use ($request) {
                 $q->where('CheckInDate', '<', $request->end_date)
-                  ->where('CheckOutDate', '>', $request->start_date);
+                    ->where('CheckOutDate', '>', $request->start_date);
             })->exists();
 
         if ($exists) {
@@ -84,41 +84,22 @@ class VendorCalendarController extends Controller
     public function approve($id)
     {
         $booking = Booking::findOrFail($id);
-        $booking->Status = 'confirmed';
-        $booking->save();
 
-         // WhatsApp
-        try {
-            $this->whatsAppService->send(
-                WhatsAppMessage::template($booking->CustomerMobile, 'booking_confirmed', [
-                    'name' => $booking->CustomerName,
-                    'property' => $booking->property->Name ?? 'Property',
-                    'ref' => $booking->booking_reference ?? $booking->BookingId
-                ])
-            );
-        } catch (\Exception $e) {}
-        
-        return response()->json(['message' => 'Booking confirmed']);
+        // Use the centralized state service
+        app(\App\Services\BookingStateService::class)->confirm($booking);
+
+        return response()->json(['message' => 'Booking confirmed and customer notified.']);
     }
 
     // Reject a pending request
     public function reject($id)
     {
         $booking = Booking::findOrFail($id);
-        $booking->Status = 'rejected';
-        $booking->save();
 
-        // WhatsApp
-        try {
-            $this->whatsAppService->send(
-                WhatsAppMessage::template($booking->CustomerMobile, 'booking_rejected', [
-                    'name' => $booking->CustomerName,
-                    'property' => $booking->property->Name ?? 'Property'
-                ])
-            );
-        } catch (\Exception $e) {}
-        
-        return response()->json(['message' => 'Booking rejected']);
+        // Use the centralized state service
+        app(\App\Services\BookingStateService::class)->reject($booking, 'Rejected by Vendor via Calendar');
+
+        return response()->json(['message' => 'Booking rejected and released.']);
     }
 
     // DEBUG: Seed dummy data for testing
@@ -127,13 +108,13 @@ class VendorCalendarController extends Controller
         // We can allow passing property_id to the seeder if we refactor the seeder to accept arguments,
         // but for now the seeder targets ID 20 specifically as requested.
         // In a real app, we might pass arguments to the seeder class.
-        
+
         try {
             \Illuminate\Support\Facades\Artisan::call('db:seed', [
                 '--class' => 'Database\\Seeders\\BookingSeeder',
                 '--force' => true // Force in production if needed
             ]);
-            
+
             return response()->json(['message' => 'Seeded dummy data successfully using BookingSeeder']);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Seeding failed: ' . $e->getMessage()], 500);

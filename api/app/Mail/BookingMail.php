@@ -31,9 +31,13 @@ class BookingMail extends BaseMailable
             $subject = 'Update on your Booking Request - ' . $this->booking->property->Name;
         } elseif ($this->type === 'confirmed_customer') {
             $subject = 'Booking Confirmed! - ' . $this->booking->property->Name;
+        } elseif ($this->type === 'payment_received_customer') {
+            $subject = 'Payment Received – Booking Under Confirmation - ' . $this->booking->property->Name;
+        } elseif ($this->type === 'rejected_customer') {
+            $subject = 'Update on your Booking Request (Declined) - ' . $this->booking->property->Name;
         }
 
         return $this->subject($subject)
-                    ->view('emails.bookings');
+            ->view('emails.bookings');
     }
 }

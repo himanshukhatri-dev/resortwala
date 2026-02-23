@@ -352,6 +352,15 @@ class AdminController extends Controller
         return response()->json($bookings);
     }
 
+    /**
+     * Get single booking with timeline
+     */
+    public function getBooking(Request $request, $id)
+    {
+        $booking = Booking::with(['property.vendor', 'logs'])->findOrFail($id);
+        return response()->json($booking);
+    }
+
     public function updateBookingStatus(Request $request, $id)
     {
         $request->validate([
@@ -359,12 +368,19 @@ class AdminController extends Controller
         ]);
 
         $booking = Booking::findOrFail($id);
-        $booking->Status = $request->status;
-        $booking->save();
+        $stateService = app(\App\Services\BookingStateService::class);
+
+        if ($request->status === 'confirmed') {
+            $stateService->confirm($booking);
+        } elseif ($request->status === 'rejected') {
+            $stateService->reject($booking, 'Manually rejected by Admin');
+        } else {
+            $stateService->cancel($booking);
+        }
 
         return response()->json([
             'message' => 'Booking status updated successfully',
-            'booking' => $booking
+            'booking' => $booking->fresh(['logs'])
         ]);
     }
 
@@ -450,7 +466,6 @@ class AdminController extends Controller
         $booking->CustomerMobile = 'N/A';
         $booking->Guests = 0;
         $booking->TotalAmount = 0;
-        $booking->booked_by = 'admin'; // Track who blocked it if column exists
         $booking->save();
 
         return response()->json(['message' => 'Dates blocked successfully']);
@@ -459,17 +474,15 @@ class AdminController extends Controller
     public function approveBooking(Request $request, $id)
     {
         $booking = Booking::findOrFail($id);
-        $booking->Status = 'Confirmed';
-        $booking->save();
-        return response()->json(['message' => 'Booking Approved']);
+        app(\App\Services\BookingStateService::class)->confirm($booking);
+        return response()->json(['message' => 'Booking Approved via State Machine']);
     }
 
     public function rejectBooking(Request $request, $id)
     {
         $booking = Booking::findOrFail($id);
-        $booking->Status = 'Cancelled'; // Or Rejected
-        $booking->save();
-        return response()->json(['message' => 'Booking Rejected']);
+        app(\App\Services\BookingStateService::class)->reject($booking, 'Rejected by Admin via approval list');
+        return response()->json(['message' => 'Booking Rejected via State Machine']);
     }
 
     // --- Holiday Approval ---

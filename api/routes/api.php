@@ -214,6 +214,7 @@ Route::get('/ping', function () {
 });
 
 Route::get('/health', [StatusController::class, 'check']); // Alias for status
+Route::get('/health/ssl', [\App\Http\Controllers\HealthCheckController::class, 'sslCheck']); // SSL configuration check
 
 
 
